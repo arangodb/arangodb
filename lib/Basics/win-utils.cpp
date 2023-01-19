@@ -65,6 +65,29 @@
 
 using namespace arangodb::basics;
 
+std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
+  int len = ::MultiByteToWideChar(CP_UTF8, NULL, validUTF8String.data(), static_cast<int>(validUTF8String.size()), NULL, 0);
+  std::wstring result;
+  result.resize(len);
+        ::MultiByteToWideChar(CP_UTF8, NULL, validUTF8String.data(), static_cast<int>(validUTF8String.size()), result.data(), len);
+	return result;
+}
+
+ std::string arangodb::basics::fromWString(wchar_t const* validUTF16String,
+                                           std::size_t size) {
+  int len = ::WideCharToMultiByte(CP_UTF8, NULL, validUTF16String,
+                                  static_cast<int>(size), NULL, 0, NULL, NULL);
+  std::string result;
+  result.resize(len);
+  ::WideCharToMultiByte(CP_UTF8, NULL, validUTF16String,
+                        static_cast<int>(size), result.data(), len, NULL, NULL);
+  return result;
+ }
+
+std::string arangodb::basics::fromWString(std::wstring const& validUTF16String) {
+   return fromWString(validUTF16String.data(), validUTF16String.size());
+ }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Callback function that is called when invalid parameters are passed to a CRT
 // function. The MS documentations states:

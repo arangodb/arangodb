@@ -495,18 +495,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  icu::UnicodeString uwargs(external->_executable.c_str());
+  auto uwargs = arangodb::basics::toWString(external->_executable);
 
-  err = wAppendQuotedArg(
-      res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+  err = wAppendQuotedArg(res, uwargs.data());
   if (err != TRI_ERROR_NO_ERROR) {
     return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
-    uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(
-        res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+    uwargs = arangodb::basics::toWString(external->_arguments[i]);
+    err = wAppendQuotedArg(res, uwargs.data());
     if (err != TRI_ERROR_NO_ERROR) {
       return L"";
     }

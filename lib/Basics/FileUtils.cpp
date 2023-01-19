@@ -48,6 +48,10 @@
 #endif
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -425,10 +429,9 @@ bool copyDirectoryRecursive(
   std::string rcs;
   std::string flt = source + "\\*";
 
-  icu::UnicodeString f(flt.c_str());
+  std::wstring f = arangodb::basics::toWString(flt);
 
-  handle = _wfindfirst(
-      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+  handle = _wfindfirst(f.data(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -436,10 +439,7 @@ bool copyDirectoryRecursive(
   }
 
   do {
-    rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name,
-                         static_cast<int32_t>(wcslen(oneItem.name)));
-    d.toUTF8String<std::string>(rcs);
+    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name, wcslen(oneItem.name));
     char const* fn = (char*)rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());
@@ -555,9 +555,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::string rcs;
 
   std::string filter = directory + "\\*";
-  icu::UnicodeString f(filter.c_str());
-  handle = _wfindfirst(
-      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+  std::wstring f = arangodb::basics::toWString(filter);
+  handle = _wfindfirst(f.data(), &oneItem);
 
   if (handle == -1) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -569,10 +568,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   }
 
   do {
-    rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name,
-                         static_cast<int32_t>(wcslen(oneItem.name)));
-    d.toUTF8String<std::string>(rcs);
+    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name,
+                                        wcslen(oneItem.name));
     fn = (char*)rcs.c_str();
 
     if (!strcmp(fn, ".") || !strcmp(fn, "..")) {

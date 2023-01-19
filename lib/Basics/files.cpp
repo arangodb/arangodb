@@ -42,6 +42,7 @@
 #include <Shlwapi.h>
 #include <tchar.h>
 #include <windows.h>
+#include "Basics/win-utils.h"
 #endif
 
 #ifndef _WIN32
