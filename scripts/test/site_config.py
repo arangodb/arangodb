@@ -148,7 +148,8 @@ class SiteConfig:
         self.hard_deadline = datetime.now() + timedelta(seconds=self.timeout + 660)
         if definition_file.is_file():
             definition_file = definition_file.parent
-        base_source_dir = (definition_file / '..').resolve()
+        #base_source_dir = (definition_file / '..').resolve()
+        base_source_dir = Path('.').resolve()
         bin_dir = (base_source_dir / 'build' / 'bin').resolve()
         if IS_WINDOWS:
             for target in ['RelWithdebInfo', 'Debug']:
