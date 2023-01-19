@@ -1080,7 +1080,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     auto const docsCount = reader->docs_count();
     auto const liveDocsCount = reader->live_docs_count();
 
-    // For now we want to retain old behaviour that
+    // For now we want to retain old behavior that
     // storage snapshot is not older than iresearch snapshot
     // TODO: Remove this as soon as index_writer will start accepting limiting
     // tick for commit
@@ -1088,13 +1088,13 @@ Result IResearchDataStore::commitUnsafeImpl(
     if (ADB_UNLIKELY(!engineSnapshotAfterCommit)) {
       return {
           TRI_ERROR_INTERNAL,
-          absl::StrCat("Failed to get engine snapshot while finishig commit "
+          absl::StrCat("Failed to get engine snapshot while finishing commit "
                        "ArangoSearch index '",
                        index().id().id(), "'")};
     }
 
     _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-        std::move(reader), engineSnapshotAfterCommit));
+        std::move(reader), std::move(engineSnapshotAfterCommit)));
 
     // update stats
     updateStatsUnsafe();
@@ -1946,18 +1946,21 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _lastCommittedTickOne = std::max(tick, _lastCommittedTickOne);
     _lastCommittedTickTwo = _lastCommittedTickOne;
 
-    auto oldSnapshot = _dataStore.loadSnapshot();
-    // we reuse storage snapshot. Technikally this is not
-    // right as old storage snapshot is most likely outdated.
-    // but index is empty so it makes no sense as we will not
-    // materialize anything anyway.
-    // get new reader
+    auto snapshot = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!snapshot)) {
+      // we reuse storage snapshot in this unlikely. Technically this is not
+      // right as old storage snapshot is most likely outdated.
+      // but index is empty so it makes no sense as we will not
+      // materialize anything anyway.
+      // get new reader
+      snapshot = _dataStore.loadSnapshot()->_snapshot;
+    }
     auto reader = _dataStore._writer->GetSnapshot();
     TRI_ASSERT(reader);
 
     // update reader
-    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-        std::move(reader), oldSnapshot->_snapshot));
+    _dataStore.storeSnapshot(
+        std::make_shared<DataSnapshot>(std::move(reader), std::move(snapshot)));
 
     updateStatsUnsafe();
 

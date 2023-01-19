@@ -49,7 +49,7 @@ class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-// two storage varians as we need
+// two storage variants as we need
 // collection name to be stored only
 // when needed.
 class NoCollectionNameHolder {};

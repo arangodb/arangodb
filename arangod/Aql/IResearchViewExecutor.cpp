@@ -2089,10 +2089,6 @@ template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, false, false,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-// template class
-// ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-//    true, false, false,
-//    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, false, true,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;

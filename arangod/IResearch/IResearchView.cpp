@@ -713,7 +713,9 @@ ViewSnapshot::Links IResearchView::getLinks(
     containers::FlatHashSet<DataSourceId> const* sources) const noexcept {
   ViewSnapshot::Links links;
   auto const lock = linksReadLock();
-  links.reserve(std::min((sources ? sources->size() : 0), _links.size()));
+  links.reserve(
+      std::min((sources ? sources->size() : std::numeric_limits<size_t>::max()),
+               _links.size()));
   for (auto const& [cid, link] : _links) {
     // FIXME: remove sources from this function as soon as ViewSnapshotView
     // would be available again.

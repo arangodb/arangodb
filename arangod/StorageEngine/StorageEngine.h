@@ -91,8 +91,8 @@ struct Options;
 class StorageSnapshot {
  public:
   StorageSnapshot() = default;
-  StorageSnapshot(const StorageSnapshot&) = delete;
-  StorageSnapshot& operator=(const StorageSnapshot&) = delete;
+  StorageSnapshot(StorageSnapshot const&) = delete;
+  StorageSnapshot& operator=(StorageSnapshot const&) = delete;
   virtual ~StorageSnapshot() = default;
 
   virtual TRI_voc_tick_t tick() const noexcept = 0;

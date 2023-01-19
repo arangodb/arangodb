@@ -97,7 +97,6 @@ class IResearchDataStore {
   /// @brief a snapshot representation of the data-store
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
-  // TODO Refactor irs::directory_reader ctor, now it doesn't have move
   struct DataSnapshot {
     DataSnapshot(irs::DirectoryReader&& index,
                  std::shared_ptr<StorageSnapshot> db)

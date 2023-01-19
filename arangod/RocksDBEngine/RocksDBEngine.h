@@ -43,6 +43,7 @@
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
+#include <rocksdb/snapshot.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 

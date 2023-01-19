@@ -687,7 +687,7 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
     return {ViewSnapshotPtr{}, snapshot};
   }
 
-  // TODO: remove here restrincSources condition when switching back to
+  // TODO: remove here restrictSources condition when switching back to
   // ViewSnapshotView
   if (!options.restrictSources && !options.forceSync &&
       trx.isMainTransaction()) {

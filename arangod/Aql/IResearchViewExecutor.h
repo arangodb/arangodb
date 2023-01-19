@@ -316,10 +316,8 @@ class IndexReadBuffer {
     if (_keyBuffer.capacity() < atMost) {
       auto newMemoryUsage = memoryUsage(atMost);
       auto tracked = _memoryTracker.tracked();
-      if (newMemoryUsage != tracked) {
-        if (newMemoryUsage > tracked) {
-          _memoryTracker.increase(newMemoryUsage - tracked);
-        }
+      if (newMemoryUsage > tracked) {
+        _memoryTracker.increase(newMemoryUsage - tracked);
       }
       _keyBuffer.reserve(atMost);
       _searchDocs.reserve(atMost);

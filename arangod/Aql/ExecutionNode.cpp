@@ -2831,7 +2831,8 @@ constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
 
 MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
-  if (base.hasKey(MATERIALIZE_NODE_MULTI_NODE_PARAM)) {
+  auto isMulti = base.get(MATERIALIZE_NODE_MULTI_NODE_PARAM);
+  if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeMultiNode(plan, base);
   }
   return new MaterializeSingleNode(plan, base);

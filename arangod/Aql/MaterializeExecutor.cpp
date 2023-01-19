@@ -137,9 +137,9 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
     };
 
     if (block->hasShadowRows()) {
-      readInputDocs.template operator()<false>();
-    } else {
       readInputDocs.template operator()<true>();
+    } else {
+      readInputDocs.template operator()<false>();
     }
     std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
     std::iota(readOrder.begin(), readOrder.end(), 0);
