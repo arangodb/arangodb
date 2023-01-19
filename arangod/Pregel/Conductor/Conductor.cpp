@@ -168,7 +168,7 @@ void Conductor::start() {
   updateState(ExecutionState::LOADING);
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
-  LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
+  LOG_PREGEL("00f5f", DEBUG) << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
