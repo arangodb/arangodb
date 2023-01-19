@@ -37,7 +37,10 @@ jobs:
           command: |
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
-            ls -la build/bin/
+      - run:
+          name: Size leaderboard
+          command: |
+            ls -Ssha build/bin/*.a
       - run:
           name: SCCache Statistics
           command: sccache -s
