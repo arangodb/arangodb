@@ -681,28 +681,34 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
     if (options.forceSync) {
       syncViewSnapshot(*snapshot, view.name());
     }
-    if (options.restrictSources) {
-      return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
-    }
+    // if (options.restrictSources) {
+    //  return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
+    //}
     return {ViewSnapshotPtr{}, snapshot};
   }
-  if (!options.forceSync && trx.isMainTransaction()) {
+
+  // TODO: remove here restrincSources condition when switching back to
+  // ViewSnapshotView
+  if (!options.restrictSources && !options.forceSync &&
+      trx.isMainTransaction()) {
     return {};
   }
   auto links = [&] {
     if (view.type() == ViewType::kArangoSearch) {
       auto const& viewImpl = basics::downCast<IResearchView>(view);
-      return viewImpl.getLinks();
+      return viewImpl.getLinks(options.restrictSources ? &options.sources
+                                                       : nullptr);
     } else {
       auto const& viewImpl = basics::downCast<Search>(view);
-      return viewImpl.getLinks();
+      return viewImpl.getLinks(options.restrictSources ? &options.sources
+                                                       : nullptr);
     }
   }();
   snapshot = makeViewSnapshot(trx, key, options.forceSync, view.name(),
                               std::move(links));
-  if (options.restrictSources && snapshot != nullptr) {
-    return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
-  }
+  // if (options.restrictSources && snapshot != nullptr) {
+  //  return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
+  //}
   return {ViewSnapshotPtr{}, snapshot};
 }
 
@@ -1355,19 +1361,18 @@ std::pair<bool, bool> IResearchViewNode::volatility(
 }
 
 void const* IResearchViewNode::getSnapshotKey() const noexcept {
-  if (ServerState::instance()->isDBServer()) {
-    // TODO We want transactional cluster, now it's not
-    // So we don't make sense to make ViewSnapshotView for restrictSources
-    // and we can use node address as key
-    return (_options.restrictSources || _view == nullptr)
-               ? static_cast<void const*>(this)
-               : static_cast<void const*>(_view.get());
-  } else if (ServerState::instance()->isSingleServer()) {
-    return _view.get();
-  }
-
-  TRI_ASSERT(false);
-  return nullptr;
+  // if (ServerState::instance()->isDBServer()) {
+  // TODO We want transactional cluster, now it's not
+  // So we don't make sense to make ViewSnapshotView for restrictSources
+  // and we can use node address as key
+  return (_options.restrictSources || _view == nullptr)
+             ? static_cast<void const*>(this)
+             : static_cast<void const*>(_view.get());
+  //} else if (ServerState::instance()->isSingleServer()) {
+  //  return _view.get();
+  //}
+  // TRI_ASSERT(false);
+  // return nullptr;
 }
 
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,

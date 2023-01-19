@@ -89,43 +89,49 @@ using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotView final : public ViewSnapshot {
- public:
-  /// @brief constructs snapshot from a given snapshot
-  ///        according to specified set of collections
-  ViewSnapshotView(
-      const ViewSnapshot& rhs,
-      containers::FlatHashSet<DataSourceId> const& collections) noexcept;
-
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return std::get<0>(_segments[i]);
-  }
-
-  [[nodiscard]] irs::sub_reader const& operator[](
-      std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return *(std::get<1>(_segments[i]));
-  }
-
-  [[nodiscard]] StorageSnapshot const& snapshot(
-      std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return (std::get<2>(_segments[i]));
-  }
-
-  [[nodiscard]] std::size_t size() const noexcept final {
-    return _segments.size();
-  }
-
-  ViewSegment const& segment(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return _segments[i];
-  }
-
- private:
-  Segments _segments;
-};
+/// FIXME: Currently this class is not used as there is an issue if one view
+///        is used several times in the query and waitForSync is enabled.
+///        In such case ViewSnapshotCookie is refilled several times. So
+///        dangling ViewSnapshotView is possible. We could adress this
+///        by doing viewSnapshotSync once per view. So this class is not
+///        deleted in hope it would be needed again.
+// class ViewSnapshotView final : public ViewSnapshot {
+// public:
+//  /// @brief constructs snapshot from a given snapshot
+//  ///        according to specified set of collections
+//  ViewSnapshotView(
+//      const ViewSnapshot& rhs,
+//      containers::FlatHashSet<DataSourceId> const& collections) noexcept;
+//
+//  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return std::get<0>(_segments[i]);
+//  }
+//
+//  [[nodiscard]] irs::sub_reader const& operator[](
+//      std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return *(std::get<1>(_segments[i]));
+//  }
+//
+//  [[nodiscard]] StorageSnapshot const& snapshot(
+//      std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return (std::get<2>(_segments[i]));
+//  }
+//
+//  [[nodiscard]] std::size_t size() const noexcept final {
+//    return _segments.size();
+//  }
+//
+//  ViewSegment const& segment(std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return _segments[i];
+//  }
+//
+// private:
+//  Segments _segments;
+//};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Get view snapshot from transaction state

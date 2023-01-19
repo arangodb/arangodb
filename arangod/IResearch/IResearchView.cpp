@@ -241,7 +241,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase,
       auto* snapshot = getViewSnapshot(trx, key);
       if (snapshot == nullptr) {
         makeViewSnapshot(trx, key, false, viewLock->name(),
-                         viewLock->getLinks());
+                         viewLock->getLinks(nullptr));
       }
     }
   };
@@ -709,12 +709,17 @@ LinkLock IResearchView::linkLock(
   return {};
 }
 
-ViewSnapshot::Links IResearchView::getLinks() const noexcept {
+ViewSnapshot::Links IResearchView::getLinks(
+    containers::FlatHashSet<DataSourceId> const* sources) const noexcept {
   ViewSnapshot::Links links;
   auto const lock = linksReadLock();
-  links.reserve(_links.size());
-  for (auto const& [_, link] : _links) {
-    links.emplace_back(link ? link->lock() : LinkLock{});
+  links.reserve(std::min((sources ? sources->size() : 0), _links.size()));
+  for (auto const& [cid, link] : _links) {
+    // FIXME: remove sources from this function as soon as ViewSnapshotView
+    // would be available again.
+    if (!sources || sources->contains(cid)) {
+      links.emplace_back(link ? link->lock() : LinkLock{});
+    }
   }
   return links;
 }

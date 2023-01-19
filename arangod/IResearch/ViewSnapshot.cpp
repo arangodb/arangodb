@@ -73,6 +73,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   }
 
   [[nodiscard]] ViewSegment const& segment(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
     return _segments[i];
   }
 
@@ -127,20 +128,21 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
 
 }  // namespace
 
-ViewSnapshotView::ViewSnapshotView(
-    const ViewSnapshot& rhs,  // TODO(MBkkt) Maybe we should move?
-    containers::FlatHashSet<DataSourceId> const& collections) noexcept {
-  for (std::size_t i = 0, size = rhs.size(); i != size; ++i) {
-    auto const cid = rhs.cid(i);
-    if (!collections.contains(cid)) {
-      continue;
-    }
-    auto const& segment = rhs[i];
-    _docs_count += segment.docs_count();
-    _live_docs_count += segment.live_docs_count();
-    _segments.emplace_back(cid, &segment, rhs.snapshot(i));
-  }
-}
+// See comment in header file for this class.
+// ViewSnapshotView::ViewSnapshotView(
+//    const ViewSnapshot& rhs,  // TODO(MBkkt) Maybe we should move?
+//    containers::FlatHashSet<DataSourceId> const& collections) noexcept {
+//  for (std::size_t i = 0, size = rhs.size(); i != size; ++i) {
+//    auto const cid = rhs.cid(i);
+//    if (!collections.contains(cid)) {
+//      continue;
+//    }
+//    auto const& segment = rhs[i];
+//    _docs_count += segment.docs_count();
+//    _live_docs_count += segment.live_docs_count();
+//    _segments.emplace_back(cid, &segment, rhs.snapshot(i));
+//  }
+//}
 
 ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
                               void const* key) noexcept {

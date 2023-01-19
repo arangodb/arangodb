@@ -3540,23 +3540,23 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
         *logicalView);
     auto* snapshot =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
-                         view.getLinks(), &view, view.name());
+                         view.getLinks(nullptr), &view, view.name());
     EXPECT_TRUE(snapshot == nullptr);
     snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view.getLinks(), &view, view.name());
+        view.getLinks(nullptr), &view, view.name());
     ASSERT_TRUE(snapshot != nullptr);
     auto* snapshotFind =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
-                         view.getLinks(), &view, view.name());
+                         view.getLinks(nullptr), &view, view.name());
     EXPECT_TRUE(snapshotFind == snapshot);
     auto* snapshotCreate = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view.getLinks(), &view, view.name());
+        view.getLinks(nullptr), &view, view.name());
     EXPECT_TRUE(snapshotCreate == snapshot);
     auto* snapshotSync = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
-        view.getLinks(), &view, view.name());
+        view.getLinks(nullptr), &view, view.name());
     EXPECT_TRUE(snapshotSync == snapshot);
 
     // after transaction has started

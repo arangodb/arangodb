@@ -540,7 +540,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   ASSERT_TRUE(trx.state());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
@@ -620,7 +620,7 @@ TEST_F(IResearchViewCountApproximateTest,
       EMPTY, arangodb::transaction::Options());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
@@ -702,7 +702,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       EMPTY, arangodb::transaction::Options());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
