@@ -381,8 +381,19 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   return true;
 }
 
-static ErrorCode appendQuotedArg(std::string& buf, char const* p) {
-  buf += '"';
+#define appendChar(buf, x)                        \
+  do {                                            \
+    err = TRI_AppendCharStringBuffer((buf), (x)); \
+    if (err != TRI_ERROR_NO_ERROR) {              \
+      return err;                                 \
+    }                                             \
+  } while (false);
+
+[[maybe_unused]] static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf,
+                                                  char const* p) {
+  auto err = TRI_ERROR_NO_ERROR;
+
+  appendChar(buf, '"');
 
   while (*p != 0) {
     unsigned int i;
@@ -397,36 +408,78 @@ static ErrorCode appendQuotedArg(std::string& buf, char const* p) {
       // double quotation mark we add below be interpreted
       // as a metacharacter.
       for (i = 0; i < NumberBackslashes; i++) {
-        buf += '\\';
-        buf += '\\';
+        appendChar(buf, '\\');
+        appendChar(buf, '\\');
       }
       break;
     } else if (*q == '"') {
       // Escape all backslashes and the following
       // double quotation mark.
       for (i = 0; i < NumberBackslashes; i++) {
-        buf += '\\';
-        buf += '\\';
+        appendChar(buf, '\\');
+        appendChar(buf, '\\');
       }
-      buf += '\\';
+      appendChar(buf, '\\');
+      appendChar(buf, *q);
+    } else {
+      // Backslashes aren't special here.
+      for (i = 0; i < NumberBackslashes; i++) {
+        appendChar(buf, '\\');
+      }
+      appendChar(buf, *q);
+    }
+    p = ++q;
+  }
+  appendChar(buf, '"');
+  return TRI_ERROR_NO_ERROR;
+}
+
+static ErrorCode wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
+  buf += L'"';
+
+  while (*p != 0) {
+    unsigned int i;
+    unsigned int NumberBackslashes = 0;
+    wchar_t const* q = p;
+    while (*q == L'\\') {
+      ++q;
+      ++NumberBackslashes;
+    }
+    if (*q == 0) {
+      // Escape all backslashes, but let the terminating
+      // double quotation mark we add below be interpreted
+      // as a metacharacter.
+      for (i = 0; i < NumberBackslashes; i++) {
+        buf += L'\\';
+        buf += L'\\';
+      }
+      break;
+    } else if (*q == L'"') {
+      // Escape all backslashes and the following
+      // double quotation mark.
+      for (i = 0; i < NumberBackslashes; i++) {
+        buf += L'\\';
+        buf += L'\\';
+      }
+      buf += L'\\';
       buf += *q;
     } else {
       // Backslashes aren't special here.
       for (i = 0; i < NumberBackslashes; i++) {
-        buf += '\\';
+        buf += L'\\';
       }
       buf += *q;
     }
     p = ++q;
   }
-  buf += '"';
+  buf += L'"';
   return TRI_ERROR_NO_ERROR;
 }
 
-static std::string makeWindowsArgs(ExternalProcess* external) {
+static std::wstring makeWindowsArgs(ExternalProcess* external) {
   size_t i;
   auto err = TRI_ERROR_NO_ERROR;
-  std::string res;
+  std::wstring res;
 
   if ((external->_executable.find('/') == std::string::npos) &&
       (external->_executable.find('\\') == std::string::npos)) {
@@ -442,24 +495,29 @@ static std::string makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  err = appendQuotedArg(res, external->_executable.c_str());
+  icu::UnicodeString uwargs(external->_executable.c_str());
+
+  err = wAppendQuotedArg(
+      res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
-    return "";
+    return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
-    res += ' ';
-    err = appendQuotedArg(res, external->_arguments[i]);
+    res += L' ';
+    uwargs = external->_arguments[i];
+    err = wAppendQuotedArg(
+        res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
-      return "";
+      return L"";
     }
   }
   return res;
 }
 
 static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
-  std::string args;
+  std::wstring args;
   PROCESS_INFORMATION piProcInfo;
-  STARTUPINFO siStartInfo;
+  STARTUPINFOW siStartInfo;
   BOOL bFuncRetn = FALSE;
   TRI_ERRORBUF;
 
@@ -483,8 +541,8 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
   // create the child process
-  bFuncRetn = CreateProcessA(NULL,
-                             (LPSTR)args.c_str(),  // command line
+  bFuncRetn = CreateProcessW(NULL,
+                             (LPWSTR)args.c_str(),  // command line
                              NULL,  // process security attributes
                              NULL,  // primary thread security attributes
                              TRUE,  // handles are inherited
