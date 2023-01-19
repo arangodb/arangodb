@@ -3314,6 +3314,10 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   std::set<std::string> localCopy;
   std::copy(dbServers.begin(), dbServers.end(),
             std::inserter(localCopy, localCopy.end()));
+  // dbServers should be a list of pairwise different servers, this
+  // is usually ensured since it is a vector manufactured from the keys
+  // of a map:
+  TRI_ASSERT(localCopy.size() == dbServers.size());
 
   // Skip all direct matching names in pair and remove them from localCopy.
   // If later a server does not occur it means that no translation has to
@@ -3327,7 +3331,16 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
       match.try_emplace(plannedStr, std::string());
     }
   }
-  // match all remaining
+  // At this stage, we know the following:
+  //  - initially, dbServers had at least as many servers as planServers
+  //  - initially, localCopy was a perfect copy of dbServers
+  //  - now, for every element of planServers, which is not contained in
+  //    localCopy, we put an element in match, each element of planServers,
+  //    which is in localCopy, is removed from localCopy and no entry is
+  //    added to match.
+  // Therefore, localCopy has at least as many entries as match and we can
+  // just blindly run the iterator:
+  TRI_ASSERT(match.size() <= localCopy.size());
   auto it2 = localCopy.begin();
   for (auto& m : match) {  // alphabetical order!
     m.second = *it2++;     // alphabetical order, too!
