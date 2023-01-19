@@ -30,6 +30,8 @@
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntryReplication2.h"
 #include "Inspection/VPack.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "VocBase/LogicalCollection.h"
@@ -221,6 +223,22 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
           baseReplicatedLogsPath->log(spec.id)->str(),
           [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
     }
+
+
+    // TODO: This is hardcoded here, either the entry needs to deliver this,
+    // or we hand in the information.
+    replication2::agency::CollectionGroup g;
+    g.id = replication2::agency::CollectionGroupId(42);
+    g.attributes.waitForSync = false;
+    g.attributes.writeConcern = 1;
+    g.collections.emplace(entry.getCID(), replication2::agency::CollectionGroup::Collection{});
+
+    LOG_DEVEL << "Adding write on Path: " << baseGroupPath->group("42")->str();
+    // Create the Collection Group Entry
+    // TODO: HardCoded path, we need to add a path that takes groupId.
+    writes = std::move(writes).emplace_object(
+        baseGroupPath->group("42")->str(),
+        [&](VPackBuilder& builder) { velocypack::serialize(builder, g); });
   }
 
   // Done with adding writes. Now add all preconditions

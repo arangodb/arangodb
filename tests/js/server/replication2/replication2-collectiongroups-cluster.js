@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +38,21 @@ const readAgencyCollectionGroups = (databaseName) => {
     return readAgencyValueAt(`Target/CollectionGroups/${databaseName}/`);
 };
 
+const getGroupWithCollection = (groups, collection) => {
+    return Object.values(groups).find(g => g.collections.hasOwnProperty(collection));
+};
+
+const assertNoCollectionIsInTwoGroups = (groups) => {
+    const uniqueCollectionList = new Set();
+    Object.values(groups).map(g => {
+        assertTrue(g.hasOwnProperty("collections"));
+       Object.keys(g.collections).map(colName => {
+          assertFalse(uniqueCollectionList.has(colName), `Duplicate collection ${colName} in groups ${groups}`);
+          uniqueCollectionList.add(colName);
+       });
+    });
+};
+
 const createCollectionGroupsSuite = function () {
 
     const getCollectionGroups = () => readAgencyCollectionGroups(database);
@@ -52,8 +67,12 @@ const createCollectionGroupsSuite = function () {
                 // assertTrue(_.isObject(groupsBefore), `CollectionGroups is not an object ${groupsBefore}`);
                 db._create(collectionName, {numberOfShards: 3});
                 const groupsAfter = getCollectionGroups();
-                assertTrue(_.isObject(groupsAfter), `CollectionGroups is not an object ${groupsAfter}`);
                 require("internal").print(groupsBefore, groupsAfter);
+                assertTrue(_.isObject(groupsAfter), `CollectionGroups is not an object ${groupsAfter}`);
+                assertNoCollectionIsInTwoGroups(groupsAfter);
+                // assertEqual(Object.keys(groupsBefore).length + 1, Object.keys(groupsAfter), `It has to create exactly one new group`);
+                const myGroup = getGroupWithCollection(groupsAfter, collectionName);
+                require("internal").print(myGroup);
             } finally {
                 db._drop(collectionName);
             }
