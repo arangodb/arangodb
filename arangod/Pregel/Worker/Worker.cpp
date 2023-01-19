@@ -1,3 +1,4 @@
+#include "Pregel/Conductor/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -21,12 +22,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Basics/voc-errors.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
@@ -67,18 +68,16 @@ using namespace arangodb::pregel;
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig, PregelFeature& feature)
+                        CreateWorker const& parameters, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
       _algorithm(algo) {
-  _config.updateConfig(_feature, initConfig);
+  _config.updateConfig(_feature, parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 
-  VPackSlice userParams = initConfig.get(Utils::userParametersKey);
-
-  _workerContext.reset(algo->workerContext(userParams));
+  _workerContext.reset(algo->workerContext(parameters.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
@@ -191,7 +190,7 @@ void Worker<V, E, M>::setupWorker() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
+void Worker<V, E, M>::prepareGlobalStep(PrepareGlobalSuperStep const& data,
                                         VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
@@ -203,26 +202,22 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
         TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  if (!gssSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "Invalid gss in %s:%d", __FILE__, __LINE__);
-  }
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  LOG_PREGEL("f16f2", DEBUG) << fmt::format("Received prepare GSS: {}", data);
+  const uint64_t gss = data.gss;
   if (_expectedGSS != gss) {
-    THROW_ARANGO_EXCEPTION_FORMAT(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "Seems like this worker missed a gss, expected %u. Data = %s ",
-        _expectedGSS, data.toJson().c_str());
+        fmt::format(
+            "Seems like this worker missed a gss, expected {}. Data = {} ",
+            _expectedGSS, data));
   }
 
   // initialize worker context
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_vertexCount = data.vertexCount;
+    _workerContext->_edgeCount = data.edgeCount;
     _workerContext->preApplication();
   }
 
@@ -275,7 +270,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
 
 /// @brief Setup next superstep
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
+void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -284,24 +279,18 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
-  LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
-  if (gss != _config.globalSuperstep()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
-  }
+  LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
+  _conductorAggregators->setAggregatedValues(data.aggregators.slice());
   // execute context
   if (_workerContext) {
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
-    _workerContext->_reports = &this->_reports;
-    _workerContext->preGlobalSuperstep(gss);
+    _workerContext->_vertexCount = data.vertexCount;
+    _workerContext->_edgeCount = data.edgeCount;
+    _workerContext->preGlobalSuperstep(data.gss);
   }
 
-  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << gss;
+  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << data.gss;
   _startProcessing();  // sets _state = COMPUTING;
 }
 
@@ -450,7 +439,6 @@ bool Worker<V, E, M>::_processVertices(
     _activeCount += activeCount;
     _runningThreads--;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-    _reports.append(std::move(vertexComputation->_reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;
@@ -493,9 +481,6 @@ void Worker<V, E, M>::_finishedProcessing() {
     _state = WorkerState::IDLE;
 
     package.openObject();
-    package.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(package);
-    _reports.clear();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(_config.executionNumber().value));
@@ -516,7 +501,7 @@ void Worker<V, E, M>::_finishedProcessing() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
+void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                         std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
@@ -527,10 +512,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  auto const doStore = store.isBool() && store.getBool() == true;
-  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
-    if (doStore) {
+  auto cleanup = [self = shared_from_this(), this, msg, cb] {
+    if (msg.store) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
@@ -539,19 +522,15 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     body.add(Utils::executionNumberKey,
              VPackValue(_config.executionNumber().value));
-    body.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(body);
-    _reports.clear();
     body.close();
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
 
   _state = WorkerState::DONE;
-  if (doStore) {
+  if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->_reports = &this->_reports;
     _graphStore->storeResults(&_config, std::move(cleanup),
                               _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);

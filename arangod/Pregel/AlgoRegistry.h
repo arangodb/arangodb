@@ -24,8 +24,9 @@
 #pragma once
 
 #include <string>
-#include "Algorithm.h"
-#include "Worker.h"
+#include "Pregel/Algorithm.h"
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Worker/Worker.h"
 
 struct TRI_vocbase_t;
 
@@ -39,14 +40,14 @@ struct AlgoRegistry {
       application_features::ApplicationServer& server,
       std::string const& algorithm, VPackSlice userParams);
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
-                                               VPackSlice body,
+                                               CreateWorker const& parameters,
                                                PregelFeature& feature);
 
  private:
   template<typename V, typename E, typename M>
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
                                                Algorithm<V, E, M>* algo,
-                                               VPackSlice body,
+                                               CreateWorker const& parameters,
                                                PregelFeature& feature);
 };
 
