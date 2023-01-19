@@ -14,14 +14,29 @@ jobs:
             python -m pip install --upgrade pip
             pip install pyyaml
       - run:
+          name: Install eslint
+          command: |
+            apt-get -yy update
+            apt-get -yy install eslint
+      - run:
           name: Checkout
           command: |
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
             git reset --hard "$CIRCLE_SHA1"
+      # This is deactivated because the generateAllMetricsDocumentation.py
+      # script only works with a checked out enterprise branch
+      # run:
+      #    name: Generate metrics documentation
+      #    command: |
+      #      python3 utils/generateAllMetricsDocumentation.py
       - run:
-          name: Generate metrics documentation
+          name: Check LogIDs
           command: |
-            python3 utils/generateAllMetricsDocumentation.py
+            python3 utils/checkLogIds.py
+      - run:
+          name: JSlint
+          command: |
+            jslint
 
   compile-linux:
     parameters:
@@ -42,10 +57,6 @@ jobs:
           command: |
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
             git reset --hard "$CIRCLE_SHA1"
-      - run:
-          name: Check LogIDs
-          command: |
-            python3 utils/checkLogIds.py
       - run:
           name: Print SCCache Settings
           command: sccache -s
