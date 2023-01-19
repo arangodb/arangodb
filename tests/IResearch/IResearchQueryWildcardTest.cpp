@@ -21,6 +21,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "IResearch/IResearchVPackComparer.h"
@@ -33,7 +35,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -583,10 +584,10 @@ class QueryWildcardView : public QueryWildcard {
 
     auto viewDefinitionTemplate = R"({
       "links": {
-        "testCollection1": { "includeAllFields": true, "version": %u }
+        "testCollection1": { "includeAllFields": true, "version": $0 }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
+    auto viewDefinition = absl::Substitute(
         viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
@@ -638,12 +639,9 @@ class QueryWildcardSearch : public QueryWildcard {
       auto* impl = dynamic_cast<arangodb::iresearch::Search*>(view);
       ASSERT_FALSE(!impl);
 
-      auto viewDefinitionTemplate = R"({"indexes": [
+      auto viewDefinition = R"({"indexes": [
         {"collection": "testCollection1", "index": "testIndex1"}
       ]})";
-
-      auto viewDefinition = irs::string_utils::to_string(
-          viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 

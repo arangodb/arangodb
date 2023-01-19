@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Pregel/Conductor/Messages.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
@@ -40,35 +41,13 @@ WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
-void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
-  VPackSlice coordID = params.get(Utils::coordinatorIdKey);
-  VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
-  VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
-  VPackSlice edgeCollectionRestrictions =
-      params.get(Utils::edgeCollectionRestrictionsKey);
-  VPackSlice execNum = params.get(Utils::executionNumberKey);
-  VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
-  VPackSlice globalShards = params.get(Utils::globalShardListKey);
-
-  if (!coordID.isString() || !edgeShardMap.isObject() ||
-      !vertexShardMap.isObject() || !execNum.isInteger() ||
-      !collectionPlanIdMap.isObject() || !globalShards.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Supplied bad parameters to worker");
-  }
-  _executionNumber = ExecutionNumber(execNum.getUInt());
-  _coordinatorId = coordID.copyString();
-
-  // memory mapping
-  // start off with default value
-  _useMemoryMaps = feature.useMemoryMaps();
-  if (VPackSlice memoryMaps = params.get(Utils::useMemoryMapsKey);
-      memoryMaps.isBoolean()) {
-    // update from user config if specified there
-    _useMemoryMaps = memoryMaps.getBool();
-  }
-
-  VPackSlice userParams = params.get(Utils::userParametersKey);
+void WorkerConfig::updateConfig(PregelFeature& feature,
+                                CreateWorker const& params) {
+  _executionNumber = params.executionNumber;
+  _coordinatorId = params.coordinatorId;
+  _useMemoryMaps = params.useMemoryMaps;
+  VPackSlice userParams = params.userParameters.slice();
+  _globalShardIDs = params.allShards;
 
   // parallelism
   _parallelism = WorkerConfig::parallelism(feature, userParams);
@@ -76,64 +55,37 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
   // Instead we have an index identifying a shard name in this vector
-  PregelShard i = 0;
-  for (VPackSlice shard : VPackArrayIterator(globalShards)) {
-    ShardID s = shard.copyString();
-    _globalShardIDs.push_back(s);
-    _pregelShardIDs.try_emplace(s, i++);  // Cache these ids
+  for (uint16_t i = 0; auto const& shard : _globalShardIDs) {
+    _pregelShardIDs.try_emplace(shard, PregelShard(i++));  // Cache these ids
   }
 
   // To access information based on a user defined collection name we need the
-  for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap.try_emplace(it.key.copyString(),
-                                     it.value.copyString());
-  }
+  _collectionPlanIdMap = params.collectionPlanIds;
 
   // Ordered list of shards for each vertex collection on the CURRENT db server
   // Order matters because the for example the third vertex shard, will only
   // every have
   // edges in the third edge shard. This should speed up the startup
-  for (auto pair : VPackObjectIterator(vertexShardMap)) {
-    CollectionID cname = pair.key.copyString();
-
-    std::vector<ShardID> shards;
-    for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
-      ShardID shard = shardSlice.copyString();
-      shards.push_back(shard);
+  _vertexCollectionShards = params.vertexShards;
+  for (auto const& [collection, shards] : _vertexCollectionShards) {
+    for (auto const& shard : shards) {
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
       _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
-      _shardToCollectionName.try_emplace(shard, cname);
+      _shardToCollectionName.try_emplace(shard, collection);
     }
-    _vertexCollectionShards.try_emplace(std::move(cname), std::move(shards));
   }
 
   // Ordered list of edge shards for each collection
-  for (auto pair : VPackObjectIterator(edgeShardMap)) {
-    CollectionID cname = pair.key.copyString();
-
-    std::vector<ShardID> shards;
-    for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
-      ShardID shard = shardSlice.copyString();
-      shards.push_back(shard);
+  _edgeCollectionShards = params.edgeShards;
+  for (auto const& [collection, shards] : _edgeCollectionShards) {
+    for (auto const& shard : shards) {
       _localEdgeShardIDs.push_back(shard);
-      _shardToCollectionName.try_emplace(shard, cname);
-    }
-    _edgeCollectionShards.try_emplace(std::move(cname), std::move(shards));
-  }
-
-  if (edgeCollectionRestrictions.isObject()) {
-    for (auto pair : VPackObjectIterator(edgeCollectionRestrictions)) {
-      CollectionID cname = pair.key.copyString();
-
-      std::vector<ShardID> shards;
-      for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
-        shards.push_back(shardSlice.copyString());
-      }
-      _edgeCollectionRestrictions.try_emplace(std::move(cname),
-                                              std::move(shards));
+      _shardToCollectionName.try_emplace(shard, collection);
     }
   }
+
+  _edgeCollectionRestrictions = params.edgeCollectionRestrictions;
 }
 
 size_t WorkerConfig::parallelism(PregelFeature& feature, VPackSlice params) {

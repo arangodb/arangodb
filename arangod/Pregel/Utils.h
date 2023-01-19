@@ -28,14 +28,13 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
-#include "Pregel/ExecutionNumber.h"
-#include "Pregel/Worker/WorkerConfig.h"
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
 namespace pregel {
+
+class WorkerConfig;
 
 class Utils {
   Utils() = delete;
@@ -54,7 +53,6 @@ class Utils {
   static std::string const startGSSPath;
   static std::string const finishedWorkerStepPath;
   static std::string const finishedWorkerFinalizationPath;
-  static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
   static std::string const storeCheckpointPath;
