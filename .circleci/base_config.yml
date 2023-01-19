@@ -38,7 +38,7 @@ jobs:
       - run:
           name: JSlint
           command: |
-            eslint
+            utils/jslint-2.0.sh
 
   compile-linux:
     parameters:
