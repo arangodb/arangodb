@@ -33,6 +33,8 @@ jobs:
           name: Check LogIDs
           command: |
             python3 utils/checkLogIds.py
+      # TODO: need to figure out how arangosh runs eslint (in particular with which)
+      # options
       - run:
           name: JSlint
           command: |
@@ -178,7 +180,7 @@ workflows:
         value: << pipeline.git.branch >>
     jobs:
       - linting:
-          name: generate-metrics-documentation
+          name: linting
       - compile-linux:
           name: build-community-pr
           preset: community-pr
