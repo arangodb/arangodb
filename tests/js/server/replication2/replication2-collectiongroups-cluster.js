@@ -55,7 +55,9 @@ const assertNoCollectionIsInTwoGroups = (groups) => {
 
 const createCollectionGroupsSuite = function () {
 
+    // TODO: As soon as createDatabase handles CollectionGroups, move the assertNoCollectionIsInTwoGroups here.
     const getCollectionGroups = () => readAgencyCollectionGroups(database);
+
     return {
         setUpAll, tearDownAll, setUp, tearDown,
 
@@ -65,15 +67,39 @@ const createCollectionGroupsSuite = function () {
                 const groupsBefore = getCollectionGroups();
                 // TODO: To activate this the create database needs to properly instanciate the System Collections Group
                 // assertTrue(_.isObject(groupsBefore), `CollectionGroups is not an object ${groupsBefore}`);
-                db._create(collectionName, {numberOfShards: 3});
+                const c = db._create(collectionName, {numberOfShards: 3});
+                const groupsAfter = getCollectionGroups();
+                assertTrue(_.isObject(groupsAfter), `CollectionGroups is not an object ${groupsAfter}`);
+                assertNoCollectionIsInTwoGroups(groupsAfter);
+                // assertEqual(Object.keys(groupsBefore).length + 1, Object.keys(groupsAfter), `It has to create exactly one new group`);
+                const {collections, attributes} = getGroupWithCollection(groupsAfter, c.planId());
+                assertEqual(Object.keys(collections).length, 1, `Got more than 1 collection in the group ${Object.keys(collections)}`);
+                assertEqual(c.planId(), Object.keys(collections)[0]);
+            } finally {
+                db._drop(collectionName);
+            }
+        },
+
+        testCreateAGroupOfCollections: function() {
+            const collectionName = "UnitTestCollection";
+            const followerName = "UnitTestCollectionFollower";
+            try {
+                const groupsBefore = getCollectionGroups();
+                // TODO: To activate this the create database needs to properly instanciate the System Collections Group
+                // assertTrue(_.isObject(groupsBefore), `CollectionGroups is not an object ${groupsBefore}`);
+                const c1 = db._create(collectionName, {numberOfShards: 3});
+                const c2 = db._create(followerName, {numberOfShards: 3, distributeShardsLike: collectionName});
                 const groupsAfter = getCollectionGroups();
                 require("internal").print(groupsBefore, groupsAfter);
                 assertTrue(_.isObject(groupsAfter), `CollectionGroups is not an object ${groupsAfter}`);
                 assertNoCollectionIsInTwoGroups(groupsAfter);
                 // assertEqual(Object.keys(groupsBefore).length + 1, Object.keys(groupsAfter), `It has to create exactly one new group`);
-                const myGroup = getGroupWithCollection(groupsAfter, collectionName);
-                require("internal").print(myGroup);
+                const {collections, attributes} = getGroupWithCollection(groupsAfter, c2.planId());
+                assertEqual(Object.keys(collections).length, 2, `Did not get 2 collections in the group ${Object.keys(collections)}`);
+                assertTrue(collections.hasOwnProperty(c1.planId()));
+                assertTrue(collections.hasOwnProperty(c2.planId()));
             } finally {
+                db._drop(followerName);
                 db._drop(collectionName);
             }
         }
