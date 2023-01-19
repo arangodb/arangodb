@@ -3,13 +3,16 @@ version: 2.1
 jobs:
   generate-metrics-documentation:
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1s
+      - image: circleci/python:latest
     resource_class: small
     environment:
       GIT_SSH_COMMAND: ssh -v
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug
     steps:
+      - run:
+          name: Install pyyaml
+          run: pip install pyyaml
       - run:
           name: Checkout
           command: |
