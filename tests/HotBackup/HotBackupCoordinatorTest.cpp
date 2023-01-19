@@ -88,6 +88,21 @@ int countSubstring(std::string const& str, std::string const& sub) {
 std::vector<std::string> dbsPath{"arango", "Plan", "DBServers"};
 std::vector<std::string> colPath{"arango", "Plan", "Collections"};
 
+namespace {
+void checkAlphabetic(std::map<ServerID, ServerID> const& matches) {
+  ASSERT_TRUE(matches.size() > 1);  // otherwise nonsensical test
+  // Check that the values are in alphabetically increasing order.
+  auto it1 = matches.begin();
+  ++it1;
+  auto it2 = matches.begin();
+  while (it1 != matches.end()) {
+    ASSERT_TRUE(it2->second < it1->second);
+    ++it1;
+    ++it2;
+  }
+}
+}  // namespace
+
 class HotBackupOnCoordinators : public ::testing::Test {
  protected:
   HotBackupOnCoordinators() {
@@ -174,6 +189,7 @@ TEST_F(HotBackupOnCoordinators, test_first_and_last_dbserver_new) {
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
   ASSERT_EQ(matches.size(), 2);
+  ::checkAlphabetic(matches);
   ASSERT_TRUE(res.ok());
 }
 
@@ -192,6 +208,7 @@ TEST_F(HotBackupOnCoordinators, test_all_dbserver_new) {
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
   ASSERT_EQ(matches.size(), 3);
+  ::checkAlphabetic(matches);
   ASSERT_TRUE(res.ok());
 }
 
@@ -281,6 +298,7 @@ TEST_F(HotBackupOnCoordinators,
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
   ASSERT_TRUE(res.ok());
+  ::checkAlphabetic(matches);
 
   VPackBuilder newPlan;
   res = applyDBServerMatchesToPlan(plan, matches, newPlan);
@@ -310,6 +328,7 @@ TEST_F(HotBackupOnCoordinators,
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
   ASSERT_TRUE(res.ok());
+  ::checkAlphabetic(matches);
 
   VPackBuilder newPlan;
   res = applyDBServerMatchesToPlan(plan, matches, newPlan);
@@ -337,6 +356,7 @@ TEST_F(HotBackupOnCoordinators,
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
   ASSERT_TRUE(res.ok());
+  ::checkAlphabetic(matches);
 
   VPackBuilder newPlan;
   res = applyDBServerMatchesToPlan(plan, matches, newPlan);
