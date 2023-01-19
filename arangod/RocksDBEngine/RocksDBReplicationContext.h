@@ -38,6 +38,7 @@
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/snapshot.h>
 #include <rocksdb/types.h>
 
 #include <velocypack/Buffer.h>
@@ -45,10 +46,14 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+
 namespace rocksdb {
 class Comparator;
 class Iterator;
-class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -61,14 +66,14 @@ class StringBuffer;
 
 class RocksDBReplicationContext {
  private:
-  typedef std::function<void(LocalDocumentId const& token)>
-      LocalDocumentIdCallback;
-
   /// collection abstraction
   struct CollectionIterator {
+    CollectionIterator(CollectionIterator const&) = delete;
+    CollectionIterator& operator=(CollectionIterator const&) = delete;
+
     CollectionIterator(TRI_vocbase_t&,
                        std::shared_ptr<LogicalCollection> const&, bool sorted,
-                       rocksdb::Snapshot const*);
+                       std::shared_ptr<rocksdb::ManagedSnapshot> snapshot);
     ~CollectionIterator();
 
     TRI_vocbase_t& vocbase;
@@ -76,14 +81,17 @@ class RocksDBReplicationContext {
 
     /// Iterator over primary index or documents
     std::unique_ptr<rocksdb::Iterator> iter;
+
+    std::shared_ptr<rocksdb::ManagedSnapshot> _snapshot;
+
     /// bounds used by the iterator
-    RocksDBKeyBounds bounds;
+    RocksDBKeyBounds _bounds;
     /// some incrementing number
     uint64_t currentTick;
     /// @brief offset in the collection used with the incremental sync
     uint64_t lastSortedIteratorOffset;
 
-    arangodb::velocypack::Options vpackOptions;
+    velocypack::Options vpackOptions;
 
     /// @brief number of documents in this collection
     /// only set in a very specific use-case
@@ -95,15 +103,18 @@ class RocksDBReplicationContext {
     /// count on the leader if it is considered to be wrong.
     uint64_t documentCountAdjustmentTicket;
 
+    RocksDBKeyBounds const& bounds() const noexcept { return _bounds; }
     rocksdb::ReadOptions const& readOptions() const { return _readOptions; }
-    bool sorted() const { return _sortedIterator; }
-    void setSorted(bool);
+    bool sorted() const noexcept { return _sortedIterator; }
+    void setSorted(bool value);
 
     void use() noexcept {
       TRI_ASSERT(!isUsed());
       _isUsed.store(true, std::memory_order_release);
     }
-    bool isUsed() const { return _isUsed.load(std::memory_order_acquire); }
+    bool isUsed() const noexcept {
+      return _isUsed.load(std::memory_order_acquire);
+    }
     void release() noexcept { _isUsed.store(false, std::memory_order_release); }
 
     // iterator convenience functions
@@ -115,7 +126,7 @@ class RocksDBReplicationContext {
    private:
     CollectionNameResolver _resolver;
     /// @brief type handler used to render documents
-    std::unique_ptr<arangodb::velocypack::CustomTypeHandler> _cTypeHandler;
+    std::unique_ptr<velocypack::CustomTypeHandler> _cTypeHandler;
     /// @brief read options for iterators
     rocksdb::ReadOptions _readOptions;
     /// @brief upper limit for iterate_upper_bound
@@ -137,13 +148,13 @@ class RocksDBReplicationContext {
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
-  rocksdb::Snapshot const* snapshot();
+  std::shared_ptr<rocksdb::ManagedSnapshot> snapshot() const;
   uint64_t snapshotTick();
 
   /// invalidate all iterators with that vocbase
-  void removeVocbase(TRI_vocbase_t&);
+  [[nodiscard]] bool containsVocbase(TRI_vocbase_t&);
   /// invalidate all iterators with that collection
-  bool removeCollection(LogicalCollection&);
+  [[nodiscard]] bool containsCollection(LogicalCollection&) const;
 
   /// remove matching iterator
   void releaseIterators(TRI_vocbase_t&, DataSourceId);
@@ -174,11 +185,11 @@ class RocksDBReplicationContext {
     uint64_t includedTick;  // tick increases for each fetch
 
     // forwarded methods
-    bool ok() const { return _result.ok(); }
-    bool fail() const { return _result.fail(); }
-    ErrorCode errorNumber() const { return _result.errorNumber(); }
+    bool ok() const noexcept { return _result.ok(); }
+    bool fail() const noexcept { return _result.fail(); }
+    ErrorCode errorNumber() const noexcept { return _result.errorNumber(); }
     std::string_view errorMessage() const { return _result.errorMessage(); }
-    bool is(ErrorCode code) const { return _result.is(code); }
+    bool is(ErrorCode code) const noexcept { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }
@@ -205,31 +216,23 @@ class RocksDBReplicationContext {
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, DataSourceId cid,
-                                 velocypack::Builder& outBuilder,
-                                 uint64_t chunkSize);
+  Result dumpKeyChunks(TRI_vocbase_t& vocbase, DataSourceId cid,
+                       velocypack::Builder& outBuilder, uint64_t chunkSize);
   /// dump all keys from collection
-  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, DataSourceId cid,
-                            velocypack::Builder& outBuilder, size_t chunk,
-                            size_t chunkSize, std::string const& lowKey);
+  Result dumpKeys(TRI_vocbase_t& vocbase, DataSourceId cid,
+                  velocypack::Builder& outBuilder, size_t chunk,
+                  size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
-  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, DataSourceId cid,
-                                 velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, size_t offsetInChunk,
-                                 size_t maxChunkSize, std::string const& lowKey,
-                                 velocypack::Slice const& ids);
+  Result dumpDocuments(TRI_vocbase_t& vocbase, DataSourceId cid,
+                       velocypack::Builder& b, size_t chunk, size_t chunkSize,
+                       size_t offsetInChunk, size_t maxChunkSize,
+                       std::string const& lowKey, velocypack::Slice const& ids);
 
   // lifetime in seconds
   double expires() const;
-  bool isDeleted() const;
-  void setDeleted();
-  bool isUsed() const;
-  /// set use flag and extend lifetime
-  void use(double ttl);
-  /// remove use flag
-  void release();
-  /// extend lifetime without using the context
-  void extendLifetime(double ttl);
+
+  /// extend lifetime of the context
+  void extendLifetime(double ttl = -1.0);
 
   SyncerId syncerId() const { return _syncerId; }
 
@@ -280,7 +283,7 @@ class RocksDBReplicationContext {
   std::string _patchCount;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
-  rocksdb::Snapshot const* _snapshot;
+  std::shared_ptr<rocksdb::ManagedSnapshot> _snapshot;
   std::map<DataSourceId, std::unique_ptr<CollectionIterator>> _iterators;
 
   // db name => { collection id => transaction id }
@@ -289,13 +292,6 @@ class RocksDBReplicationContext {
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager
   double _expires;
-
-  /// @brief true if context is deleted, updated under lock by
-  /// ReplicationManager
-  bool _isDeleted;
-  /// @brief number of concurrent users, updated under lock by
-  /// ReplicationManager
-  size_t _users;
 
   /// A context can hold a single revision tree for some collection, if it
   /// is told so. This is used during `SynchronizeShard` to make sure the
