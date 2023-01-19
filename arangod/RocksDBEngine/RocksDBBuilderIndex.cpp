@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
 #ifdef USE_ENTERPRISE
@@ -753,6 +754,13 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   lowerBoundTracker.track(snap->GetSequenceNumber());
 
   locker.unlock();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("BuilderIndex::purgeWal")) {
+    engine.pruneWalFiles();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+#endif
 
   // Step 1. Capture with snapshot
   rocksdb::DB* db = engine.db()->GetRootDB();
