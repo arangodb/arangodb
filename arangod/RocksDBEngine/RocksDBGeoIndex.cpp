@@ -762,9 +762,10 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
        params.filterType == geo::FilterType::INTERSECTS) &&
-      (params.minDistanceRad() < geo::kRadEps &&
-       params.maxDistanceRad() >
-           geo::kMaxRadiansBetweenPoints - geo::kRadEps)) {
+      // TODO Better to return result flag from parseCondition above
+      // saying that GEO_DISTANCE is set
+      (params.minDistance < 0.0 ||
+       geo::kMaxDistanceBetweenPoints <= params.maxDistance)) {
     return std::make_unique<RDBCoveringIterator>(monitor, &_collection, trx,
                                                  this, std::move(params));
   }
