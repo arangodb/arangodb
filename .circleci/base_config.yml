@@ -1,7 +1,7 @@
 version: 2.1
 
 jobs:
-  generate-metrics-documentation:
+  linting:
     docker:
       - image: cimg/python:3.11.1
     resource_class: small
@@ -36,7 +36,7 @@ jobs:
       - run:
           name: JSlint
           command: |
-            jslint
+            eslint
 
   compile-linux:
     parameters:
@@ -175,7 +175,7 @@ workflows:
         pattern: /^(bug-fix|feature|chore)\/.*$/
         value: << pipeline.git.branch >>
     jobs:
-      - generate-metrics-documentation:
+      - linting:
           name: generate-metrics-documentation
       - compile-linux:
           name: build-community-pr
