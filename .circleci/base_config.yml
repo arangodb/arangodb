@@ -12,7 +12,9 @@ jobs:
     steps:
       - run:
           name: Install pyyaml
-          run: pip install pyyaml
+          run: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
       - run:
           name: Checkout
           command: |
