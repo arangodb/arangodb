@@ -116,7 +116,7 @@ jobs:
 
   run-js-tests:
     docker:
-      - image: cimg/base:2022.12
+      - image: cimg/python:3.11.1
     parameters:
       suiteName:
         type: string
