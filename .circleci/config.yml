@@ -9,7 +9,7 @@ orbs:
 jobs:
   setup:
     docker:
-      - image: circleci/python:latest
+      - image: cimg/python:latest
     executor: continuation/default
     steps:
       - run:

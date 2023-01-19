@@ -3,12 +3,10 @@ version: 2.1
 jobs:
   generate-metrics-documentation:
     docker:
-      - image: circleci/python:latest
+      - image: cimg/python:latest
     resource_class: small
     environment:
       GIT_SSH_COMMAND: ssh -v
-      SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=debug
     steps:
       - run:
           name: Install pyyaml
