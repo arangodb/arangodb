@@ -1,6 +1,9 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-413: Added more explanatory messages for when the user cannot see the
+  statistics for a node in the UI when in cluster mode.
+
 * Fix coordinator segfault in AQL queries in which the query is invoked from
   within a JavaScript context (e.g. from Foxx or from the server's console mode)
   **and** the query has multiple coordinator snippets of which except the
