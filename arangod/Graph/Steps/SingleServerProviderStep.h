@@ -39,6 +39,7 @@ class SingleServerProviderStep
     : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
   using EdgeType = EdgeDocumentToken;
+  using VertexType = arangodb::velocypack::HashedStringRef;
 
  public:
   class Vertex {

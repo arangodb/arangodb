@@ -30,6 +30,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
+#include "GraphNode.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 
@@ -54,32 +56,21 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
+template<class FinderType>
 class ShortestPathExecutorInfos {
  public:
-  struct InputVertex {
-    enum class Type { CONSTANT, REGISTER };
-    Type type;
-    // TODO make the following two a union instead
-    RegisterId reg;
-    std::string value;
-
-    // cppcheck-suppress passedByValue
-    explicit InputVertex(std::string value)
-        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
-    explicit InputVertex(RegisterId reg)
-        : type(Type::REGISTER), reg(reg), value("") {}
-  };
-
   enum OutputName { VERTEX, EDGE };
   struct OutputNameHash {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
+  using RegisterMapping =
+      std::unordered_map<OutputName, RegisterId, OutputNameHash>;
 
-  ShortestPathExecutorInfos(
-      std::unique_ptr<graph::ShortestPathFinder>&& finder,
-      std::unordered_map<OutputName, RegisterId, OutputNameHash>&&
-          registerMapping,
-      InputVertex&& source, InputVertex&& target);
+  ShortestPathExecutorInfos(QueryContext& query,
+                            std::unique_ptr<FinderType>&& finder,
+                            RegisterMapping&& registerMapping,
+                            arangodb::aql::GraphNode::InputVertex&& source,
+                            GraphNode::InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
 
@@ -87,7 +78,9 @@ class ShortestPathExecutorInfos {
   ShortestPathExecutorInfos(ShortestPathExecutorInfos const&) = delete;
   ~ShortestPathExecutorInfos() = default;
 
-  arangodb::graph::ShortestPathFinder& finder() const;
+  [[nodiscard]] auto finder() const -> FinderType&;
+
+  aql::QueryContext& query() noexcept;
 
   /**
    * @brief test if we use a register or a constant input
@@ -127,29 +120,32 @@ class ShortestPathExecutorInfos {
 
   [[nodiscard]] graph::TraverserCache* cache() const;
 
-  [[nodiscard]] InputVertex getSourceVertex() const noexcept;
-  [[nodiscard]] InputVertex getTargetVertex() const noexcept;
+  [[nodiscard]] GraphNode::InputVertex getSourceVertex() const noexcept;
+  [[nodiscard]] GraphNode::InputVertex getTargetVertex() const noexcept;
 
  private:
   [[nodiscard]] RegisterId findRegisterChecked(OutputName type) const;
 
  private:
+  QueryContext& _query;
+
   /// @brief the shortest path finder.
-  std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
+  std::unique_ptr<FinderType> _finder;
 
   /// @brief Mapping outputType => register
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
-  InputVertex _source;
+  GraphNode::InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex _target;
+  GraphNode::InputVertex _target;
 };
 
 /**
  * @brief Implementation of ShortestPath Node
  */
+template<class FinderType>
 class ShortestPathExecutor {
  public:
   struct Properties {
@@ -159,8 +155,8 @@ class ShortestPathExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ShortestPathExecutorInfos;
-  using Stats = NoStats;
+  using Infos = ShortestPathExecutorInfos<FinderType>;
+  using Stats = TraversalStats;
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
@@ -192,6 +188,7 @@ class ShortestPathExecutor {
    */
   auto doOutputPath(OutputAqlItemRow& output) -> void;
   auto doSkipPath(AqlCall& call) -> size_t;
+
   /**
    * @brief get the id of a input vertex
    * Result will be written into the given Slice.
@@ -200,25 +197,31 @@ class ShortestPathExecutor {
    * In any case it will stay valid at least until the reference to the input
    * row is lost, or the builder is resetted.
    */
-  [[nodiscard]] auto getVertexId(
-      ShortestPathExecutorInfos::InputVertex const& vertex,
-      InputAqlItemRow& row, arangodb::velocypack::Builder& builder,
-      arangodb::velocypack::Slice& id) -> bool;
+  [[nodiscard]] auto getVertexId(GraphNode::InputVertex const& vertex,
+                                 InputAqlItemRow& row,
+                                 arangodb::velocypack::Builder& builder,
+                                 arangodb::velocypack::Slice& id) -> bool;
+
+  [[nodiscard]] auto getPathLength() const -> size_t;
 
  private:
   Infos& _infos;
+  transaction::Methods _trx;
   InputAqlItemRow _inputRow;
 
   /// @brief the shortest path finder.
-  arangodb::graph::ShortestPathFinder& _finder;
+  FinderType& _finder;
 
+  /// @brief builder we tmp. store the path in
+  transaction::BuilderLeaser _pathBuilder;
   /// @brief current computed path.
-  std::unique_ptr<graph::ShortestPathResult> _path;
   size_t _posInPath;
+  /// @brief path length based on amount of vertices
+  size_t _pathLength;
 
-  /// @brief temporary memory mangement for source id
+  /// @brief temporary memory management for source id
   arangodb::velocypack::Builder _sourceBuilder;
-  /// @brief temporary memory mangement for target id
+  /// @brief temporary memory management for target id
   arangodb::velocypack::Builder _targetBuilder;
 };
 }  // namespace aql

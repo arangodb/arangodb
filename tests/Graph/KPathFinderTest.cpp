@@ -164,7 +164,10 @@ class KPathFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
-    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
+    arangodb::graph::PathType::Type pathType =
+        arangodb::graph::PathType::Type::KPaths;
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       pathType};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{
