@@ -149,7 +149,7 @@ class SiteConfig:
         if definition_file.is_file():
             definition_file = definition_file.parent
         base_source_dir = (definition_file / '..').resolve()
-        bin_dir = (base_source_dir / 'build-clang' / 'bin').resolve()
+        bin_dir = (base_source_dir / 'build' / 'bin').resolve()
         if IS_WINDOWS:
             for target in ['RelWithdebInfo', 'Debug']:
                 if (bin_dir / target).exists():
