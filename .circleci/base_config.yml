@@ -123,7 +123,7 @@ jobs:
       - store_artifacts:
           path: /tmp/core_dumps
       - store_test_results:
-          path: test_detail.xml
+          path: build/tests/test_detail.xml
 
   run-js-tests:
     docker:
@@ -176,7 +176,7 @@ workflows:
         value: << pipeline.git.branch >>
     jobs:
       - linting:
-          name: generate-metrics-documentation
+          name: linting
       - compile-linux:
           name: build-community-pr
           preset: community-pr
