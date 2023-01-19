@@ -132,6 +132,8 @@ jobs:
         default: 1
       cluster:
         type: boolean
+      testDefinitionLine:
+        type: integer
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
