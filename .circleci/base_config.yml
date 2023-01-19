@@ -123,7 +123,9 @@ jobs:
       - store_artifacts:
           path: /tmp/core_dumps
       - store_test_results:
-          path: test_detail.xml
+          # this is where ctest stores the test_detail.xml produced
+          # by the googletest executable
+          path: build/tests/test_detail.xml
 
   run-js-tests:
     docker:
