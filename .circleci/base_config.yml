@@ -148,7 +148,9 @@ jobs:
       - run:
           name: Run << parameters.suiteName >> tests
           command: |
+            pwd
             mkdir work
+            ls -la
             python3 scripts/test/test_launch_controller.py << parameters.suites >> --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> --extraArgs "<< parameters.extraArgs >>" --definition tests/test-definitions.txt
       - run:
           command: |

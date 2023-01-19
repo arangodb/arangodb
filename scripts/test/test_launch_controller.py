@@ -7,7 +7,8 @@ from traceback import print_exc
 
 from site_config import SiteConfig
 from testing_runner import TestingRunner
-from test_config import TestConfig 
+from test_config import TestConfig
+from launch_handler import launch_runner
 
 # check python 3
 if sys.version_info[0] != 3:
@@ -63,29 +64,7 @@ def main():
                         1,
                         1,
                         []))
-        try:
-            runner.testing_runner()
-            runner.overload_report_fh.close()
-            runner.generate_report_txt("")
-            runner.generate_test_report()
-            if not runner.cfg.is_asan:
-                runner.generate_crash_report()
-        except Exception as exc:
-            runner.success = False
-            sys.stderr.flush()
-            sys.stdout.flush()
-            print(exc, file=sys.stderr)
-            print_exc()
-        finally:
-            sys.stderr.flush()
-            sys.stdout.flush()
-            runner.create_log_file()
-            runner.create_testruns_file()
-            #if IS_LINUX:
-                #dmesg.end_run()
-                #print('joining dmesg threads')
-                #dmesg_thread.join()
-            runner.print_and_exit_closing_stance()
+        launch_runner(runner, True)
     except Exception as exc:
         print(exc, file=sys.stderr)
         print_exc()
