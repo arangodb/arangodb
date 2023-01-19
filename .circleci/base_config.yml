@@ -36,7 +36,7 @@ jobs:
           name: Cleanup build directory
           command: |
             find build/ -iname *.a -delete || true
-            find build/ >> -iname *.o -delete || true
+            find build/ -iname *.o -delete || true
             ls -la build/bin/
       - run:
           name: SCCache Statistics
