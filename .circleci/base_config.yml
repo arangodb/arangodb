@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   generate-metrics-documentation:
     docker:
-      - image: cimg/python
+      - image: cimg/python:3.11.1
     resource_class: small
     environment:
       GIT_SSH_COMMAND: ssh -v

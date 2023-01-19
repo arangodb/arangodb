@@ -9,7 +9,7 @@ orbs:
 jobs:
   setup:
     docker:
-      - image: cimg/python
+      - image: cimg/python:3.11.1
     executor: continuation/default
     steps:
       - run:
