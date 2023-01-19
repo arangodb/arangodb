@@ -143,6 +143,9 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          name: Install dependencies
+          command: pip install psutil
+      - run:
           name: Run << parameters.suiteName >> tests
           command: |
             mkdir work
