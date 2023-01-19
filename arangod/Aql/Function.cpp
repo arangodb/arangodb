@@ -58,6 +58,12 @@ Function::Function(std::string const& name, char const* arguments,
   // currently being able to run on a DB server in cluster always includes being able to run
   // on a DB server in OneShard mode. this may change at some point in the future.
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) || hasFlag(Flags::CanRunOnDBServerOneShard));
+  
+  // only the V8 function does not have a C++ implementation.
+  // don't ever change this!
+  // note: CUSTOMSCORER and INVALID are only used by unit tests
+  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER" ||
+             name == "INVALID");
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
