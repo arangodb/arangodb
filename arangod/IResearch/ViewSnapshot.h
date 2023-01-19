@@ -44,7 +44,7 @@ class Methods;
 namespace iresearch {
 
 using ViewSegment =
-    std::tuple<DataSourceId, irs::sub_reader const*, StorageSnapshot const&>;
+    std::tuple<DataSourceId, irs::SubReader const*, StorageSnapshot const&>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid

@@ -32,14 +32,14 @@ namespace arangodb::iresearch {
 extern const irs::payload NoPayload;
 
 [[maybe_unused]] inline irs::doc_iterator::ptr pkColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
 [[maybe_unused]] inline irs::doc_iterator::ptr sortColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.sort();
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;

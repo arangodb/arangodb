@@ -305,7 +305,7 @@ class IResearchDataStore {
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
-    irs::index_writer::ptr _writer;
+    irs::IndexWriter::ptr _writer;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
