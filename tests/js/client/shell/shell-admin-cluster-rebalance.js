@@ -76,7 +76,7 @@ function getServersHealth() {
 function clusterRebalanceSuite() {
   let prevDB = null;
   return {
-    setUpAll: function() {
+    setUpAll: function () {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
@@ -88,7 +88,7 @@ function clusterRebalanceSuite() {
       resignServer(getDBServers()[0].id);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       for (let i = 0; i < 20; i++) {
         db._drop("col" + i);
       }
@@ -96,18 +96,18 @@ function clusterRebalanceSuite() {
       db._dropDatabase(database);
     },
 
-    testGetImbalance: function() {
+    testGetImbalance: function () {
       let result = arango.GET('/_admin/cluster/rebalance');
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
     },
-    testCalcRebalanceVersion: function() {
+    testCalcRebalanceVersion: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 3
       });
       assertEqual(result.code, 400);
     },
-    testCalcRebalance: function() {
+    testCalcRebalance: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -123,7 +123,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testCalcRebalanceAndExecute: function() {
+    testCalcRebalanceAndExecute: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -139,7 +139,11 @@ function clusterRebalanceSuite() {
       }
 
       result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves});
-      assertEqual(result.code, 202);
+      if (moves.length > 0) {
+        assertEqual(result.code, 202);
+      } else {
+        assertEqual(result.code, 200);
+      }
       assertEqual(result.error, false);
 
       // empty set of moves
@@ -159,7 +163,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testExecuteRebalanceVersion: function() {
+    testExecuteRebalanceVersion: function () {
       let result = arango.POST('/_admin/cluster/rebalance/execute', {
         version: 3, moves: []
       });
@@ -174,7 +178,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
@@ -192,25 +196,25 @@ function clusterRebalanceOtherOptionsSuite() {
       }
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._useDatabase(prevDB);
       db._dropDatabase(database);
     },
 
-    testRebalancePlanWithoutSystemCollections: function() {
+    testRebalancePlanWithoutSystemCollections: function () {
       const result = getRebalancePlan(true, true, true, true);
       assertEqual(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections, 0);
       assertEqual(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
     },
 
-    testRebalancePlanWithSystemCollections: function() {
+    testRebalancePlanWithSystemCollections: function () {
       const result = getRebalancePlan(true, true, true, false);
       assertTrue(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections > 0);
       assertTrue(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections > 0);
     },
 
 
-    testCalcRebalanceStopServer: function() {
+    testCalcRebalanceStopServer: function () {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
@@ -281,7 +285,7 @@ function clusterRebalanceOtherOptionsSuite() {
       }
     },
 
-    testCalcRebalanceNotMoveLeaders: function() {
+    testCalcRebalanceNotMoveLeaders: function () {
       const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
       Object.entries(plan).forEach((shardInfo) => {
         const [shardName, servers] = shardInfo;
@@ -306,7 +310,7 @@ function clusterRebalanceOtherOptionsSuite() {
       });
     },
 
-    testCalcRebalanceNotMoveFollowers: function() {
+    testCalcRebalanceNotMoveFollowers: function () {
       const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
       Object.entries(plan).forEach((shardInfo) => {
         const [shardName, servers] = shardInfo;
@@ -341,19 +345,19 @@ function clusterRebalanceWithMovesToMakeSuite() {
 
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._useDatabase(prevDB);
       db._dropDatabase(database);
     },
 
 
-    testCalcRebalanceAfterUnbalanced: function() {
+    testCalcRebalanceAfterUnbalanced: function () {
       const start = internal.time();
       const end = start + 300;
       for (let i = 1; i <= 3; ++i) {

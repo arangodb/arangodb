@@ -464,8 +464,8 @@ _Enterprise Edition only_
 ### S2 Geometry Library
 
 * Name: s2geometry
-* Version: 254c13666f65f35f5343d34dfbc749e1fb7772ca
-* Date: 2022-11-18
+* Version: ce14f45ae0b6c28e3f47cbcf6646d988d41046b5
+* Date: 2023-01-04
 * Project Home: https://s2geometry.io/
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/s2geometry/dfefe0c/LICENSE
 * License Name: Apache License 2.0

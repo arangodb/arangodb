@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_state_follower_waiting_for_snapshot_number
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Number of followers waiting for a snapshot transfer to complete.
 unit: number

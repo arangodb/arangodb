@@ -108,7 +108,7 @@ struct DocIdScorer : public irs::sort {
   }
 
   struct Prepared : public irs::PreparedSortBase<void> {
-    virtual void collect(irs::byte_type*, const irs::index_reader& index,
+    virtual void collect(irs::byte_type*, const irs::IndexReader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
     }
@@ -124,7 +124,7 @@ struct DocIdScorer : public irs::sort {
       return nullptr;
     }
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const& segment, irs::term_reader const& field,
+        irs::SubReader const& segment, irs::term_reader const& field,
         irs::byte_type const*, irs::attribute_provider const& doc_attrs,
         irs::score_t) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
@@ -4841,8 +4841,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     };
     persisted = false;
     EXPECT_TRUE(
-        (true ==
-         vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
+        (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
     EXPECT_TRUE(
         (false == persisted));  // link removal does not persist view meta
     EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
@@ -4954,8 +4953,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
     persisted = false;
     EXPECT_TRUE(
-        (true ==
-         vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
+        (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
     EXPECT_TRUE((true == persisted));  // collection removal persists view meta
     EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
 
@@ -5021,8 +5019,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
     EXPECT_TRUE(
-        (true ==
-         vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
+        (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
     EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
   }
 
@@ -5705,7 +5702,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
 
   // drop collection from vocbase
   EXPECT_TRUE(
-      (true == vocbase.dropCollection(logicalCollection1->id(), true, 0).ok()));
+      (true == vocbase.dropCollection(logicalCollection1->id(), true).ok()));
 
   // read transaction (by id) (one collection dropped)
   {
@@ -10323,18 +10320,18 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
               analyzers.get(vocbase->name() + "::test_analyzer3",
                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view,
-                                         &collection]() noexcept {
-      if (view) {
-        EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
-        view = nullptr;
-      }
+    auto cleanup =
+        arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
+          if (view) {
+            EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
+            view = nullptr;
+          }
 
-      if (collection) {
-        EXPECT_TRUE(vocbase->dropCollection(collection->id(), false, 1.0).ok());
-        collection = nullptr;
-      }
-    });
+          if (collection) {
+            EXPECT_TRUE(vocbase->dropCollection(collection->id(), false).ok());
+            collection = nullptr;
+          }
+        });
   }
 
   // remove existing (used by link)
@@ -10388,18 +10385,18 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
               analyzers.get(vocbase->name() + "::test_analyzer3",
                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view,
-                                         &collection]() noexcept {
-      if (view) {
-        EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
-        view = nullptr;
-      }
+    auto cleanup =
+        arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
+          if (view) {
+            EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
+            view = nullptr;
+          }
 
-      if (collection) {
-        EXPECT_TRUE(vocbase->dropCollection(collection->id(), false, 1.0).ok());
-        collection = nullptr;
-      }
-    });
+          if (collection) {
+            EXPECT_TRUE(vocbase->dropCollection(collection->id(), false).ok());
+            collection = nullptr;
+          }
+        });
   }
 
   // remove existing (properties don't match
@@ -10454,18 +10451,18 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
               analyzers.get(vocbase->name() + "::test_analyzer3",
                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view,
-                                         &collection]() noexcept {
-      if (view) {
-        EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
-        view = nullptr;
-      }
+    auto cleanup =
+        arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
+          if (view) {
+            EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
+            view = nullptr;
+          }
 
-      if (collection) {
-        EXPECT_TRUE(vocbase->dropCollection(collection->id(), false, 1.0).ok());
-        collection = nullptr;
-      }
-    });
+          if (collection) {
+            EXPECT_TRUE(vocbase->dropCollection(collection->id(), false).ok());
+            collection = nullptr;
+          }
+        });
   }
 }
 

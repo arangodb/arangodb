@@ -119,14 +119,14 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
 }
 
 [[maybe_unused]] inline irs::doc_iterator::ptr pkColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
 [[maybe_unused]] inline irs::doc_iterator::ptr sortColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.sort();
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
@@ -969,7 +969,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
 
 template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
-    irs::sub_reader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
+    irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();

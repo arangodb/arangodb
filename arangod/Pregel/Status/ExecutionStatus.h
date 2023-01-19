@@ -25,7 +25,9 @@
 #include <string>
 #include <chrono>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackWithErrorT.h>
+#include <CrashHandler/CrashHandler.h>
+#include <Assertions/ProdAssert.h>
 
 namespace arangodb::pregel {
 
