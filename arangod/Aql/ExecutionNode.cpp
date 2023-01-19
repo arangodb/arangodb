@@ -2077,7 +2077,7 @@ void CalculationNode::doToVelocyPack(VPackBuilder& nodes,
                 nodes.add(
                     "cacheable",
                     VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-                nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+                nodes.add("usesV8", VPackValue(node->willUseV8()));
                 // deprecated
                 nodes.add("canRunOnDBServer",
                           VPackValue(func->hasFlag(
