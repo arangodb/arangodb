@@ -27,10 +27,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/voc-types.h"
 
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 namespace arangodb {
 namespace pregel {

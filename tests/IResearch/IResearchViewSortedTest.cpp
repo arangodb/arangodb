@@ -76,8 +76,6 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "utils/string_utils.hpp"
-
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {

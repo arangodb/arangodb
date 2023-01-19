@@ -55,7 +55,7 @@ using Disjunction =
     irs::disjunction_iterator<irs::doc_iterator::ptr, irs::NoopAggregator>;
 
 // Return a filter matching all documents with a given geo field
-irs::filter::prepared::ptr match_all(irs::index_reader const& index,
+irs::filter::prepared::ptr match_all(irs::IndexReader const& index,
                                      irs::Order const& order,
                                      std::string_view field,
                                      irs::score_t boost) {
@@ -80,7 +80,7 @@ class GeoIterator final : public irs::doc_iterator {
 
  public:
   GeoIterator(doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt,
-              Parser& parser, Acceptor& acceptor, irs::sub_reader const& reader,
+              Parser& parser, Acceptor& acceptor, irs::SubReader const& reader,
               irs::term_reader const& field, irs::byte_type const* query_stats,
               irs::Order const& order, irs::score_t boost)
       : _approx{std::move(approx)},
@@ -172,7 +172,7 @@ class GeoIterator final : public irs::doc_iterator {
 template<typename Parser, typename Acceptor>
 irs::doc_iterator::ptr makeIterator(
     typename Disjunction::doc_iterators_t&& itrs,
-    irs::doc_iterator::ptr&& columnIt, irs::sub_reader const& reader,
+    irs::doc_iterator::ptr&& columnIt, irs::SubReader const& reader,
     irs::term_reader const& field, irs::byte_type const* query_stats,
     irs::Order const& order, irs::score_t boost, Parser& parser,
     Acceptor& acceptor) {
@@ -198,7 +198,7 @@ struct GeoState {
   std::vector<irs::seek_cookie::ptr> states;
 };
 
-using GeoStates = irs::states_cache<GeoState>;
+using GeoStates = irs::StatesCache<GeoState>;
 
 // Compiled GeoFilter
 template<typename Parser, typename Acceptor>
@@ -247,7 +247,7 @@ class GeoQuery final : public irs::filter::prepared {
                         _parser, _acceptor);
   }
 
-  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+  void visit(irs::SubReader const&, irs::PreparedStateVisitor&,
              irs::score_t) const final {
     // NOOP
   }
@@ -350,7 +350,7 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
-    irs::index_reader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Order const& order,
     std::span<const std::string> geoTerms, std::string_view field) {
   TRI_ASSERT(!geoTerms.empty());
 
@@ -360,7 +360,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
              sortedTerms.end());
 
   std::pair<GeoStates, irs::bstring> res{
-      std::piecewise_construct, std::forward_as_tuple(index),
+      std::piecewise_construct, std::forward_as_tuple(index.size()),
       std::forward_as_tuple(order.stats_size(), 0)};
 
   auto const size = sortedTerms.size();
@@ -422,7 +422,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
 }
 
 irs::filter::prepared::ptr prepareOpenInterval(
-    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
     std::string_view field, GeoDistanceFilterOptions const& options,
     bool greater) {
   auto const& range = options.range;
@@ -527,7 +527,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
 }
 
 irs::filter::prepared::ptr prepareInterval(
-    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
     std::string_view field, GeoDistanceFilterOptions const& options) {
   auto const& range = options.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
@@ -626,7 +626,7 @@ irs::filter::prepared::ptr prepareInterval(
 }  // namespace
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
     irs::attribute_provider const* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
   if (shape.empty()) {
@@ -690,7 +690,7 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 }
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
-    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
     irs::attribute_provider const* /*ctx*/) const {
   auto const& options = this->options();
   auto const& range = options.range;

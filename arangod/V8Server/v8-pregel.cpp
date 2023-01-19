@@ -30,9 +30,9 @@
 #include "Cluster/ServerState.h"
 
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

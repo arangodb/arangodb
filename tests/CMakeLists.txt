@@ -18,6 +18,7 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
+add_subdirectory(Pregel)
 
 # ----------------------------------------
 # Link directories
@@ -233,9 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
-  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -312,6 +311,7 @@ target_link_libraries(arangodbtests
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
+  arango_tests_pregel
   arango_agency
   arango_cluster_engine
   arango_rocksdb

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <Inspection/VPack.h>
+#include <Inspection/VPackWithErrorT.h>
 
 #include <ostream>
 #include <fmt/core.h>

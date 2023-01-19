@@ -108,7 +108,7 @@ struct DocIdScorer : public irs::sort {
   }
 
   struct Prepared : public irs::PreparedSortBase<void> {
-    virtual void collect(irs::byte_type*, const irs::index_reader& index,
+    virtual void collect(irs::byte_type*, const irs::IndexReader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
     }
@@ -124,7 +124,7 @@ struct DocIdScorer : public irs::sort {
       return nullptr;
     }
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const& segment, irs::term_reader const& field,
+        irs::SubReader const& segment, irs::term_reader const& field,
         irs::byte_type const*, irs::attribute_provider const& doc_attrs,
         irs::score_t) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
