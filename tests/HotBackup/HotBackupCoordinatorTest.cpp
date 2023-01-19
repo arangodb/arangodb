@@ -91,15 +91,10 @@ std::vector<std::string> colPath{"arango", "Plan", "Collections"};
 namespace {
 void checkAlphabetic(std::map<ServerID, ServerID> const& matches) {
   ASSERT_TRUE(matches.size() > 1);  // otherwise nonsensical test
-  // Check that the values are in alphabetically increasing order.
-  auto it1 = matches.begin();
-  ++it1;
-  auto it2 = matches.begin();
-  while (it1 != matches.end()) {
-    ASSERT_TRUE(it2->second < it1->second);
-    ++it1;
-    ++it2;
-  }
+  // Check that the values are in alphabetically increasing order:
+  ASSERT_TRUE(std::is_sorted(
+      matches.begin(), matches.end(),
+      [](auto const& a, auto const& b) { return a.second < b.second; }));
 }
 }  // namespace
 
