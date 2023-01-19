@@ -579,6 +579,8 @@ class RDBCoveringIterator final : public IndexIterator {
         if (!_iter->Valid()) {  // no more valid keys after this
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
+          // TODO ANOTHER ENDLESS LOOP HERE
+          //  check test: shell-index-geo.js
           continue;  // beyond range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
           seek = false;  // already in range: min <= key <= max
