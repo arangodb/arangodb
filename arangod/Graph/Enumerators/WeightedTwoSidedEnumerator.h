@@ -30,8 +30,10 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Containers/FlatHashMap.h"
 
 #include <set>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -54,9 +56,11 @@ class PathResult;
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
-class TwoSidedEnumerator {
+class WeightedTwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
+  using Candidate = std::pair<Step, Step>;
+  using CandidatesMap = std::unordered_map<double, Candidate>;
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -75,27 +79,29 @@ class TwoSidedEnumerator {
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
-    auto startNextDepth() -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
-    [[nodiscard]] auto getDepth() const -> size_t;
-    [[nodiscard]] auto shellSize() const -> size_t;
+    [[nodiscard]] auto peekQueue() const -> Step const&;
+    [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
-    auto testDepthZero(Ball& other, ResultList& results) -> void;
+    auto testDepthZero(Ball& other, CandidatesMap& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results,
+    auto matchResultsInShell(Step const& match, CandidatesMap& results,
                              PathValidatorType const& otherSideValidator)
-        -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
-        -> void;
+        -> double;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesMap& results,
+                                          double& matchPathLength) -> void;
+
+    auto hasBeenVisited(Step const& step) -> bool;
 
     // Ensure that we have fetched all vertices
     // in the _results list.
     // Otherwise we will not be able to
     // generate the resulting path
-    auto fetchResults(ResultList& results) -> void;
+    auto fetchResults(CandidatesMap& candidates) -> void;
+    auto fetchResult(Candidate& candidate) -> void;
 
     auto provider() -> ProviderType&;
 
@@ -103,9 +109,6 @@ class TwoSidedEnumerator {
     auto clearProvider() -> void;
 
    private:
-    // Fast path, to test if we find a connecting vertex between left and right.
-    Shell _shell{};
-
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
 
@@ -118,26 +121,26 @@ class TwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-
-    size_t _depth{0};
-    size_t _searchIndex{std::numeric_limits<size_t>::max()};
+    std::unordered_map<typename Step::VertexType, size_t> _visitedNodes;
     Direction _direction;
-    size_t _minDepth{0};
     GraphOptions _graphOptions;
   };
+  enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
  public:
-  TwoSidedEnumerator(ProviderType&& forwardProvider,
-                     ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions&& options,
-                     PathValidatorOptions validatorOptions,
-                     arangodb::ResourceMonitor& resourceMonitor);
-  TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator& operator=(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator(TwoSidedEnumerator&& other) = delete;
-  TwoSidedEnumerator& operator=(TwoSidedEnumerator&& other) = delete;
+  WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
+                             ProviderType&& backwardProvider,
+                             TwoSidedEnumeratorOptions&& options,
+                             PathValidatorOptions validatorOptions,
+                             arangodb::ResourceMonitor& resourceMonitor);
+  WeightedTwoSidedEnumerator(WeightedTwoSidedEnumerator const& other) = delete;
+  WeightedTwoSidedEnumerator& operator=(
+      WeightedTwoSidedEnumerator const& other) = delete;
+  WeightedTwoSidedEnumerator(WeightedTwoSidedEnumerator&& other) = delete;
+  WeightedTwoSidedEnumerator& operator=(WeightedTwoSidedEnumerator&& other) =
+      delete;
 
-  ~TwoSidedEnumerator();
+  ~WeightedTwoSidedEnumerator();
 
   auto clear() -> void;
 
@@ -194,17 +197,21 @@ class TwoSidedEnumerator {
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
-  auto startNextDepth() -> void;
 
   // Ensure that we have fetched all vertices
   // in the _results list.
   // Otherwise we will not be able to
   // generate the resulting path
   auto fetchResults() -> void;
+  auto fetchResult(double key) -> void;
 
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+
+  // Check where we want to continue our search
+  // (Left or right ball)
+  auto getBallToContinueSearch() -> BallSearchLocation;
 
   // In case we call this method, we know that we've already produced
   // enough results. This flag will be checked within the "isDone" method
@@ -212,16 +219,35 @@ class TwoSidedEnumerator {
   // graph searches of type "Shortest Path".
   auto setAlgorithmFinished() -> void;
   auto setAlgorithmUnfinished() -> void;
-  auto isAlgorithmFinished() const -> bool;
+
+  auto setInitialFetchVerified() -> void;
+  auto getInitialFetchVerified() -> bool;
+  [[nodiscard]] auto isAlgorithmFinished() const -> bool;
 
  private:
   GraphOptions _options;
   Ball _left;
   Ball _right;
-  bool _searchLeft{true};
-  ResultList _results{};
+
+  // We always start with two vertices (start- and end vertex)
+  // Initially, we want to fetch both and then decide based on the
+  // initial results, where to continue our search.
+  bool _leftInitialFetch{false};   // TODO: Put this into the ball?
+  bool _rightInitialFetch{false};  // TODO: Put this into the ball?
+  // Bool to check whether we've verified our initial fetched steps
+  // or not. This is an optimization. Only during our initial _left and
+  // _right fetch it may be possible that we find matches, which are valid
+  // paths - but not the shortest one. Therefore, we need to compare with both
+  // queues. After that check - we always pull the minStep from both queues.
+  // After init, this check is no longer required as we will always have the
+  // smallest (in terms of path-weight) step in our hands.
+  bool _handledInitialFetch{false};
+
+  // Templated result list, where only valid result(s) are stored in
+  CandidatesMap _candidates{};
+  double _bestCandidateLength = -1.0;
+
   bool _resultsFetched{false};
-  size_t _baselineDepth;
   bool _algorithmFinished{false};
 
   PathResult<ProviderType, Step> _resultPath;

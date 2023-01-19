@@ -166,6 +166,16 @@ auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
   return _impl.pop();
 }
 
+template<class QueueImpl>
+auto QueueTracer<QueueImpl>::peek() const -> typename QueueImpl::Step const& {
+  double start = TRI_microtime();
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["peek"].addTiming(TRI_microtime() - start); });
+  return _impl.peek();
+}
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
