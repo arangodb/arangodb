@@ -439,7 +439,8 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
   recoveryHelpers();
 
-  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge,
+                            bool force);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   uint64_t recoveryStartSequence() const noexcept {

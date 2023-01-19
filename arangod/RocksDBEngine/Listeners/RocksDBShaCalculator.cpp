@@ -55,7 +55,7 @@ bool RocksDBShaCalculatorThread::isSstFilename(T const& filename) const {
 void RocksDBShaCalculatorThread::run() {
   try {
     // do an initial check over the entire directory first
-    checkMissingShaFiles(getRocksDBPath(), 0);
+    checkMissingShaFiles(getRocksDBPath(), /*requireAge*/ 0, /*force*/ false);
 
     MUTEX_LOCKER(mutexLock, _pendingMutex);
     _lastFullCheck = std::chrono::steady_clock::now();
@@ -115,7 +115,8 @@ void RocksDBShaCalculatorThread::run() {
       if (runFullCheck) {
         // we could find files that subsequently post to _pendingOperations ...
         // no worries.
-        checkMissingShaFiles(getRocksDBPath(), 3 * 60);
+        checkMissingShaFiles(getRocksDBPath(), /*requireAge*/ 3 * 60,
+                             /*force*/ false);
         // need not to be written to in the past 3 minutes!
       }
 
@@ -251,7 +252,7 @@ std::string RocksDBShaCalculatorThread::getRocksDBPath() {
 ///        Will only consider .sst files which have not been written to for
 ///        `requireAge` seconds.
 void RocksDBShaCalculatorThread::checkMissingShaFiles(
-    std::string const& pathname, int64_t requireAge) {
+    std::string const& pathname, int64_t requireAge, bool force) {
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
   // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
@@ -307,8 +308,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(
       MUTEX_LOCKER(mutexLock, _pendingMutex);
 
       auto it2 = _calculatedHashes.find(*iter);
-      if (it2 == _calculatedHashes.end()) {
-        // not yet calculated
+      if (it2 == _calculatedHashes.end() || force) {
+        // not yet calculated or forceful recalculation
         mutexLock.unlock();
 
         // reaching this point means no .sha. preceeded, now check the
@@ -320,10 +321,30 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(
         // creation event.
         std::string tempPath =
             basics::FileUtils::buildFilename(pathname, *iter);
-        int64_t now = ::time(nullptr);
-        int64_t modTime = 0;
-        auto r = TRI_MTimeFile(tempPath.c_str(), &modTime);
-        if (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge) {
+
+        // forceful recalculation always wins
+        bool recalculate = force;
+        if (!recalculate && requireAge == 0) {
+          // we should recalculate regardless of file age
+          recalculate = true;
+        }
+        if (!recalculate) {
+          // now check file age and only consider files that have last been
+          // modified at least requireAge seconds ago
+          int64_t modTime = 0;
+          auto r = TRI_MTimeFile(tempPath.c_str(), &modTime);
+
+          // note: calculate current time only _after_ filemtime was calculated.
+          // otherwise there is a potential race between the file being modified
+          // after we have taken the current time, so the difference between
+          // now and modTime could be negative.
+          int64_t now = ::time(nullptr);
+
+          recalculate =
+              (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge);
+        }
+
+        if (recalculate) {
           LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
               << "checkMissingShaFiles:"
                  " Computing checksum for "
@@ -395,8 +416,9 @@ void RocksDBShaCalculator::OnCompactionCompleted(
 }
 
 void RocksDBShaCalculator::checkMissingShaFiles(std::string const& pathname,
-                                                int64_t requireAge) {
-  _shaThread.checkMissingShaFiles(pathname, requireAge);
+                                                int64_t requireAge,
+                                                bool force) {
+  _shaThread.checkMissingShaFiles(pathname, requireAge, force);
 }
 
 }  // namespace arangodb
