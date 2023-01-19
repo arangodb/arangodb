@@ -16,7 +16,7 @@ jobs:
       - run:
           name: Checkout
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /project
+            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8
             git reset --hard "$CIRCLE_SHA1"
       - run:
           name: Generate metrics documentation
