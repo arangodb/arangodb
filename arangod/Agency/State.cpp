@@ -1048,6 +1048,15 @@ bool State::loadOrPersistConfiguration() {
           << "Merging configuration " << conf.toJson();
       _agent->mergeConfiguration(conf);
 
+      auto pool = _agent->config().pool();
+      auto it = pool.find(_agent->config().id());
+      if (it == pool.end()) {
+        LOG_TOPIC("6acd3", FATAL, Logger::AGENCY)
+            << "Ended up with a pool of agents which does not include "
+               "ourselves, configuration: "
+            << _agent->config().toBuilder()->slice().toJson();
+        FATAL_ERROR_EXIT();
+      }
     } catch (std::exception const& e) {
       LOG_TOPIC("6acd2", FATAL, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
