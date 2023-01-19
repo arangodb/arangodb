@@ -3,6 +3,7 @@
 import argparse
 import sys
 import yaml
+import traceback
 
 # check python 3
 if sys.version_info[0] != 3:
@@ -157,6 +158,7 @@ def read_definitions(filename):
                 continue  # ignore comments
             try:
                 test = read_definition_line(line)
+                test["lineNumber"] = line_no
                 tests.append(test)
             except Exception as exc:
                 print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
@@ -243,6 +245,7 @@ def generate_output(args, tests):
             config = yaml.safe_load(instream)
             jobs = config["workflows"]["devel-pr"]["jobs"]
             for test in tests:
+                print("test: {}".format(test))
                 if "cluster" in test["flags"]:
                     jobs.append({ "run-js-tests": create_test_job(test, True) })
                 elif "single" in test["flags"]:
@@ -262,7 +265,7 @@ def main():
         tests = filter_tests(args, tests)
         generate_output(args, tests)
     except Exception as exc:
-        print("exception: {}" % exc, file=sys.stderr)
+        traceback.print_exc(exc, file=sys.stderr)
         sys.exit(1)
 
 
