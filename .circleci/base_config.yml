@@ -21,6 +21,10 @@ jobs:
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
             git reset --hard "$CIRCLE_SHA1"
       - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/checkLogIds.py
+      - run:
           name: Print SCCache Settings
           command: sccache -s
       - run:
