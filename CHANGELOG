@@ -1,6 +1,11 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Fix bug in hotbackup download/restore to make sure no data is mixed up
+  between servers. This fixes a bug introduced in 3.10. Note that previous
+  3.10 versions may not correctly restore a hotbackup which was uploaded
+  from one cluster and downloaded into another.
+
 * Fix coordinator segfault in AQL queries in which the query is invoked from
   within a JavaScript context (e.g. from Foxx or from the server's console mode)
   **and** the query has multiple coordinator snippets of which except the
