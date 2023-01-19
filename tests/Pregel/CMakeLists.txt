@@ -2,6 +2,7 @@
 # since it seems to have a big dependency footprint;
 # we intent to remove the TypedBuffer construct soon
 add_library(arango_tests_pregel OBJECT
+  IWillFail.cpp
   DurationTest.cpp
   StatusTest.cpp)
 
