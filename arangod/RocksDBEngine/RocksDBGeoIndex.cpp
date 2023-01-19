@@ -560,7 +560,7 @@ class RDBCoveringIterator final : public IndexIterator {
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
-    if (_gotIntervals) {
+    if (!_gotIntervals) {
       _scan = _covering.intervals();
       _gotIntervals = true;
       _scanningInterval = 0;
