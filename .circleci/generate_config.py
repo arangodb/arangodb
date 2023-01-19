@@ -262,7 +262,7 @@ def main():
         tests = filter_tests(args, tests)
         generate_output(args, tests)
     except Exception as exc:
-        print(exc, file=sys.stderr)
+        print("exception: {}" % exc, file=sys.stderr)
         sys.exit(1)
 
 
