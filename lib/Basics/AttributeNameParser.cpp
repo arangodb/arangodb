@@ -38,7 +38,7 @@ using AttributeName = arangodb::basics::AttributeName;
 
 uint64_t arangodb::basics::AttributeName::hash(uint64_t seed) const {
   return fasthash64(name.data(), name.size(), seed) ^
-         (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
+         (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
