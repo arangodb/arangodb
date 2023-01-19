@@ -124,3 +124,9 @@ struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
 template<>
 struct fmt::formatter<arangodb::pregel::actor::UnknownMessage>
     : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::ActorNotFound>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::ServerNotFound>
+    : arangodb::inspection::inspection_formatter {};
