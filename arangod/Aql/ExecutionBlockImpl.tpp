@@ -107,6 +107,21 @@ using AllShortestPathsTracer =
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
+using ShortestPath = arangodb::graph::ShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPathTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
 /* ClusterProvider Section */
 using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
@@ -118,6 +133,18 @@ using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using AllShortestPathsClusterTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedShortestPathCluster =
+    arangodb::graph::WeightedShortestPathEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using WeightedShortestPathClusterTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
@@ -609,7 +636,14 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       useExecutor ==
               (is_one_of_v<
-                  Executor, FilterExecutor, ShortestPathExecutor,
+                  Executor, FilterExecutor, ShortestPathExecutor<ShortestPath>,
+                  ShortestPathExecutor<ShortestPathTracer>,
+                  ShortestPathExecutor<ShortestPathCluster>,
+                  ShortestPathExecutor<ShortestPathClusterTracer>,
+                  ShortestPathExecutor<WeightedShortestPath>,
+                  ShortestPathExecutor<WeightedShortestPathTracer>,
+                  ShortestPathExecutor<WeightedShortestPathCluster>,
+                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor,
                   EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
                   EnumeratePathsExecutor<KPathRefactored>,

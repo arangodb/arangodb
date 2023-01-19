@@ -549,7 +549,7 @@ class IResearchViewExecutorBase {
 
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader,
+  bool getStoredValuesReaders(irs::SubReader const& segmentReader,
                               size_t storedValuesIndex = 0);
 
  private:

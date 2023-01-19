@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+#include <velocypack/SharedSlice.h>
 
 #include <atomic>
 #include <unordered_set>
@@ -38,15 +39,19 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -96,15 +101,59 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
-ResultT<ExecutionNumber> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
-    std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    VPackSlice const& params) {
+ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
+                                                       PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"};
+  }
+
+  // // extract the collections
+  std::vector<std::string> vertexCollections;
+  std::vector<std::string> edgeCollections;
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictions;
+
+  if (std::holds_alternative<GraphCollectionNames>(
+          options.graphSource.graphOrCollections)) {
+    auto collectionNames =
+        std::get<GraphCollectionNames>(options.graphSource.graphOrCollections);
+    vertexCollections = collectionNames.vertexCollections;
+    edgeCollections = collectionNames.edgeCollections;
+    edgeCollectionRestrictions =
+        options.graphSource.edgeCollectionRestrictions.items;
+  } else {
+    auto graphName =
+        std::get<GraphName>(options.graphSource.graphOrCollections);
+    if (graphName.graph == "") {
+      return Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"};
+    }
+
+    graph::GraphManager gmngr{vocbase};
+    auto graphRes = gmngr.lookupGraphByName(graphName.graph);
+    if (graphRes.fail()) {
+      return std::move(graphRes).result();
+    }
+    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
+
+    auto const& gv = graph->vertexCollections();
+    for (auto const& v : gv) {
+      vertexCollections.push_back(v);
+    }
+
+    auto const& ge = graph->edgeCollections();
+    for (auto const& e : ge) {
+      edgeCollections.push_back(e);
+    }
+
+    auto const& ed = graph->edgeDefinitions();
+    for (auto const& e : ed) {
+      auto const& from = e.second.getFrom();
+      // intentionally create map entry
+      for (auto const& f : from) {
+        auto& restrictions = edgeCollectionRestrictions[f];
+        restrictions.push_back(e.second.getName());
+      }
+    }
   }
 
   ServerState* ss = ServerState::instance();
@@ -112,9 +161,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    TRI_ASSERT(params.isObject());
-    VPackSlice storeSlice = params.get("store");
+    // TODO get rid of that when we have a pregel parameter struct
+    TRI_ASSERT(options.userParameters.slice().isObject());
+    VPackSlice storeSlice = options.userParameters.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+
     for (std::string const& vc : vertexCollections) {
       bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
       bool canRead = exec.canUseCollection(vc, auth::Level::RO);
@@ -176,10 +227,13 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
 
-          std::string shardKeyAttribute = "vertex";
-          if (params.hasKey("shardKeyAttribute")) {
-            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
-          }
+          // TODO get rid of that when we have a pregel parameter struct
+          std::string shardKeyAttribute =
+              options.userParameters.slice().hasKey("shardKeyAttribute")
+                  ? options.userParameters.slice()
+                        .get("shardKeyAttribute")
+                        .copyString()
+                  : "vertex";
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return Result{
@@ -221,7 +275,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
   auto en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      algorithm, params, *this);
+      options.algorithm, options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
@@ -740,8 +794,15 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
+    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
+        velocypack::SharedSlice({}, body));
+    if (!createWorker.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot deserialize CreateWorker message");
+    }
 
-    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
+    addWorker(AlgoRegistry::createWorker(vocbase, createWorker.get(), *this),
+              exeNum);
     worker(exeNum)->setupWorker();  // will call conductor
 
     return;
@@ -761,22 +822,42 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    w->prepareGlobalStep(body, outBuilder);
+    auto message = inspection::deserializeWithErrorT<PrepareGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot deserialize PrepareGlobalSuperStep message");
+    }
+    w->prepareGlobalStep(message.get(), outBuilder);
   } else if (path == Utils::startGSSPath) {
-    w->startGlobalStep(body);
+    auto message = inspection::deserializeWithErrorT<RunGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "Cannot deserialize RunGlobalSuperStep message");
+    }
+    w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
     w->receivedMessages(body);
-  } else if (path == Utils::cancelGSSPath) {
-    w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
-  } else if (path == Utils::aqlResultsPath) {
-    bool withId = false;
-    if (body.isObject()) {
-      VPackSlice slice = body.get("withId");
-      withId = slice.isBoolean() && slice.getBool();
+    auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "Cannot deserialize FinalizeExecution message");
     }
-    w->aqlResult(outBuilder, withId);
+    w->finalizeExecution(message.get(),
+                         [this, exeNum]() { cleanupWorker(exeNum); });
+  } else if (path == Utils::aqlResultsPath) {
+    auto message = inspection::deserializeWithErrorT<CollectPregelResults>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot deserialize CollectPregelResults message");
+    }
+    w->aqlResult(outBuilder, message.get().withId);
   }
 }
 

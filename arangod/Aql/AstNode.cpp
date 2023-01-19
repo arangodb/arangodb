@@ -1634,15 +1634,32 @@ bool AstNode::willUseV8() const {
 
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
-      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
-        auto s = getMemberUnchecked(0)->getStringView();
-        if (s.find(':') != std::string::npos) {
+      if (numMembers() > 0 && getMemberUnchecked(0)->isArray() &&
+          getMemberUnchecked(0)->numMembers() > 0 &&
+          getMemberUnchecked(0)->getMemberUnchecked(0)->isStringValue()) {
+        // calling a function with a fixed name (known an query compile time)
+        if (auto s =
+                getMemberUnchecked(0)->getMemberUnchecked(0)->getStringView();
+            s.find(':') != std::string::npos) {
           // a user-defined function.
           // this will use V8
           setFlag(DETERMINED_V8, VALUE_V8);
           return true;
+        } else {
+          // a built-in function (or some invalid function name)
+          auto [normalized, isBuiltIn] = Ast::normalizeFunctionName(s);
+          // note: normalizeFunctionName always returns an upper-case name.
+          // we must hard-code the function name here, because we can't lookup
+          // the definition for the function s without having access to the
+          // AqlFunctionsFeature, which is not present here.
+          if (normalized == "V8") {
+            // the V8() function itself... obviously uses V8
+            setFlag(DETERMINED_V8, VALUE_V8);
+            return true;
+          }
         }
-        // fallthrough intentional
+        // fallthrough intentional. additionally inspect the function call
+        // parameters for CALL/APPLY
       } else {
         // we are unsure about what function will be called by
         // CALL and APPLY. We cannot rule out user-defined functions,
@@ -1653,6 +1670,7 @@ bool AstNode::willUseV8() const {
     }
   }
 
+  // inspect all subnodes
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {

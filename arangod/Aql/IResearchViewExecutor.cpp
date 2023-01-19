@@ -910,7 +910,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
 
 template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
-    irs::sub_reader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
+    irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();

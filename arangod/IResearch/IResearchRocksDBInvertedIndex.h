@@ -73,9 +73,8 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const final;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type_t<Index::Serialize> flags) const final;
 
   size_t memory() const final { return stats().indexSize; }
 
