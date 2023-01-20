@@ -290,8 +290,10 @@ static void JS_CollectionRevisionTreeVerification(
     RocksDBEngine& engine =
         server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
-    // the "17" is a magic number. we just need any client id to proceed.
-    auto ctx = manager->createContext(engine, /*ttl*/ 3600, SyncerId{17},
+    // the 600 and 17 are magic numbers here. we can put in any ttl and any
+    // client id to proceed. the context created here is thrown away
+    // immediately afterwards anyway.
+    auto ctx = manager->createContext(engine, /*ttl*/ 600, SyncerId{17},
                                       ServerId{17}, "");
     TRI_ASSERT(ctx);
     try {

@@ -1095,11 +1095,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 
   MUTEX_LOCKER(locker, _contextLock);
 
-  if (ttl < 0.0) {
-    ttl = _ttl;
-  } else {
-    ttl = std::max(_ttl, ttl);
-  }
+  ttl = std::max(_ttl, ttl);
   TRI_ASSERT(ttl > 0.0);
   _expires = now + ttl;
 
