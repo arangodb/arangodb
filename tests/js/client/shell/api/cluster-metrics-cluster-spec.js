@@ -26,8 +26,7 @@
 
 const {expect} = require('chai');
 const request = require("@arangodb/request");
-const internal = require("internal");
-const db = internal.db;
+const db = require("internal").db;
 
 
 const expectOneBucketChanged = (actual, old) => {
