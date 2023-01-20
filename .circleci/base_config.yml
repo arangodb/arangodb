@@ -1,91 +1,63 @@
 version: 2.1
 
 jobs:
-  linting:
+  minimal-checkout:
     docker:
-      - image: cimg/python:3.11.1
+      - image cimg/base:current
     resource_class: small
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
+      - run:
+          name: Checkout
+          command: |
+            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
+            git reset --hard "$CIRCLE_SHA1"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - CMakePresets.json
+
+  check-log-ids:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
       - run:
           name: Install pyyaml
           command: |
             python -m pip install --upgrade pip
             pip install pyyaml
       - run:
-          name: Install eslint
-          command: |
-            sudo apt-get -yy update
-            sudo apt-get -yy install eslint clang-format
-      - run:
-          name: Checkout
-          command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
-            git reset --hard "$CIRCLE_SHA1"
-      # This is deactivated because the generateAllMetricsDocumentation.py
-      # script only works with a checked out enterprise branch
-      # run:
-      #    name: Generate metrics documentation
-      #    command: |
-      #      python3 utils/generateAllMetricsDocumentation.py
-      - run:
           name: Check LogIDs
           command: |
             python3 utils/checkLogIds.py
-      # TODO: need to figure out how arangosh runs eslint (in particular with which)
-      # options
-      - run:
-          name: JSlint
-          command: |
-            utils/jslint-2.0.sh
-      - store_test_results:
-          path: test_detail.xml
-      - store_artifacts:
-          path: /tmp/clang_format_outcome.txt
 
   clang-format:
     docker:
-      - image: cimg/python:3.11.1
+      - image: cimg/base:current
     resource_class: small
-    environment:
-      GIT_SSH_COMMAND: ssh -v
     steps:
+      - attach_workspace:
+          at: .
       - run:
-          name: Install pyyaml
-          command: |
-            python -m pip install --upgrade pip
-            pip install pyyaml
-      - run:
-          name: Install eslint
+          name: Install clang-format
           command: |
             sudo apt-get -yy update
-            sudo apt-get -yy install eslint
+            sudo apt-get -yy install clang-format
       - run:
-          name: Checkout
+          name: clang-format
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
-            git reset --hard "$CIRCLE_SHA1"
-      # This is deactivated because the generateAllMetricsDocumentation.py
-      # script only works with a checked out enterprise branch
-      # run:
-      #    name: Generate metrics documentation
-      #    command: |
-      #      python3 utils/generateAllMetricsDocumentation.py
-      - run:
-          name: Check LogIDs
-          command: |
-            python3 utils/checkLogIds.py
-      # TODO: need to figure out how arangosh runs eslint (in particular with which)
-      # options
-      - run:
-          name: JSlint
-          command: |
-            utils/jslint-2.0.sh
-      - store_test_results:
-          path: test_detail.xml
-
-
+            shopt -s globstar
+            clang-format --version
+            clang-format -i arangod/**/*.{cpp,h}
+            clang-format -i lib/**/*.{cpp,h}
+            clang-format -i client-tools/**/*.{cpp,h}
+            git diff --exit-code > /tmp/clang_format_outcome.txt
+      - store_artifacts:
+          path: /tmp/clang_format_outcome.txt
 
   compile-linux:
     parameters:
@@ -226,8 +198,16 @@ workflows:
         pattern: /^(bug-fix|feature|chore)\/.*$/
         value: << pipeline.git.branch >>
     jobs:
-      - linting:
-          name: linting
+      - minimal-checkout:
+          name: minimal-checkout
+      - check-log-ids:
+          name: check-log-ids
+          requires:
+            - minimal-checkout
+      - clang-format:
+          name: clang-format
+          requires:
+            - minimal-checkout
       - compile-linux:
           name: build-community-pr
           preset: community-pr
