@@ -65,8 +65,11 @@ class MockGraph {
     std::string _eCol;
 
     std::string toString() const {
-      return "<EdgeDef>(_from: " + _from + ", to: " + _to + ")";
+      return "<EdgeDef>(_from: " + _from + ", to: " + _to +
+             ")(Weight: " + std::to_string(_weight) + ")";
     }
+
+    double getWeight() const { return _weight; }
 
     std::string generateId() const;
 
