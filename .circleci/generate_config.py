@@ -216,11 +216,11 @@ def create_test_job(test, cluster):
     }
 
     parallelity = test.get("parallelity", 1)
-    if (parallelity == 1):
+    if (parallelity <= 2):
         result["size"] = "small"
-    elif (parallelity == 3):
+    elif (parallelity <= 4):
         result["size"] = "medium"
-    elif (parallelity <= 5):
+    elif (parallelity <= 6):
         result["size"] = "large"
     elif (parallelity <= 7):
         result["size"] = "xlarge"
