@@ -53,6 +53,6 @@ done
 exec eslint \
   -c js/.eslintrc \
   --quiet \
-  --format jslint-xml \
+  --format junit \
   --output-file test_detail.xml \
   ${JAVASCRIPT_JSLINT}
