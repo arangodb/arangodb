@@ -90,7 +90,6 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
-
 using namespace arangodb::basics;
 using namespace arangodb;
 
