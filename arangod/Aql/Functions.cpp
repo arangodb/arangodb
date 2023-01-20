@@ -8811,12 +8811,10 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintEmptyArray());
     }
     auto results = worker->aqlResult(withId);
-    auto response = inspection::serializeWithErrorT(results);
-    if (!response.ok()) {
-      registerWarning(expressionContext, AFN, TRI_ERROR_INTERNAL);
-      return AqlValue(AqlValueHintEmptyArray());
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(results.results.slice()));
     }
-    builder.add(response.get().slice());
   }
 
   if (builder.isEmpty()) {

@@ -722,9 +722,13 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   auto res = _sendToAllDBServers(
       Utils::aqlResultsPath, VPackBuilder(serialized.get().slice()),
       [&](VPackSlice const& payload) {
-        if (payload.isArray()) {
-          outBuilder.add(VPackArrayIterator(payload));
+        auto results = inspection::deserializeWithErrorT<PregelResults>(
+            velocypack::SharedSlice({}, payload));
+        if (!results.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_FAILED, "Cannot deserialize PregelResults message");
         }
+        outBuilder.add(VPackArrayIterator(results.get().results.slice()));
       });
   outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
