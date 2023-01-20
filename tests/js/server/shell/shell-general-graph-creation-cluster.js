@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global print, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -72,6 +72,10 @@ function GeneralGraphClusterCreationSuite() {
     },
 
     testCreateMoreShardsThanAllowed : function () {
+      if (internal.ccoverage) {
+        print("Skipping testCreateMoreShardsThanAllowed in coverage tests");
+        return;
+      }
       let max = internal.maxNumberOfShards;
       try {
         graph._create(gn, edgeDef, null, { numberOfShards: max + 1 });
