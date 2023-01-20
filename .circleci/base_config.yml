@@ -33,17 +33,6 @@ jobs:
           name: Check LogIDs
           command: |
             python3 utils/checkLogIds.py
-      # TODO: this is just here to try out clang-formatting as part of
-      # CircleCI; it might want to live in its own job
-      - run:
-          name: clang-format
-          command: |
-            shopt -s globstar
-            clang-format --version
-            clang-format -i arangod/**/*.{cpp,h}
-            clang-format -i lib/**/*.{cpp,h}
-            clang-format -i client-tools/**/*.{cpp,h}
-            git diff --exit-code > /tmp/clang_format_outcome.txt
       # TODO: need to figure out how arangosh runs eslint (in particular with which)
       # options
       - run:
