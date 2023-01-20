@@ -947,6 +947,13 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       state.cookie(key, std::move(ptr));
 
       if (opts.waitForSync) {
+        // TODO(MBkkt) Move it to optimization stage
+        if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "cannot use waitForSync with inverted index and streaming or js "
+              "transaction");
+        }
         commit();
       }
 

@@ -4598,8 +4598,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         ob->add(e.value);
       }
     }
-    if (numberOfShards > 0 &&
-        !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (numberOfShards > 0) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));

@@ -328,6 +328,8 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
+  [[nodiscard]] bool isBuilding() const;
+
  private:
   // Export to VelocyPack.
   void doToVelocyPack(velocypack::Builder&, unsigned) const final;

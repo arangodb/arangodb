@@ -98,11 +98,13 @@ class CreateDatabaseInfo {
     return _id;
   }
 
-  bool valid() const { return _valid; }
+  void strictValidation(bool value) noexcept { _strictValidation = value; }
 
-  bool validId() const { return _validId; }
+  bool valid() const noexcept { return _valid; }
 
-  // shold be created with vaild id
+  bool validId() const noexcept { return _validId; }
+
+  // shold be created with valid id
   void setId(uint64_t id) {
     _id = id;
     _validId = true;
@@ -122,10 +124,12 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
+
   std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
+
   void sharding(std::string const& sharding) { _sharding = sharding; }
 
   ShardingPrototype shardingPrototype() const;
@@ -150,18 +154,19 @@ class CreateDatabaseInfo {
   std::uint32_t _writeConcern = 1;
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
+  bool _strictValidation = true;
   bool _validId = false;
-  bool _valid =
-      false;  // required because TRI_ASSERT needs variable in Release mode.
+  bool _valid = false;
 };
 
 struct VocbaseOptions {
-  std::string sharding = "";
+  std::string sharding;
   std::uint32_t replicationFactor = 1;
   std::uint32_t writeConcern = 1;
 };
 
-VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice);
+VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice,
+                                 bool strictValidation);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,

@@ -1,4 +1,67 @@
-v3.10.2 (XXXX-XX-XX)
+v3.10.3 (XXXX-XX-XX)
+--------------------
+
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
+* BTS-413: Added more explanatory messages for when the user cannot see the
+  statistics for a node in the UI when in cluster mode.
+
+* Fix coordinator segfault in AQL queries in which the query is invoked from
+  within a JavaScript context (e.g. from Foxx or from the server's console mode)
+  **and** the query has multiple coordinator snippets of which except the
+  outermost one invokes a JavaScript function.
+  Instead of crashing, coordinators will now respond with the exception "no v8
+  context available to enter for current transaction context".
+  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with a
+  fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
+  correctly that no JavaScript is needed, except if the fixed function name is
+  the name of a user-defined function.
+  This fixes an issue described in OASIS-24962.
+
+* BTS-1192: fix a potential race during hot backup creation, which could result
+  in error messages such as `{backup} Source file engine_rocksdb/002516.sst does
+  not have a hash file.` during hot backup creation. However, despite the error
+  message being logged, the hot backup was still complete.
+
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
+* Change the request lane for replication catchup requests that leaders in
+  active failover receive from their followers from medium to high. This will
+  give catchup requests from followers highest priority, so that the leader will
+  preferrably execute them compared to regular requests.
+
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
+* Remove constant values for query variables from query plan serialization in
+  cases they were not needed. Previously, constant values of query variables
+  were always serialized for all occurrences of a variable in a query plan.
+  If the constant values were large, this contributed to higher serialization
+  and thus query setup times. Now the constant values are only serialized for
+  relevant parts of query execution plans.
+
+* Added startup option `--rocksdb.bloom-filter-bits-per-key` to configure the
+  average number of bits to use per key in a Bloom filter.
+
+* Make the cache_oblivious option of jemalloc configurable from the environment.
+  This helps to save 4096 bytes of RAM for every allocation which is at least
+  16384 bytes large. This is particularly beneficial for the RocksDB buffer
+  cache.
+
+* Improve performance of RocksDB's transaction lock manager by using different
+  container types for the locked keys maps.
+  This can improve performance of write-heavy operations that are not I/O-bound
+  by up to 10%.
+
+
+v3.10.2 (2022-12-16)
 --------------------
 
 * Added experimental per-operation option `refillIndexCaches` to write

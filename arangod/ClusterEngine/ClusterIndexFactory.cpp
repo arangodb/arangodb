@@ -337,7 +337,10 @@ void ClusterIndexFactory::prepareIndexes(
     }
 
     if (basics::VelocyPackHelper::getBooleanValue(
-            v, StaticStrings::IndexIsBuilding, false)) {
+            v, StaticStrings::IndexIsBuilding, false) &&
+        !(basics::VelocyPackHelper::getStringView(v, StaticStrings::IndexType,
+                                                  {}) ==
+          iresearch::StaticStrings::ViewArangoSearchType)) {
       // This index is still being built. Do not add.
       continue;
     }

@@ -270,7 +270,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
@@ -1308,7 +1308,7 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
@@ -1362,7 +1362,7 @@ TEST_F(MoveShardTest,
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
@@ -1423,7 +1423,7 @@ TEST_F(
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
@@ -3483,7 +3483,7 @@ TEST_F(MoveShardTest, test_cancel_pending_job) {
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
@@ -3542,7 +3542,7 @@ TEST_F(MoveShardTest, test_cancel_todo_job) {
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  Mock<Job> spy(moveShard);
+  Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
