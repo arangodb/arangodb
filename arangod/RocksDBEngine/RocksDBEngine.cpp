@@ -2224,7 +2224,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       std::min(_useReleasedTick ? _releasedTick
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
-  
+
   LOG_TOPIC("4673c", TRACE, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep 
       << ", minTickExternal: " << minTickExternal;

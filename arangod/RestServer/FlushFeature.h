@@ -62,7 +62,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        entries after the latter of registration or the last successful
   ///        token commit
   /// @param subscription to register
-  void registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription);
+  void registerFlushSubscription(
+      std::shared_ptr<FlushSubscription> const& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// @param 'count' a number of released subscriptions
