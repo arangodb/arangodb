@@ -16,7 +16,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - *
+            - .
 
   check-log-ids:
     docker:
