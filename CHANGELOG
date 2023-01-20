@@ -1,6 +1,11 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
 * Web UI [FE-48]: Additional fix to the previously introduced license
   information usability improvement. In case the server is being started with
   the additional parameter `--server.harden`, the previous fix did not handle
