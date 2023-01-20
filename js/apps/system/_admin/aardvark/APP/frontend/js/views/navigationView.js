@@ -140,13 +140,12 @@
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
             self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
           } else {
-            self.showLicenseError();  
+            self.showLicenseError();
           }
-        },
-        error: function () {
-          self.showLicenseError();
         }
-      }); 
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+        // Additional note: This is required if "--server.harden true" is being set.
+      });
     },
 
     fetchServerTime: function () {
@@ -157,13 +156,11 @@
         type: "GET",
         url: url,
         success: function (timeData) {
-          if (self.currentDB.get('name') === '_system') {
             if (!timeData.error && timeData.code === 200 && timeData.time) {
               self.fetchLicenseInfo(timeData.time);
             } else {
               self.showGetTimeError();
             }
-          }
         }
         // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
       });
@@ -365,7 +362,7 @@
         });
       } else {
         $(self.subEl + ' .bottom').append(
-          '<li class="subMenuEntry</li>'
+          '<li class="subMenuEntry"></li>'
         );
       }
     },
