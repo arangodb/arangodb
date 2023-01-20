@@ -25,6 +25,14 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H 1
 
+#include <deque>
+#include <map>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -42,8 +50,6 @@
 #include <rocksdb/options.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-#include <map>
 
 namespace rocksdb {
 
@@ -166,11 +172,11 @@ class RocksDBEngine final : public StorageEngine {
   // inventory functionality
   // -----------------------
 
-  void getDatabases(arangodb::velocypack::Builder& result) override;
+  void getDatabases(velocypack::Builder& result) override;
 
   void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
-                         arangodb::velocypack::Builder& result,
-                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
+                         velocypack::Builder& result, bool includeIndexes,
+                         TRI_voc_tick_t maxTick) override;
 
   ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Builder& result,
@@ -247,15 +253,6 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
-  /// @brief track an additional tick value, used as a lower bound for future
-  /// WAL file deletion. WAL files that contain tick values >= tick will not
-  /// be deleted until the tick is untracked again.
-  void trackLowerBoundToKeep(uint64_t tick);
-  /// @brief untrack a value tracked via trackLowerBoundToKeep.
-  void untrackLowerBoundToKeep(uint64_t tick);
-  /// @brief atomically updates a tracked tick value from old to new
-  void updateLowerBoundToKeep(uint64_t oldTick, uint64_t newTick);
-
   void scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection);
   void processTreeRebuilds();
 
@@ -277,8 +274,8 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
                               arangodb::LogicalView const& view, bool doSync) override;
 
-  arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
-                              arangodb::LogicalView const& view) override;
+  Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
+                    LogicalView const& view) override;
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
   
@@ -293,8 +290,8 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 
-  void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
-                                     arangodb::velocypack::Slice info) override;
+  void addParametersForNewCollection(velocypack::Builder& builder,
+                                     velocypack::Slice info) override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 
@@ -480,13 +477,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
-  /// @brief protects _prunableWalFiles and _lowerBoundsToKeep
+  /// @brief protects _prunableWalFiles
   mutable basics::ReadWriteLock _walFileLock;
-
-  /// @brief contains lower bound tick values of WAL files to keep.
-  /// maps from tick value (RocksDB seq no) to number of users of that tick.
-  /// managed by trackLowerBoundToKeep and untrackLowerBoundToKeep
-  std::map<uint64_t, size_t> _lowerBoundsToKeep;
 
   /// @brief which WAL files can be pruned when
   /// an expiration time of <= 0.0 means the file does not have expired, but
@@ -567,7 +559,7 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::basics::ReadWriteLock _purgeLock;
   
   /// @brief mutex that protects the storage engine health check
-  arangodb::Mutex _healthMutex;
+  Mutex _healthMutex;
 
   /// @brief timestamp of last health check log message. we only log health check
   /// errors every so often, in order to prevent log spamming
@@ -581,7 +573,7 @@ class RocksDBEngine final : public StorageEngine {
   HealthData _healthData;
   
   /// @brief lock for _rebuildCollections
-  arangodb::Mutex _rebuildCollectionsLock;
+  Mutex _rebuildCollectionsLock;
   /// @brief map of database/collection-guids for which we need to repair trees
   std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
   /// @brief number of currently running tree rebuild jobs jobs

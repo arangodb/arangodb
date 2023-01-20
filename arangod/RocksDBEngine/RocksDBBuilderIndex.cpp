@@ -28,6 +28,8 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Containers/HashSet.h"
+#include "Logger/LogMacros.h"
+#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -107,7 +109,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice slice,
+                                   velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -283,7 +285,7 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx, Rocks
   return res;
 }
 
-arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
+Result RocksDBBuilderIndex::fillIndexForeground() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
@@ -317,39 +319,30 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
 
 namespace {
 
-class LowerBoundTracker {
+class LowerBoundTracker final : public FlushSubscription {
  public:
-  explicit LowerBoundTracker(RocksDBEngine& engine)
-    : _engine(engine), _lowerBound(0) {}
+  explicit LowerBoundTracker(TRI_voc_tick_t tick = 0) noexcept : _tick{tick} {}
 
-  ~LowerBoundTracker() {
-    if (_lowerBound != 0) {
-      _engine.untrackLowerBoundToKeep(_lowerBound);
-    }
+  /// @brief earliest tick that can be released
+  [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
+    return _tick.load(std::memory_order_acquire);
   }
 
-  void track(uint64_t value) {
-    TRI_ASSERT(value >= _lowerBound);
-    if (value == _lowerBound) {
-      // no progress. nothing to do
-      return;
-    }
-    if (_lowerBound == 0) {
-      // initial call
-      _engine.trackLowerBoundToKeep(value);
-      _lowerBound = value;
-    } else {
-      _engine.updateLowerBoundToKeep(_lowerBound, value);
-      _lowerBound = value;
+  void tick(TRI_voc_tick_t tick) noexcept {
+    auto value = _tick.load(std::memory_order_acquire);
+    TRI_ASSERT(value <= tick);
+
+    // tick value must never go backwards
+    while (tick > value) {
+      if (_tick.compare_exchange_weak(value, tick, std::memory_order_release,
+                                      std::memory_order_acquire)) {
+        break;
+      }
     }
   }
-
-  LowerBoundTracker(LowerBoundTracker const&) = delete;
-  LowerBoundTracker& operator=(LowerBoundTracker const&) = delete;
 
  private:
-  RocksDBEngine& _engine;
-  uint64_t _lowerBound;
+  std::atomic<TRI_voc_tick_t> _tick;
 };
 
 struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
@@ -491,7 +484,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
                bool haveExclusiveAccess,
                std::function<void(uint64_t)> const& reportProgress, LowerBoundTracker& lowerBoundTracker) {
   // push forward WAL lower bound tick
-  lowerBoundTracker.track(startingFrom);
+  lowerBoundTracker.tick(startingFrom);
 
   LogicalCollection& coll = ridx.collection();
   ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll, mode);
@@ -576,7 +569,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
     lastScannedTick = replay.endBatch();
     
     if (++ops % 1024 == 0) {
-      lowerBoundTracker.track(batch.sequence);
+      lowerBoundTracker.tick(batch.sequence);
     }
   }
 
@@ -621,18 +614,15 @@ void RocksDBBuilderIndex::Locker::unlock() {
 }
 
 // Background index filler task
-arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
+Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   TRI_ASSERT(locker.isLocked());
 
-  arangodb::Result res;
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
   RocksDBEngine& engine =
       _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
-
-  LowerBoundTracker lowerBoundTracker(engine);
 
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
 
@@ -643,7 +633,11 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   });
 
   // prevent WAL deletion from this tick
-  lowerBoundTracker.track(snap->GetSequenceNumber());
+  auto lowerBoundTracker =
+      std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber());
+  auto& flushFeature =
+      _collection.vocbase().server().getFeature<FlushFeature>();
+  flushFeature.registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();
   
@@ -657,7 +651,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   auto reportProgress = [this](uint64_t docsProcessed) {
     _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
   };
-  
+
+  Result res;
+
   // Step 1. Capture with snapshot
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (internal->unique()) {
@@ -695,14 +691,14 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
       RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE, scanFrom, lastScanned,
-        numScanned, false, reportProgress, lowerBoundTracker);
+        numScanned, false, reportProgress, *lowerBoundTracker);
     } else {
       // non-unique index. all index keys will be unique anyway because they
       // contain the document id we can therefore get away with a cheap WriteBatch
       rocksdb::WriteBatch batch(32 * 1024 * 1024);
       RocksDBBatchedMethods methods(&batch);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE, scanFrom, lastScanned,
-        numScanned, false, reportProgress, lowerBoundTracker);
+        numScanned, false, reportProgress, *lowerBoundTracker);
     }
 
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
@@ -726,14 +722,14 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE, scanFrom,
-      lastScanned, numScanned, true, reportProgress, lowerBoundTracker);
+      lastScanned, numScanned, true, reportProgress, *lowerBoundTracker);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
     res = ::catchup(db, *internal, methods, batch,AccessMode::Type::EXCLUSIVE, scanFrom,
-      lastScanned, numScanned, true, reportProgress, lowerBoundTracker);
+      lastScanned, numScanned, true, reportProgress, *lowerBoundTracker);
   }
 
   return res;
