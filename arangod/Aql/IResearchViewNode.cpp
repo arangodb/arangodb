@@ -2172,3 +2172,9 @@ bool IResearchViewNode::isBuilding() const {
 }
 
 }  // namespace arangodb::iresearch
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// need this variant for tests only
+template class ::arangodb::aql::IResearchViewMergeExecutor<
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
+#endif
