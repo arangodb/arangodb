@@ -40,7 +40,7 @@ if [ -z "$*" ] ; then
       "
   fi
 else
-  JAVASCRIPT_JSLINT="$*"
+  JSLINT_JAVASCRIPT="$*"
 fi
 
 FILELIST=""
@@ -53,6 +53,6 @@ done
 exec eslint \
   -c js/.eslintrc \
   --quiet \
-  --format xml \
-  --output-file test_details.xml \
+  --format jslint-xml \
+  --output-file test_detail.xml \
   ${JAVASCRIPT_JSLINT}

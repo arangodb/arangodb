@@ -39,6 +39,9 @@ jobs:
           name: JSlint
           command: |
             utils/jslint-2.0.sh
+      - store_test_results:
+          path: test_detail.xml
+
 
   compile-linux:
     parameters:
