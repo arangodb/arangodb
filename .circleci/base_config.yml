@@ -53,9 +53,9 @@ jobs:
       - run:
           name: Rename files
           command: |
-            for f in $(find arangod -iname *.h) ; mv $f $(dirname $f)/$(basename $f .h).hpp
-            for f in $(find lib -iname *.h) ; mv $f $(dirname $f)/$(basename $f .h).hpp
-            for f in $(find client-tools -iname *.h) ; mv $f $(dirname $f)/$(basename $f .h).hpp
+            for f in $(find arangod -iname \*.h) ; do mv $f $(dirname $f)/$(basename $f .h).hpp ; done
+            for f in $(find lib -iname \*.h) ; do mv $f $(dirname $f)/$(basename $f .h).hpp ; done
+            for f in $(find client-tools -iname \*.h) ; do mv $f $(dirname $f)/$(basename $f .h).hpp ; done
       - run:
           name: clang-format
           command: |
@@ -66,9 +66,9 @@ jobs:
       - run:
           name: Rename files back
           command: |
-            for f in $(find arangod -iname *.hpp) ; mv $f $(dirname $f)/$(basename $f .hpp).h
-            for f in $(find lib -iname *.hpp) ; mv $f $(dirname $f)/$(basename $f .hpp).h
-            for f in $(find client-tools -iname *.hpp) ; mv $f $(dirname $f)/$(basename $f .hpp).h
+            for f in $(find arangod -iname \*.hpp) ; do mv $f $(dirname $f)/$(basename $f .hpp).h ; done
+            for f in $(find lib -iname \*.hpp) ; do mv $f $(dirname $f)/$(basename $f .hpp).h ; done
+            for f in $(find client-tools -iname \*.hpp) ; do mv $f $(dirname $f)/$(basename $f .hpp).h ; done
       - run:
           name: Store diff
           command: |
