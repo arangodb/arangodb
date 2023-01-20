@@ -653,8 +653,14 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     auto latestSequenceNumber = db->GetLatestSequenceNumber();
 
     if (engine.dbExisted()) {
+      size_t filesActive = 0;
       size_t filesInArchive = 0;
       try {
+        // number of active log files
+        std::string active = db->GetOptions().wal_dir;
+        filesActive = TRI_FilesDirectory(active.c_str()).size();
+
+        // number of log files in the archive
         std::string archive = basics::FileUtils::buildFilename(
             db->GetOptions().wal_dir, "archive");
         filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
@@ -668,6 +674,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
              "number "
           << recoveryStartSequence
           << ", latest sequence number: " << latestSequenceNumber
+          << ", active log files: " << filesActive
           << ", files in archive: " << filesInArchive;
     }
 
