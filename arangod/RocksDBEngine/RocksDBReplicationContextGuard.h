@@ -45,7 +45,7 @@ class RocksDBReplicationContextGuard {
 
   RocksDBReplicationContext* operator->();
 
-  operator bool() const noexcept { return _ctx != nullptr; }
+  explicit operator bool() const noexcept { return _ctx != nullptr; }
 
   void setDeleted() noexcept { _deleted = true; }
 
