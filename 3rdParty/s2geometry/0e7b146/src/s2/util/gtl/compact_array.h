@@ -413,7 +413,7 @@ class compact_array_base {
     value_allocator_type allocator;
 
     T* new_ptr = allocator.allocate(capacity());
-    if (old_capacity == 0) {
+    if (old_capacity != 0) {
       memcpy(new_ptr, Array(), old_capacity * sizeof(T));
       allocator.deallocate(Array(), old_capacity);
     }
