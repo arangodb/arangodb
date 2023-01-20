@@ -48,13 +48,30 @@ jobs:
             sudo apt-get -yy update
             sudo apt-get -yy install clang-format
       - run:
+          name: Print clang-format version
+          command: clang-format --version
+      - run:
+          name: Rename files
+          command: |
+            find arangod -iname *.h ; mv $f $(dirname $f)/$(basename $f .h).hpp
+            find lib -iname *.h ; mv $f $(dirname $f)/$(basename $f .h).hpp
+            find client-tools -iname *.h ; mv $f $(dirname $f)/$(basename $f .h).hpp
+      - run:
           name: clang-format
           command: |
             shopt -s globstar
-            clang-format --version
-            clang-format -i arangod/**/*.{cpp,h}
-            clang-format -i lib/**/*.{cpp,h}
-            clang-format -i client-tools/**/*.{cpp,h}
+            clang-format -i arangod/**/*.{cpp,hpp}
+            clang-format -i lib/**/*.{cpp,hpp}
+            clang-format -i client-tools/**/*.{cpp,hpp}
+      - run:
+          name: Rename files back
+          command: |
+            find arangod -iname *.hpp ; mv $f $(dirname $f)/$(basename $f .hpp).h
+            find lib -iname *.hpp ; mv $f $(dirname $f)/$(basename $f .hpp).h
+            find client-tools -iname *.hpp ; mv $f $(dirname $f)/$(basename $f .hpp).h
+      - run:
+          name: Store diff
+          command: |
             git diff --exit-code > /tmp/clang_format_outcome.txt
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
