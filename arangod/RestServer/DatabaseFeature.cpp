@@ -1531,13 +1531,19 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
+      CreateDatabaseInfo info(server(), ExecContext::current());
+      // set strict validation for database options to false.
+      // we don't want the server start to fail here in case some
+      // invalid settings are present
+      info.strictValidation(false);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
+
       if (res.fail()) {
+        std::string errorMsg;
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+          errorMsg.append(res.errorMessage());
           // special case: if we find an invalid database name during startup,
           // we will give the user some hint how to fix it
-          std::string errorMsg(res.errorMessage());
           errorMsg.append(": '").append(databaseName).append("'");
           // check if the name would be allowed when using extended names
           if (DatabaseNameValidator::isAllowedName(
@@ -1549,9 +1555,14 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
                 "be enabled via the startup option "
                 "`--database.extended-names-databases true`");
           }
-          res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID,
-                    std::move(errorMsg));
+        } else {
+          errorMsg.append("when opening database '")
+              .append(databaseName)
+              .append("': ");
+          errorMsg.append(res.errorMessage());
         }
+
+        res.reset(res.errorNumber(), std::move(errorMsg));
         THROW_ARANGO_EXCEPTION(res);
       }
 

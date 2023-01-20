@@ -1,9 +1,49 @@
-v3.9.7 (XXXX-XX-XX)
+v3.9.8 (XXXX-XX-XX)
 -------------------
 
 * Fixed SEARCH-429. Fixed handling of analyzers while running ArangoSearch query
   against view linked to satellite collection in onesard database 
 
+* Fix coordinator segfault in AQL queries in which the query is invoked from
+  within a JavaScript context (e.g. from Foxx or from the server's console mode)
+  **and** the query has multiple coordinator snippets of which except the
+  outermost one invokes a JavaScript function.
+  Instead of crashing, coordinators will now respond with the exception "no v8
+  context available to enter for current transaction context".
+  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with a
+  fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
+  correctly that no JavaScript is needed, except if the fixed function name is
+  the name of a user-defined function.
+  This fixes an issue described in OASIS-24962.
+
+* BTS-1192: fix a potential race during hot backup creation, which could result
+  in error messages such as `{backup} Source file engine_rocksdb/002516.sst does
+  not have a hash file` during hot backup creation. However, despite the error
+  message being logged, the hot backup was still complete.
+
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
+
+v3.9.7 (2023-01-10)
+-------------------
+
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
+* Make the cache_oblivious option of jemalloc configurable from the environment.
+  This helps to save 4096 bytes of RAM for every allocation which is at least
+  16384 bytes large. This is particularly beneficial for the RocksDB buffer
+  cache.
+  
 * Use intermediate commits in old shard synchronization protocol. This avoids
   overly large RocksDB transactions when syncing large shards, which is a remedy
   for OOM kills during restarts.

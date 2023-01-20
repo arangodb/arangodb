@@ -235,7 +235,7 @@ function iResearchAqlTestSuite () {
 
     testV8FunctionInSearch: function () {
       try {
-        db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && APPLY('LOWER', 'abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
+        db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && V8('abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
         fail();
       } catch (e) {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
