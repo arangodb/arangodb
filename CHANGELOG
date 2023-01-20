@@ -1,6 +1,9 @@
 v3.9.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed SEARCH-429. Fixed handling of analyzers while running ArangoSearch query
+  against view linked to satellite collection in onesard database 
+
 * Use intermediate commits in old shard synchronization protocol. This avoids
   overly large RocksDB transactions when syncing large shards, which is a remedy
   for OOM kills during restarts.
