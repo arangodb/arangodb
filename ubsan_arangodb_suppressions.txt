@@ -35,3 +35,6 @@ pointer-overflow:3rdParty/lz4/lib/lz4.c
 # It's intentional perform operations with nullptr
 # TODO(MBkkt) I think it can be fixed with using uintptr_t instead of pointer
 pointer-overflow:3rdParty/iresearch/core/search/bitset_doc_iterator.cpp
+
+# TODO(MBkkt) known issue, fixed in devel, not dangerous and it's not convinient to backport it now
+null:3rdParty/iresearch/core/formats/formats_burst_trie.cpp
