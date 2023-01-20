@@ -66,19 +66,17 @@ function GeneralGraphClusterCreationSuite() {
     
     testCreateAsManyShardsAsAllowed : function () {
       let max = internal.maxNumberOfShards;
-      let myGraph = graph._create(gn, edgeDef, null, { numberOfShards: max });
+      let myGraph = graph._create(gn, edgeDef, null, { numberOfShards: max, replicationFactor: 1 });
       let properties = db._graphs.document(gn);
+      assertEqual(1, properties.replicationFactor);
+      assertEqual(1, properties.minReplicationFactor);
       assertEqual(max, properties.numberOfShards);
     },
 
     testCreateMoreShardsThanAllowed : function () {
-      if (internal.ccoverage) {
-        print("Skipping testCreateMoreShardsThanAllowed in coverage tests");
-        return;
-      }
       let max = internal.maxNumberOfShards;
       try {
-        graph._create(gn, edgeDef, null, { numberOfShards: max + 1 });
+        graph._create(gn, edgeDef, null, { numberOfShards: max + 1, replicationFactor: 1 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
@@ -90,7 +88,7 @@ function GeneralGraphClusterCreationSuite() {
       db._createEdgeCollection(en);
       let max = internal.maxNumberOfShards;
       try {
-        graph._create(gn, edgeDef, null, { numberOfShards: max + 1 });
+        graph._create(gn, edgeDef, null, { numberOfShards: max + 1, replicationFactor: 1 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
