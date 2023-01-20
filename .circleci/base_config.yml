@@ -16,7 +16,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - CMakePresets.json
+            - *
 
   check-log-ids:
     docker:
