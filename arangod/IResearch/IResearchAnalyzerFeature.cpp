@@ -505,7 +505,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     if (!coords.empty() &&
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
-        (vocbase.isOneShard())) {
+        vocbase.isOneShard()) {
       TRI_IF_FAILURE("CheckDBWhenSingleShardAndFlagChange") {
         if (vocbase.server()
                 .getFeature<arangodb::ClusterFeature>()
