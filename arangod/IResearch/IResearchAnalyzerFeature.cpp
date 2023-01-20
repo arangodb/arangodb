@@ -506,6 +506,17 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
         (vocbase.isOneShard())) {
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndFlagChange") {
+        if (vocbase.server()
+                .getFeature<arangodb::ClusterFeature>()
+                .forceOneShard()) {
+          return {TRI_ERROR_DEBUG,
+                  "force-one-shard true and db is single shard"};
+        } else {
+          return {TRI_ERROR_DEBUG,
+                  "force-one-shard false and db is single shard"};
+        }
+      }
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
@@ -562,15 +573,17 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         return resultVisitor(visitor, vocbase, slice);
       }
     }
-    /*
-    else if
-    (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard()){
-      TRI_IF_FAILURE("CheckNotForceShardOnDBCreation") {
-        return {TRI_ERROR_INTERNAL, "Optimization will not be made for
-    previously created DB without forceOneShard set"}
+    TRI_IF_FAILURE("CheckDBWhenNotSingleShardAndFlagChange") {
+      if (vocbase.server()
+              .getFeature<arangodb::ClusterFeature>()
+              .forceOneShard()) {
+        return {TRI_ERROR_DEBUG,
+                "force-one-shard true and db is not single shard"};
+      } else {
+        return {TRI_ERROR_DEBUG,
+                "force-one-shard false and db is not single shard"};
       }
     }
-     */
 
     network::RequestOptions reqOpts;
     reqOpts.database = vocbase.name();
