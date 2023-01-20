@@ -213,7 +213,40 @@ TEST(CheckMissingShaFilesSimple, verify_common_situations) {
   arangodb::application_features::ApplicationServer server{nullptr, nullptr};
   TestRocksDBShaCalculatorThread tr{server};
 
-  tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
+  tr.checkMissingShaFiles(tr.setup._directory.c_str(), /*requireAge*/ 0,
+                          /*force*/ false);
+
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("IDENTITY").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("037793.sst").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("037793.sha."
+                                         "e3b0c44298fc1c149afbf4c8996fb92427ae4"
+                                         "1e4649b934ca495991b7852b855.hash")
+                                 .c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("037684.sst").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("037684.sha."
+                                         "2db3c4a7da801356e4efda0d65229d0baadf6"
+                                         "950b366418e96abb7ece9c56c12.hash")
+                                 .c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("086219.sst").c_str()));
+  EXPECT_TRUE(TRI_ExistsFile(tr.pathName("086219.sha."
+                                         "5d3cfa346c3852c0c108d720d580cf9991074"
+                                         "9f17c8429c07c1c2d714be2b7ff.hash")
+                                 .c_str()));
+
+  EXPECT_TRUE(!TRI_ExistsFile(tr.pathName("086218.sha."
+                                          "e3b0c44298fc1c149afbf4c8996fb92427ae"
+                                          "41e4649b934ca495991b7852b855.hash")
+                                  .c_str()));
+}
+
+TEST(CheckMissingShaFilesSimple, force_recalculations) {
+  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  TestRocksDBShaCalculatorThread tr{server};
+
+  tr.checkMissingShaFiles(tr.setup._directory.c_str(),
+                          /*requireAge*/ 9999999999, /*force*/ true);
 
   EXPECT_TRUE(TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
   EXPECT_TRUE(TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
