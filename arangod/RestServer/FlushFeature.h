@@ -65,7 +65,7 @@ class FlushFeature final : public ArangodFeature {
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      const std::shared_ptr<FlushSubscription>& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// returns number of active flush subscriptions removed, the number of stale
