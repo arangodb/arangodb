@@ -49,6 +49,7 @@
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
+#include <rocksdb/snapshot.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -452,6 +453,22 @@ class RocksDBEngine final : public StorageEngine {
     _recoveryStartSequence = value;
   }
 #endif
+
+  class RocksDBSnapshot final : public StorageSnapshot {
+   public:
+    explicit RocksDBSnapshot(rocksdb::DB& db) noexcept : _snapshot(&db) {}
+
+    TRI_voc_tick_t tick() const noexcept override {
+      return _snapshot.snapshot()->GetSequenceNumber();
+    }
+
+    decltype(auto) getSnapshot() const { return _snapshot.snapshot(); }
+
+   private:
+    mutable rocksdb::ManagedSnapshot _snapshot;
+  };
+
+  std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
