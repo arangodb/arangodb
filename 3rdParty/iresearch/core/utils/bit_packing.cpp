@@ -283,7 +283,7 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT
 MSVC_ONLY(__pragma(warning(disable:4702))) // unreachable code
 
 template<int N, int I, typename T>
-IRS_FORCE_INLINE T fastpack_at(const T* in) noexcept {
+FORCE_INLINE T fastpack_at(const T* in) noexcept {
   static constexpr int kBits = sizeof(T) * 8;
   static_assert(0 < N && N < kBits);
   static_assert(0 <= I && I < kBits);
