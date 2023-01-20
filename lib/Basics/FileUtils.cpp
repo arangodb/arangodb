@@ -439,7 +439,8 @@ bool copyDirectoryRecursive(
   }
 
   do {
-    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name, wcslen(oneItem.name));
+    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name,
+                                        wcslen(oneItem.name));
     char const* fn = (char*)rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());

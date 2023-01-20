@@ -135,7 +135,7 @@ std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
 
 namespace arangodb::basics {
-  std::wstring toWString(std::string const& validUTF8String);
-  std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
-  std::string fromWString(std::wstring const& validUTF16String);
-}
+std::wstring toWString(std::string const& validUTF8String);
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
+std::string fromWString(std::wstring const& validUTF16String);
+}  // namespace arangodb::basics
