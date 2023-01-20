@@ -57,6 +57,7 @@ jobs:
       - run:
           name: Store diff
           command: |
+            git status
             git diff --exit-code > /tmp/clang_format_outcome.txt
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
