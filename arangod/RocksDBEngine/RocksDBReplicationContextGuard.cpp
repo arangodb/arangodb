@@ -43,8 +43,7 @@ RocksDBReplicationContextGuard::RocksDBReplicationContextGuard(
     RocksDBReplicationContextGuard&& other) noexcept
     : _manager(other._manager),
       _ctx(std::move(other._ctx)),
-      _deleted(std::exchange(other._deleted, false)) {
-}
+      _deleted(std::exchange(other._deleted, false)) {}
 
 RocksDBReplicationContextGuard::~RocksDBReplicationContextGuard() { release(); }
 
