@@ -30,7 +30,7 @@
 #include "Basics/operating-system.h"
 
 #ifdef _WIN32
-#include "Basics/Utf8Helper-Win32.h"
+#include "Basics/win-utils.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
