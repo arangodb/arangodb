@@ -17,6 +17,60 @@ jobs:
           name: Install eslint
           command: |
             sudo apt-get -yy update
+            sudo apt-get -yy install eslint clang-format
+      - run:
+          name: Checkout
+          command: |
+            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
+            git reset --hard "$CIRCLE_SHA1"
+      # This is deactivated because the generateAllMetricsDocumentation.py
+      # script only works with a checked out enterprise branch
+      # run:
+      #    name: Generate metrics documentation
+      #    command: |
+      #      python3 utils/generateAllMetricsDocumentation.py
+      - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/checkLogIds.py
+      # TODO: need to figure out how arangosh runs eslint (in particular with which)
+      # options
+      - run:
+          name: JSlint
+          command: |
+            utils/jslint-2.0.sh
+      # TODO: this is just here to try out clang-formatting as part of
+      # CircleCI; it might want to live in its own job
+      - run:
+          name: clang-format
+          command: |
+            shopt -s globstar
+            clang-format --version
+            clang-format -i arangod/**/*.{cpp,h}
+            clang-format -i lib/**/*.{cpp,h}
+            clang-format -i client-tools/**/*.{cpp,h}
+            git diff --exit-code > /tmp/clang_format_outcome.txt
+      - store_test_results:
+          path: test_detail.xml
+      - store_artifacts:
+          path: /tmp/clang_format_outcome.txt
+
+  clang-format:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run:
+          name: Install pyyaml
+          command: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
+      - run:
+          name: Install eslint
+          command: |
+            sudo apt-get -yy update
             sudo apt-get -yy install eslint
       - run:
           name: Checkout
@@ -41,6 +95,7 @@ jobs:
             utils/jslint-2.0.sh
       - store_test_results:
           path: test_detail.xml
+
 
 
   compile-linux:
