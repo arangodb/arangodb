@@ -1,6 +1,11 @@
 devel
 -----
 
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
 * Fixed the issue that the collection view search did not support selecting
   everything using Ctrl + A.
 
