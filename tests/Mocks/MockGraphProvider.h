@@ -61,6 +61,9 @@ class HashedStringRef;
 namespace tests {
 namespace graph {
 
+using WeightCallback = std::function<double(double originalWeight,
+                                            arangodb::velocypack::Slice edge)>;
+
 class MockGraphProviderOptions {
  public:
   enum class LooseEndBehaviour { NEVER, ALWAYS };
@@ -72,6 +75,12 @@ class MockGraphProviderOptions {
   LooseEndBehaviour looseEnds() const { return _looseEnds; }
   MockGraph const& data() const { return _data; }
   bool reverse() const { return _reverse; }
+  void setWeightEdgeCallback(WeightCallback callback) {
+    _weightCallback = std::move(callback);
+  }
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 
  private:
   MockGraph const& _data;
@@ -91,6 +100,7 @@ class MockGraphProvider {
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     using EdgeType = arangodb::velocypack::HashedStringRef;
+    using VertexType = arangodb::velocypack::HashedStringRef;
 
     class Vertex {
      public:
@@ -175,8 +185,12 @@ class MockGraphProvider {
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
+    Step(size_t prev, VertexType v, bool isProcessable, size_t depth,
+         double weight);
     Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
          size_t depth);
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
+         size_t depth, double weight);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -317,6 +331,10 @@ class MockGraphProvider {
 
   aql::TraversalStats stealStats();
 
+  void setWeightEdgeCallback(WeightCallback callback) {
+    _weightCallback = std::move(callback);
+  }
+
  private:
   auto decideProcessable() const -> bool;
 
@@ -327,6 +345,8 @@ class MockGraphProvider {
   bool _reverse;
   LooseEndBehaviour _looseEnds;
   arangodb::aql::TraversalStats _stats;
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 }  // namespace graph
 }  // namespace tests

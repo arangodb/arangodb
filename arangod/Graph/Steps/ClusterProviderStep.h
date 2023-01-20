@@ -39,6 +39,7 @@ class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
+  using VertexType = arangodb::velocypack::HashedStringRef;
 
   class Vertex {
    public:
