@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   minimal-checkout:
     docker:
-      - image cimg/base:current
+      - image: cimg/base:current
     resource_class: small
     environment:
       GIT_SSH_COMMAND: ssh -v
