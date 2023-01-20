@@ -33,7 +33,7 @@
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewExecutor.h"
+#include "Aql/IResearchViewExecutor.tpp"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
