@@ -1,6 +1,10 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.14.0.
+
+* Updated ArangoDB Starter to 0.15.6.
+
 * ES-1396: under some rare circumstances it was possible that background index
   creation missed some documents in case the documents were inserted after
   background index creation started and the corresponding WAL files with the
@@ -44,8 +48,6 @@ v3.8.9 (XXXX-XX-XX)
   actually assumed its leadership and until the new leader is actually in sync.
   This fixes a bug which could block a shard under certain circumstances. This
   fixes BTS-1110.
-
-* Updated arangosync to v2.13.0.
 
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
   Traversal PRUNE expressions containing JavaScript user-defined functions
