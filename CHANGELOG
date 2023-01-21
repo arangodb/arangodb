@@ -1,6 +1,10 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.14.0.
+
+* Updated ArangoDB Starter to 0.15.6.
+
 * Fix bug in hotbackup download/restore to make sure no data is mixed up between
   servers. This fixes a bug introduced in 3.10. Note that previous 3.10 versions
   may not correctly restore a hotbackup which was uploaded from one cluster and
