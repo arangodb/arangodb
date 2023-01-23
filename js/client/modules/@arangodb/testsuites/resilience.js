@@ -78,6 +78,7 @@ var _resilience = function(path) {
       localOptions.dbServers = 5;
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
+    testCases = tu.splitBuckets(options, testCases);
     let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
