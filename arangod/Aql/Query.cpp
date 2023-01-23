@@ -1048,85 +1048,89 @@ QueryResult Query::doExplain(bool optimize) {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
-    VPackOptions options;
-    options.checkAttributeUniqueness = false;
-    options.buildUnindexedArrays = true;
-    result.data = std::make_shared<VPackBuilder>(&options);
+    std::unique_ptr<Optimizer> opt;
+    if (optimize) {
+      VPackOptions options;
+      options.checkAttributeUniqueness = false;
+      options.buildUnindexedArrays = true;
+      result.data = std::make_shared<VPackBuilder>(&options);
 
-    if (_queryOptions.allPlans) {
-      VPackArrayBuilder guard(result.data.get());
+      // Run the query optimizer:
+      enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
+      opt = std::make_unique<Optimizer>(_queryOptions.maxNumberOfPlans);
+      // get enabled/disabled rules
+      opt->createPlans(std::move(plan), _queryOptions, true);
 
-      auto const& plans = opt->getPlans();
-      for (auto& it : plans) {
-        auto& pln = it.first;
-        TRI_ASSERT(pln != nullptr);
+      enterState(QueryExecutionState::ValueType::FINALIZATION);
+      if (_queryOptions.allPlans) {
+        VPackArrayBuilder guard(result.data.get());
 
-        preparePlanForSerialization(pln);
-        pln->toVelocyPack(*result.data, parser.ast(), flags);
+        auto const& plans = opt->getPlans();
+        for (auto& it : plans) {
+          auto& pln = it.first;
+          TRI_ASSERT(pln != nullptr);
+
+          preparePlanForSerialization(pln);
+          pln->toVelocyPack(*result.data, parser.ast(), flags);
+        }
+        // cacheability not available here
+        result.cached = false;
+      } else {
+        std::unique_ptr<ExecutionPlan> bestPlan =
+            opt->stealBest();  // Now we own the best one again
+        TRI_ASSERT(bestPlan != nullptr);
+
+        preparePlanForSerialization(bestPlan);
+        bestPlan->toVelocyPack(*result.data, parser.ast(), flags);
       }
-      // cacheability not available here
-      result.cached = false;
     } else {
-      std::unique_ptr<ExecutionPlan> bestPlan =
-          opt->stealBest();  // Now we own the best one again
-      TRI_ASSERT(bestPlan != nullptr);
-
-      preparePlanForSerialization(bestPlan);
-      bestPlan->toVelocyPack(*result.data, parser.ast(), flags);
+      preparePlanForSerialization(plan);
+      plan->toVelocyPack(*result.data, parser.ast(), flags);
     }
-  }
-  else {
-    preparePlanForSerialization(plan);
-    result.data = plan->toVelocyPack(parser.ast(), flags);
-  }
 
-  // cacheability
-  result.cached = (!_queryString.empty() && !isModificationQuery() &&
-                   _warnings.empty() && _ast->root()->isCacheable());
+    // cacheability
+    result.cached = (!_queryString.empty() && !isModificationQuery() &&
+                     _warnings.empty() && _ast->root()->isCacheable());
 
-  // technically no need to commit, as we are only explaining here
-  auto commitResult = _trx->commit();
-  if (commitResult.fail()) {
-    THROW_ARANGO_EXCEPTION(commitResult);
-  }
-
-  result.extra = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
-    _warnings.toVelocyPack(*result.extra);
-    if (opt != nullptr) {
-      result.extra->add(VPackValue("stats"));
-      opt->_stats.toVelocyPack(*result.extra);
+    // technically no need to commit, as we are only explaining here
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+      THROW_ARANGO_EXCEPTION(commitResult);
     }
-  }
-}
-catch (Exception const& ex) {
-  result.reset(Result(
-      ex.code(),
-      ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
-}
-catch (std::bad_alloc const&) {
-  result.reset(
-      Result(TRI_ERROR_OUT_OF_MEMORY,
-             StringUtils::concatT(
-                 TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                 QueryExecutionState::toStringWithPrefix(_execState))));
-}
-catch (std::exception const& ex) {
-  result.reset(
-      Result(TRI_ERROR_INTERNAL,
-             ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-}
-catch (...) {
-  result.reset(
-      Result(TRI_ERROR_INTERNAL,
-             StringUtils::concatT(
-                 TRI_errno_string(TRI_ERROR_INTERNAL),
-                 QueryExecutionState::toStringWithPrefix(_execState))));
-}
 
-// will be returned in success or failure case
-return result;
+    result.extra = std::make_shared<VPackBuilder>();
+    {
+      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
+      _warnings.toVelocyPack(*result.extra);
+      if (opt != nullptr) {
+        result.extra->add(VPackValue("stats"));
+        opt->_stats.toVelocyPack(*result.extra);
+      }
+    }
+  } catch (Exception const& ex) {
+    result.reset(Result(
+        ex.code(),
+        ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
+  } catch (std::bad_alloc const&) {
+    result.reset(
+        Result(TRI_ERROR_OUT_OF_MEMORY,
+               StringUtils::concatT(
+                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                   QueryExecutionState::toStringWithPrefix(_execState))));
+  } catch (std::exception const& ex) {
+    result.reset(Result(
+        TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
+  } catch (...) {
+    result.reset(
+        Result(TRI_ERROR_INTERNAL,
+               StringUtils::concatT(
+                   TRI_errno_string(TRI_ERROR_INTERNAL),
+                   QueryExecutionState::toStringWithPrefix(_execState))));
+  }
+
+  // will be returned in success or failure case
+  return result;
 }
 
 bool Query::isModificationQuery() const noexcept {

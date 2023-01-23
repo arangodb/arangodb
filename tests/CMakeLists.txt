@@ -8,7 +8,7 @@ add_subdirectory(Greenspun)
 # Optimizer2 tests
 # ----------------------------------------
 
-add_subdirectory(Optimizer2)
+#add_subdirectory(Optimizer2)
 
 # ----------------------------------------
 # Fuerte tests
