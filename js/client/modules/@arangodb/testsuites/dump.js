@@ -818,7 +818,7 @@ function dumpJwt (options) {
     multipleDumps: true
   });
 
-  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){});
   options.cleanup = opts.cleanup;
   return ret;
 }
