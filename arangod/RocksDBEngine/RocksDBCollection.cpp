@@ -969,6 +969,25 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
   return false;
 }
 
+Result RocksDBCollection::readFromSnapshot(
+    transaction::Methods* trx, LocalDocumentId const& token,
+    IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
+    StorageSnapshot const& snapshot) const {
+  ::ReadTimeTracker timeTracker(
+      _statistics._readWriteMetrics,
+      [](TransactionStatistics::ReadWriteMetrics& metrics,
+         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+
+  if (!token.isSet()) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD,
+                  "invalid local document id"};
+  }
+
+  return lookupDocumentVPack(
+      trx, token, cb, /*withCache*/ true, readOwnWrites,
+      basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
+}
+
 Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
                                IndexIterator::DocumentCallback const& cb,
                                ReadOwnWrites readOwnWrites) const {
@@ -1810,7 +1829,8 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     IndexIterator::DocumentCallback const& cb, bool withCache,
-    ReadOwnWrites readOwnWrites) const {
+    ReadOwnWrites readOwnWrites,
+    RocksDBEngine::RocksDBSnapshot const* snapshot /*= nullptr*/) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -1835,9 +1855,13 @@ Result RocksDBCollection::lookupDocumentVPack(
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
   rocksdb::Status s =
-      mthd->Get(RocksDBColumnFamilyManager::get(
-                    RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps, readOwnWrites);
+      snapshot ? mthd->GetFromSnapshot(
+                     RocksDBColumnFamilyManager::get(
+                         RocksDBColumnFamilyManager::Family::Documents),
+                     key->string(), &ps, readOwnWrites, snapshot->getSnapshot())
+               : mthd->Get(RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::Documents),
+                           key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);

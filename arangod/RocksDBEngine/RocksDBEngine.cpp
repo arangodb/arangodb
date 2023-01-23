@@ -1602,8 +1602,7 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return TRI_voc_tick_t(
-      server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber());
+  return server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber();
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
@@ -1872,7 +1871,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // (NOTE: The above fails can only occur on full HDD or Machine dying. No
   // write conflicts possible)
 
-  TRI_ASSERT(coll.status() == TRI_VOC_COL_STATUS_DELETED);
+  TRI_ASSERT(coll.deleted());
 
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
@@ -3357,7 +3356,7 @@ std::string RocksDBEngine::getCompressionSupport() const {
 
 // management methods for synchronizing with external persistent stores
 TRI_voc_tick_t RocksDBEngine::currentTick() const {
-  return static_cast<TRI_voc_tick_t>(_db->GetLatestSequenceNumber());
+  return _db->GetLatestSequenceNumber();
 }
 
 TRI_voc_tick_t RocksDBEngine::releasedTick() const {
@@ -3619,4 +3618,13 @@ auto RocksDBEngine::createReplicatedState(
   methods->updateMetadata(info);
   return {std::move(methods)};
 }
+
+std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
+  if (ADB_LIKELY(_db)) {
+    return std::make_shared<RocksDBSnapshot>(*_db);
+  } else {
+    return nullptr;
+  }
+}
+
 }  // namespace arangodb

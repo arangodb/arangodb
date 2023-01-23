@@ -449,8 +449,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
-    if (flush &&
-        TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
+    if (flush && !coll->deleted()) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
                                                                      false);
     }
@@ -687,7 +686,7 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
+    res = methods::Collections::drop(*coll, allowDropSystem);
   }
 
   if (res.fail()) {
@@ -755,7 +754,12 @@ RestCollectionHandler::collectionRepresentationAsync(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  _builder.add("status", VPackValue(coll->status()));
+  // only here for API-compatibility...
+  if (coll->deleted()) {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  } else {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

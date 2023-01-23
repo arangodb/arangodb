@@ -24,7 +24,7 @@
 #include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"

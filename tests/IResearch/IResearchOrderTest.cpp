@@ -177,7 +177,7 @@ void assertOrder(
     }
 
     arangodb::iresearch::QueryContext const ctx{&trx, ast, exprCtx,
-                                                &irs::sub_reader::empty(), ref};
+                                                &irs::SubReader::empty(), ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);

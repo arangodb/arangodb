@@ -49,19 +49,13 @@ enum SslProtocol {
   SSL_V3 = 3,
   TLS_V1 = 4,
   TLS_V12 = 5,
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   TLS_V13 = 6,
-#endif
   TLS_GENERIC = 9,
 
   SSL_LAST
 };
 
-#if (OPENSSL_VERSION_NUMBER < 0x00999999L)
-#define SSL_CONST /* */
-#else
 #define SSL_CONST const
-#endif
 
 /// @brief returns a set with all available SSL protocols
 std::unordered_set<uint64_t> availableSslProtocols();
