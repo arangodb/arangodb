@@ -93,7 +93,7 @@ struct PrototypeFactory {
       -> std::shared_ptr<PrototypeFollowerState>;
   auto constructLeader(std::unique_ptr<PrototypeCore> core)
       -> std::shared_ptr<PrototypeLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&)
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
       -> std::unique_ptr<PrototypeCore>;
 
   std::shared_ptr<IPrototypeNetworkInterface> const networkInterface;

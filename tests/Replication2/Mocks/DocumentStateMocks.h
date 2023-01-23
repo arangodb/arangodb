@@ -38,6 +38,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::replication2::test {
 struct MockDocumentStateTransactionHandler;
@@ -354,6 +355,29 @@ struct DocumentLogEntryIterator
 
   std::vector<replicated_state::document::DocumentLogEntry> entries;
   decltype(entries)::iterator iter;
+};
+
+struct MockCreateDatabaseInfo : CreateDatabaseInfo {
+  MockCreateDatabaseInfo(ArangodServer& server, ExecContext const& execContext,
+                         std::string const& name, std::uint64_t id)
+      : CreateDatabaseInfo(CreateDatabaseInfo::mockConstruct, server,
+                           execContext, name, id) {}
+
+  virtual ~MockCreateDatabaseInfo() = default;
+};
+
+struct MockVocbase : TRI_vocbase_t {
+  static auto createDatabaseInfo(ArangodServer& server, std::string const& name,
+                                 std::uint64_t id) -> MockCreateDatabaseInfo {
+    return MockCreateDatabaseInfo(server, ExecContext::current(), name, id);
+  }
+
+  explicit MockVocbase(ArangodServer& server, std::string const& name,
+                       std::uint64_t id)
+      : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
+                      createDatabaseInfo(server, name, id)) {}
+
+  virtual ~MockVocbase() = default;
 };
 
 }  // namespace arangodb::replication2::test
