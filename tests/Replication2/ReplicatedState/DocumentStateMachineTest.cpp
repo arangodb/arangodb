@@ -20,6 +20,12 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+// Must be included early to avoid
+//   "explicit specialization of 'std::char_traits<unsigned char>' after
+//   instantiation"
+// errors.
+#include "../3rdParty/iresearch/core/utils/string.hpp"
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
@@ -843,7 +849,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
 
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -872,7 +879,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
