@@ -14,7 +14,7 @@ jobs:
       - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
       - run:
           name: Configure CCache
-          command: ccache --set-config max_size=100M
+          command: ccache --set-config max_size=150M
       - run:
           name: Print CCache Settings
           command: ccache -p
