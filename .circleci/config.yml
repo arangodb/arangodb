@@ -36,7 +36,7 @@ jobs:
             cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests_replication2_pure
       - run:
           name: CCache Statistics
-          command: ccache -s
+          command: ccache -sv
       - store_artifacts:
           path: build-presets/<< parameters.preset >>/bin/arangodbtests_replication2_pure
       - save_cache:
