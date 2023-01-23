@@ -603,7 +603,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }
 
    */
-  auto groups = arangodb::ClusterCollectionMethods::prepareCollectionGroups(feature.clusterInfo(), vocbase.name(), collections);
+  auto groups = arangodb::ClusterCollectionMethods::prepareCollectionGroups(
+      feature.clusterInfo(), vocbase.name(), collections);
   if (groups.fail()) {
     return groups.result();
   }
@@ -631,14 +632,16 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   // Protection, all entries have been moved
   collections.clear();
 
-
   WriterType writer = std::invoke([&]() {
     if constexpr (ReplicationVersion == replication::Version::TWO) {
-      return WriterType{std::move(collectionPlanEntries), std::move(shardDistributionList), std::move(groups.get())};
+      return WriterType{std::move(collectionPlanEntries),
+                        std::move(shardDistributionList),
+                        std::move(groups.get())};
     } else if constexpr (ReplicationVersion == replication::Version::ONE) {
-      return WriterType{std::move(collectionPlanEntries), std::move(shardDistributionList)};
+      return WriterType{std::move(collectionPlanEntries),
+                        std::move(shardDistributionList)};
     }
-    });
+  });
   auto res =
       ::impl(feature.clusterInfo(), vocbase.server(),
              std::string_view{vocbase.name()}, writer, waitForSyncReplication);
@@ -704,10 +707,13 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   return shardNames;
 }
 
-[[nodiscard]] auto ClusterCollectionMethods::prepareCollectionGroups(ClusterInfo& ci, std::string_view databaseName,
-                                                                     std::vector<CreateCollectionBody> const& collections) -> ResultT<replication2::CollectionGroupUpdates> {
+[[nodiscard]] auto ClusterCollectionMethods::prepareCollectionGroups(
+    ClusterInfo& ci, std::string_view databaseName,
+    std::vector<CreateCollectionBody> const& collections)
+    -> ResultT<replication2::CollectionGroupUpdates> {
   arangodb::replication2::CollectionGroupUpdates groups;
-  std::unordered_map<std::string, replication2::agency::CollectionGroupId> selfCreatedGroups;
+  std::unordered_map<std::string, replication2::agency::CollectionGroupId>
+      selfCreatedGroups;
   for (auto const& col : collections) {
     if (col.distributeShardsLike.has_value()) {
       auto const& leadingName = col.distributeShardsLike.value();
@@ -721,7 +727,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         // We never get a nullptr here because an exception is thrown if the
         // collection does not exist. Also, the createCollection should have
         // failed before.
-        groups.addToExistingGroup(replication2::agency::CollectionGroupId{c->id().id()}, col.id);
+        groups.addToExistingGroup(
+            replication2::agency::CollectionGroupId{c->id().id()}, col.id);
       }
     } else {
       // Create a new CollectionGroup

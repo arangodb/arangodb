@@ -205,6 +205,28 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   // Increase plan version
   writes = std::move(writes).inc(paths::plan()->version()->str());
 
+  // Write All new Collection Groups
+  for (auto const& g : _collectionGroups.newGroups) {
+    writes = std::move(writes).emplace_object(
+        baseGroupPath->group(std::to_string(g.id.id()))->str(),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, g);
+        });
+  }
+
+  // Inject entries into old CollectionGroups
+  for (auto const& g : _collectionGroups.additionsToGroup) {
+    writes = std::move(writes).emplace_object(
+        baseGroupPath->group(std::to_string(g.id.id()))
+            ->collections()
+            ->collection(g.collectionId)
+            ->str(),
+        [&](VPackBuilder& builder) {
+          replication2::agency::CollectionGroup::Collection c;
+          velocypack::serialize(builder, c);
+        });
+  }
+
   // Write all requested Collection entries
   for (auto const& entry : _collectionPlanEntries) {
     writes = std::move(writes).emplace_object(
@@ -224,22 +246,6 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
           baseReplicatedLogsPath->log(spec.id)->str(),
           [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
     }
-
-
-    // TODO: This is hardcoded here, either the entry needs to deliver this,
-    // or we hand in the information.
-    replication2::agency::CollectionGroup g;
-    g.id = replication2::agency::CollectionGroupId(42);
-    g.attributes.waitForSync = false;
-    g.attributes.writeConcern = 1;
-    g.collections.emplace(entry.getCID(), replication2::agency::CollectionGroup::Collection{});
-
-    LOG_DEVEL << "Adding write on Path: " << baseGroupPath->group("42")->str();
-    // Create the Collection Group Entry
-    // TODO: HardCoded path, we need to add a path that takes groupId.
-    writes = std::move(writes).emplace_object(
-        baseGroupPath->group("42")->str(),
-        [&](VPackBuilder& builder) { velocypack::serialize(builder, g); });
   }
 
   // Done with adding writes. Now add all preconditions
