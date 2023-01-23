@@ -9,6 +9,9 @@ devel
   in a single shard mode. For this not to happen, the verification of the 
   parameter being true as a condition to run optimizations was removed. 
 
+* Log information about follower state/apply progress in supervision job that
+  organizes failover in active failover mode.
+
 * Updated arangosync to v2.14.0.
 
 * Updated ArangoDB Starter to 0.15.6.
