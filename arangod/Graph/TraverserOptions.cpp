@@ -39,7 +39,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -382,7 +381,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression.reset(new aql::Expression(query.ast(), read));
+    _baseVertexExpression =
+        std::make_unique<aql::Expression>(query.ast(), read);
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
@@ -393,7 +393,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 }
 
 TraverserOptions::TraverserOptions(TraverserOptions const& other,
-                                   bool const allowAlreadyBuiltCopy)
+                                   bool allowAlreadyBuiltCopy)
     : BaseOptions(static_cast<BaseOptions const&>(other),
                   allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
@@ -418,6 +418,7 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     TRI_ASSERT(other._baseVertexExpression == nullptr);
   }
 
+  TRI_ASSERT(other.refactor());
   if (other.refactor()) {
     // TODO: [GraphRefactor] Clean this up as soon as we get rid of all the old
     // code
@@ -793,14 +794,14 @@ auto TraverserOptions::explicitDepthLookupAt() const
     -> std::unordered_set<std::size_t> {
   std::unordered_set<std::size_t> result;
 
-  for (auto&& pair : _depthLookupInfo) {
+  for (auto const& pair : _depthLookupInfo) {
     result.insert(pair.first);
   }
   return result;
 }
 
 #ifndef USE_ENTERPRISE
-auto TraverserOptions::setDisjoint() -> void { return; }
+auto TraverserOptions::setDisjoint() -> void {}
 
 auto TraverserOptions::isDisjoint() const -> bool { return false; }
 

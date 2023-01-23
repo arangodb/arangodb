@@ -36,7 +36,7 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"

@@ -270,6 +270,12 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+# Enable CMake's Testing facilities.
+#
+# This enables you to use the add_test cmake command to add a test which is
+# automatically run by executing ctest
+enable_testing()
+
 set(BUILD_SHARED_LIBS OFF)
 
 # required for clang completion in editors - must be set after creating project
@@ -1468,10 +1474,12 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #   endforeach ()
 # endif ()
 
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
 if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
   add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()

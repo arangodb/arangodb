@@ -43,7 +43,6 @@ class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
@@ -57,8 +56,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              velocypack::Slice info);
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
-                                    bool doSync) override;
+  arangodb::Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 

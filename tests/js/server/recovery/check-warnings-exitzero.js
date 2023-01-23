@@ -76,7 +76,7 @@ function recoverySuite () {
           // and its following line ===============================
           return false;
         }
-        if (internal.env["isAsan"] === "true" && line.match(/\[3ad54\].*=+/)) {
+        if (internal.env["isSan"] === "true" && line.match(/\[3ad54\].*=+/)) {
           // intentionally ignore "slow background settings sync: " in case of ASan
           return false;
         }

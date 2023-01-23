@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -42,6 +43,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class LogicalCollection;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;
@@ -142,6 +144,7 @@ class GraphStore final {
  private:
   PregelFeature& _feature;
   DatabaseGuard _vocbaseGuard;
+  ResourceMonitor _resourceMonitor;
   uint64_t const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;

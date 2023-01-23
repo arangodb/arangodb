@@ -55,7 +55,7 @@ struct MockDatabaseGuard : IDatabaseGuard {
 
 struct MockTransactionManager : transaction::IManager {
   MOCK_METHOD(Result, abortManagedTrx,
-              (TransactionId, std::string const& database));
+              (TransactionId, std::string const& database), (override));
 };
 
 struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
@@ -281,7 +281,7 @@ TEST_F(DocumentStateMachineTest,
                                                   operation, TransactionId{13},
                                                   ReplicationOptions{});
   }
-  EXPECT_EQ(3, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(3U, leaderState->getActiveTransactions().size());
 
   {
     VPackBuilder builder;
@@ -292,7 +292,7 @@ TEST_F(DocumentStateMachineTest,
         builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
         ReplicationOptions{});
   }
-  EXPECT_EQ(1, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(1U, leaderState->getActiveTransactions().size());
 
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{13}, globalId.database))

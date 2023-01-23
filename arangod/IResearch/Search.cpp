@@ -54,10 +54,6 @@
 #include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
 
-#ifdef USE_PLAN_CACHE
-#include "Aql/PlanCache.h"
-#endif
-
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
 
@@ -543,9 +539,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     r = cluster_helper::properties(*this, true /*means under lock*/);
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
-#ifdef USE_PLAN_CACHE
-    aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
     aql::QueryCache::instance()->invalidate(&vocbase());
     r = storage_helper::properties(*this, true /*means under lock*/);
   }

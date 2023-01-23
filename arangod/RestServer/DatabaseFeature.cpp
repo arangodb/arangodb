@@ -25,7 +25,6 @@
 #include "DatabaseFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
@@ -443,7 +442,6 @@ void IOHeartbeatThread::run() {
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
-      _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -490,13 +488,12 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--database.force-sync-properties",
-      "force syncing of collection properties to disk, "
-      "will use waitForSync value of collection when "
-      "turned off",
-      new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  // the following option was obsoleted in 3.9
+  options->addObsoleteOption("--database.force-sync-properties",
+                             "force syncing of collection properties to disk, "
+                             "will use waitForSync value of collection when "
+                             "turned off",
+                             false);
 
   options->addOption(
       "--database.ignore-datafile-errors",
@@ -1078,9 +1075,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
-#if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
-#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {

@@ -1,6 +1,6 @@
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
-# scripts/generateJenkinsScripts.py --help-flags
+# https://github.com/arangodb/oskar#testing
 
 
 # Single Server only Tests
@@ -116,7 +116,8 @@ audit_server -- --dumpAgencyOnError true
 
 
 # Full Tests Single Server
-shell_fuzzer full priority=500 -- --dumpAgencyOnError true
+shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
+shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
 authentication_server single full priority=1000
 config single full priority=1000

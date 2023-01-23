@@ -74,7 +74,7 @@ class RefactoredTraverserCache {
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap,
       arangodb::aql::Projections const& vertexProjections,
-      arangodb::aql::Projections const& edgeProjections);
+      arangodb::aql::Projections const& edgeProjections, bool produceVertices);
 
   ~RefactoredTraverserCache();
 
@@ -186,6 +186,9 @@ class RefactoredTraverserCache {
   std::unordered_map<std::string, std::vector<std::string>> const&
       _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
+
+  /// @brief whether or not to produce vertices
+  bool const _produceVertices;
 
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal

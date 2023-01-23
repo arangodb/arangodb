@@ -37,6 +37,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
@@ -307,10 +308,10 @@ ConditionPart::ConditionPart(Variable const* variable,
     : variable(variable),
       attributeName(attributeName),
       operatorType(operatorNode->type),
+      isExpanded(false),
       operatorNode(operatorNode),
       valueNode(nullptr),
-      data(data),
-      isExpanded(false) {
+      data(data) {
   if (side == ATTRIBUTE_LEFT) {
     valueNode = operatorNode->getMember(1);
   } else {
@@ -369,9 +370,9 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
       // maximum number of comparisons that we will accept
       // otherwise the optimization will be aborted
-      static size_t const MaxComparisons = 2048;
+      static constexpr size_t maxComparisons = 2048;
 
-      if (n1 * n2 < MaxComparisons) {
+      if (n1 * n2 < maxComparisons) {
         for (size_t i = 0; i < n1; ++i) {
           auto v = valueNode->getMemberUnchecked(i);
           for (size_t j = 0; j < n2; ++j) {
@@ -388,7 +389,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           }
         }
       } else {
-        std::unordered_set<AstNode const*, AstNodeValueHash, AstNodeValueEqual>
+        containers::FlatHashSet<AstNode const*, AstNodeValueHash,
+                                AstNodeValueEqual>
             values(512, AstNodeValueHash(), AstNodeValueEqual());
 
         for (size_t i = 0; i < n2; ++i) {
@@ -397,7 +399,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
         for (size_t i = 0; i < n1; ++i) {
           auto node = valueNode->getMemberUnchecked(i);
-          if (values.find(node) == values.end()) {
+          if (!values.contains(node)) {
             return false;
           }
         }

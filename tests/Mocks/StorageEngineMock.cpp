@@ -307,9 +307,10 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites, int) override {
+      arangodb::ResourceMonitor& monitor, arangodb::transaction::Methods* trx,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const*,
+      arangodb::IndexIteratorOptions const&, arangodb::ReadOwnWrites,
+      int) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -863,9 +864,10 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites, int) override {
+      arangodb::ResourceMonitor& monitor, arangodb::transaction::Methods* trx,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const*,
+      arangodb::IndexIteratorOptions const&, arangodb::ReadOwnWrites,
+      int) override {
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
     keys->openArray();
@@ -1519,7 +1521,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
 }
 
 arangodb::Result PhysicalCollectionMock::updateProperties(
-    arangodb::velocypack::Slice const& slice, bool doSync) {
+    arangodb::velocypack::Slice slice) {
   before();
 
   return arangodb::Result(
@@ -1655,8 +1657,7 @@ void StorageEngineMock::addRestHandlers(
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 
 void StorageEngineMock::changeCollection(
-    TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
-    bool doSync) {
+    TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {
   // NOOP, assume physical collection changed OK
 }
 

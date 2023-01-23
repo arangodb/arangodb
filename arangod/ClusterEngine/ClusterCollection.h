@@ -43,15 +43,13 @@ class Cache;
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
-class RocksDBPrimaryIndex;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
  public:
   explicit ClusterCollection(LogicalCollection& collection,
-                             ClusterEngineType sengineType,
-                             arangodb::velocypack::Slice const& info);
+                             ClusterEngineType engineType,
+                             velocypack::Slice info);
   ClusterCollection(LogicalCollection& collection,
                     PhysicalCollection const*);  // use in cluster only!!!!!
 
@@ -68,8 +66,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::string const& path() const override;
 
-  arangodb::Result updateProperties(velocypack::Slice const& slice,
-                                    bool doSync) override;
+  Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(
       LogicalCollection& collection) const override;
@@ -84,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief closes an open collection
   ErrorCode close() override;
 
-  RevisionId revision(arangodb::transaction::Methods* trx) const override;
+  RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   ////////////////////////////////////
@@ -160,10 +157,10 @@ class ClusterCollection final : public PhysicalCollection {
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
-  void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
  private:
-  void addIndex(std::shared_ptr<arangodb::Index> idx);
+  void addIndex(std::shared_ptr<Index> idx);
 
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;

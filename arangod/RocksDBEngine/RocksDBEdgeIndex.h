@@ -101,9 +101,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* node,
@@ -125,15 +126,16 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
  private:
   /// @brief create the iterator
-  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
-                                                  aql::AstNode const*,
-                                                  aql::AstNode const*, bool,
-                                                  ReadOwnWrites) const;
+  std::unique_ptr<IndexIterator> createEqIterator(
+      ResourceMonitor& monitor, transaction::Methods* trx, aql::AstNode const*,
+      aql::AstNode const* valNode, bool useCache,
+      ReadOwnWrites readOwnWrites) const;
 
-  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
+  std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
+                                                  transaction::Methods* trx,
                                                   aql::AstNode const*,
-                                                  aql::AstNode const*,
-                                                  bool) const;
+                                                  aql::AstNode const* valNode,
+                                                  bool useCache) const;
 
   /// @brief populate the keys builder with a single (string) lookup value
   void fillLookupValue(velocypack::Builder& keys,

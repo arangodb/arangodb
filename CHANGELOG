@@ -1,6 +1,45 @@
 devel
 -----
 
+* Delay a MoveShard operation for leader change, until the old leader has
+  actually assumed its leadership and until the new leader is actually in
+  sync. This fixes a bug which could block a shard under certain circumstances.
+  This fixes BTS-1110.
+
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
+* Removed assertions from cluster rebalance js test that obligated the rebalance
+  plan to always have moves, but there were cases in which all there are none.
+
+* Show number of HTTP requests in cluster query profiles.
+
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, the
+  addition of the AT LEAST and WITH COUNT INTO constructs, and the
+  SHA256() function.
+
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
+* Improve performance and memory usage of IN list lookups for hash, skiplist
+  and persistent indexes.
+
+* Improve memory usage tracking for IN list lookups and other RocksDB-based
+  lookups.
+
+* Remove inactive query plan cache code (was only a stub and never enabled 
+  before).
+
+* Fixed BTS-441: Honor read only mode with disabled authentication
+
+* Obsolete startup option `--database.force-sync-properties`. This option
+  was useful with the MMFiles storage engine, but didn't have any useful
+  effect when used with the RocksDB engine.
+
 * Updated OpenSSL to 1.1.1s.
 
 * BTS_483: Added restriction for usage of query cache for streaming and JS 
@@ -456,12 +495,15 @@ devel
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
 
+* Added CSP recommended headers to Aardvaark app for better security.
+
 * Fixed BTS-851: "Could not fetch the applier state of: undefined".
 
 * Removed internal JavaScript dependencies "expect.js", "media-typer" and
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
   deprecated and may be removed in future versions of ArangoD
+
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
   operation that can make use of this is the SortExecutor (AQL SORT operation

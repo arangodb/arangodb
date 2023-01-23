@@ -165,7 +165,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::velocypack::Slice newDocument,
       arangodb::OperationOptions const& options) override;
   virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) override;
+      arangodb::velocypack::Slice slice) override;
 
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
@@ -249,9 +249,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void addRestHandlers(
       arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
-  virtual void changeCollection(TRI_vocbase_t& vocbase,
-                                arangodb::LogicalCollection const& collection,
-                                bool doSync) override;
+  virtual void changeCollection(
+      TRI_vocbase_t& vocbase,
+      arangodb::LogicalCollection const& collection) override;
   arangodb::Result changeView(arangodb::LogicalView const& view,
                               arangodb::velocypack::Slice update) override;
 

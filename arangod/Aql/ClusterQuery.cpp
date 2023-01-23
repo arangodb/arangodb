@@ -53,10 +53,12 @@ ClusterQuery::ClusterQuery(QueryId id,
             std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
-                : std::make_shared<SharedQueryState>(ctx->vocbase().server())} {
-}
+                : std::make_shared<SharedQueryState>(ctx->vocbase().server())},
+      _planMemoryUsage(0) {}
 
 ClusterQuery::~ClusterQuery() {
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+
   try {
     _traversers.clear();
   } catch (...) {
@@ -93,6 +95,14 @@ void ClusterQuery::prepareClusterQuery(
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
       << " this: " << (uintptr_t)this;
+
+  // track memory usage
+  ResourceUsageScope scope(_resourceMonitor);
+  scope.increase(querySlice.byteSize() + collections.byteSize() +
+                 variables.byteSize() + snippets.byteSize() +
+                 traverserSlice.byteSize());
+
+  _planMemoryUsage += scope.trackedAndSteal();
 
   init(/*createProfile*/ true);
 
@@ -132,22 +142,23 @@ void ClusterQuery::prepareClusterQuery(
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
-  TRI_IF_FAILURE("Query::setupLockTimeout") {
-    if (RandomGenerator::interval(uint32_t(100)) >= 95) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
-    }
-  }
-
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("Query::setupLockTimeout") {
+    if (!_trx->state()->isReadOnlyTransaction() &&
+        RandomGenerator::interval(uint32_t(100)) >= 95) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+    }
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);
 
   SerializationFormat format = SerializationFormat::SHADOWROWS;
 
-  const bool planRegisters = !_queryString.empty();
+  bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);

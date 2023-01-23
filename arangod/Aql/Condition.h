@@ -95,15 +95,15 @@ struct ConditionPart {
   bool isUpperInclusive() const;
 
   /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const&, bool) const;
+  bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
 
   Variable const* variable;
   std::string attributeName;
   AstNodeType operatorType;
+  bool isExpanded;
   AstNode const* operatorNode;
   AstNode const* valueNode;
   void* data;
-  bool isExpanded;
 };
 
 class Condition {

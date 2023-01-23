@@ -1207,7 +1207,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
              options](std::vector<Try<network::Response>>&& results) mutable
       -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder,
-                             ShardID const&,
+                             ShardID const& /*shardId*/,
                              VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
@@ -1236,8 +1236,6 @@ futures::Future<OperationResult> figuresOnCoordinator(
 futures::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& cname,
     OperationOptions const& options, transaction::MethodsApi api) {
-  std::vector<std::pair<std::string, uint64_t>> result;
-
   // Set a few variables needed for our work:
   ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
@@ -1252,7 +1250,7 @@ futures::Future<OperationResult> countOnCoordinator(
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
-  const bool isManaged =
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(
@@ -2723,7 +2721,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 ::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                                   bool waitForCollector) {
+                                   bool flushColumnFamilies) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2734,7 +2732,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
   reqOpts
       .param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
-      .param("waitForCollector", (waitForCollector ? "true" : "false"));
+      .param("waitForCollector", (flushColumnFamilies ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());

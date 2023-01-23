@@ -263,24 +263,28 @@ inline int compareDoubleValues(double lhs, double rhs) {
 ///  - -1 LHS being  less then   RHS,
 ///  -  0 LHS being     equal    RHS
 ///  -  1 LHS being greater then RHS
+template<bool resolveAttributeAccess>
 int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
   TRI_ASSERT(lhs != nullptr);
   TRI_ASSERT(rhs != nullptr);
 
-  bool isValid = true;
-  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    lhs = Ast::resolveConstAttributeAccess(lhs, isValid);
+  bool lhsIsValid = true;
+  bool rhsIsValid = true;
+
+  if constexpr (resolveAttributeAccess) {
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      lhs = Ast::resolveConstAttributeAccess(lhs, lhsIsValid);
+    }
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      rhs = Ast::resolveConstAttributeAccess(rhs, rhsIsValid);
+    }
   }
   VPackValueType const lType =
-      isValid ? getNodeCompareType(lhs) : VPackValueType::Null;
+      lhsIsValid ? getNodeCompareType(lhs) : VPackValueType::Null;
 
-  isValid = true;
-  if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    rhs = Ast::resolveConstAttributeAccess(rhs, isValid);
-  }
   VPackValueType const rType =
-      isValid ? getNodeCompareType(rhs) : VPackValueType::Null;
+      rhsIsValid ? getNodeCompareType(rhs) : VPackValueType::Null;
 
   if (lType != rType) {
     if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
@@ -368,7 +372,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
 
       for (size_t i = 0; i < n; ++i) {
-        int res = arangodb::aql::CompareAstNodes(
+        int res = arangodb::aql::CompareAstNodes<resolveAttributeAccess>(
             lhs->getMember(i), rhs->getMember(i), compareUtf8);
 
         if (res != 0) {
@@ -807,10 +811,23 @@ void AstNode::sort() {
   TRI_ASSERT(isConstant());
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
 
-  std::sort(members.begin(), members.end(),
-            [](AstNode const* lhs, AstNode const* rhs) {
-              return (arangodb::aql::CompareAstNodes(lhs, rhs, true) < 0);
-            });
+  if (hasFlag(FLAG_BIND_PARAMETER)) {
+    // specialized compare function that doesn't need to resolve
+    // attribute accesses
+    std::sort(
+        members.begin(), members.end(),
+        [](AstNode const* lhs, AstNode const* rhs) {
+          return (arangodb::aql::CompareAstNodes<false>(lhs, rhs, true) < 0);
+        });
+  } else {
+    // slower compare function that needs to resolve attribute
+    // accesses
+    std::sort(
+        members.begin(), members.end(),
+        [](AstNode const* lhs, AstNode const* rhs) {
+          return (arangodb::aql::CompareAstNodes<true>(lhs, rhs, true) < 0);
+        });
+  }
 
   setFlag(DETERMINED_SORTED, VALUE_SORTED);
 }
@@ -2688,14 +2705,6 @@ AstNodeValue::AstNodeValue(bool value)
 AstNodeValue::AstNodeValue(char const* value, uint32_t length)
     : value(value), length(length), type(VALUE_TYPE_STRING) {}
 
-template<bool useUtf8>
-bool AstNodeValueLess<useUtf8>::operator()(AstNode const* lhs,
-                                           AstNode const* rhs) const {
-  return CompareAstNodes(lhs, rhs, useUtf8) < 0;
-}
-template struct ::arangodb::aql::AstNodeValueLess<true>;
-template struct ::arangodb::aql::AstNodeValueLess<false>;
-
 size_t AstNodeValueHash::operator()(AstNode const* value) const noexcept {
   return static_cast<size_t>(value->hashValue(0x12345678));
 }
@@ -2704,3 +2713,12 @@ bool AstNodeValueEqual::operator()(AstNode const* lhs,
                                    AstNode const* rhs) const {
   return CompareAstNodes(lhs, rhs, false) == 0;
 }
+
+// template instantiations for CompareAstNodes
+template int arangodb::aql::CompareAstNodes<true>(AstNode const* lhs,
+                                                  AstNode const* rhs,
+                                                  bool compareUtf8);
+
+template int arangodb::aql::CompareAstNodes<false>(AstNode const* lhs,
+                                                   AstNode const* rhs,
+                                                   bool compareUtf8);

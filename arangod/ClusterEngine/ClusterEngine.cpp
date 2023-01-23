@@ -233,8 +233,7 @@ arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection,
-                                     bool doSync) {
+                                     LogicalCollection const& collection) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
