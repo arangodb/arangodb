@@ -32,6 +32,7 @@
 #include "GeoIndex/Covering.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -365,7 +366,7 @@ class RDBNearIterator final : public IndexIterator {
         if (!_iter->Valid()) {  // no more valid keys after this
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
-          continue;  // beyond range already
+          continue;  // beyond the range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
           seek = false;  // already in range: min <= key <= max
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
@@ -560,6 +561,9 @@ class RDBCoveringIterator final : public IndexIterator {
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
+#if 0
+    LOG_DEVEL << "performScan";
+#endif
     if (!_gotIntervals) {
       _scan = _covering.intervals();
       _gotIntervals = true;
@@ -577,11 +581,22 @@ class RDBCoveringIterator final : public IndexIterator {
       if (_scanningInterval > 0) {
         TRI_ASSERT(_scan[_scanningInterval - 1].range_max < it.range_min);
         if (!_iter->Valid()) {  // no more valid keys after this
+          // Here is why we actually want to give up here:
+          // Intervals come from cells, two cells either do not intersect,
+          // or one is contained in the other, the same holds for the intervals.
+          // The iterator has an implicit upper bound on the column family, if
+          // we ever run past this for one interval I, then this means that
+          // there is nothing of interest in the index past the end of the
+          // interval I, and we have found everything we need in I.
+          // However, any later interval J will have a beginning which is
+          // greater or equal to the beginning of I, therefore nothing new
+          // can be found from interval J. Therefore:
+          _scanningInterval = _scan.size();
+          // Besides, if we would not stop here we would have an endless loop.
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
-          // TODO ANOTHER ENDLESS LOOP HERE
-          //  check test: shell-index-geo.js
-          continue;  // beyond range already
+          ++_scanningInterval;  // Move to the next interval, since we are
+          continue;             // beyond range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
           seek = false;  // already in range: min <= key <= max
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
@@ -761,13 +776,21 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
   // restriction on the `GEO_DISTANCE` and no sorting of results by
   // `GEO_DISTANCE`, we use the simpler method:
+#if 0
+  LOG_DEVEL << "iteratorForCondition " << params.minDistanceRad() << " < "
+            << geo::kRadEps << " && " << params.maxDistanceRad() << " > "
+            << geo::kMaxRadiansBetweenPoints - geo::kRadEps
+            << ((params.maxDistanceRad() >=
+                 geo::kMaxRadiansBetweenPoints - geo::kRadEps)
+                    ? " true"
+                    : " false");
+#endif
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
        params.filterType == geo::FilterType::INTERSECTS) &&
-      // TODO Better to return result flag from parseCondition above
-      // saying that GEO_DISTANCE is set
-      (params.minDistance < 0.0 ||
-       geo::kMaxDistanceBetweenPoints <= params.maxDistance)) {
+      (params.minDistance <= geo::kMetersEps &&
+       params.maxDistance >=
+           geo::kMaxDistanceBetweenPoints - geo::kMetersEps)) {
     return std::make_unique<RDBCoveringIterator>(monitor, &_collection, trx,
                                                  this, std::move(params));
   }
