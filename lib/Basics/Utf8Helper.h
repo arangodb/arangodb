@@ -44,12 +44,6 @@ class RegexMatcher;
 namespace arangodb {
 namespace basics {
 
-#ifdef _WIN32
-std::wstring toWString(std::string const& validUTF8String);
-std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
-std::string fromWString(std::wstring const& validUTF16String);
-#endif
-
 enum class LanguageType { INVALID, DEFAULT, ICU };
 
 class Utf8Helper {
