@@ -350,17 +350,20 @@ std::string ActiveFailoverJob::findBestFollower() {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
 
     // log information about follower states
-    VPackBuilder b;
-    b.openArray();
-    for (auto const& it : ticks) {
-      b.openObject();
-      b.add("server", VPackValue(it.first));
-      b.add("tick", VPackValue(it.second));
+    auto toBuilder = [&] {
+      VPackBuilder b;
+      b.openArray();
+      for (auto const& it : ticks) {
+        b.openObject();
+        b.add("server", VPackValue(it.first));
+        b.add("tick", VPackValue(it.second));
+        b.close();
+      }
       b.close();
-    }
-    b.close();
+      return b;
+    };
     LOG_TOPIC("27a94", INFO, Logger::SUPERVISION)
-        << "follower states: " << b.slice().toJson();
+        << "follower states: " << toBuilder().slice().toJson();
 
     return ticks[0].first;
   }
