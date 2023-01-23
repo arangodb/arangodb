@@ -28,37 +28,6 @@
 #include "Inspection/Status.h"
 
 using namespace arangodb;
-// Stolen from LogicalCollection.cpp
-// Plan ist to eventually remove it from there.
-namespace {
-static std::string translateStatus(TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    default:
-      return "unknown";
-  }
-}
-}  // namespace
-
-inspection::Status
-CollectionInternalProperties::Transformers::StatusString::toSerialized(
-    std::underlying_type_t<TRI_vocbase_col_status_e> v, std::string& result) {
-  result = translateStatus(static_cast<TRI_vocbase_col_status_e>(v));
-  return {};
-}
-
-inspection::Status
-CollectionInternalProperties::Transformers::StatusString::fromSerialized(
-    std::string const& v,
-    std::underlying_type_t<TRI_vocbase_col_status_e>& result) {
-  // Just ignore the serialized variant, and take whatever is the default
-  // We have stored the status entry as well.
-  return {};
-}
 
 inspection::Status
 CollectionInternalProperties::Transformers::IdIdentifier::toSerialized(
