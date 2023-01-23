@@ -13,13 +13,16 @@ jobs:
     steps:
       - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
       - run:
+          name: Configure CCache
+          command: ccache --set-config max_size=100M
+      - run:
           name: Print CCache Settings
           command: ccache -p
       - restore_cache:
           keys:
-            - ccache-v1-docker-r2-{{ .Branch }}-{{ .Revision }}
-            - ccache-v1-docker-r2-{{ .Branch }}-
-            - ccache-v1-docker-r2
+            - ccache-v2-build-r2-{{ .Branch }}-{{ .Revision }}
+            - ccache-v2-build-r2-{{ .Branch }}-
+            - ccache-v2-build-r2
       - run:
           name: Zero CCache Statistics
           command: ccache -z
@@ -38,9 +41,13 @@ jobs:
           path: build-presets/<< parameters.preset >>/bin/arangodbtests_replication2_pure
       - save_cache:
           when: always
-          key: ccache-v1-docker-r2-{{ .Branch }}-{{ .Revision }}
+          key: ccache-v2-build-r2-{{ .Branch }}-{{ .Revision }}
           paths:
             - /root/.cache/ccache
+      - run:
+          name: Clean up workspace
+          command: |
+            rm build-presets/<< parameters.preset >>/bin/*.a
       - persist_to_workspace:
           root: .
           paths:
