@@ -264,7 +264,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);
@@ -569,7 +569,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);

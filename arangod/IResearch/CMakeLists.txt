@@ -57,6 +57,8 @@ add_library(arango_iresearch STATIC
   IResearchPDP.h
   IResearchPrimaryKeyFilter.cpp
   IResearchPrimaryKeyFilter.h
+  IResearchReadUtils.h
+  IResearchReadUtils.cpp
   IResearchRocksDBEncryption.cpp
   IResearchRocksDBEncryption.h
   IResearchRocksDBInvertedIndex.cpp

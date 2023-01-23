@@ -29,7 +29,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
+#include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -47,11 +49,35 @@ class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-template<typename T>
-class MaterializerExecutorInfos {
+// two storage variants as we need
+// collection name to be stored only
+// when needed.
+class NoCollectionNameHolder {};
+class StringCollectionNameHolder {
  public:
-  MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
-                            RegisterId outDocRegId, aql::QueryContext& query);
+  StringCollectionNameHolder(std::string_view name) : _collectionSource(name) {}
+
+  auto collectionSource() const { return _collectionSource; }
+
+ protected:
+  std::string_view _collectionSource;
+};
+
+template<typename T>
+using MaterializerExecutorInfosBase =
+    std::conditional_t<std::is_same_v<T, std::string const&>,
+                       StringCollectionNameHolder, NoCollectionNameHolder>;
+
+template<typename T>
+class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
+ public:
+  template<class... _Types>
+  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
+                            aql::QueryContext& query, _Types&&... Args)
+      : MaterializerExecutorInfosBase<T>(Args...),
+        _inNonMaterializedDocRegId(inNmDocId),
+        _outMaterializedDocumentRegId(outDocRegId),
+        _query(query) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -68,11 +94,7 @@ class MaterializerExecutorInfos {
 
   aql::QueryContext& query() const { return _query; }
 
-  T collectionSource() const { return _collectionSource; }
-
  private:
-  /// @brief register to store raw collection pointer or collection name
-  T const _collectionSource;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
@@ -120,10 +142,15 @@ class MaterializeExecutor {
 
   void initializeCursor() noexcept {
     // Does nothing but prevents the whole executor to be re-created.
-    _collection = nullptr;
+    if constexpr (isSingleCollection) {
+      _collection = nullptr;
+    }
   }
 
  protected:
+  static constexpr bool isSingleCollection =
+      std::is_same_v<T, std::string const&>;
+
   class ReadContext {
    public:
     explicit ReadContext(Infos& infos)
@@ -144,12 +171,21 @@ class MaterializeExecutor {
         ReadContext& ctx);
   };
 
+  void fillBuffer(AqlItemBlockInputRange& inputRange);
+  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId,
+                                  LogicalCollection const*>;
+  using BufferedRecordsContainer = std::vector<BufferRecord>;
+  BufferedRecordsContainer _bufferedDocs;
+
   transaction::Methods _trx;
   ReadContext _readDocumentContext;
   Infos const& _infos;
 
-  // for single collection case
-  LogicalCollection const* _collection = nullptr;
+  ResourceUsageScope _memoryTracker;
+  std::conditional_t<
+      isSingleCollection, LogicalCollection const*,
+      containers::FlatHashMap<DataSourceId, LogicalCollection const*>>
+      _collection;
 };
 
 }  // namespace aql
