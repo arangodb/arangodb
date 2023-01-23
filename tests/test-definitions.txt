@@ -13,13 +13,12 @@ replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:l
 replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_sync priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 size=small single 
 http_replication priority=500 parallelity=3 size=small single
 
 # Misc single server tests
-agency priority=350 parallelity=4 size=small single -- --dumpAgencyOnError true
-agency-restart priority=250 parallelity=3 size=small single
+agency,agency-restart priority=350 parallelity=4 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints single -- --skipEndpointsIpv6 true
 recovery priority=2000 buckets=4 parallelity=5 size=small single
@@ -91,10 +90,9 @@ shell_server priority=500 size=medium+ cluster buckets=5 -- --dumpAgencyOnError 
 
 # Common Tests
 
-export parallelity=5 size=small cluster -- --dumpAgencyOnError true
-export parallelity=3 size=small single -- --dumpAgencyOnError true
-importing -- --dumpAgencyOnError true
-hot_backup !windows -- --dumpAgencyOnError true
+importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
+importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
+hot_backup enterprise !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
@@ -103,10 +101,8 @@ server_permissions priority=1000 parallelity=5 size=small -- --dumpAgencyOnError
 
 # Dump Tests
 dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope name=dump -- --dumpAgencyOnError true
-dump_encrypted enterprise -- --dumpAgencyOnError true
-dump_maskings enterprise -- --dumpAgencyOnError true
-dump_mixed_cluster_single -- --dumpAgencyOnError true
-dump_mixed_single_cluster -- --dumpAgencyOnError true
+dump_maskings,dump_encrypted enterprise -- --dumpAgencyOnError true
+dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
