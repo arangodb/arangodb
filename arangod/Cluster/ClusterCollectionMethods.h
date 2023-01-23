@@ -41,6 +41,10 @@ class LogicalCollection;
 class ClusterInfo;
 struct IShardDistributionFactory;
 
+namespace replication2 {
+struct CollectionGroupUpdates;
+}
+
 struct ClusterCollectionMethods {
   // static only class, never initialize
   ClusterCollectionMethods() = delete;
@@ -83,6 +87,9 @@ struct ClusterCollectionMethods {
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
           allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;
+
+  [[nodiscard]] static auto prepareCollectionGroups(ClusterInfo& ci, std::string_view databaseName,
+                                                                       std::vector<CreateCollectionBody> const& collections) -> ResultT<replication2::CollectionGroupUpdates>;
 };
 
 }  // namespace arangodb

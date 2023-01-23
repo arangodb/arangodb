@@ -77,9 +77,10 @@ inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
 TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
     std::vector<PlanCollectionEntryReplication2> collectionPlanEntries,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
-        shardDistributionsUsed)
+        shardDistributionsUsed, replication2::CollectionGroupUpdates collectionGroups)
     : _collectionPlanEntries{std::move(collectionPlanEntries)},
-      _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
+      _shardDistributionsUsed{std::move(shardDistributionsUsed)},
+      _collectionGroups{std::move(collectionGroups)} {}
 
 std::shared_ptr<CurrentWatcher>
 TargetCollectionAgencyWriter::prepareCurrentWatcher(

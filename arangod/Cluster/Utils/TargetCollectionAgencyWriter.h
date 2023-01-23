@@ -24,6 +24,7 @@
 
 #include "Basics/Guarded.h"
 #include "Containers/FlatHashMap.h"
+#include "Cluster/Utils/CollectionGroupUpdates.h"
 
 #include <functional>
 #include <memory>
@@ -55,7 +56,8 @@ struct TargetCollectionAgencyWriter {
       std::vector<PlanCollectionEntryReplication2> collectionPlanEntries,
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>
-          shardDistributionsUsed);
+          shardDistributionsUsed,
+      replication2::CollectionGroupUpdates collectionGroups);
 
   [[nodiscard]] std::shared_ptr<CurrentWatcher> prepareCurrentWatcher(
       std::string_view databaseName, bool waitForSyncReplication) const;
@@ -79,6 +81,7 @@ struct TargetCollectionAgencyWriter {
   std::vector<PlanCollectionEntryReplication2> _collectionPlanEntries;
   std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
       _shardDistributionsUsed;
+  replication2::CollectionGroupUpdates _collectionGroups;
 };
 
 }  // namespace arangodb
