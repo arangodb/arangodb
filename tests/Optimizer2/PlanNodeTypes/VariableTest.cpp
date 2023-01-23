@@ -25,7 +25,7 @@
 
 #include "Aql/Optimizer2/Inspection/StatusT.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Inspection/VPackInspection.h"
 #include "InspectTestHelperMakros.h"

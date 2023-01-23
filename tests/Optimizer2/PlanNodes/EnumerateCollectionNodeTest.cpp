@@ -23,7 +23,7 @@
 
 #include "gtest/gtest.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include "Aql/Optimizer2/Types/Types.h"
 #include "Aql/Optimizer2/Inspection/StatusT.h"

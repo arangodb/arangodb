@@ -25,7 +25,7 @@
 
 // Helpers
 #include "Aql/Optimizer2/Inspection/StatusT.h"
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include "InspectTestHelperMakros.h"
 #include "velocypack/Collection.h"
 #include "Inspection/VPackInspection.h"

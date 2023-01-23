@@ -25,7 +25,7 @@
 
 #include "Aql/Optimizer2/Inspection/StatusT.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include "Aql/Optimizer2/PlanNodes/TraversalNode.h"
 
 #include <fmt/core.h>

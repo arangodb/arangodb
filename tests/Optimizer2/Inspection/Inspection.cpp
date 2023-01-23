@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "gtest/gtest.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
+//#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include <Inspection/VPackWithErrorT.h>
 // #include <Inspection/StatusT.h>
 

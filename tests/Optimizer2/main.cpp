@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
-#include "Basics/VelocyPackStringLiteral.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb::velocypack;
 int main(int argc, char* argv[]) {
