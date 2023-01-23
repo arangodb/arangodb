@@ -149,7 +149,8 @@ auto StorageManager::scheduleOperationLambda(GuardType&& guard,
     explicit LambdaOperation(F&& fn) : F(std::move(fn)) {}
     static_assert(std::is_nothrow_invocable_r_v<futures::Future<Result>, F,
                                                 IStorageEngineMethods&>);
-    futures::Future<Result> run(IStorageEngineMethods& methods) noexcept override {
+    futures::Future<Result> run(
+        IStorageEngineMethods& methods) noexcept override {
       return F::operator()(methods);
     }
   };
