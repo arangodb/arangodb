@@ -221,7 +221,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
             ->collections()
             ->collection(g.collectionId)
             ->str(),
-        [&](VPackBuilder& builder) {
+        [](VPackBuilder& builder) {
           replication2::agency::CollectionGroup::Collection c;
           velocypack::serialize(builder, c);
         });
