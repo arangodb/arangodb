@@ -205,7 +205,9 @@ bool Conductor::_startGlobalStep() {
   auto serialized = inspection::serializeWithErrorT(prepareGss);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot serialize PrepareGlobalSuperStep message");
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize PrepareGlobalSuperStep message: {}",
+                    serialized.error().error()));
   }
 
   // we are explicitly expecting an response containing the aggregated
@@ -219,7 +221,9 @@ bool Conductor::_startGlobalStep() {
         if (!prepared.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              "Cannot deserialize GlobalSuperStepPrepared message");
+              fmt::format(
+                  "Cannot deserialize GlobalSuperStepPrepared message: {}",
+                  prepared.error().error()));
         }
         _aggregators->aggregateValues(prepared.get().aggregators.slice());
         _statistics.accumulateActiveCounts(prepared.get().sender,
@@ -297,8 +301,10 @@ bool Conductor::_startGlobalStep() {
   // start vertex level operations, does not get a response
   auto serializedRun = inspection::serializeWithErrorT(runGss);
   if (!serializedRun.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot serialize RunGlobalSuperStep");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize RunGlobalSuperStep: {}",
+                    serializedRun.error().error()));
   }
   auto startRes = _sendToAllDBServers(
       Utils::startGSSPath,
@@ -715,7 +721,9 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FAILED, "Cannot serialize CollectPregelResults message");
+        TRI_ERROR_FAILED,
+        fmt::format("Cannot serialize CollectPregelResults message: {}",
+                    serialized.error().error()));
   }
   // merge results from DBServers
   outBuilder.openArray();
@@ -726,7 +734,9 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
             velocypack::SharedSlice({}, payload));
         if (!results.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_FAILED, "Cannot deserialize PregelResults message");
+              TRI_ERROR_FAILED,
+              fmt::format("Cannot deserialize PregelResults message: {}",
+                          results.error().error()));
         }
         outBuilder.add(VPackArrayIterator(results.get().results.slice()));
       });

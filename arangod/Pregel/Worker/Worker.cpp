@@ -160,8 +160,10 @@ void Worker<V, E, M>::setupWorker() {
                     .edgeCount = _graphStore->localEdgeCount()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                     "Cannot serialize GraphLoaded message");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_FAILED,
+          fmt::format("Cannot serialize GraphLoaded message: {}",
+                      serialized.error().error()));
     }
     _callConductor(Utils::finishedStartupPath,
                    VPackBuilder(serialized.get().slice()));
@@ -493,7 +495,9 @@ void Worker<V, E, M>::_finishedProcessing() {
   auto serialized = inspection::serializeWithErrorT(gssFinished);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot serialize GlobalSuperStepFinished message");
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize GlobalSuperStepFinished message: {}",
+                    serialized.error().error()));
   }
   _callConductor(Utils::finishedWorkerStepPath,
                  VPackBuilder(serialized.get().slice()));
@@ -527,8 +531,10 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                              .sender = ServerState::instance()->getId()};
     auto serialized = inspection::serializeWithErrorT(finished);
     if (!serialized.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot serialize Finished message");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize Finished message: {}",
+                      serialized.error().error()));
     }
     _callConductor(Utils::finishedWorkerFinalizationPath,
                    VPackBuilder(serialized.get().slice()));
@@ -648,8 +654,10 @@ auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
                                 .status = _observeStatus()};
     auto serialized = inspection::serializeWithErrorT(update);
     if (!serialized.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                     "Cannot serialize StatusUpdated message");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_FAILED,
+          fmt::format("Cannot serialize StatusUpdated message: {}",
+                      serialized.error().error()));
     }
     _callConductor(Utils::statusUpdatePath,
                    VPackBuilder(serialized.get().slice()));
