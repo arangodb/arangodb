@@ -24,8 +24,7 @@ authentication priority=1000 single
 endpoints single -- --skipEndpointsIpv6 true
 recovery priority=2000 buckets=4 parallelity=5 size=small single
 
-shell_v8 priority=500 single -- $EncryptionAtRest
-shell_server_v8 priority=500 single -- $EncryptionAtRest
+shell_server_v8,shell_v8 priority=500 single -- $EncryptionAtRest
 
 shell_api priority=500 single -- $EncryptionAtRest
 
@@ -99,23 +98,20 @@ hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 size=small cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=5 size=small cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
-server_secrets priority=500 -- --dumpAgencyOnError true
 
 # Dump Tests
-dump,dump_authentication,dump_encrypted,dump_jwt,dump_maskings name=dump -- --dumpAgencyOnError true
-dump_multiple -- --dumpAgencyOnError true
-dump_no_envelope -- --dumpAgencyOnError true
+dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope name=dump -- --dumpAgencyOnError true
+dump_encrypted enterprise -- --dumpAgencyOnError true
+dump_maskings enterprise -- --dumpAgencyOnError true
 dump_mixed_cluster_single -- --dumpAgencyOnError true
 dump_mixed_single_cluster -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
 # Audit Tests
-audit_client -- --dumpAgencyOnError true
-audit_server -- --dumpAgencyOnError true
-
+audit_client,audit_server,server_secrets -- --dumpAgencyOnError true
 
 # Full Tests Single Server
 shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
