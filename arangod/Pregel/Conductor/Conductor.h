@@ -127,8 +127,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ConductorStatus _status;
 
   bool _startGlobalStep();
-  ErrorCode _initializeWorkers(std::string const& suffix,
-                               VPackSlice additional);
+  ErrorCode _initializeWorkers();
   ErrorCode _finalizeWorkers();
   ErrorCode _sendToAllDBServers(std::string const& path,
                                 VPackBuilder const& message);

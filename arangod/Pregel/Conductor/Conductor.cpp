@@ -176,7 +176,7 @@ void Conductor::start() {
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
-  auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
+  auto res = _initializeWorkers();
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
@@ -490,11 +490,8 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
-                                        VPackSlice additional) {
+ErrorCode Conductor::_initializeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
   std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
@@ -582,6 +579,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
+      std::string const path =
+          Utils::baseUrl(Utils::workerPrefix) + Utils::startExecutionPath;
 
       auto serialized = inspection::serializeWithErrorT(createWorker);
       if (!serialized.ok()) {
