@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -38,18 +38,17 @@ namespace arangodb::pregel::actor {
 
 namespace {
 template<typename Runtime, typename A>
-concept IncludesAllActorRelevantTypes =
-    std::is_class<typename A::State>::value &&
-    std::is_class<typename A::template Handler<Runtime>>::value &&
-    std::is_class<typename A::Message>::value;
+concept IncludesAllActorRelevantTypes = std::is_class_v<typename A::State> &&
+    std::is_class_v<typename A::template Handler<Runtime>> &&
+    std::is_class_v<typename A::Message>;
 template<typename A>
 concept IncludesName = requires() {
   { A::typeName() } -> std::convertible_to<std::string_view>;
 };
 template<typename Runtime, typename A>
 concept HandlerInheritsFromBaseHandler =
-    std::is_base_of < HandlerBase<Runtime, typename A::State>,
-typename A::template Handler<Runtime> > ::value;
+    std::is_base_of_v < HandlerBase<Runtime, typename A::State>,
+typename A::template Handler<Runtime> > ;
 template<typename Runtime, typename A>
 concept MessageIsVariant = requires(ActorPID pid,
                                     std::shared_ptr<Runtime> runtime,
@@ -94,20 +93,17 @@ struct Actor : ActorBase {
 
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
-    auto* ptr = msg.release();
-    if (auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
+    if (auto* m =
+            dynamic_cast<MessagePayload<typename Config::Message>*>(msg.get());
         m != nullptr) {
       push(sender, std::move(m->payload));
-      delete m;
-    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(ptr);
+    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(msg.get());
                n != nullptr) {
       push(sender, std::move(n->payload));
-      delete n;
     } else {
       runtime->dispatch(
           pid, sender,
           ActorError{UnknownMessage{.sender = sender, .receiver = pid}});
-      delete ptr;
     }
     kick();
   }
