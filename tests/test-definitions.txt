@@ -7,22 +7,22 @@
 BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,paths_server,version,active_failover single name=single_server_only
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_global priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_static priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
+replication_fuzz priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=2 single 
-http_replication priority=500 parallelity=2 single
+shell_replication parallelity=3 size=small single 
+http_replication priority=500 parallelity=3 size=small single
 
 # Misc single server tests
-agency priority=350 parallelity=2 single -- --dumpAgencyOnError true
-agency-restart priority=250 parallelity=2 single
+agency priority=350 parallelity=4 size=small single -- --dumpAgencyOnError true
+agency-restart priority=250 parallelity=3 size=small single
 authentication priority=1000 single
 endpoints single -- --skipEndpointsIpv6 true
-recovery priority=2000 buckets=4 parallelity=3 single
+recovery priority=2000 buckets=4 parallelity=5 size=small single
 
 shell_v8 priority=500 single -- $EncryptionAtRest
 shell_server_v8 priority=500 single -- $EncryptionAtRest
@@ -66,49 +66,45 @@ fuerte priority=500 single
 
 # Cluster Tests
 
-arangobench priority=1000 cluster -- --dumpAgencyOnError true
+arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !full -- --dumpAgencyOnError true parallelity=6
-restart priority=1000 sniff cluster -- --dumpAgencyOnError true --forceJson true
+restart priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
 
-load_balancing priority=500 cluster -- --dumpAgencyOnError true
-load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
+load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
+load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
-replication2_client cluster
-replication2_server cluster buckets=3 -- --dumpAgencyOnError true
+replication2_client size=small cluster
+replication2_server size=small cluster buckets=3 -- --dumpAgencyOnError true
 
-resilience_analyzers priority=500 cluster -- --dumpAgencyOnError true
-resilience_failover priority=750 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 cluster -- --dumpAgencyOnError true
-resilience_sharddist cluster -- --dumpAgencyOnError true
+resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
+resilience_failover priority=750 size=small cluster size=small -- --dumpAgencyOnError true
+resilience_move priority=600 size=small buckets=2 cluster -- --dumpAgencyOnError true
+resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 cluster buckets=8
+recovery_cluster priority=2000 size=small cluster buckets=8
 
 # different number of buckets in cluster
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
-shell_client_transaction priority=500 cluster parallelity=4 buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
+shell_client_replication2_recovery priority=500 size=small cluster buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests
 
-export parallelity=3 cluster -- --dumpAgencyOnError true
-export parallelity=2 single -- --dumpAgencyOnError true
+export parallelity=5 size=small cluster -- --dumpAgencyOnError true
+export parallelity=3 size=small single -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=4 cluster buckets=5 -- --dumpAgencyOnError true
-server_permissions priority=1000 parallelity=3 -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 size=small cluster -- --dumpAgencyOnError true
+server_permissions priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 server_secrets priority=500 -- --dumpAgencyOnError true
 
 # Dump Tests
-dump -- --dumpAgencyOnError true
-dump_authentication -- --dumpAgencyOnError true
-dump_encrypted -- --dumpAgencyOnError true
-dump_jwt -- --dumpAgencyOnError true
-dump_maskings -- --dumpAgencyOnError true
+dump,dump_authentication,dump_encrypted,dump_jwt,dump_maskings name=dump -- --dumpAgencyOnError true
 dump_multiple -- --dumpAgencyOnError true
 dump_no_envelope -- --dumpAgencyOnError true
 dump_mixed_cluster_single -- --dumpAgencyOnError true

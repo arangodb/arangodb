@@ -32,7 +32,8 @@ known_parameter = {
     "buckets": "number of buckets to use for this test",
     "suffix": "suffix that is appended to the tests folder name",
     "priority": "priority that controls execution order. Testsuites with lower priority are executed later",
-    "parallelity": "parallelity how many resources will the job use in the SUT? Default: 1 in Single server, 4 in Clusters"
+    "parallelity": "parallelity how many resources will the job use in the SUT? Default: 1 in Single server, 4 in Clusters",
+    "size": "docker container size to be used in CircleCI"
 }
 
 
@@ -67,7 +68,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def validate_params(params, is_cluster):
+def validate_params(params):
     """ check for argument validity """
     def parse_number(value):
         """ check value """
@@ -86,8 +87,6 @@ def validate_params(params, is_cluster):
         elif default_value is not None:
             params[key] = default_value
 
-    parse_number_or_default("priority", 250)
-    parse_number_or_default("parallelity", 4 if is_cluster else 1)
     parse_number_or_default("buckets")
 
     return params
@@ -134,13 +133,13 @@ def read_definition_line(line):
             raise Exception(f"Unknown parameter `{param}` in `{line}`")
 
     validate_flags(flags)
-    params = validate_params(params, 'cluster' in flags)
+    is_cluster = 'cluster' in flags
+    params = validate_params(params)
 
     return {
         "name": params.get("name", suites),
         "suites": suites,
-        "priority": params["priority"],
-        "parallelity": params["parallelity"],
+        "size": params.get("size", "medium" if is_cluster else "small"),
         "flags": flags,
         "args": args,
         "params": params
@@ -206,26 +205,18 @@ def create_test_job(test, cluster):
     if suffix:
         suiteName += f"-{suffix}"
 
+    if (not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]):
+        raise Exception("Invalid resource class size " + test["size"])
+
     result = {
         "name": f"test-ce-{'cluster' if cluster else 'single'}-{suiteName}",
         "testDefinitionLine": test["lineNumber"],
         "suiteName": suiteName,
         "suites": test["suites"],
+        "size": test["size"],
         "cluster": cluster,
         "requires": ["build-community-pr"]
     }
-
-    parallelity = test.get("parallelity", 1)
-    if (parallelity <= 2):
-        result["size"] = "small"
-    elif (parallelity <= 4):
-        result["size"] = "medium"
-    elif (parallelity <= 6):
-        result["size"] = "large"
-    elif (parallelity <= 7):
-        result["size"] = "xlarge"
-    else:
-        raise Exception("Tests should not have a parallelity > 7")
 
     extraArgs = test["args"]
     if extraArgs != []:
