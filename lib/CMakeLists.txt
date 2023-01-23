@@ -9,7 +9,7 @@ add_compile_warnings_flags()
 if (MSVC)
   set(LIB_ARANGO_MSVC
     Basics/memory-map-win32.cpp
-    Basics/win-utils-advanced.cpp
+    Basics/win-utils.cpp
     Zip/iowin32.cpp
   )
 else ()
@@ -108,7 +108,6 @@ if (MSVC)
           Basics/locks-win32.cpp
           Basics/terminal-utils-win32.cpp
           Basics/threads-win32.cpp
-          Basics/win-utils.cpp
           )
 else ()
   target_sources(arango_lightweight PRIVATE
@@ -130,16 +129,8 @@ target_include_directories(arango_lightweight PUBLIC
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
-target_link_libraries(arango_lightweight PRIVATE
-        velocypack
-        date_interface
-        fmt
-        arango_assertions
-        arango_static_strings
-        arango_futures
-        boost_boost
-        boost_system
-        ${MSVC_LIBS})
+target_link_libraries(arango_lightweight PUBLIC velocypack PRIVATE date_interface fmt
+        arango_assertions arango_static_strings arango_futures boost_boost boost_system)
 
 # yes we need absl now everywhere
 target_link_libraries(arango_lightweight PUBLIC
@@ -247,6 +238,7 @@ target_link_libraries(arango PUBLIC
   boost_boost
   arango_futures
   arango_static_strings
+  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
@@ -254,8 +246,13 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+  absl::synchronization
+  absl::strings
   arango_lightweight
-  arango_crashhandler
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
@@ -275,12 +272,6 @@ target_link_libraries(arango PUBLIC zlib_interface)
 target_link_libraries(arango PUBLIC v8_interface)
 
 add_dependencies(arango v8_build)
-
-target_include_directories(arango
-  PUBLIC
-  ${FROZEN_INCLUDE_DIR}
-  ${FUNCTION2_INCLUDE_DIR}
-)
 
 add_dependencies(arango snappy)
 target_link_libraries(arango PUBLIC snappy)

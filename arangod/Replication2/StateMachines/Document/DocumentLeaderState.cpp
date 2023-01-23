@@ -94,17 +94,24 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         self->_handlersFactory->createTransactionHandler(self->gid);
     if (transactionHandler == nullptr) {
       // TODO this is a temporary fix, see CINFRA-588
-      return Result{
-          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-          fmt::format("Transaction handler is missing from DocumentLeaderState "
-                      "during recoverEntries "
-                      "{}! This happens if the vocbase cannot be found during "
-                      "DocumentState construction.",
-                      to_string(self->gid))};
+      LOG_CTX("8cd17", ERR, self->loggerContext) << fmt::format(
+          "Transaction handler is missing from "
+          "DocumentLeaderState {}! This happens if the vocbase cannot be "
+          "found during DocumentState construction.",
+          self->shardId);
+      return Result{};
     }
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
+      if (doc.operation == OperationType::kCreateShard ||
+          doc.operation == OperationType::kDropShard) {
+        // TODO
+        // If the maintenance sees that shards are missing, it is going to
+        // create them on the leader.
+        // Perhaps we should check that they're already created.
+        continue;
+      }
       auto res = transactionHandler->applyEntry(doc);
       if (res.fail()) {
         return res;
@@ -159,8 +166,6 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  // TODO there is a race here, what happens if the leader resigns after this
-  // point? (CINFRA-613)
   auto const& stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),

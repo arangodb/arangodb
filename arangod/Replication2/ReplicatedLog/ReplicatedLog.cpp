@@ -176,9 +176,11 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 
       LOG_CTX("79015", DEBUG, _logContext)
           << "replicated log configured as leader in term " << term.term;
-      data.participant = _participantsFactory->constructLeader(
+      auto leader = _participantsFactory->constructLeader(
           std::move(data.methods), info, std::move(context));
+      data.participant = leader;
       _metrics->replicatedLogLeaderTookOverNumber->count();
+      return leader->waitForLeadership().thenValue([](auto&&) {});
     } else {
       // follower
       FollowerTermInfo info = {

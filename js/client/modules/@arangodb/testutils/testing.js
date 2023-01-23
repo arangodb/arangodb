@@ -164,8 +164,9 @@ let optionsDocumentation = [
 
 const isSan = (
   global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true');
-
+  global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
+  internal.coverage
+);
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -203,7 +204,7 @@ const optionsDefaults = {
   'rr': false,
   'exceptionFilter': null,
   'exceptionCount': 1,
-  'sanitizer': false,
+  'sanitizer': isSan,
   'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),

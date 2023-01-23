@@ -29,19 +29,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var findExecutionNodes = helper.findExecutionNodes;
-var findReferencedNodes = helper.findReferencedNodes;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
-var db = require('internal').db;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
+const findExecutionNodes = helper.findExecutionNodes;
+const findReferencedNodes = helper.findReferencedNodes;
+const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+const db = require('internal').db;
 
 function legacyOptimizerRuleTestSuite() {
   // quickly disable tests here
@@ -467,7 +463,7 @@ function optimizerRuleTestSuite() {
         
         assertFalse(n.sorted);
         assertEqual("d" + (i + 1), n.outVariable.name);
-        let cond = n.condition.subNodes[0];
+        let cond = helper.unpackRawExpression(n.condition.subNodes[0]);
         assertEqual("n-ary and", cond.type);
         assertEqual(1, cond.subNodes.length);
         cond = cond.subNodes[0];

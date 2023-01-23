@@ -773,6 +773,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     
                         assertEqual(index["name"], `i${i}`);
                         assertEqual(index["figures"]["numDocs"], 20);
+                        assertEqual(index["figures"]["numPrimaryDocs"], 20);
                         assertEqual(index["figures"]["numLiveDocs"], 20);
                         assertEqual(index["figures"]["numSegments"], 1);
                         assertEqual(index["figures"]["numFiles"], 6);

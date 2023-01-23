@@ -438,6 +438,14 @@ class ClusterInfo final {
   cluster::RebootTracker const& rebootTracker() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   ///
   /// A database is first created in the isBuilding state, and therefore not
@@ -877,6 +885,14 @@ class ClusterInfo final {
 
   ArangodServer& server() const;
 
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
+
  private:
   /// @brief worker function for dropIndexCoordinator
   Result dropIndexCoordinatorInner(std::string const& databaseName,
@@ -917,12 +933,6 @@ class ClusterInfo final {
   void triggerWaiting(
       std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list

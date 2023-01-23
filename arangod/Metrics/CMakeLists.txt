@@ -1,18 +1,14 @@
 add_library(arango_metrics_base OBJECT
-		Builder.cpp
-		Counter.cpp
-		Metric.cpp
-		)
+  Builder.cpp
+  Counter.cpp
+  Metric.cpp)
 
 target_include_directories(arango_metrics_base PRIVATE
-		"${PROJECT_SOURCE_DIR}/arangod"
-		"${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_metrics_base PRIVATE
-		${CMAKE_DEPRECATE_OPTIONS})
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 target_link_libraries(arango_metrics_base PRIVATE
-		arango_lightweight)
+  arango_lightweight)
 
 add_library(arango_metrics STATIC
   MetricsFeature.cpp
@@ -20,7 +16,7 @@ add_library(arango_metrics STATIC
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestMetricsHandler.cpp)
 
 target_link_libraries(arango_metrics
-		arango_metrics_base
+  arango_metrics_base
   arango
   arango::validation
   arango_replication2

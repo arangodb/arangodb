@@ -189,7 +189,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
     EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
-  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true).ok());
   EXPECT_TRUE(view->drop().ok());
   EXPECT_TRUE(collection->deleted());
   EXPECT_TRUE(view->deleted());

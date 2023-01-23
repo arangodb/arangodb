@@ -229,7 +229,7 @@ void RestClusterHandler::handleCommandEndpoints() {
       }
     }
 
-    // master always in front
+    // leader always in front
     endpoints.insert(endpoints.begin(), leaderId);
 
   } else {

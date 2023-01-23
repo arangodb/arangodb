@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/application-exit.h>
@@ -41,6 +42,7 @@ DocumentFollowerState::DocumentFollowerState(
       loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
+      _shardHandler(handlersFactory->createShardHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
@@ -60,15 +62,21 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto truncateRes = _guardedData.doUnderLock(
-      [self = shared_from_this()](auto& data) -> Result {
+  auto snapshotVersion = _guardedData.doUnderLock(
+      [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-        return self->truncateLocalShard();
+
+        auto count = ++data.currentSnapshotVersion;
+        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+          return truncateRes;
+        }
+        return count;
       });
-  if (truncateRes.fail()) {
-    return truncateRes;
+
+  if (snapshotVersion.fail()) {
+    return snapshotVersion.result();
   }
 
   // A follower may request a snapshot before leadership has been
@@ -76,7 +84,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   auto leader = _networkHandler->getLeaderInterface(destination);
   auto fut = leader->startSnapshot(waitForIndex);
   return handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                std::move(fut));
+                                snapshotVersion.get(), std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
@@ -89,14 +97,13 @@ auto DocumentFollowerState::applyEntries(
         }
 
         if (self->_transactionHandler == nullptr) {
-          return Result{
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-              fmt::format(
-                  "Transaction handler is missing from "
-                  "DocumentFollowerState during applyEntries "
-                  "{}! This happens if the vocbase cannot be found during "
-                  "DocumentState construction.",
-                  to_string(data.core->getGid()))};
+          // TODO this is a temporary fix, see CINFRA-588
+          LOG_CTX("cfd76", ERR, self->loggerContext) << fmt::format(
+              "Transaction handler is missing from "
+              "DocumentFollowerState {}! This happens if the vocbase cannot be "
+              "found during DocumentState construction.",
+              self->shardId);
+          return Result{};
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {
@@ -104,26 +111,58 @@ auto DocumentFollowerState::applyEntries(
 
           while (auto entry = ptr->next()) {
             auto doc = entry->second;
-            auto res = self->_transactionHandler->applyEntry(doc);
-            if (res.fail()) {
-              LOG_CTX("d82d4", FATAL, self->loggerContext)
-                  << "Failed to apply entry " << entry->first
-                  << " to local shard " << self->shardId
-                  << " with error: " << res;
-              FATAL_ERROR_EXIT();
-            }
-
-            if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-              self->_activeTransactions.clear();
-              releaseIndex =
-                  self->_activeTransactions.getReleaseIndex(entry->first);
-            } else if (doc.operation == OperationType::kCommit ||
-                       doc.operation == OperationType::kAbort) {
-              self->_activeTransactions.erase(doc.tid);
-              releaseIndex =
-                  self->_activeTransactions.getReleaseIndex(entry->first);
+            if (doc.operation == OperationType::kCreateShard) {
+              auto collectionProperties =
+                  std::make_shared<velocypack::Builder>(doc.data.slice());
+              auto const& collectionId = data.core->getCollectionId();
+              auto res = self->_shardHandler->createLocalShard(
+                  self->shardId, collectionId, collectionProperties);
+              if (res.fail()) {
+                LOG_CTX("d82d4", FATAL, self->loggerContext)
+                    << "Failed to create shard " << self->shardId
+                    << " of collection " << self->shardId
+                    << " with error: " << res;
+                FATAL_ERROR_EXIT();
+              }
+              LOG_CTX("d82d5", TRACE, self->loggerContext)
+                  << "Created local shard " << self->shardId
+                  << " of collection " << collectionId;
+            } else if (doc.operation == OperationType::kDropShard) {
+              auto const& collectionId = data.core->getCollectionId();
+              auto res = self->_shardHandler->dropLocalShard(self->shardId,
+                                                             collectionId);
+              if (res.fail()) {
+                LOG_CTX("8c7a0", FATAL, self->loggerContext)
+                    << "Failed to drop shard " << self->shardId
+                    << " of collection " << collectionId
+                    << " with error: " << res;
+                FATAL_ERROR_EXIT();
+              }
+              LOG_CTX("cdc44", TRACE, self->loggerContext)
+                  << "Dropped local shard " << self->shardId
+                  << " of collection " << collectionId;
             } else {
-              self->_activeTransactions.emplace(doc.tid, entry->first);
+              auto res = self->_transactionHandler->applyEntry(doc);
+              if (res.fail()) {
+                LOG_CTX("1b08f", FATAL, self->loggerContext)
+                    << "Failed to apply entry " << entry->first
+                    << " to local shard " << self->shardId
+                    << " with error: " << res;
+                FATAL_ERROR_EXIT();
+              }
+
+              if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+                self->_activeTransactions.clear();
+                releaseIndex =
+                    self->_activeTransactions.getReleaseIndex(entry->first);
+              } else if (doc.operation == OperationType::kCommit ||
+                         doc.operation == OperationType::kAbort) {
+                self->_activeTransactions.erase(doc.tid);
+                releaseIndex =
+                    self->_activeTransactions.getReleaseIndex(entry->first);
+              } else {
+                self->_activeTransactions.emplace(doc.tid, entry->first);
+              }
             }
           }
 
@@ -157,6 +196,15 @@ auto DocumentFollowerState::applyEntries(
 auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
+  if (_transactionHandler == nullptr) {
+    // TODO this is a temporary fix, see CINFRA-588
+    LOG_CTX("27c2b", ERR, loggerContext) << fmt::format(
+        "Transaction handler is missing from "
+        "DocumentFollowerState {}! This happens if the vocbase cannot be found "
+        "during DocumentState construction.",
+        shardId);
+    return Result{};
+  }
   auto trxId = TransactionId::createFollower();
   auto doc =
       DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
@@ -184,11 +232,12 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex,
+    LogIndex waitForIndex, std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
   return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+             snapshotVersion](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
@@ -211,21 +260,43 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         TRI_ASSERT(snapshotRes->shardId == self->shardId);
 
         auto& docs = snapshotRes->payload;
-        auto insertRes = self->_guardedData.doUnderLock(
-            [&self, &docs](auto& data) -> Result {
-              if (data.didResign()) {
-                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-              }
-              return self->populateLocalShard(docs);
-            });
+        auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                         snapshotVersion](
+                                                            auto& data)
+                                                            -> Result {
+          if (data.didResign()) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+          }
+
+          // The user may remove and add the server again. The leader
+          // might do a compaction which the follower won't notice. Hence, a
+          // new snapshot is required. This can happen so quick, that one
+          // snapshot transfer is not yet completed before another one is
+          // requested. Before populating the shard, we have to make sure
+          // there's no new snapshot transfer in progress.
+          if (data.currentSnapshotVersion != snapshotVersion) {
+            return {
+                TRI_ERROR_INTERNAL,
+                "Snapshot transfer cancelled because a new one was started!"};
+          }
+          return self->populateLocalShard(docs);
+        });
         if (insertRes.fail()) {
+          LOG_CTX("d8b8a", ERR, self->loggerContext)
+              << "Failed to populate local shard: " << insertRes;
+          if (insertRes.isNot(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            // TODO return result and let the leader clear the failed snapshot
+            // itself, or send an abort instead of finish?
+            return leader->finishSnapshot(snapshotRes->snapshotId);
+          }
           return insertRes;
         }
 
         if (snapshotRes->hasMore) {
           auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
           return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                              std::move(fut));
+                                              snapshotVersion, std::move(fut));
         }
 
         return leader->finishSnapshot(snapshotRes->snapshotId);
