@@ -29,6 +29,7 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "StorageEngine/StorageEngine.h"  // consider just forward declaration
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -191,6 +192,15 @@ class PhysicalCollection {
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
+
+  virtual Result readFromSnapshot(transaction::Methods* trx,
+                                  LocalDocumentId const& token,
+                                  IndexIterator::DocumentCallback const& cb,
+                                  ReadOwnWrites readOwnWrites,
+                                  StorageSnapshot const& snapshot) const {
+    TRI_ASSERT(false);
+    return {TRI_ERROR_NOT_IMPLEMENTED};
+  }
 
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,

@@ -778,12 +778,13 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   return {std::move(linkLock), std::move(reader)};
 }
 
-irs::DirectoryReader IResearchDataStore::reader(LinkLock const& linkLock) {
+IResearchDataStore::DataSnapshotPtr IResearchDataStore::reader(
+    LinkLock const& linkLock) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
-  irs::DirectoryReader reader{linkLock->_dataStore._reader};
-  TRI_ASSERT(reader);
-  return reader;
+  auto snapshot = linkLock->_dataStore.loadSnapshot();
+  TRI_ASSERT(snapshot);
+  return snapshot;
 }
 
 void IResearchDataStore::scheduleCommit(std::chrono::milliseconds delay) {
@@ -974,7 +975,14 @@ Result IResearchDataStore::commitUnsafeImpl(
         [&, lastCommittedTickOne = _lastCommittedTickOne]() noexcept {
           _lastCommittedTickOne = lastCommittedTickOne;
         }};
-    auto const lastTickBeforeCommitOne = _engine->currentTick();
+    auto engineSnapshot = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!engineSnapshot)) {
+      return {TRI_ERROR_INTERNAL,
+              absl::StrCat("Failed to get engine snapshot while committing "
+                           "ArangoSearch index '",
+                           index().id().id(), "'")};
+    }
+    auto const lastTickBeforeCommitOne = engineSnapshot->tick();
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
       std::unique_lock sync{_t3FailureSync};
@@ -999,6 +1007,9 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
+      auto reader = _dataStore.loadSnapshot()->_reader;
+      _dataStore.storeSnapshot(
+          std::make_shared<DataSnapshot>(std::move(reader), engineSnapshot));
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1064,8 +1075,26 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 
     // update reader
-    TRI_ASSERT(_dataStore._reader != reader);
-    _dataStore._reader = reader;
+    TRI_ASSERT(_dataStore.loadSnapshot()->_reader != reader);
+    auto const readerSize = reader->size();
+    auto const docsCount = reader->docs_count();
+    auto const liveDocsCount = reader->live_docs_count();
+
+    // For now we want to retain old behavior that
+    // storage snapshot is not older than iresearch snapshot
+    // TODO: Remove this as soon as index_writer will start accepting limiting
+    // tick for commit
+    auto engineSnapshotAfterCommit = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!engineSnapshotAfterCommit)) {
+      return {
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("Failed to get engine snapshot while finishing commit "
+                       "ArangoSearch index '",
+                       index().id().id(), "'")};
+    }
+
+    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+        std::move(reader), std::move(engineSnapshotAfterCommit)));
 
     // update stats
     updateStatsUnsafe();
@@ -1077,9 +1106,8 @@ Result IResearchDataStore::commitUnsafeImpl(
 
     LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
         << "successful sync of ArangoSearch index '" << index().id()
-        << "', segments '" << _dataStore._reader->size() << "', docs count '"
-        << _dataStore._reader->docs_count() << "', live docs count '"
-        << _dataStore._reader->live_docs_count()
+        << "', segments '" << readerSize << "', docs count '" << docsCount
+        << "', live docs count '" << liveDocsCount
         << "', last operation tick low '" << _lastCommittedTickOne << "'"
         << "', last operation tick high '" << _lastCommittedTickTwo << "'";
   } catch (basics::Exception const& e) {
@@ -1411,11 +1439,11 @@ Result IResearchDataStore::initDataStore(
     _dataStore._writer->Commit();
   }
 
-  _dataStore._reader = _dataStore._writer->GetSnapshot();
-  TRI_ASSERT(_dataStore._reader);
+  auto reader = _dataStore._writer->GetSnapshot();
+  TRI_ASSERT(reader);
 
   if (pathExists) {  // Read payload from the existing ArangoSearch index
-    if (!readTick(irs::GetPayload(_dataStore._reader.Meta().index_meta),
+    if (!readTick(irs::GetPayload(reader.Meta().index_meta),
                   _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh)) {
       return {
           TRI_ERROR_INTERNAL,
@@ -1427,8 +1455,18 @@ Result IResearchDataStore::initDataStore(
   }
 
   LOG_TOPIC("7e028", DEBUG, TOPIC)
-      << toString(_dataStore._reader, !pathExists, index().id(),
+      << toString(reader, !pathExists, index().id(),
                   _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh);
+
+  auto engineSnapshot = _engine->currentSnapshot();
+  if (!engineSnapshot) {
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("Failed to get engine snapshot while initializing "
+                         "ArangoSearch index '",
+                         index().id().id(), "'")};
+  }
+  _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+      std::move(reader), std::move(engineSnapshot)));
 
   _flushSubscription =
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
@@ -1908,20 +1946,21 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _lastCommittedTickOne = std::max(tick, _lastCommittedTickOne);
     _lastCommittedTickTwo = _lastCommittedTickOne;
 
-    // get new reader
-    auto reader = _dataStore._writer->GetSnapshot();
-
-    if (!reader) {
-      // nothing more to do
-      LOG_TOPIC("1c2c1", WARN, iresearch::TOPIC)
-          << "failed to update snapshot after truncate, reuse the existing "
-             "snapshot for ArangoSearch index '"
-          << index().id() << "'";
-      return;
+    auto snapshot = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!snapshot)) {
+      // we reuse storage snapshot in this unlikely. Technically this is not
+      // right as old storage snapshot is most likely outdated.
+      // but index is empty so it makes no sense as we will not
+      // materialize anything anyway.
+      // get new reader
+      snapshot = _dataStore.loadSnapshot()->_snapshot;
     }
+    auto reader = _dataStore._writer->GetSnapshot();
+    TRI_ASSERT(reader);
 
     // update reader
-    _dataStore._reader = reader;
+    _dataStore.storeSnapshot(
+        std::make_shared<DataSnapshot>(std::move(reader), std::move(snapshot)));
 
     updateStatsUnsafe();
 
@@ -1961,7 +2000,7 @@ IResearchDataStore::Stats IResearchDataStore::stats() const {
 IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   TRI_ASSERT(_dataStore);
   // copy of 'reader' is important to hold reference to the current snapshot
-  auto reader = _dataStore._reader;
+  auto reader = _dataStore.loadSnapshot()->_reader;
   if (!reader) {
     return {};
   }
