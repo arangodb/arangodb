@@ -11,6 +11,7 @@ null:3rdParty/rocksdb/db/memtable.cc
 null:3rdParty/rocksdb/db/db_iter.cc
 null:3rdParty/rocksdb/db/db_impl/db_impl.cc
 null:3rdParty/rocksdb/env/fs_posix.cc
+null:3rdParty/rocksdb/file/random_access_file_reader.cc
 null:3rdParty/rocksdb/file/writable_file_writer.cc
 null:3rdParty/rocksdb/monitoring/perf_step_timer.h
 null:3rdParty/rocksdb/util/user_comparator_wrapper.h
@@ -31,6 +32,9 @@ vptr:v8::internal::Isolate::~Isolate
 pointer-overflow:3rdParty/nghttp2/lib/nghttp2_buf.c
 pointer-overflow:3rdParty/lz4/lib/lz4.c
 
-# Should be fixed in s2, not really affect as memcpy(null, null, 0)
-# https://github.com/google/s2geometry/issues/283
-nullability-arg:3rdParty/s2geometry/0e7b146/src/s2/util/gtl/compact_array.h
+# It's intentional perform operations with nullptr
+# TODO(MBkkt) I think it can be fixed with using uintptr_t instead of pointer
+pointer-overflow:3rdParty/iresearch/core/search/bitset_doc_iterator.cpp
+
+# TODO(MBkkt) known issue, fixed in devel, not dangerous and it's not convinient to backport it now
+null:3rdParty/iresearch/core/formats/formats_burst_trie.cpp
