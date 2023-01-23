@@ -1,4 +1,4 @@
-v3.9.8 (XXXX-XX-XX)
+v3.9.8 (2023-01-23)
 -------------------
 
 * Log information about follower state/apply progress in supervision job that
