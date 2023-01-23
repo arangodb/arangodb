@@ -61,7 +61,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      const std::shared_ptr<FlushSubscription>& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription);
 
   arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
   /// returns number of active flush subscriptions removed, the number of stale
