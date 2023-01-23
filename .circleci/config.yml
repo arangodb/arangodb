@@ -35,7 +35,7 @@ jobs:
           name: CCache Statistics
           command: ccache -s
       - store_artifacts:
-          path: build/<< parameters.preset >>/bin/arangodbtests_replication2_pure
+          path: build-presets/<< parameters.preset >>/bin/arangodbtests_replication2_pure
       - save_cache:
           when: always
           key: ccache-v1-docker-r2-{{ .Branch }}-{{ .Revision }}
@@ -44,7 +44,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - build/<< parameters.preset >>/bin
+            - build-presets/<< parameters.preset >>/bin
             - scripts/
             - js/
             - etc/
@@ -100,7 +100,7 @@ workflows:
           preset: pr-replication-2-pure
       - run-gtest-executable-linux:
           name: replication 2 pure tests
-          executable: 'build/pr-replication-2-pure/bin/arangodbtests_replication2_pure'
+          executable: 'build-presets/pr-replication-2-pure/bin/arangodbtests_replication2_pure'
           filter: '*'
           size: medium
           requires:
