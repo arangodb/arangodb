@@ -120,10 +120,10 @@ class QueryGeoIntersects : public QueryTest {
     auto links = [&] {
       if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
-        return impl.getLinks();
+        return impl.getLinks(nullptr);
       }
       auto& impl = basics::downCast<iresearch::IResearchView>(*view);
-      return impl.getLinks();
+      return impl.getLinks(nullptr);
     };
     // ensure presence of special a column for geo indices
     {

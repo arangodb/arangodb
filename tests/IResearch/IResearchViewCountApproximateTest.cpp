@@ -540,7 +540,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   ASSERT_TRUE(trx.state());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
@@ -548,8 +548,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
@@ -621,7 +620,7 @@ TEST_F(IResearchViewCountApproximateTest,
       EMPTY, arangodb::transaction::Options());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
@@ -629,8 +628,7 @@ TEST_F(IResearchViewCountApproximateTest,
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
@@ -704,7 +702,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       EMPTY, arangodb::transaction::Options());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-                       _view->getLinks(), _view.get(), _view->name());
+                       _view->getLinks(nullptr), _view.get(), _view->name());
   auto reader = arangodb::iresearch::ViewSnapshotPtr{
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
@@ -712,8 +710,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
