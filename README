@@ -75,16 +75,23 @@ as a commercial **Enterprise Edition** with additional features.
 ### Enterprise Edition features
 
 Focus on solving enterprise-scale problems for mission critical workloads using
-secure graph data.
+secure graph data. The Enterprise Edition has all the features of the
+Community Edition and offers additional features for performance, compliance,
+and security, as well as further query capabilities.
 
 - Smartly shard and replicate graphs and datasets with features like
   **EnterpriseGraphs**, **SmartGraphs**, and **SmartJoins** for lightning fast
   query execution.
 - Combine the performance of a single server with the resilience of a cluster
   setup using **OneShard** deployments.
-- Increase fault tolerance with **Datacenter-to-Datacenter Replication**.
+- Increase fault tolerance with **Datacenter-to-Datacenter Replication** and
+  and create incremental **Hot Backups** without downtime.
 - Enable highly secure work with **Encryption 360**, **LDAP integration**,
   enhanced **Data Masking**, and detailed **Auditing**.
+- Perform **parallel graph traversals** and graph analytics with
+  **Pregel** for cluster deployments.
+- Use ArangoSearch **search highlighting** and **nested search** for advanced
+  information retrieval.
 
 Latest Release
 --------------
