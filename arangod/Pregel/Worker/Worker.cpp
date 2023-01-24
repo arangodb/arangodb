@@ -102,7 +102,6 @@ Worker<V, E, M>::~Worker() {
       std::chrono::milliseconds(50));  // wait for threads to die
   delete _readCache;
   delete _writeCache;
-  delete _writeCacheNextGSS;
   for (InCache<M>* cache : _inCaches) {
     delete cache;
   }

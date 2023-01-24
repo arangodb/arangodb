@@ -115,8 +115,6 @@ class Worker : public IWorker {
   InCache<M>* _readCache = nullptr;
   // for the current or next superstep
   InCache<M>* _writeCache = nullptr;
-  // intended for the next superstep phase
-  InCache<M>* _writeCacheNextGSS = nullptr;
   // preallocated incoming caches
   std::vector<InCache<M>*> _inCaches;
   // preallocated ootgoing caches
