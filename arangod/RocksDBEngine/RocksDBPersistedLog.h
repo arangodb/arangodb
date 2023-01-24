@@ -136,12 +136,12 @@ struct ApplyEntriesRttScale {
     return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
   }
 };
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time_us,
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time,
                   ApplyEntriesRttScale,
                   "Replicated log batches write time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time_us,
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time,
                   ApplyEntriesRttScale, "Replicated log batches sync time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency_us,
+DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency,
                   ApplyEntriesRttScale,
                   "Replicated log storage operation latency[us]");
 

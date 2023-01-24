@@ -116,15 +116,15 @@ struct RocksDBAsyncLogWriteBatcherMetricsMock
     writeBatchSize =
         makeMetric<arangodb_replication2_rocksdb_write_batch_size>();
     rocksdbWriteTimeInUs =
-        makeMetric<arangodb_replication2_rocksdb_write_time_us>();
+        makeMetric<arangodb_replication2_rocksdb_write_time>();
     rocksdbSyncTimeInUs =
-        makeMetric<arangodb_replication2_rocksdb_sync_time_us>();
+        makeMetric<arangodb_replication2_rocksdb_sync_time>();
     operationLatencyInsert =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
     operationLatencyRemoveFront =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
     operationLatencyRemoveBack =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
   }
 
   template<typename Builder>

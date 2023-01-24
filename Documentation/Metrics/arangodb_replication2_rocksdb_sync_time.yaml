@@ -1,4 +1,4 @@
-name: arangodb_replication2_rocksdb_sync_time_us
+name: arangodb_replication2_rocksdb_sync_time
 introducedIn: "3.10.0"
 help: |
   Histogram containing the sync times in microseconds.

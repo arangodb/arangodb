@@ -798,18 +798,18 @@ struct RocksDBAsyncLogWriteBatcherMetricsImpl
     writeBatchSize =
         &metricsFeature->add(arangodb_replication2_rocksdb_write_batch_size{});
     rocksdbWriteTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_write_time_us{});
+        &metricsFeature->add(arangodb_replication2_rocksdb_write_time{});
     rocksdbSyncTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time_us{});
+        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time{});
 
     operationLatencyInsert = &metricsFeature->add(
-        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "insert"));
     operationLatencyRemoveFront = &metricsFeature->add(
-        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-front"));
     operationLatencyRemoveBack = &metricsFeature->add(
-        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-back"));
   }
 };
