@@ -24,9 +24,7 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
+#include "Metrics/Fwd.h"
 
 #include <chrono>
 #include <condition_variable>
