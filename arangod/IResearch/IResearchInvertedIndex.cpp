@@ -39,6 +39,7 @@
 #include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchReadUtils.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
@@ -285,6 +286,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                                      int mutableConditionIdx)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _reader(&state->snapshot.getDirectoryReader()),
+        _snapshot(*state->snapshot.getSnapshot().get()),
         _immutablePartCache(&state->immutablePartCache),
         _indexMeta(meta),
         _variable(variable),
@@ -449,6 +451,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
   irs::filter::prepared::ptr _filter;
   irs::IndexReader const* _reader;
+  StorageSnapshot const& _snapshot;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
@@ -486,6 +489,18 @@ class IResearchInvertedIndexIterator final
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     nextImplInternal<decltype(skipped), false, false>(skipped, count);
   }
+
+  bool nextDocumentImpl(DocumentCallback const& cb,
+                                       uint64_t limit) override {
+    return nextImpl(
+        [this, &cb](LocalDocumentId const& token) {
+          return _collection->getPhysical()
+              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(), _snapshot)
+              .ok();
+        },
+        limit);
+  }
+
 
   // FIXME: Evaluate buffering iresearch reads
   template<typename Callback, bool withCovering, bool produce>
