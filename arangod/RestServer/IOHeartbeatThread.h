@@ -25,6 +25,7 @@
 
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/LogScale.h"
 
 #include <chrono>
 #include <condition_variable>
