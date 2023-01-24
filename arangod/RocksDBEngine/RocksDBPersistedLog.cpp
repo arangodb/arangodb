@@ -429,6 +429,7 @@ auto RocksDBLogStorageMethods::drop() -> Result {
   }
 
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  // TODO should we remove using rocksutils::removeLargeRange instead?
   auto start = range.start();
   auto end = range.end();
   if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {
