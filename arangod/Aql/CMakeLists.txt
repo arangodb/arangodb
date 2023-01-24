@@ -216,3 +216,5 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
 endif ()
+
+set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)

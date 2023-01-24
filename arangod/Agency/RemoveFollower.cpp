@@ -230,11 +230,8 @@ bool RemoveFollower::start(bool&) {
                  });
 
   size_t inSyncCount = 0;
-  size_t notGoodCount = 0;
   for (auto const& pair : overview) {
-    if (pair.second == -1) {
-      ++notGoodCount;
-    } else if (static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
+    if (static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
       ++inSyncCount;
     }
   }
