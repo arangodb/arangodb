@@ -14,6 +14,7 @@ set(LIB_ARANGO_SHELL_SOURCES
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
+  ../cmake/activeCodePage.manifest
 )
 
 add_library(arango_shell STATIC
@@ -54,6 +55,7 @@ add_executable(${BIN_ARANGOBENCH}
   Benchmark/BenchFeature.cpp
   Benchmark/BenchmarkOperation.cpp
   Benchmark/testcases/helpers.cpp
+  ../cmake/activeCodePage.manifest
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
