@@ -2399,7 +2399,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return ReplicatedLogs::make_shared(shared_from_this());
       }
 
-      class CollectionGroups : public StaticComponent<CollectionGroups, Target> {
+      class CollectionGroups
+          : public StaticComponent<CollectionGroups, Target> {
        public:
         constexpr char const* component() const noexcept {
           return "CollectionGroups";
@@ -2427,15 +2428,21 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
               using BaseType::StaticComponent;
 
-              class Collection : public DynamicComponent<Collection, Collections, CollectionID> {
+              class Collection
+                  : public DynamicComponent<Collection, Collections,
+                                            CollectionID> {
                public:
-                char const* component() const noexcept { return value().c_str(); }
+                char const* component() const noexcept {
+                  return value().c_str();
+                }
 
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Collection const> collection(std::string value) const {
-                return Collection::make_shared(shared_from_this(), std::move(value));
+              std::shared_ptr<Collection const> collection(
+                  std::string value) const {
+                return Collection::make_shared(shared_from_this(),
+                                               std::move(value));
               }
             };
 

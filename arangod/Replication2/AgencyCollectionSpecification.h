@@ -40,8 +40,7 @@ struct CollectionGroupId : basics::Identifier {
 struct CollectionGroup {
   CollectionGroupId id;
 
-  struct Collection {
-  };
+  struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;
 
   struct ShardSheaf {

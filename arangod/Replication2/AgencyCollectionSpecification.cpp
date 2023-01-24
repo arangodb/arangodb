@@ -30,5 +30,3 @@
 
 using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
-
-

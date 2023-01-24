@@ -759,7 +759,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         [&ci, databaseName,
          distLike]() -> ResultT<std::vector<ResponsibleServerList>> {
           // We need the lookup in the callback, as it will be called on retry.
-          // So time has potentially passed, and shards could be moved meanwhile.
+          // So time has potentially passed, and shards could be moved
+          // meanwhile.
           auto c = ci.getCollectionNT(databaseName, distLike);
           if (c == nullptr) {
             return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,

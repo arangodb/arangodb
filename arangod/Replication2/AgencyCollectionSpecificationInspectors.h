@@ -41,15 +41,13 @@ auto inspect(Inspector& f, CollectionGroup::Collection& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup::ShardSheaf& x) {
-  return f.object(x).fields(
-      f.field("replicatedLog", x.replicatedLog));
+  return f.object(x).fields(f.field("replicatedLog", x.replicatedLog));
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup::Attributes& x) {
   return f.object(x).fields(
       f.field(StaticStrings::WaitForSyncString, x.waitForSync),
-      f.field(StaticStrings::WriteConcern, x.writeConcern)
-      );
+      f.field(StaticStrings::WriteConcern, x.writeConcern));
 }
-}
+}  // namespace arangodb::replication2::agency

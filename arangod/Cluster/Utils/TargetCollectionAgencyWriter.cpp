@@ -60,7 +60,8 @@ inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
 }
 
 inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
-  return paths::target()->collectionGroups()->database(std::string{databaseName});
+  return paths::target()->collectionGroups()->database(
+      std::string{databaseName});
 }
 
 inline auto pathCollectionInCurrent(std::string_view databaseName) {
@@ -77,7 +78,8 @@ inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
 TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
     std::vector<PlanCollectionEntryReplication2> collectionPlanEntries,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
-        shardDistributionsUsed, replication2::CollectionGroupUpdates collectionGroups)
+        shardDistributionsUsed,
+    replication2::CollectionGroupUpdates collectionGroups)
     : _collectionPlanEntries{std::move(collectionPlanEntries)},
       _shardDistributionsUsed{std::move(shardDistributionsUsed)},
       _collectionGroups{std::move(collectionGroups)} {}
@@ -209,9 +211,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   for (auto const& g : _collectionGroups.newGroups) {
     writes = std::move(writes).emplace_object(
         baseGroupPath->group(std::to_string(g.id.id()))->str(),
-        [&](VPackBuilder& builder) {
-          velocypack::serialize(builder, g);
-        });
+        [&](VPackBuilder& builder) { velocypack::serialize(builder, g); });
   }
 
   // Inject entries into old CollectionGroups
