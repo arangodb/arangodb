@@ -453,7 +453,7 @@ irs::bytes_view GeoS2Analyzer::store(irs::token_stream* ctx,
     geo::encodePoint(impl._encoder, centroid, impl._hint);
   }
   return irs::bytes_view{
-      reinterpret_cast<const unsigned char*>(impl._encoder.base()),
+      reinterpret_cast<irs::byte_type const*>(impl._encoder.base()),
       impl._encoder.length()};
 }
 
