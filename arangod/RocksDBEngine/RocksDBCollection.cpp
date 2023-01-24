@@ -58,6 +58,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
@@ -651,21 +652,23 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
     return nullptr;
   }
 
-  EngineSelectorFeature& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  auto guard = scopeGuard([manager, ctx]() noexcept {
+  if (batchId != 0) {
+    EngineSelectorFeature& selector = _logicalCollection.vocbase()
+                                          .server()
+                                          .getFeature<EngineSelectorFeature>();
+    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+    RocksDBReplicationManager* manager = engine.replicationManager();
+
+    RocksDBReplicationContextGuard ctx = manager->find(batchId);
     if (ctx) {
-      manager->release(ctx);
+      return std::make_unique<RocksDBRevisionReplicationIterator>(
+          _logicalCollection, ctx->snapshot());
     }
-  });
-  rocksdb::Snapshot const* snapshot = ctx ? ctx->snapshot() : nullptr;
+    // fallthrough intentional
+  }
 
   return std::make_unique<RocksDBRevisionReplicationIterator>(
-      _logicalCollection, snapshot);
+      _logicalCollection, /*snapshot*/ nullptr);
 }
 
 std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
@@ -967,6 +970,25 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
     return true;
   }
   return false;
+}
+
+Result RocksDBCollection::readFromSnapshot(
+    transaction::Methods* trx, LocalDocumentId const& token,
+    IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
+    StorageSnapshot const& snapshot) const {
+  ::ReadTimeTracker timeTracker(
+      _statistics._readWriteMetrics,
+      [](TransactionStatistics::ReadWriteMetrics& metrics,
+         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+
+  if (!token.isSet()) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD,
+                  "invalid local document id"};
+  }
+
+  return lookupDocumentVPack(
+      trx, token, cb, /*withCache*/ true, readOwnWrites,
+      basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
@@ -1810,7 +1832,8 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     IndexIterator::DocumentCallback const& cb, bool withCache,
-    ReadOwnWrites readOwnWrites) const {
+    ReadOwnWrites readOwnWrites,
+    RocksDBEngine::RocksDBSnapshot const* snapshot /*= nullptr*/) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -1835,9 +1858,13 @@ Result RocksDBCollection::lookupDocumentVPack(
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
   rocksdb::Status s =
-      mthd->Get(RocksDBColumnFamilyManager::get(
-                    RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps, readOwnWrites);
+      snapshot ? mthd->GetFromSnapshot(
+                     RocksDBColumnFamilyManager::get(
+                         RocksDBColumnFamilyManager::Family::Documents),
+                     key->string(), &ps, readOwnWrites, snapshot->getSnapshot())
+               : mthd->Get(RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::Documents),
+                           key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);

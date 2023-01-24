@@ -40,6 +40,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -48,6 +49,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#include <string_view>
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -101,9 +106,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         body, "ttl", replutils::BatchInfo::DefaultTimeout);
     auto& engine =
         server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    auto* ctx =
+    auto ctx =
         _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
-    RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
       auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
@@ -395,9 +399,8 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  RocksDBReplicationContext* ctx = _manager->find(StringUtils::uint64(batchId));
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-  if (ctx == nullptr) {
+  auto ctx = _manager->find(StringUtils::uint64(batchId));
+  if (!ctx) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "context was not found");
     return;
@@ -486,27 +489,19 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   // to is ignored because the snapshot time is the latest point in time
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
-  bool found;
-  std::string batchId = _request->value("batchId", found);
+  uint64_t batchId = _request->parsedValue("batchId", uint64_t(0));
 
   // find context
-  if (found) {
-    ctx = _manager->find(StringUtils::uint64(batchId));
-  }
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-  if (!found || ctx == nullptr) {
+  auto ctx = _manager->find(batchId);
+  if (!ctx) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
     return;
   }
 
   // bind collection to context - will initialize iterator
-  Result res;
-  uint64_t numDocs;
-  DataSourceId cid;
-  std::tie(res, cid, numDocs) =
+  auto [res, cid, numDocs] =
       ctx->bindCollectionIncremental(_vocbase, collection);
   if (res.fail()) {
     generateError(res);
@@ -574,11 +569,8 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   // get context
-  RocksDBReplicationContext* ctx = _manager->find(batchId);
-  // lock context
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-
-  if (ctx == nullptr) {
+  auto ctx = _manager->find(batchId);
+  if (!ctx) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified, expired or invalid in another way");
     return;
@@ -636,9 +628,8 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   DataSourceId cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
-  RocksDBReplicationContext* ctx = _manager->find(batchId);
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-  if (ctx == nullptr) {
+  auto ctx = _manager->find(batchId);
+  if (!ctx) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified or not found");
     return;
@@ -700,13 +691,10 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 
   // first suffix needs to be the key id
   std::string const& keysId = suffixes[1];  // <batchId>-<cid>
-  uint64_t batchId;
-  DataSourceId cid;
-  std::tie(batchId, cid) = extractBatchAndCid(keysId);
+  auto [batchId, cid] = extractBatchAndCid(keysId);
 
-  RocksDBReplicationContext* ctx = _manager->find(batchId);
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-  if (ctx != nullptr) {
+  auto ctx = _manager->find(batchId);
+  if (ctx) {
     ctx->releaseIterators(_vocbase, cid);
   }
 
@@ -747,10 +735,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   // acquire context
-  RocksDBReplicationContext* ctx = _manager->find(contextId, /*ttl*/ 0);
-  RocksDBReplicationContextGuard guard(_manager, ctx);
-
-  if (ctx == nullptr) {
+  auto ctx = _manager->find(contextId, /*ttl*/ 0);
+  if (!ctx) {
     generateError(
         rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
         "replication dump - unable to find context (it could be expired)");
@@ -892,10 +878,10 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
 
   std::unique_ptr<containers::RevisionTree> tree;
 
+  std::string_view errorReason = "did not find tree for snapshot";
   {
-    RocksDBReplicationContext* c = _manager->find(ctx.batchId);
-    RocksDBReplicationContextGuard guard(_manager, c);
-    if (c != nullptr) {  // we have the RocksDBReplicationContext!
+    auto c = _manager->find(ctx.batchId);
+    if (c) {  // we have the RocksDBReplicationContext!
       // See if we can get the revision tree from the context:
       tree = c->getPrefetchedRevisionTree(collectionGuid);
       // This might return a nullptr!
@@ -904,12 +890,16 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
         tree = ctx.collection->getPhysical()->revisionTree(c->snapshotTick());
       }
       c->removeBlocker(_request->databaseName(), collectionGuid);
+    } else {
+      errorReason = "did not find batch";
     }
   }
 
   if (!tree) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not generate revision tree");
+    TRI_ASSERT(!errorReason.empty());
+    generateError(
+        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("could not generate revision tree: ", errorReason));
     return;
   }
 

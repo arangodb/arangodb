@@ -81,3 +81,9 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(
 void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
   _wb->PutLogData(blob);
 }
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
+  return {};
+}
