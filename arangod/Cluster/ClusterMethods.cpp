@@ -3024,7 +3024,6 @@ ClusterMethods::persistCollectionsInAgency(
           StaticStrings::DataSourceGuid,   "count",
           StaticStrings::DataSourcePlanId, StaticStrings::Version,
           StaticStrings::ObjectId};
-      col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(
           ignoreKeys, LogicalDataSource::Serialization::List);
 

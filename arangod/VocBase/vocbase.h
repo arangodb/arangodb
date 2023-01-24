@@ -139,16 +139,6 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
-  /// @brief sleep interval used when polling for a loading collection's status
-  static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }
-
-  /// @brief states for dropping
-  enum DropState {
-    DROP_EXIT,    // drop done, nothing else to do
-    DROP_AGAIN,   // drop not done, must try again
-    DROP_PERFORM  // drop done, must perform actual cleanup routine
-  };
-
   arangodb::ArangodServer& _server;
 
   arangodb::CreateDatabaseInfo _info;
@@ -404,11 +394,9 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
-  /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
-  /// timeout is in seconds. Essentially, the timeout counts to acquire the
-  /// write lock for using the collection.
+  /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
-                                  bool allowDropSystem, double timeout);
+                                  bool allowDropSystem);
 
   /// @brief validate parameters for collection creation.
   arangodb::Result validateCollectionParameters(
@@ -501,8 +489,8 @@ struct TRI_vocbase_t {
   void unregisterCollection(arangodb::LogicalCollection& collection);
 
   /// @brief drops a collection, worker function
-  ErrorCode dropCollectionWorker(arangodb::LogicalCollection* collection,
-                                 DropState& state, double timeout);
+  arangodb::Result dropCollectionWorker(
+      arangodb::LogicalCollection& collection);
 
   /// @brief adds a new view
   /// caller must hold _dataSourceLock in write mode or set doLock

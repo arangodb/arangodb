@@ -36,7 +36,7 @@ namespace arangodb::iresearch {
 
 template<Parsing p>
 bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
-                std::vector<S2Point>& cache) {
+                std::vector<S2Point>& cache, bool legacy) {
   Result r;
   if (vpack.isArray()) {
     r = geo::json::parseCoordinates<p != Parsing::FromIndex>(vpack, region,
@@ -49,7 +49,7 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
     }
   } else {
     r = geo::json::parseRegion<p != Parsing::FromIndex>(vpack, region, cache,
-                                                        /*legacy=*/false);
+                                                        legacy);
   }
   if (p != Parsing::FromIndex && r.fail()) {
     LOG_TOPIC("4549c", DEBUG, TOPIC)
@@ -62,19 +62,28 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
 
 template bool parseShape<Parsing::FromIndex>(velocypack::Slice slice,
                                              geo::ShapeContainer& shape,
-                                             std::vector<S2Point>& cache);
+                                             std::vector<S2Point>& cache,
+                                             bool legacy);
 template bool parseShape<Parsing::OnlyPoint>(velocypack::Slice slice,
                                              geo::ShapeContainer& shape,
-                                             std::vector<S2Point>& cache);
+                                             std::vector<S2Point>& cache,
+                                             bool legacy);
 template bool parseShape<Parsing::GeoJson>(velocypack::Slice slice,
                                            geo::ShapeContainer& shape,
-                                           std::vector<S2Point>& cache);
+                                           std::vector<S2Point>& cache,
+                                           bool legacy);
 
-void toVelocyPack(velocypack::Builder& builder, S2LatLng const& latLng) {
-  builder.openArray();
-  builder.add(velocypack::Value(latLng.lng().degrees()));
-  builder.add(velocypack::Value(latLng.lat().degrees()));
+void toVelocyPack(velocypack::Builder& builder, S2LatLng point) {
+  TRI_ASSERT(point.is_valid());
+  // false because with false it's smaller
+  // in general we want only doubles, but format requires it should be array
+  // so we generate most smaller vpack array
+  builder.openArray(false);
+  builder.add(velocypack::Value{point.lng().degrees()});
+  builder.add(velocypack::Value{point.lat().degrees()});
   builder.close();
+  TRI_ASSERT(builder.slice().isArray());
+  TRI_ASSERT(builder.slice().head() == 0x02);
 }
 
 }  // namespace arangodb::iresearch

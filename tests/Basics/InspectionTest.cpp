@@ -563,7 +563,13 @@ auto inspect(Inspector& f, MyStringEnum& x) {
   return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
                                  MyStringEnum::kValue2, "value2");
 }
+}  // namespace
 
+template<>
+struct fmt::formatter<MyStringEnum>
+    : arangodb::inspection::inspection_formatter {};
+
+namespace {
 enum class MyIntEnum {
   kValue1,
   kValue2,
@@ -2673,6 +2679,12 @@ TEST_F(VPackInspectionTest, formatter) {
   EXPECT_EQ(pretty,
             "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
             "true,\n  \"s\" : \"cheese\"\n}");
+}
+
+TEST_F(VPackInspectionTest, formatter_prints_serialization_error) {
+  MyStringEnum val = static_cast<MyStringEnum>(42);
+  auto def = fmt::format("{}", val);
+  ASSERT_EQ(def, R"({"error":"Unknown enum value 42"})");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {

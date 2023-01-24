@@ -2065,7 +2065,7 @@ void CalculationNode::doToVelocyPack(velocypack::Builder& nodes,
                 nodes.add(
                     "cacheable",
                     VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-                nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+                nodes.add("usesV8", VPackValue(node->willUseV8()));
                 // deprecated
                 nodes.add("canRunOnDBServer",
                           VPackValue(func->hasFlag(
@@ -2824,14 +2824,15 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 namespace {
-const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";
-const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
-const char* MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
+constexpr std::string_view MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
+constexpr std::string_view MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
+constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice const& base) {
-  if (base.hasKey(MATERIALIZE_NODE_IN_NM_COL_PARAM)) {
+    ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
+  auto isMulti = base.get(MATERIALIZE_NODE_MULTI_NODE_PARAM);
+  if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeMultiNode(plan, base);
   }
   return new MaterializeSingleNode(plan, base);
@@ -2861,6 +2862,14 @@ void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
   _outVariable->toVelocyPack(nodes);
 }
 
+auto MaterializeNode::getReadableInputRegisters(
+    RegisterId const inNmDocId) const -> RegIdSet {
+  // TODO (Dronplane) for index exectutor here we possibly will
+  // return additional SearchDoc register. So will keep this function for time
+  // being.
+  return RegIdSet{inNmDocId};
+}
+
 CostEstimate MaterializeNode::estimateCost() const {
   if (_dependencies.empty()) {
     // we should always have dependency as we need input for materializing
@@ -2883,25 +2892,19 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
 
 MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan,
                                            ExecutionNodeId id,
-                                           aql::Variable const& inColPtr,
                                            aql::Variable const& inDocId,
                                            aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable),
-      _inNonMaterializedColPtr(&inColPtr) {}
+    : MaterializeNode(plan, id, inDocId, outVariable) {}
 
 MaterializeMultiNode::MaterializeMultiNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : MaterializeNode(plan, base),
-      _inNonMaterializedColPtr(aql::Variable::varFromVPack(
-          plan->getAst(), base, MATERIALIZE_NODE_IN_NM_COL_PARAM, true)) {}
+    : MaterializeNode(plan, base) {}
 
 void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
-
-  nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_COL_PARAM));
-  _inNonMaterializedColPtr->toVelocyPack(nodes);
+  nodes.add(MATERIALIZE_NODE_MULTI_NODE_PARAM, velocypack::Value(true));
 }
 
 std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
@@ -2910,12 +2913,6 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inNmColPtrRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmColPtrRegId = it->second.registerId;
-  }
   RegisterId inNmDocIdRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
@@ -2929,18 +2926,16 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
 
-  auto readableInputRegisters =
-      getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
+  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos(
-      inNmColPtrRegId, inNmDocIdRegId, outDocumentRegId, engine.getQuery());
+  auto executorInfos = MaterializerExecutorInfos<void>(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery());
 
-  return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -2951,27 +2946,16 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
 
   auto* outVariable = _outVariable;
   auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-  auto* inNonMaterializedColId = _inNonMaterializedColPtr;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     inNonMaterializedDocId =
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-    inNonMaterializedColId =
-        plan->getAst()->variables()->createVariable(inNonMaterializedColId);
   }
 
   auto c = std::make_unique<MaterializeMultiNode>(
-      plan, _id, *inNonMaterializedColId, *inNonMaterializedDocId,
-      *outVariable);
+      plan, _id, *inNonMaterializedDocId, *outVariable);
   return cloneHelper(std::move(c), withDependencies, withProperties);
-}
-
-void MaterializeMultiNode::getVariablesUsedHere(VarSet& vars) const {
-  // call base class method
-  MaterializeNode::getVariablesUsedHere(vars);
-
-  vars.emplace(_inNonMaterializedColPtr);
 }
 
 MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan,
@@ -3014,14 +2998,14 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   }
   auto const& name = collection()->name();
 
-  auto readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
+  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
-      name, inNmDocIdRegId, outDocumentRegId, engine.getQuery());
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
   return std::make_unique<
       ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

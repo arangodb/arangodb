@@ -46,7 +46,7 @@ class ViewSnapshot : public irs::index_reader {
 class ViewTrxState final : public TransactionState::Cookie,
                            public ViewSnapshot {
  public:
-  irs::sub_reader const& operator[](size_t subReaderId) const noexcept final {
+  irs::SubReader const& operator[](size_t subReaderId) const noexcept final {
     TRI_ASSERT(subReaderId < _subReaders.size());
     return *(_subReaders[subReaderId].second);
   }
@@ -100,7 +100,7 @@ class ViewTrxState final : public TransactionState::Cookie,
   containers::FlatHashSet<DataSourceId> _collections;
   std::vector<IResearchLink::Snapshot> _snapshots;
   // prevent data-store deallocation (lock @ AsyncSelf)
-  std::vector<std::pair<DataSourceId, irs::sub_reader const*>> _subReaders;
+  std::vector<std::pair<DataSourceId, irs::SubReader const*>> _subReaders;
 };
 
 void ViewTrxState::add(DataSourceId cid,

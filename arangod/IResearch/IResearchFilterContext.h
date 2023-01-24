@@ -50,7 +50,7 @@ struct QueryContext {
   transaction::Methods* trx{};
   aql::Ast* ast{};
   aql::ExpressionContext* ctx{};
-  ::irs::index_reader const* index{};
+  ::irs::IndexReader const* index{};
   aql::Variable const* ref{};
   // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};

@@ -148,7 +148,6 @@ struct Collections {
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
       bool allowDropSystem,               // allow dropping system collection
-      double timeout,                     // single-server drop timeout
       bool keepUserRights =
           false  // flag if we want to keep access rights in-place
   );
@@ -175,8 +174,7 @@ struct Collections {
 };
 
 #ifdef USE_ENTERPRISE
-Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem,
-                         double singleServerTimeout);
+Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
 }  // namespace methods
 }  // namespace arangodb

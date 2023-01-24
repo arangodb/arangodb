@@ -28,9 +28,11 @@
 
 #include "Conductor.h"
 
+#include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -186,14 +188,6 @@ bool Conductor::_startGlobalStep() {
   }
 
   _callbackMutex.assertLockedByCurrentThread();
-  // send prepare GSS notice
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.close();
 
   /// collect the aggregators
   _aggregators->resetValues();
@@ -201,10 +195,21 @@ bool Conductor::_startGlobalStep() {
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
 
+  auto prepareGss = PrepareGlobalSuperStep{.executionNumber = _executionNumber,
+                                           .gss = _globalSuperstep,
+                                           .vertexCount = _totalVerticesCount,
+                                           .edgeCount = _totalEdgesCount};
+  auto serialized = inspection::serializeWithErrorT(prepareGss);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Cannot serialize PrepareGlobalSuperStep");
+  }
+
   // we are explicitly expecting an response containing the aggregated
   // values as well as the count of active vertices
   auto prepareRes = _sendToAllDBServers(
-      Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+      Utils::prepareGSSPath, VPackBuilder(serialized.get().slice()),
+      [&](VPackSlice const& payload) {
         _aggregators->aggregateValues(payload);
 
         _statistics.accumulateActiveCounts(payload);
@@ -227,7 +232,6 @@ bool Conductor::_startGlobalStep() {
   if (_masterContext &&
       _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
-    _masterContext->_reports = &_reports;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
@@ -254,38 +258,40 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
 
-  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       updateState(ExecutionState::FATAL_ERROR);
       return false;
     }
   }
 
-  b.clear();
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-
-  if (!toWorkerMessages.slice().isNone()) {
-    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  VPackBuilder agg;
+  {
+    VPackObjectBuilder ob(&agg);
+    _aggregators->serializeValues(agg);
   }
-  _aggregators->serializeValues(b);
+  auto runGss = RunGlobalSuperStep{.executionNumber = _executionNumber,
+                                   .gss = _globalSuperstep,
+                                   .vertexCount = _totalVerticesCount,
+                                   .edgeCount = _totalEdgesCount,
+                                   .aggregators = agg};
 
-  b.close();
-
-  LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
+  LOG_PREGEL("d98de", DEBUG) << fmt::format("Start gss: {}", runGss);
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
-  auto startRes = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  auto serializedRun = inspection::serializeWithErrorT(runGss);
+  if (!serializedRun.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Cannot serialize RunGlobalSuperStep");
+  }
+  auto startRes = _sendToAllDBServers(
+      Utils::startGSSPath,
+      VPackBuilder(serializedRun.get().slice()));  // call me maybe
   if (startRes != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::FATAL_ERROR);
     LOG_PREGEL("f34bb", ERR)
@@ -365,10 +371,6 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return VPackBuilder();
   }
 
-  if (auto reports = data.get("reports"); reports.isArray()) {
-    _reports.appendFromSlice(reports);
-  }
-
   // track message counts to decide when to halt or add global barriers.
   // this will wait for a response from each worker
   _statistics.accumulateMessageStats(data);
@@ -431,7 +433,7 @@ void Conductor::cancelNoLock() {
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(
     TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::map<CollectionID, std::string>& collectionPlanIdMap,
+    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
     std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
@@ -484,8 +486,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
   std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
-  // int64_t vertexCount = 0, edgeCount = 0;
-  std::map<CollectionID, std::string> collectionPlanIdMap;
+  std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
   std::vector<ShardID> shardList;
@@ -518,71 +519,20 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
 
-  for (auto const& it : vertexMap) {
-    ServerID const& server = it.first;
-    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
-        it.second;
-    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
-        edgeMap[it.first];
+  for (auto const& [server, vertexShardMap] : vertexMap) {
+    auto const& edgeShardMap = edgeMap[server];
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder b(buffer);
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
-    b.add(Utils::userParametersKey, _userParams.slice());
-    b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
-    if (additional.isObject()) {
-      for (auto pair : VPackObjectIterator(additional)) {
-        b.add(pair.key.copyString(), pair.value);
-      }
-    }
-
-    // edge collection restrictions
-    b.add(Utils::edgeCollectionRestrictionsKey,
-          VPackValue(VPackValueType::Object));
-    for (auto const& pair : _edgeCollectionRestrictions) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-    b.close();
-
-    b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : vertexShardMap) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-    b.close();
-    b.add(Utils::edgeShardsKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : edgeShardMap) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-
-    b.close();
-    b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : collectionPlanIdMap) {
-      b.add(pair.first, VPackValue(pair.second));
-    }
-    b.close();
-    b.add(Utils::globalShardListKey, VPackValue(VPackValueType::Array));
-    for (std::string const& shard : _allShards) {
-      b.add(VPackValue(shard));
-    }
-    b.close();
-    b.close();
-
+    auto createWorker =
+        CreateWorker{.executionNumber = _executionNumber,
+                     .algorithm = _algorithm->name(),
+                     .userParameters = _userParams,
+                     .coordinatorId = coordinatorId,
+                     .useMemoryMaps = _useMemoryMaps,
+                     .edgeCollectionRestrictions = _edgeCollectionRestrictions,
+                     .vertexShards = vertexShardMap,
+                     .edgeShards = edgeShardMap,
+                     .collectionPlanIds = collectionPlanIdMap,
+                     .allShards = _allShards};
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
@@ -598,7 +548,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
       }
 
       auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(),
-                                                b.slice(), _feature);
+                                                createWorker, _feature);
 
       TRI_ASSERT(created.get() != nullptr);
       _feature.addWorker(std::move(created), _executionNumber);
@@ -612,9 +562,15 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
 
+      auto serialized = inspection::serializeWithErrorT(createWorker);
+      if (!serialized.ok()) {
+        return TRI_ERROR_FAILED;
+      }
+      VPackBuilder v;
+      v.add(serialized.get());
       responses.emplace_back(network::sendRequestRetry(
           pool, "server:" + server, fuerte::RestVerb::Post, path,
-          std::move(buffer), reqOpts));
+          std::move(v.bufferRef()), reqOpts));
 
       LOG_PREGEL("6ae66", DEBUG) << "Initializing Server " << server;
     }
@@ -650,23 +606,18 @@ ErrorCode Conductor::_finalizeWorkers() {
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::storeResultsKey, VPackValue(store));
-  b.close();
-  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+  auto finalize =
+      FinalizeExecution{.executionNumber = _executionNumber, .store = store};
+  auto serialized = inspection::serializeWithErrorT(finalize);
+  if (!serialized.ok()) {
+    return TRI_ERROR_FAILED;
+  }
+  return _sendToAllDBServers(Utils::finalizeExecutionPath,
+                             VPackBuilder(serialized.get().slice()));
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  {
-    auto reports = data.get(Utils::reportsKey);
-    if (reports.isArray()) {
-      _reports.appendFromSlice(reports);
-    }
-  }
 
   ServerID sender = data.get(Utils::senderKey).copyString();
   LOG_PREGEL("60f0c", WARN)
@@ -755,16 +706,17 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add("withId", VPackValue(withId));
-  b.close();
-
+  auto collectResults = CollectPregelResults{
+      .executionNumber = _executionNumber, .withId = withId};
+  auto serialized = inspection::serializeWithErrorT(collectResults);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION(Result{TRI_ERROR_FAILED});
+  }
   // merge results from DBServers
   outBuilder.openArray();
   auto res = _sendToAllDBServers(
-      Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+      Utils::aqlResultsPath, VPackBuilder(serialized.get().slice()),
+      [&](VPackSlice const& payload) {
         if (payload.isArray()) {
           outBuilder.add(VPackArrayIterator(payload));
         }
@@ -817,8 +769,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
-  result.add(VPackValue("reports"));
-  _reports.intoBuilder(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));

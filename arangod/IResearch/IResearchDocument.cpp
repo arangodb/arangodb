@@ -376,8 +376,7 @@ namespace iresearch {
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setPkValue(Field& field,
-                                  LocalDocumentId::BaseType const& pk) {
+void Field::setPkValue(Field& field, LocalDocumentId::BaseType const& pk) {
   field._name = PK_COLUMN;
   field._indexFeatures = irs::IndexFeatures::NONE;
   field._fieldFeatures = {};
@@ -602,19 +601,14 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       _value._name = _nameBuffer;
     } break;
   }
-  auto* storeFunc = pool->storeFunc();
-  if (storeFunc) {
-    auto const valueSlice =
-        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
-                                        : _value._analyzer.get(),
-                  value, _buffer);
-
-    if (!valueSlice.isNone()) {
-      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+  if (auto* storeFunc = pool->storeFunc(); storeFunc) {
+    TRI_ASSERT(_currentTypedAnalyzer == nullptr);
+    auto const bytes = storeFunc(_value._analyzer.get(), value);
+    if (!irs::IsNull(bytes)) {
+      _value._value = bytes;
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
   }
-
   return true;
 }
 
@@ -841,15 +835,15 @@ void FieldIterator<IndexMetaStruct>::next() {
   return PK_COLUMN;
 }
 
-/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(
+LocalDocumentId::BaseType DocumentPrimaryKey::encode(
     LocalDocumentId value) noexcept {
   return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
 // NOTE implementation must match implementation of operator irs::bytes_view()
-/*static*/ bool DocumentPrimaryKey::read(arangodb::LocalDocumentId& value,
-                                         irs::bytes_view const& in) noexcept {
+bool DocumentPrimaryKey::read(arangodb::LocalDocumentId& value,
+                              irs::bytes_view const& in) noexcept {
   if (sizeof(arangodb::LocalDocumentId::BaseType) != in.size()) {
     return false;
   }

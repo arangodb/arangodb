@@ -1106,7 +1106,7 @@ Result RestReplicationHandler::processRestoreCollection(
               .removeAllAnalyzers(_vocbase);
         }
 
-        auto dropResult = methods::Collections::drop(*col, true, 300.0, true);
+        auto dropResult = methods::Collections::drop(*col, true, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
               dropResult.is(
@@ -2805,7 +2805,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
-  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
+  if (col->deleted()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");

@@ -99,7 +99,8 @@ struct RocksDBFactory {
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {
     auto& rocksdbMethods = dynamic_cast<RocksDBLogStorageMethods&>(*methods);
     rocksdbMethods.ctx.waitForCompletion();
-    rocksdbMethods.drop();
+    auto res = rocksdbMethods.drop();
+    ASSERT_TRUE(res.ok());
   }
 
   static auto BuildMethods(
