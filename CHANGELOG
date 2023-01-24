@@ -6,6 +6,8 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.9.
 
+* Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
+
 * Log information about follower state/apply progress in supervision job that
   organizes failover in active failover mode.
 
