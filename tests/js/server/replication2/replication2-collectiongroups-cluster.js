@@ -90,7 +90,6 @@ const createCollectionGroupsSuite = function () {
                 const c1 = db._create(collectionName, {numberOfShards: 3});
                 const c2 = db._create(followerName, {numberOfShards: 3, distributeShardsLike: collectionName});
                 const groupsAfter = getCollectionGroups();
-                require("internal").print(groupsBefore, groupsAfter);
                 assertTrue(_.isObject(groupsAfter), `CollectionGroups is not an object ${groupsAfter}`);
                 assertNoCollectionIsInTwoGroups(groupsAfter);
                 // assertEqual(Object.keys(groupsBefore).length + 1, Object.keys(groupsAfter), `It has to create exactly one new group`);

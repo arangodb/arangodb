@@ -264,6 +264,21 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
           .isIntersectionEmpty(paths::target()->cleanedServers()->str(),
                                serversPlanned);
 
+  // Preconditions for Collection Groups
+  for (auto const& g : _collectionGroups.newGroups) {
+    // No one has stolen our new group id
+    preconditions =
+        std::move(preconditions)
+            .isEmpty(baseGroupPath->group(std::to_string(g.id.id()))->str());
+  }
+
+  for (auto const& g : _collectionGroups.additionsToGroup) {
+    // No one has meanwhile removed the group we want to participate in
+    preconditions =
+        std::move(preconditions)
+            .isNotEmpty(baseGroupPath->group(std::to_string(g.id.id()))->str());
+  }
+
   // Created preconditions that no one has stolen our id
   for (auto const& entry : _collectionPlanEntries) {
     auto const collectionPath = baseCollectionPath->collection(entry.getCID());
