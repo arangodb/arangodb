@@ -28,21 +28,23 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var disableViewTests = true;
+const disableViewTests = false;
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var errors = require("@arangodb").errors;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const errors = require("@arangodb").errors;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function makePolyInside(lon, lat) {
   // lon and lat are longitude and latitude ranges
-  return {type:"Polygon",
-          coordinates:[[[lon[0], lat[0]], [lon[1], lat[0]],
-                        [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]};
+  return {
+    type: "Polygon",
+    coordinates: [[[lon[0], lat[0]], [lon[1], lat[0]],
+      [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]
+  };
 }
 
 function makePolyOutside(lon, lat) {

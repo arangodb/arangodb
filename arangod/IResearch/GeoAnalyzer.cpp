@@ -369,8 +369,7 @@ GeoJsonAnalyzerBase::GeoJsonAnalyzerBase(
                   S2Options(options.options, options.type != Type::SHAPE)},
       _type{options.type} {}
 
-bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
-                                    bool legacyCovering) {
+bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy) {
   auto const data = slice(value);
   if (_type != Type::POINT) {
     if (!parseShape<Parsing::GeoJson>(data, _shape, _cache, legacy)) {
@@ -380,29 +379,21 @@ bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
     return false;
   }
 
+  // TODO(MBkkt) use normal without allocation append interface
+  auto centroid = _shape.centroid();
   std::vector<std::string> geoTerms;
   auto const type = _shape.type();
   if (_type == Type::CENTROID || type == geo::ShapeContainer::Type::S2_POINT) {
-    geoTerms = _indexer.GetIndexTerms(_shape.centroid(), {});
-  } else if (legacyCovering) {
-    geoTerms = _indexer.GetIndexTerms(*_shape.region(), {});
+    geoTerms = _indexer.GetIndexTerms(centroid, {});
   } else {
-    auto cellIds = _shape.covering(_coverer);
-    // TODO(MBkkt) S2_MULTIPOINT can be handled via GetIndexTerms(point)
-    if (type == geo::ShapeContainer::Type::S2_MULTIPOINT ||
-        type == geo::ShapeContainer::Type::S2_MULTIPOLYLINE) {
-      _coverer.CanonicalizeCovering(&cellIds);
-    } else {
-      TRI_ASSERT(_coverer.IsCanonical(cellIds));
+    geoTerms = _indexer.GetIndexTerms(*_shape.region(), {});
+    if (!_shape.contains(centroid)) {
+      auto terms = _indexer.GetIndexTerms(centroid, {});
+      geoTerms.insert(geoTerms.end(), std::make_move_iterator(terms.begin()),
+                      std::make_move_iterator(terms.end()));
+      // TODO(MBkkt) Is it ok to not deduplicate this terms?
     }
-    geoTerms = _indexer.GetIndexTermsForCanonicalCovering(
-        S2CellUnion::FromVerbatim(std::move(cellIds)), {});
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::vector<std::string_view> terms{geoTerms.begin(), geoTerms.end()};
-  std::sort(terms.begin(), terms.end());
-  TRI_ASSERT(std::unique(terms.begin(), terms.end()) == terms.end());
-#endif
   GeoAnalyzer::reset(std::move(geoTerms));
   return true;
 }
@@ -434,8 +425,7 @@ GeoVPackAnalyzer::GeoVPackAnalyzer(Options const& options)
       _legacy{options.legacy} {}
 
 bool GeoVPackAnalyzer::reset(std::string_view value) {
-  // TODO(MBkkt) legacyCovering should be equal _legacy
-  return resetImpl(value, _legacy, /*legacyCovering=*/true);
+  return resetImpl(value, _legacy);
 }
 
 void GeoVPackAnalyzer::prepare(GeoFilterOptionsBase& options) const {
@@ -474,7 +464,7 @@ GeoS2Analyzer::GeoS2Analyzer(Options const& options)
 }
 
 bool GeoS2Analyzer::reset(std::string_view value) {
-  return resetImpl(value, /*legacy=*/false, /*legacyCovering=*/false);
+  return resetImpl(value, /*legacy=*/false);
 }
 
 void GeoS2Analyzer::prepare(GeoFilterOptionsBase& options) const {
