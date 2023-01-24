@@ -561,9 +561,6 @@ class RDBCoveringIterator final : public IndexIterator {
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
-#if 0
-    LOG_DEVEL << "performScan";
-#endif
     if (!_gotIntervals) {
       _scan = _covering.intervals();
       _gotIntervals = true;
@@ -776,15 +773,6 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
   // restriction on the `GEO_DISTANCE` and no sorting of results by
   // `GEO_DISTANCE`, we use the simpler method:
-#if 0
-  LOG_DEVEL << "iteratorForCondition " << params.minDistanceRad() << " < "
-            << geo::kRadEps << " && " << params.maxDistanceRad() << " > "
-            << geo::kMaxRadiansBetweenPoints - geo::kRadEps
-            << ((params.maxDistanceRad() >=
-                 geo::kMaxRadiansBetweenPoints - geo::kRadEps)
-                    ? " true"
-                    : " false");
-#endif
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
        params.filterType == geo::FilterType::INTERSECTS) &&
