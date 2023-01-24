@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
@@ -754,7 +755,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
     return futures::makeFuture();
   }
 
-  if (collection.hasKey("distributeShardsLike")) {
+  if (collection.hasKey(StaticStrings::DistributeShardsLike)) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "MoveShard only allowed for collections which have "
                   "distributeShardsLike unset.");
@@ -771,11 +772,13 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
 
   bool fromFound = false;
   bool isLeader = false;
-  for (VPackArrayIterator i(shard); i != i.end(); i++) {
-    if (i.value().isEqualString(ctx->fromServer)) {
-      isLeader = i.isFirst();
+  velocypack::ArrayIterator it(shard);
+  while (it.valid()) {
+    if (it.value().isEqualString(ctx->fromServer)) {
+      isLeader = it.index() == 0;
       fromFound = true;
     }
+    it.next();
   }
 
   if (!fromFound) {
