@@ -38,8 +38,10 @@
 namespace arangodb {
 
 RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
-    LogicalCollection& collection, rocksdb::Snapshot const* snapshot)
+    LogicalCollection& collection,
+    std::shared_ptr<rocksdb::ManagedSnapshot> snapshot)
     : RevisionReplicationIterator(collection),
+      _snapshot(std::move(snapshot)),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())
               ->objectId())),
@@ -50,8 +52,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   rocksdb::TransactionDB* db = engine.db();
 
   rocksdb::ReadOptions ro{};
-  if (snapshot) {
-    ro.snapshot = snapshot;
+  if (_snapshot) {
+    ro.snapshot = _snapshot->snapshot();
   }
 
   ro.verify_checksums = false;

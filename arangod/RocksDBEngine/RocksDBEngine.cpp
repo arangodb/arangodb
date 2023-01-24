@@ -1590,7 +1590,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
-  replicationManager()->drop(&database);
+  replicationManager()->drop(database);
 
   return dropDatabase(database.id());
 }
@@ -1838,7 +1838,7 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 
 void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
                                           LogicalCollection& coll) {
-  replicationManager()->drop(&coll);
+  replicationManager()->drop(coll);
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
