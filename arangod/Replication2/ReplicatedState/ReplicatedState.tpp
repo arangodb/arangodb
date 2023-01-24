@@ -501,10 +501,6 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
           // working.
           return std::nullopt;
         }
-        case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND): {
-          // TODO this is a temporary fix, see CINFRA-588
-          return std::nullopt;
-        }
       }
     }
 

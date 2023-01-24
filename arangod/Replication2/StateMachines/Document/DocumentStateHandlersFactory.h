@@ -74,9 +74,11 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
   virtual auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
-  virtual auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+  virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                                     GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
-  virtual auto createTransactionHandler(GlobalLogIdentifier gid)
+  virtual auto createTransactionHandler(TRI_vocbase_t& vocbase,
+                                        GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(DocumentLogEntry const& doc,
                                  IDatabaseGuard const& dbGuard)
@@ -91,15 +93,15 @@ class DocumentStateHandlersFactory
  public:
   DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
                                network::ConnectionPool* connectionPool,
-                               MaintenanceFeature& maintenaceFeature,
-                               DatabaseFeature& databaseFeature);
+                               MaintenanceFeature& maintenanceFeature);
   auto createAgencyHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateAgencyHandler> override;
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+  auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                             GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
-  auto createTransactionHandler(GlobalLogIdentifier gid)
+  auto createTransactionHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(DocumentLogEntry const& doc,
                          IDatabaseGuard const& dbGuard)
@@ -112,7 +114,6 @@ class DocumentStateHandlersFactory
   AgencyCache& _agencyCache;
   network::ConnectionPool* _connectionPool;
   MaintenanceFeature& _maintenanceFeature;
-  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

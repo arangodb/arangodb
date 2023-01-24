@@ -43,8 +43,8 @@ DocumentFollowerState::DocumentFollowerState(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _shardHandler(handlersFactory->createShardHandler(core->getGid())),
-      _transactionHandler(
-          handlersFactory->createTransactionHandler(core->getGid())),
+      _transactionHandler(handlersFactory->createTransactionHandler(
+          core->getVocbase(), core->getGid())),
       _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
@@ -94,17 +94,6 @@ auto DocumentFollowerState::applyEntries(
        ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
         if (data.didResign()) {
           return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-        }
-
-        if (self->_transactionHandler == nullptr) {
-          return Result{
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-              fmt::format(
-                  "Transaction handler is missing from "
-                  "DocumentFollowerState during applyEntries "
-                  "{}! This happens if the vocbase cannot be found during "
-                  "DocumentState construction.",
-                  to_string(data.core->getGid()))};
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {

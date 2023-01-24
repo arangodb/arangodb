@@ -70,7 +70,7 @@ auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
           .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), _handlersFactory,
+      vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));
 }
 

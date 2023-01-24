@@ -145,14 +145,14 @@ struct DocumentStateMachineTest : testing::Test {
         });
 
     ON_CALL(*handlersFactoryMock, createTransactionHandler)
-        .WillByDefault([&](GlobalLogIdentifier gid) {
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier gid) {
           return std::make_unique<DocumentStateTransactionHandler>(
               std::move(gid), std::make_unique<MockDatabaseGuard>(),
               handlersFactoryMock);
         });
 
     ON_CALL(*handlersFactoryMock, createSnapshotHandler)
-        .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           return std::make_unique<DocumentStateSnapshotHandler>(
               handlersFactoryMock->makeUniqueCollectionReaderFactory());
         });
@@ -596,8 +596,8 @@ TEST_F(
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -636,8 +636,8 @@ TEST_F(DocumentStateMachineTest, follower_acquire_snapshot_truncation_fails) {
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -731,8 +731,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -763,8 +763,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -790,8 +790,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -903,8 +903,8 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
   using namespace testing;
 
   auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
-  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
             snapshotHandler);
       });
@@ -947,8 +947,8 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
   using namespace testing;
 
   auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
-  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
             snapshotHandler);
       });
