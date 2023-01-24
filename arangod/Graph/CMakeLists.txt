@@ -1,9 +1,7 @@
 add_library(arango_graph STATIC
-  AttributeWeightShortestPathFinder.cpp
   BaseOptions.cpp
   ClusterGraphDatalake.cpp
   ClusterTraverserCache.cpp
-  ConstantWeightShortestPathFinder.cpp
   Graph.cpp
   GraphManager.cpp
   GraphOperations.cpp

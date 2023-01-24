@@ -80,7 +80,6 @@ add_library(arango_aql STATIC
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  IResearchViewExecutor.cpp
   IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
   LateMaterializedExpressionContext.cpp

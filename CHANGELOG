@@ -6,6 +6,21 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.9.
 
+* Log information about follower state/apply progress in supervision job that
+  organizes failover in active failover mode.
+
+* Updated arangosync to v2.14.0.
+
+* Updated ArangoDB Starter to 0.15.6.
+
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
+* Fixed the issue that the collection view search did not support selecting
+  everything using Ctrl + A.
+
 * BTS-413: Added more explanatory messages for when the user cannot see the
   statistics for a node in the UI when in cluster mode.
 

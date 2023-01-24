@@ -243,14 +243,11 @@ class IResearchViewNode final : public aql::ExecutionNode {
   }
 
   bool isLateMaterialized() const noexcept {
-    return _outNonMaterializedDocId != nullptr &&
-           _outNonMaterializedColPtr != nullptr;
+    return _outNonMaterializedDocId != nullptr;
   }
 
-  void setLateMaterialized(aql::Variable const& colPtrVariable,
-                           aql::Variable const& docIdVariable) noexcept {
+  void setLateMaterialized(aql::Variable const& docIdVariable) noexcept {
     _outNonMaterializedDocId = &docIdVariable;
-    _outNonMaterializedColPtr = &colPtrVariable;
   }
 
   bool isNoMaterialization() const noexcept { return _noMaterialization; }
@@ -351,18 +348,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // Output variable to write to.
   aql::Variable const* _outVariable{nullptr};
 
-  // Following two variables should be set in pairs.
-  // Info is split between 2 registers to allow constructing
-  // AqlValue with type VPACK_INLINE, which is much faster (no allocations!).
-  // CollectionPtr is needed for materialization step -
-  // as view could return documents from different collections.
-  // We store raw ptr to collection as materialization is expected to happen
-  // on same server (it is ensured by optimizer rule as network hop is
-  // expensive!)
   // Output variable to write only non-materialized document ids.
+  // We store SearchDoc encoded here as AqlValue vpack inline
   aql::Variable const* _outNonMaterializedDocId{nullptr};
-  // Output variable to write only non-materialized collection ids.
-  aql::Variable const* _outNonMaterializedColPtr{nullptr};
 
   // Output variables to non-materialized document view sort references.
   ViewValuesVars _outNonMaterializedViewVars;

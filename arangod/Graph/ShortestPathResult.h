@@ -38,16 +38,12 @@ struct AqlValue;
 
 namespace graph {
 
-class AttributeWeightShortestPathFinder;
-class ConstantWeightShortestPathFinder;
 class KShortestPathsFinderInterface;
 template<class ProviderType>
 class KShortestPathsFinder;
 class TraverserCache;
 
 class ShortestPathResult {
-  friend class arangodb::graph::AttributeWeightShortestPathFinder;
-  friend class arangodb::graph::ConstantWeightShortestPathFinder;
   friend class arangodb::graph::KShortestPathsFinderInterface;
   friend class arangodb::graph::KShortestPathsFinder<
       arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;

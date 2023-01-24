@@ -260,7 +260,23 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function () {
+    restrictToSearchPhraseKey: function (event) {
+      if (
+        event && event.originalEvent && (
+          (
+            event.originalEvent.key &&
+            (
+              event.originalEvent.key === 'Control' || 
+              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Shift'
+            )
+          ) || 
+          event.originalEvent.ctrlKey || 
+          event.originalEvent.altKey
+        )
+      ) {
+        return;
+      }
       // key pressed in search box
       var self = this;
 
