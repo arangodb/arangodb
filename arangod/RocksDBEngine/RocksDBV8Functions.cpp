@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -289,23 +290,20 @@ static void JS_CollectionRevisionTreeVerification(
     RocksDBEngine& engine =
         server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
-    double ttl = 3600;
-    // the "17" is a magic number. we just need any client id to proceed.
-    RocksDBReplicationContext* ctx =
-        manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
-    if (ctx == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL(
-          "Could not create RocksDBReplicationContext");
-    }
-    RocksDBReplicationContextGuard guard(manager, ctx);
+    // the 600 and 17 are magic numbers here. we can put in any ttl and any
+    // client id to proceed. the context created here is thrown away
+    // immediately afterwards anyway.
+    auto ctx = manager->createContext(engine, /*ttl*/ 600, SyncerId{17},
+                                      ServerId{17}, "");
+    TRI_ASSERT(ctx);
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
       storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
-      ctx->setDeleted();
+      ctx.setDeleted();
     } catch (...) {
-      ctx->setDeleted();
+      ctx.setDeleted();
       throw;
     }
   }

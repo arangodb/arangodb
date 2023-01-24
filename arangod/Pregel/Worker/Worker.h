@@ -30,8 +30,10 @@
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Scheduler/Scheduler.h"
@@ -50,16 +52,16 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
   virtual void setupWorker() = 0;
-  virtual void prepareGlobalStep(VPackSlice const& data,
-                                 VPackBuilder& result) = 0;
+  virtual GlobalSuperStepPrepared prepareGlobalStep(
+      PrepareGlobalSuperStep const& data) = 0;
   virtual void startGlobalStep(
-      VPackSlice const& data) = 0;  // called by coordinator
+      RunGlobalSuperStep const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
-  virtual void receivedMessages(VPackSlice const& data) = 0;
-  virtual void finalizeExecution(VPackSlice const& data,
+  virtual void receivedMessages(PregelMessage const& data) = 0;
+  virtual void finalizeExecution(FinalizeExecution const& data,
                                  std::function<void()> cb) = 0;
-  virtual void aqlResult(VPackBuilder&, bool withId) const = 0;
+  virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
 
 template<typename V, typename E>
@@ -143,19 +145,20 @@ class Worker : public IWorker {
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
-         VPackSlice params, PregelFeature& feature);
+         CreateWorker const& params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
   void setupWorker() override;
-  void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) override;
-  void startGlobalStep(VPackSlice const& data) override;
+  GlobalSuperStepPrepared prepareGlobalStep(
+      PrepareGlobalSuperStep const& data) override;
+  void startGlobalStep(RunGlobalSuperStep const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
-  void receivedMessages(VPackSlice const& data) override;
-  void finalizeExecution(VPackSlice const& data,
+  void receivedMessages(PregelMessage const& data) override;
+  void finalizeExecution(FinalizeExecution const& data,
                          std::function<void()> cb) override;
 
-  void aqlResult(VPackBuilder&, bool withId) const override;
+  auto aqlResult(bool withId) const -> PregelResults override;
 };
 
 }  // namespace arangodb::pregel

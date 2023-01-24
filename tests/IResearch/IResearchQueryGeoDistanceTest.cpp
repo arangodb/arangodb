@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
 
@@ -194,10 +196,10 @@ class QueryGeoDistance : public QueryTest {
       auto links = [&] {
         if (view->type() == ViewType::kSearchAlias) {
           auto& impl = basics::downCast<iresearch::Search>(*view);
-          return impl.getLinks();
+          return impl.getLinks(nullptr);
         }
         auto& impl = basics::downCast<iresearch::IResearchView>(*view);
-        return impl.getLinks();
+        return impl.getLinks(nullptr);
       };
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,

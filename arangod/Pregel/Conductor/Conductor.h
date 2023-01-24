@@ -1,3 +1,4 @@
+#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -28,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -37,6 +39,7 @@
 #include "Pregel/Status/ExecutionStatus.h"
 
 #include <chrono>
+#include <set>
 
 namespace arangodb {
 namespace pregel {
@@ -133,12 +136,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
+  void _ensureUniqueResponse(std::string const& sender);
 
   // === REST callbacks ===
-  void workerStatusUpdate(VPackSlice const& data);
-  void finishedWorkerStartup(VPackSlice const& data);
-  VPackBuilder finishedWorkerStep(VPackSlice const& data);
-  void finishedWorkerFinalize(VPackSlice data);
+  void workerStatusUpdate(StatusUpdated&& data);
+  void finishedWorkerStartup(GraphLoaded const& data);
+  void finishedWorkerStep(GlobalSuperStepFinished const& data);
+  void finishedWorkerFinalize(Finished const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 

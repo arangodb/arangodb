@@ -466,7 +466,6 @@ endif()
 ################################################################################
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DARANGODB_BITS=${BITS}")
 
 ################################################################################
 ## COMPILER FEATURES
@@ -686,7 +685,8 @@ option(USE_MAINTAINER_MODE
 )
 
 if (USE_MAINTAINER_MODE)
-  set(IRESEARCH_DEBUG ON)
+  add_definitions("-DIRESEARCH_DEBUG")
+
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
