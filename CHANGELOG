@@ -1,6 +1,8 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Activate RDB_CoveringIterator and use it for some geo index queries.
+
 * Log information about follower state/apply progress in supervision job that
   organizes failover in active failover mode.
 
