@@ -30,7 +30,9 @@
 #include <memory>
 #include <vector>
 
-#include "Actor.h"
+#include "Actor/Actor.h"
+#include "Actor/ActorList.h"
+#include "Actor/ActorPID.h"
 
 namespace arangodb::pregel::actor {
 
@@ -65,10 +67,10 @@ struct Runtime
 
     auto address = ActorPID{.server = myServerID, .id = newId};
 
-    auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
+    auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
         address, this->shared_from_this(),
         std::make_unique<typename ActorConfig::State>(initialState));
-    actors.emplace(newId, std::move(newActor));
+    actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
     dispatch(address, address, initialMessage);
@@ -76,27 +78,15 @@ struct Runtime
     return newId;
   }
 
-  auto shutdown() -> void {
-    // TODO
-  }
-
-  auto getActorIDs() -> std::vector<ActorID> {
-    auto res = std::vector<ActorID>{};
-
-    for (auto& [id, _] : actors) {
-      res.push_back(id);
-    }
-
-    return res;
-  }
+  auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
 
   template<typename ActorConfig>
   auto getActorStateByID(ActorID id)
       -> std::optional<typename ActorConfig::State> {
-    auto actorBase = findActorLocally(id);
+    auto actorBase = actors.find(id);
     if (actorBase.has_value()) {
       auto* actor =
-          dynamic_cast<Actor<Runtime, ActorConfig>*>(actorBase->get().get());
+          dynamic_cast<Actor<Runtime, ActorConfig>*>(actorBase->get());
       if (actor != nullptr && actor->state != nullptr) {
         return *actor->state;
       }
@@ -106,10 +96,10 @@ struct Runtime
 
   auto getSerializedActorByID(ActorID id)
       -> std::optional<velocypack::SharedSlice> {
-    auto actor = findActorLocally(id);
+    auto actor = actors.find(id);
     if (actor.has_value()) {
-      if (actor != nullptr) {
-        return actor->serialize();
+      if (actor->get() != nullptr) {
+        return actor.value()->serialize();
       }
     }
     return std::nullopt;
@@ -117,9 +107,9 @@ struct Runtime
 
   auto receive(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
-    auto actor = findActorLocally(receiver.id);
+    auto actor = actors.find(receiver.id);
     if (actor.has_value()) {
-      actor->get()->process(sender, msg);
+      actor.value()->process(sender, msg);
     } else {
       auto error = ActorError{ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
@@ -142,6 +132,26 @@ struct Runtime
     }
   }
 
+  // TODO call this function regularly
+  auto garbageCollect() {
+    actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
+      return actor->finishedAndNotBusy();
+    });
+  }
+
+  auto finish(ActorPID pid) -> void {
+    auto actor = actors.find(pid.id);
+    if (actor.has_value()) {
+      actor.value()->finish();
+    }
+  }
+
+  auto softShutdown() -> void {
+    actors.apply(
+        [](std::shared_ptr<ActorBase> const& actor) { actor->finish(); });
+    garbageCollect();  // TODO call gc several times with some timeout
+  }
+
   ServerID myServerID;
   std::string const runtimeID;
 
@@ -150,13 +160,13 @@ struct Runtime
 
   std::atomic<size_t> uniqueActorIDCounter{0};
 
-  ActorMap actors;
+  ActorList actors;
 
  private:
   template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
                        ActorMessage const& message) -> void {
-    auto actor = findActorLocally(receiver.id);
+    auto actor = actors.find(receiver.id);
     if (actor.has_value()) {
       actor->get()->process(
           sender,
@@ -176,16 +186,6 @@ struct Runtime
       fmt::print("Error serializing message");
       std::abort();
     }
-  }
-
-  auto findActorLocally(ActorID receiver)
-      -> std::optional<std::reference_wrapper<ActorMap::mapped_type>> {
-    auto a = actors.find(receiver);
-    if (a == std::end(actors)) {
-      return std::nullopt;
-    }
-    auto& [_, actor] = *a;
-    return actor;
   }
 };
 template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,

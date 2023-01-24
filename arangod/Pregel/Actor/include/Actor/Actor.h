@@ -130,6 +130,11 @@ struct Actor : ActorBase {
     kick();
   }
 
+  auto finish() -> void override { finished.store(true); }
+  auto finishedAndNotBusy() -> bool override {
+    return finished.load() and not busy.load();
+  }
+
   auto serialize() -> velocypack::SharedSlice override {
     auto res = inspection::serializeWithErrorT(*this);
     if (not res.ok()) {
@@ -152,10 +157,15 @@ struct Actor : ActorBase {
 
   void kick() {
     // Make sure that *someone* works here
+    // TODO make sure that "this" still exist when this->work() is called
+    //      or add check befor call to this->work()
     (*runtime->scheduler)([this]() { this->work(); });
   }
 
   void work() {
+    if (finished.load() == true) {
+      return;
+    }
     auto was_false = false;
     if (busy.compare_exchange_strong(was_false, true)) {
       auto i = batchSize;
@@ -196,6 +206,7 @@ struct Actor : ActorBase {
  public:
   ActorPID pid;
   std::atomic<bool> busy;
+  std::atomic<bool> finished;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
   std::unique_ptr<typename Config::State> state;

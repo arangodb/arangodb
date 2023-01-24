@@ -27,12 +27,14 @@
 
 #include "Actor/ActorPID.h"
 #include "Actor/Runtime.h"
+#include "Actors/FinishingActor.h"
 #include "Actors/SpawnActor.h"
 #include "Actors/TrivialActor.h"
 #include "Actors/PingPongActors.h"
 
 #include "fmt/format.h"
 #include "velocypack/SharedSlice.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
@@ -65,6 +67,21 @@ TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
       R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
   auto actor = runtime->getActorStateByID<pong_actor::Actor>(actorID).value();
   ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
+}
+
+TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>(
+      ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, dispatcher);
+  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                            TrivialStart());
+
+  using namespace arangodb::velocypack;
+  auto expected =
+      R"({"pid":{"server":"PRMR-1234","id":0},"state":{"state":"foo","called":1},"batchsize":16})"_vpack;
+  ASSERT_EQ(runtime->getSerializedActorByID(actor)->toJson(),
+            expected.toJson());
 }
 
 TEST(ActorRuntimeTest, spawns_actor) {
@@ -221,4 +238,92 @@ TEST(ActorRuntimeTest, spawn_game) {
   ASSERT_EQ(runtime->getActorIDs().size(), 2);
   ASSERT_EQ(runtime->getActorStateByID<SpawnActor>(spawn_actor),
             (SpawnState{.called = 2, .state = "baz"}));
+}
+
+TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
+                                               scheduler, dispatcher);
+
+  auto finishing_actor =
+      runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+
+  runtime->dispatch(ActorPID{.server = serverID, .id = finishing_actor},
+                    ActorPID{.server = serverID, .id = finishing_actor},
+                    FinishingActor::Message{FinishingFinish{}});
+
+  ASSERT_TRUE(
+      runtime->actors.find(finishing_actor)->get()->finishedAndNotBusy());
+}
+
+TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
+                                               scheduler, dispatcher);
+
+  auto finishing_actor =
+      runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+
+  runtime->dispatch(ActorPID{.server = serverID, .id = finishing_actor},
+                    ActorPID{.server = serverID, .id = finishing_actor},
+                    FinishingActor::Message{FinishingFinish{}});
+
+  runtime->garbageCollect();
+
+  ASSERT_EQ(runtime->actors.size(), 0);
+}
+
+TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
+                                               scheduler, dispatcher);
+
+  auto actor_to_be_finished =
+      runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+  runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+  runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+  auto another_actor_to_be_finished =
+      runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+  runtime->spawn<FinishingActor>(FinishingState{}, FinishingStart{});
+
+  runtime->dispatch(ActorPID{.server = serverID, .id = actor_to_be_finished},
+                    ActorPID{.server = serverID, .id = actor_to_be_finished},
+                    FinishingActor::Message{FinishingFinish{}});
+  runtime->dispatch(
+      ActorPID{.server = serverID, .id = another_actor_to_be_finished},
+      ActorPID{.server = serverID, .id = another_actor_to_be_finished},
+      FinishingActor::Message{FinishingFinish{}});
+
+  runtime->garbageCollect();
+
+  ASSERT_EQ(runtime->actors.size(), 3);
+  auto remaining_actor_ids = runtime->getActorIDs();
+  std::unordered_set<ActorID> actor_ids(remaining_actor_ids.begin(),
+                                        remaining_actor_ids.end());
+  ASSERT_FALSE(actor_ids.contains(actor_to_be_finished));
+  ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished));
+}
+
+TEST(ActorRuntimeTest,
+     finishes_and_garbage_collects_all_actors_when_shutting_down) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
+                                               scheduler, dispatcher);
+  runtime->spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  runtime->spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  runtime->spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  runtime->spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  runtime->spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  ASSERT_EQ(runtime->actors.size(), 5);
+
+  runtime->softShutdown();
+  ASSERT_EQ(runtime->actors.size(), 0);
 }

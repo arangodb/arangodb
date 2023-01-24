@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "ActorPID.h"
-#include "Message.h"
+#include "Actor/ActorPID.h"
+#include "Actor/Message.h"
 
 namespace arangodb::pregel::actor {
 
@@ -37,31 +37,8 @@ struct ActorBase {
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
   virtual auto serialize() -> velocypack::SharedSlice = 0;
+  virtual auto finish() -> void = 0;
+  virtual auto finishedAndNotBusy() -> bool = 0;
 };
 
-namespace {
-struct ActorInfo {
-  ActorID id;
-  std::string_view type;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorInfo& x) {
-  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type));
-}
-}  // namespace
-
-struct ActorMap : std::unordered_map<ActorID, std::unique_ptr<ActorBase>> {};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorMap& x) {
-  if constexpr (Inspector::isLoading) {
-    return inspection::Status{};
-  } else {
-    auto actorInfos = std::vector<ActorInfo>{};
-    for (auto const& [id, actor] : x) {
-      actorInfos.emplace_back(ActorInfo{.id = id, .type = actor->typeName()});
-    }
-    return f.apply(actorInfos);
-  }
-}
-
-};  // namespace arangodb::pregel::actor
+}  // namespace arangodb::pregel::actor

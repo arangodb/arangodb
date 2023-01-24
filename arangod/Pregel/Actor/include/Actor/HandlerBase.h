@@ -48,6 +48,8 @@ struct HandlerBase {
     return runtime->template spawn<ActorConfig>(initialState, initialMessage);
   }
 
+  auto finish() -> void { runtime->finish(self); }
+
   ActorPID self;
   ActorPID sender;
   std::unique_ptr<State> state;
