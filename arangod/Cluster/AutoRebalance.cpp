@@ -513,10 +513,7 @@ int AutoRebalanceProblem::optimize(bool considerLeaderChanges,
 
   ShardImbalance shardImb = computeShardImbalance();
   LeaderImbalance leaderImb = computeLeaderImbalance();
-  size_t count = 0;
   for (auto& moves : moveGroups) {
-    ++count;
-
     for (auto& job : moves) {
       job.shardImbAfter = shardImb;    // copy
       job.leaderImbAfter = leaderImb;  // copy
