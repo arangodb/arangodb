@@ -678,7 +678,7 @@ function dumpMixedClusterSingle (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend_two_instances(clusterOptions, singleOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend_two_instances(clusterOptions, singleOptions, {}, {}, options, options, 'dump_mixed_cluster_single', tstFiles, function(){});
 }
 
 function dumpMixedSingleCluster (options) {
@@ -698,7 +698,7 @@ function dumpMixedSingleCluster (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend_two_instances(singleOptions, clusterOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend_two_instances(singleOptions, clusterOptions, {}, {}, options, options, 'dump_mixed_single_cluster', tstFiles, function(){});
 }
 
 function dumpMultiple (options) {
