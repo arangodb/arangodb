@@ -31,6 +31,7 @@ add_library(arango_rocksdb STATIC
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp
+  RocksDBReplicationContextGuard.cpp
   RocksDBReplicationIterator.cpp
   RocksDBReplicationManager.cpp
   RocksDBReplicationTailing.cpp
