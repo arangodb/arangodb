@@ -709,16 +709,18 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
 [[nodiscard]] auto ClusterCollectionMethods::prepareCollectionGroups(
     ClusterInfo& ci, std::string_view databaseName,
-    std::vector<CreateCollectionBody> const& collections)
+    std::vector<CreateCollectionBody>& collections)
     -> ResultT<replication2::CollectionGroupUpdates> {
   arangodb::replication2::CollectionGroupUpdates groups;
   std::unordered_map<std::string, replication2::agency::CollectionGroupId>
       selfCreatedGroups;
-  for (auto const& col : collections) {
+  for (auto& col : collections) {
     if (col.distributeShardsLike.has_value()) {
       auto const& leadingName = col.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
-        groups.addToNewGroup(selfCreatedGroups.at(leadingName), col.id);
+        auto groupId = selfCreatedGroups.at(leadingName);
+        groups.addToNewGroup(groupId, col.id);
+        col.groupId = groupId;
       } else {
         // TODO: This code needs to look-up the CollectionID.
         // It is not yet added as part of the Collection Properties.
@@ -727,14 +729,16 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         // We never get a nullptr here because an exception is thrown if the
         // collection does not exist. Also, the createCollection should have
         // failed before.
-        groups.addToExistingGroup(
-            replication2::agency::CollectionGroupId{c->id().id()}, col.id);
+        auto groupId = replication2::agency::CollectionGroupId{c->id().id()};
+        groups.addToExistingGroup(groupId, col.id);
+        col.groupId = groupId;
       }
     } else {
       // Create a new CollectionGroup
       auto groupId = groups.addNewGroup(col);
       // Remember it for reuse
       selfCreatedGroups.emplace(col.name, groupId);
+      col.groupId = groupId;
     }
   }
   return groups;

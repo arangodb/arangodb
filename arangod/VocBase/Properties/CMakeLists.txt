@@ -30,4 +30,7 @@ target_link_libraries(arango_vocbase_api PUBLIC
 
         # Required for Result / ResultT
         PRIVATE arango
+
+        # Required for immer, exposed by the AgencySpecification
+        PRIVATE arango_replication2
 )
