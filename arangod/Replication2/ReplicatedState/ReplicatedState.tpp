@@ -386,6 +386,7 @@ auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
 
 template<typename S>
 void LeaderStateManager<S>::recoverEntries() {
+  LOG_CTX("1b3d0", DEBUG, _loggerContext) << "starting recovery";
   auto future = _guardedData.getLockedGuard()->recoverEntries();
   std::move(future).thenFinal(
       [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
@@ -394,8 +395,9 @@ void LeaderStateManager<S>::recoverEntries() {
         ADB_PROD_ASSERT(tryResult.get().ok()) << tryResult.get();
         if (auto self = weak.lock(); self != nullptr) {
           auto guard = self->_guardedData.getLockedGuard();
-          guard->_recoveryCompleted = true;
           guard->_leaderState->onRecoveryCompleted();
+          guard->_recoveryCompleted = true;
+          LOG_CTX("1b3d0", DEBUG, self->_loggerContext) << "recovery completed";
         }
       });
 }

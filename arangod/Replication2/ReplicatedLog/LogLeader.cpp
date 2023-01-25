@@ -559,6 +559,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
+  auto stateStatus = _stateHandle->getQuickStatus();
   auto guard = _guardedLeaderData.getLockedGuard();
   if (guard->_didResign) {
     throw ParticipantResignedException(
@@ -570,7 +571,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   }
   return QuickLogStatus{
       .role = ParticipantRole::kLeader,
-      .localState = _stateHandle->getQuickStatus(),
+      .localState = stateStatus,
       .term = _currentTerm,
       .local = guard->getLocalStatistics(),
       .leadershipEstablished = guard->_leadershipEstablished,
@@ -722,6 +723,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     // leadership is established if commitIndex is non-zero
     ADB_PROD_ASSERT(newIndex > LogIndex{0});
     _leadershipEstablished = true;
+    LOG_CTX("f1136", DEBUG, _self._logContext) << "leadership established";
     _self._stateHandle->leadershipEstablished(
         std::make_unique<MethodsImpl>(_self));
   }

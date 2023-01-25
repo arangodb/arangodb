@@ -282,12 +282,6 @@ auto AppendEntriesErrorReasonTypeStringTransformer::fromSerialized(
   return {};
 }
 
-namespace {
-constexpr const char* kStringUnconfigured = "Unconfigured";
-constexpr const char* kStringRecovery = "RecoveryInProgress";
-constexpr const char* kStringOperational = "ServiceOperational";
-}  // namespace
-
 auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
     -> std::string_view {
   switch (status) {
