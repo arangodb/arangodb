@@ -1,4 +1,5 @@
 target_sources(arango_cluster_methods PRIVATE
+    CollectionGroupUpdates.cpp
     CurrentCollectionEntry.cpp
     CurrentWatcher.cpp
     DistributeShardsLike.cpp

@@ -603,6 +603,12 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }
 
    */
+  auto groups = arangodb::ClusterCollectionMethods::prepareCollectionGroups(
+      feature.clusterInfo(), vocbase.name(), collections);
+  if (groups.fail()) {
+    return groups.result();
+  }
+
   auto serverState = ServerState::instance();
   AgencyIsBuildingFlags buildingFlags;
   buildingFlags.coordinatorName = serverState->getId();
@@ -626,8 +632,16 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   // Protection, all entries have been moved
   collections.clear();
 
-  WriterType writer{std::move(collectionPlanEntries),
-                    std::move(shardDistributionList)};
+  WriterType writer = std::invoke([&]() {
+    if constexpr (ReplicationVersion == replication::Version::TWO) {
+      return WriterType{std::move(collectionPlanEntries),
+                        std::move(shardDistributionList),
+                        std::move(groups.get())};
+    } else if constexpr (ReplicationVersion == replication::Version::ONE) {
+      return WriterType{std::move(collectionPlanEntries),
+                        std::move(shardDistributionList)};
+    }
+  });
   auto res =
       ::impl(feature.clusterInfo(), vocbase.server(),
              std::string_view{vocbase.name()}, writer, waitForSyncReplication);
@@ -693,6 +707,39 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   return shardNames;
 }
 
+[[nodiscard]] auto ClusterCollectionMethods::prepareCollectionGroups(
+    ClusterInfo& ci, std::string_view databaseName,
+    std::vector<CreateCollectionBody> const& collections)
+    -> ResultT<replication2::CollectionGroupUpdates> {
+  arangodb::replication2::CollectionGroupUpdates groups;
+  std::unordered_map<std::string, replication2::agency::CollectionGroupId>
+      selfCreatedGroups;
+  for (auto const& col : collections) {
+    if (col.distributeShardsLike.has_value()) {
+      auto const& leadingName = col.distributeShardsLike.value();
+      if (selfCreatedGroups.contains(leadingName)) {
+        groups.addToNewGroup(selfCreatedGroups.at(leadingName), col.id);
+      } else {
+        // TODO: This code needs to look-up the CollectionID.
+        // It is not yet added as part of the Collection Properties.
+        auto c = ci.getCollection(databaseName, leadingName);
+        TRI_ASSERT(c.get() != nullptr);
+        // We never get a nullptr here because an exception is thrown if the
+        // collection does not exist. Also, the createCollection should have
+        // failed before.
+        groups.addToExistingGroup(
+            replication2::agency::CollectionGroupId{c->id().id()}, col.id);
+      }
+    } else {
+      // Create a new CollectionGroup
+      auto groupId = groups.addNewGroup(col);
+      // Remember it for reuse
+      selfCreatedGroups.emplace(col.name, groupId);
+    }
+  }
+  return groups;
+}
+
 [[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(
     ClusterInfo& ci, std::string_view databaseName,
     CreateCollectionBody const& col, bool enforceReplicationFactor,
@@ -711,6 +758,9 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     auto distribution = std::make_shared<DistributeShardsLike>(
         [&ci, databaseName,
          distLike]() -> ResultT<std::vector<ResponsibleServerList>> {
+          // We need the lookup in the callback, as it will be called on retry.
+          // So time has potentially passed, and shards could be moved
+          // meanwhile.
           auto c = ci.getCollectionNT(databaseName, distLike);
           if (c == nullptr) {
             return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
