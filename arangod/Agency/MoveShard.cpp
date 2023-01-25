@@ -295,8 +295,8 @@ bool MoveShard::start(bool&) {
 
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
-  if (health != "GOOD") {
-    if (health == "BAD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
+    if (health == Supervision::HEALTH_STATUS_BAD) {
       LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
           << "server " << _to << " is currently " << health
           << ", not starting MoveShard job " << _jobId;
@@ -579,7 +579,8 @@ bool MoveShard::start(bool&) {
       addPreconditionShardNotBlocked(pending, _shard);
       addMoveShardToServerCanLock(pending);
       addMoveShardFromServerCanLock(pending);
-      addPreconditionServerHealth(pending, _to, "GOOD");
+      addPreconditionServerHealth(pending, _to,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }  // precondition done
@@ -675,7 +676,7 @@ bool MoveShard::startReplication2() {
       addPreconditionShardNotBlocked(trx, _shard);
       addMoveShardToServerCanLock(trx);
       addMoveShardFromServerCanLock(trx);
-      addPreconditionServerHealth(trx, _to, "GOOD");
+      addPreconditionServerHealth(trx, _to, Supervision::HEALTH_STATUS_GOOD);
 
       {
         VPackObjectBuilder ob(&trx, targetPath + "/version");

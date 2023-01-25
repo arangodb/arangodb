@@ -107,7 +107,7 @@ void FailedLeader::rollback() {
         VPackArrayBuilder r(&rb);
         for (auto const i : VPackArrayIterator(planned)) {
           TRI_ASSERT(i.isString());
-          auto istr = i.copyString();
+          auto istr = i.stringView();
           if (istr == _from) {
             rb.add(VPackValue(_to));
           } else if (istr == _to) {
@@ -252,7 +252,7 @@ bool FailedLeader::start(bool& aborts) {
     // should never happen as well, but if it happens, this situation will
     // repair itself by diverging replicationFactor.
     if (s != _from && s != _to && !s.empty() && s[0] != '_') {
-      planv.push_back(s);
+      planv.push_back(std::move(s));
     }
   }
 
@@ -265,7 +265,7 @@ bool FailedLeader::start(bool& aborts) {
     if (s.isString()) {
       std::string id = s.copyString();
       if (failoverCands.find(id) == failoverCands.end()) {
-        excludes.push_back(s.copyString());
+        excludes.push_back(std::move(id));
       }
     }
   }
@@ -300,7 +300,7 @@ bool FailedLeader::start(bool& aborts) {
                       VPackValue(timepointToString(system_clock::now())));
           pending.add("toServer", VPackValue(_to));  // toServer
           for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-            pending.add(obj.key.copyString(), obj.value);
+            pending.add(obj.key.stringView(), obj.value);
           }
         }
         addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
@@ -314,7 +314,7 @@ bool FailedLeader::start(bool& aborts) {
           // others to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
-            if (s.size() > 0 && s[0] == '_') {
+            if (s.starts_with('_')) {
               s = s.substr(1);
             }
             // We need to make sure to only pick servers from the plan as
@@ -350,9 +350,11 @@ bool FailedLeader::start(bool& aborts) {
       {
         VPackObjectBuilder preconditions(&pending);
         // Failed condition persists
-        addPreconditionServerHealth(pending, _from, "FAILED");
+        addPreconditionServerHealth(pending, _from,
+                                    Supervision::HEALTH_STATUS_FAILED);
         // Destination server still in good condition
-        addPreconditionServerHealth(pending, _to, "GOOD");
+        addPreconditionServerHealth(pending, _to,
+                                    Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
         // Check that Current/servers and failoverCandidates are still as
@@ -420,7 +422,8 @@ bool FailedLeader::start(bool& aborts) {
     // Still failing _from?
     auto slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _from, "Status"}));
-    if (slice.isString() && slice.copyString() == "GOOD") {
+    if (slice.isString() &&
+        slice.stringView() == Supervision::HEALTH_STATUS_GOOD) {
       finish("", _shard, false, "Server " + _from + " no longer failing.");
       return false;
     }
@@ -428,7 +431,8 @@ bool FailedLeader::start(bool& aborts) {
     // Still healthy _to?
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-    if (slice.isString() && slice.copyString() != "GOOD") {
+    if (slice.isString() &&
+        slice.stringView() != Supervision::HEALTH_STATUS_GOOD) {
       LOG_TOPIC("7e2ef", INFO, Logger::SUPERVISION)
           << "Will not failover from " << _from << " to " << _to
           << " as target server is no longer in good condition. Will retry.";
@@ -484,7 +488,8 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string toServerHealth = checkServerHealth(_snapshot, _to);
-  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+  if (toServerHealth == Supervision::HEALTH_STATUS_FAILED ||
+      toServerHealth == Supervision::HEALTH_STATUS_UNCLEAR) {
     finish("", _shard, false, "_to server not health");
     return FAILED;
   }

@@ -137,7 +137,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
-            size_t pos = o.key.copyString().find(RECONFIGURE);
+            size_t pos = o.key.stringView().find(RECONFIGURE);
             if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
               break;
@@ -415,9 +415,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   _storeLock.assertLockedByCurrentThread();
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
-
-    std::string key = precond.key.copyString();
-    std::vector<std::string> pv = split(key);
+    std::vector<std::string> pv = split(precond.key.stringView());
 
     Node const* node = &Node::dummyNode();
 
@@ -430,7 +428,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
-        std::string const& oper = op.key.copyString();
+        std::string_view oper = op.key.stringView();
         if (oper == "old") {  // old
           if (*node != op.value) {
             ret.push_back(precond.key);
@@ -1093,7 +1091,7 @@ std::string Store::normalize(char const* key, size_t length) {
 
 /// @brief Split strings by forward slashes, omitting empty strings,
 /// and ignoring multiple subsequent forward slashes
-std::vector<std::string> Store::split(std::string const& str) {
+std::vector<std::string> Store::split(std::string_view str) {
   std::vector<std::string> result;
 
   char const* p = str.data();
@@ -1154,7 +1152,7 @@ void Store::callTriggers(std::string_view key, std::string_view op,
   }
 }
 
-void Store::registerPrefixTrigger(std::string prefix,
+void Store::registerPrefixTrigger(std::string const& prefix,
                                   AgencyTriggerCallback cb) {
   std::unique_lock guard(_triggersMutex);
   auto normalized = normalize(prefix);

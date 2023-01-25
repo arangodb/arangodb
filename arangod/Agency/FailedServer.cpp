@@ -83,7 +83,7 @@ bool FailedServer::start(bool& aborts) {
 
   // Fail job, if Health back to not FAILED
   auto status = _snapshot.hasAsString(healthPrefix + _server + "/Status");
-  if (status && status.value() != "FAILED") {
+  if (status && status.value() != Supervision::HEALTH_STATUS_FAILED) {
     std::stringstream reason;
     reason << "Server " << _server
            << " is no longer failed. Not starting FailedServer job";
@@ -277,7 +277,8 @@ bool FailedServer::start(bool& aborts) {
       // Check that toServer not blocked
       addPreconditionServerNotBlocked(*transactions, _server);
       // Status should still be FAILED
-      addPreconditionServerHealth(*transactions, _server, "FAILED");
+      addPreconditionServerHealth(*transactions, _server,
+                                  Supervision::HEALTH_STATUS_FAILED);
     }  // <--------- Preconditions
   }
 
@@ -341,7 +342,8 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     {
       VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      addPreconditionServerHealth(*_jb, _server, "BAD");
+      addPreconditionServerHealth(*_jb, _server,
+                                  Supervision::HEALTH_STATUS_BAD);
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       {

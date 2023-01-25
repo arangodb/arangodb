@@ -198,13 +198,14 @@ bool RemoveFollower::start(bool&) {
   bool leaderBad = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
-    if (checkServerHealth(_snapshot, serverName) == "GOOD") {
-      overview.try_emplace(serverName, 0);
+    if (checkServerHealth(_snapshot, serverName) ==
+        Supervision::HEALTH_STATUS_GOOD) {
+      overview.try_emplace(std::move(serverName), 0);
     } else {
-      overview.try_emplace(serverName, -1);
-      if (serverName == planned[0].copyString()) {
+      if (serverName == planned[0].stringView()) {
         leaderBad = true;
       }
+      overview.try_emplace(std::move(serverName), -1);
     }
   }
   doForAllShards(_snapshot, _database, shardsLikeMe,
@@ -212,7 +213,7 @@ bool RemoveFollower::start(bool&) {
                                                    std::string& planPath,
                                                    std::string& curPath) {
                    if (current.length() > 0) {
-                     if (current[0].copyString() != planned[0].copyString()) {
+                     if (current[0].stringView() != planned[0].stringView()) {
                        leaderBad = true;
                      } else {
                        for (auto const s : VPackArrayIterator(current)) {
@@ -312,7 +313,7 @@ bool RemoveFollower::start(bool&) {
           auto const pair = *overview.find(it);
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
-              pair.first != planned[0].copyString()) {
+              pair.first != planned[0].stringView()) {
             if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
                                     true) ||
                 Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
@@ -332,7 +333,7 @@ bool RemoveFollower::start(bool&) {
             auto const pair = *overview.find(it);
             if (pair.second >= 0 &&
                 static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
-                pair.first != planned[0].copyString()) {
+                pair.first != planned[0].stringView()) {
               if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
                                        true) &&
                   !Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
@@ -353,7 +354,7 @@ bool RemoveFollower::start(bool&) {
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (chosenToRemove.find(serverName) == chosenToRemove.end()) {
-      kept.push_back(serverName);
+      kept.push_back(std::move(serverName));
     }
   }
 
@@ -424,7 +425,7 @@ bool RemoveFollower::start(bool&) {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : kept) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
