@@ -147,8 +147,7 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*handlersFactoryMock, createTransactionHandler)
         .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier gid) {
           return std::make_unique<DocumentStateTransactionHandler>(
-              std::move(gid), std::make_unique<MockDatabaseGuard>(),
-              handlersFactoryMock);
+              std::move(gid), nullptr, handlersFactoryMock);
         });
 
     ON_CALL(*handlersFactoryMock, createSnapshotHandler)
@@ -423,8 +422,7 @@ TEST_F(
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -444,8 +442,7 @@ TEST_F(DocumentStateMachineTest, test_transactionHandler_removeTransaction) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -461,8 +458,7 @@ TEST_F(DocumentStateMachineTest,
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -480,8 +476,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_commit) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
                               velocypack::SharedSlice(), TransactionId{6}};
@@ -514,8 +509,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_abort) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   // Start a new transaction and then abort it.
   auto doc = DocumentLogEntry{"s1234", OperationType::kRemove,
@@ -541,8 +535,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
                               velocypack::SharedSlice(), TransactionId{6}};
 

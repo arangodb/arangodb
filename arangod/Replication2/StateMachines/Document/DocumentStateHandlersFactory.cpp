@@ -66,20 +66,19 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
 auto DocumentStateHandlersFactory::createTransactionHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
-  auto dbGuard = std::make_unique<DatabaseGuard>(vocbase);
   return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid), std::move(dbGuard), shared_from_this());
+      std::move(gid), &vocbase, shared_from_this());
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
+    DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
     -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(
-      dbGuard.database(), doc.tid, options);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, doc.tid,
+                                                               options);
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
 

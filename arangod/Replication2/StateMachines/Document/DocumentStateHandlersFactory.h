@@ -81,7 +81,7 @@ struct IDocumentStateHandlersFactory {
                                         GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(DocumentLogEntry const& doc,
-                                 IDatabaseGuard const& dbGuard)
+                                 TRI_vocbase_t& vocbase)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
@@ -103,8 +103,7 @@ class DocumentStateHandlersFactory
       -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(DocumentLogEntry const& doc,
-                         IDatabaseGuard const& dbGuard)
+  auto createTransaction(DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
