@@ -983,6 +983,31 @@ Result Collections::create(
   return {};
 }
 
+void Collections::applySystemCollectionProperties(
+    CreateCollectionBody& col, TRI_vocbase_t const& vocbase, DatabaseConfiguration const& config) {
+  col.isSystem = true;
+  // that forces all collections to be on the same physical DBserver
+  auto const& designatedLeaderName = vocbase.isSystem()
+                                         ? StaticStrings::UsersCollection
+                                         : StaticStrings::GraphsCollection;
+  if (col.name == designatedLeaderName) {
+    // The leading collection needs to define sharding
+    col.replicationFactor = vocbase.replicationFactor();
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      col.replicationFactor =
+          (std::max)(col.replicationFactor.value(),
+                     static_cast<uint64_t>(vocbase.server()
+                                               .getFeature<ClusterFeature>()
+                                               .systemReplicationFactor()));
+    }
+  } else {
+    // Others only follow
+    col.distributeShardsLike = designatedLeaderName;
+  }
+  [[maybe_unused]] auto res = col.applyDefaultsAndValidateDatabaseConfiguration(config);
+  ADB_PROD_ASSERT(!res.fail()) << "Created illegal default system collection attributes: " << res.errorMessage();
+}
+
 void Collections::createSystemCollectionProperties(
     std::string const& collectionName, VPackBuilder& bb,
     TRI_vocbase_t const& vocbase) {

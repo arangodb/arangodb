@@ -49,6 +49,7 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -129,7 +130,7 @@ Result createSystemCollections(
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   OperationOptions options(ExecContext::current());
 
-  std::vector<CollectionCreationInfo> systemCollectionsToCreate;
+  std::vector<CreateCollectionBody> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be
   // first.
@@ -224,6 +225,26 @@ Result createSystemCollections(
 
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
 
+  auto config = vocbase.getDatabaseConfiguration();
+  // Override lookup for leading CollectionName
+  config.getCollectionGroupSharding = [&createdCollections, &vocbase] (std::string const& name)-> ResultT<UserInputCollectionProperties> {
+    // For the time being the leading collection is created as standalone
+    // before adding the others. So it has to be part of createdCollections.
+    // So let us scan there
+    for (auto const& c : createdCollections) {
+      if (c->name() == name) {
+        // On new databases the leading collection is in the first position.
+        // So we will quickly loop here.
+        // During upgrades there may be some collections before, however
+        // it is not performance critical.
+        return c->getCollectionProperties();
+      }
+    }
+    return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                  "Collection not found: " + name +
+                      " in database " + vocbase.name()};
+
+  };
   for (auto const& cname : systemCollections) {
     std::shared_ptr<LogicalCollection> col;
     res = methods::Collections::lookup(vocbase, cname, col);
@@ -232,31 +253,25 @@ Result createSystemCollections(
     }
 
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      // if not found, create it
-      VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(cname, options,
-                                                             vocbase);
-
-      systemCollectionsToCreate.emplace_back(CollectionCreationInfo{
-          cname, TRI_COL_TYPE_DOCUMENT, options.slice()});
-      buffers.emplace_back(options.steal());
+      CreateCollectionBody newCollection;
+      newCollection.name = cname;
+      methods::Collections::applySystemCollectionProperties(newCollection, vocbase, config);
+      systemCollectionsToCreate.emplace_back(std::move(newCollection));
     }
   }
 
   // We capture the vector of created LogicalCollections here
   // to use it to create indices later.
   if (!systemCollectionsToCreate.empty()) {
-    std::vector<std::shared_ptr<LogicalCollection>> cols;
-
-    res = methods::Collections::create(
+    auto cols = methods::Collections::create(
         vocbase, options, systemCollectionsToCreate, true, true, true,
-        colToDistributeShardsLike, cols,
+
         true /* allow system collection creation */);
-    if (res.fail()) {
-      return res;
+    if (cols.fail()) {
+      return cols.result();
     }
-    createdCollections.insert(std::end(createdCollections), std::begin(cols),
-                              std::end(cols));
+    createdCollections.insert(std::end(createdCollections),
+                              std::begin(cols.get()), std::end(cols.get()));
   }
 
   return {TRI_ERROR_NO_ERROR};
