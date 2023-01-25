@@ -93,7 +93,7 @@ void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
   LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
-      << "Create failedFollower for " + _shard + " from " + _from;
+      << "Create failedFollower for " << _shard << " from " << _from;
 
   _created = system_clock::now();
 
@@ -220,7 +220,8 @@ bool FailedFollower::start(bool& aborts) {
   }
 
   LOG_TOPIC("80b9d", INFO, Logger::SUPERVISION)
-      << "Start failedFollower for " + _shard + " from " + _from + " to " + _to;
+      << "Start failedFollower for " << _shard << " from " << _from << " to "
+      << _to;
 
   // Copy todo to pending
   Builder todo;
@@ -232,8 +233,8 @@ bool FailedFollower::start(bool& aborts) {
         jobIdNode->get().toBuilder(todo);
       } else {
         LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -385,7 +386,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("ad849", INFO, Logger::SUPERVISION)
         << "Destination " << _to << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   slice = result.get(std::vector<std::string>(
@@ -393,7 +394,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("57da4", INFO, Logger::SUPERVISION)
         << "Shard " << _shard << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   return false;

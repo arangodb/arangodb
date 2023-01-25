@@ -152,7 +152,7 @@ JOB_STATUS CleanOutServer::status() {
 
 bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("8a94c", DEBUG, Logger::SUPERVISION)
-      << "Todo: Clean out server " + _server + " for shrinkage";
+      << "Todo: Clean out server " << _server << " for shrinkage";
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -194,7 +194,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("525fa", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -299,8 +299,8 @@ bool CleanOutServer::start(bool& aborts) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -362,13 +362,13 @@ bool CleanOutServer::start(bool& aborts) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION)
-        << "Pending: Clean out server " + _server;
+        << "Pending: Clean out server " << _server;
 
     return true;
   }
 
   LOG_TOPIC("3a348", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting CleanOutServer job " + _jobId;
+      << "Precondition failed for starting CleanOutServer job " << _jobId;
 
   return false;
 }

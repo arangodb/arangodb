@@ -1457,7 +1457,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
         }
       } catch (std::exception const& e) {
         LOG_TOPIC("21a9e", DEBUG, Logger::SUPERVISION)
-            << "Failing to analyse " << serverId << " as deletion candidate "
+            << "Failing to analyze " << serverId << " as deletion candidate "
             << e.what();
       }
 

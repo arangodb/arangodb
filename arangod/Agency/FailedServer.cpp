@@ -150,8 +150,8 @@ bool FailedServer::start(bool& aborts) {
         toDoJob.value().get().toBuilder(todo);
       } else {
         LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -293,14 +293,14 @@ bool FailedServer::start(bool& aborts) {
   }
 
   LOG_TOPIC("a3459", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting FailedServer " + _jobId;
+      << "Precondition failed for starting FailedServer " << _jobId;
 
   return false;
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("352fa", DEBUG, Logger::SUPERVISION)
-      << "Todo: Handle failover for db server " + _server;
+      << "Todo: Handle failover for db server " << _server;
 
   using namespace std::chrono;
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -364,7 +364,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
       LOG_TOPIC("70ce1", INFO, Logger::SUPERVISION)
-          << "Failed to insert job " + _jobId;
+          << "Failed to insert job " << _jobId;
       return false;
     }
   }

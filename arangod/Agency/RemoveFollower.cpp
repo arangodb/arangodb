@@ -124,7 +124,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("83bf8", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -373,8 +373,8 @@ bool RemoveFollower::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -442,7 +442,7 @@ bool RemoveFollower::start(bool&) {
   }
 
   LOG_TOPIC("f2df8", INFO, Logger::SUPERVISION)
-      << "Start precondition failed for RemoveFollower Job " + _jobId;
+      << "Start precondition failed for RemoveFollower Job " << _jobId;
   return false;
 }
 
