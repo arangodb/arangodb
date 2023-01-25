@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined, fail */
+/*global assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -708,6 +708,70 @@ function ValidationBasicsSuite () {
   }; // return
 } // END - ValidationBasicsSuite
 
+
+function UpdateSchemaCoverageSuite() {
+  const testCollectionName = "TestCollection";
+  let testCollection = null;
+  const validatorJson = {
+    "message": "",
+    "level": "new",
+    "type": "json",
+    "rule": {
+      "additionalProperties": true,
+      "properties": {
+        "created": {
+          "type": "integer"
+        },
+        "creator": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created",
+        "creator"
+      ],
+      "type": "object"
+    }
+  };
+
+
+  return {
+
+    setUp: () => {
+      try {
+        db._drop(testCollectionName);
+      } catch (ex) {}
+      testCollection = db._create(testCollectionName, {
+        schema: validatorJson,
+        replicationFactor: 3,
+        numberOfShards: 5
+      });
+    },
+
+    tearDown: () => {
+      try {
+        db._drop(testCollectionName);
+      } catch (ex) {}
+    },
+
+    testPropertiesRemoveAttributeAfterInsertion: () => {
+      assertNotNull(testCollection);
+      const newDoc = {"created": 123, "creator": "Julia"};
+      testCollection.insert(newDoc);
+      delete validatorJson.rule.properties.name;
+      assertFalse(validatorJson.rule.hasOwnProperty("name"));
+      const schema = testCollection.properties({ "schema": validatorJson }).schema;
+      assertEqual(schema.message, validatorJson.message);
+      assertEqual(schema.level, validatorJson.level);
+      assertEqual(schema.type, validatorJson.type);
+      assertEqual(schema.rule, validatorJson.rule);
+    },
+  };
+} // END - UpdateSchemaCoverageSuite
+
 function ValidationEdgeSuite () {
   const testCollectionName = "TestValidationEdgeCollection";
   let testCollection;
@@ -922,5 +986,6 @@ function ValidationEdgeSuite () {
 
 jsunity.run(ValidationBasicsSuite);
 jsunity.run(ValidationEdgeSuite);
+jsunity.run(UpdateSchemaCoverageSuite);
 
 return jsunity.done();
