@@ -1,3 +1,4 @@
+#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -52,6 +53,7 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -61,6 +63,7 @@
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -201,8 +204,10 @@ bool Conductor::_startGlobalStep() {
                                            .edgeCount = _totalEdgesCount};
   auto serialized = inspection::serializeWithErrorT(prepareGss);
   if (!serialized.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot serialize PrepareGlobalSuperStep");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize PrepareGlobalSuperStep message: {}",
+                    serialized.error().error()));
   }
 
   // we are explicitly expecting an response containing the aggregated
@@ -210,11 +215,21 @@ bool Conductor::_startGlobalStep() {
   auto prepareRes = _sendToAllDBServers(
       Utils::prepareGSSPath, VPackBuilder(serialized.get().slice()),
       [&](VPackSlice const& payload) {
-        _aggregators->aggregateValues(payload);
-
-        _statistics.accumulateActiveCounts(payload);
-        _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-        _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+        auto prepared =
+            inspection::deserializeWithErrorT<GlobalSuperStepPrepared>(
+                velocypack::SharedSlice({}, payload));
+        if (!prepared.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              fmt::format(
+                  "Cannot deserialize GlobalSuperStepPrepared message: {}",
+                  prepared.error().error()));
+        }
+        _aggregators->aggregateValues(prepared.get().aggregators.slice());
+        _statistics.accumulateActiveCounts(prepared.get().sender,
+                                           prepared.get().activeCount);
+        _totalVerticesCount += prepared.get().vertexCount;
+        _totalEdgesCount += prepared.get().edgeCount;
       });
 
   if (prepareRes != TRI_ERROR_NO_ERROR) {
@@ -286,8 +301,10 @@ bool Conductor::_startGlobalStep() {
   // start vertex level operations, does not get a response
   auto serializedRun = inspection::serializeWithErrorT(runGss);
   if (!serializedRun.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot serialize RunGlobalSuperStep");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize RunGlobalSuperStep: {}",
+                    serializedRun.error().error()));
   }
   auto startRes = _sendToAllDBServers(
       Utils::startGSSPath,
@@ -307,35 +324,32 @@ bool Conductor::_startGlobalStep() {
 
 // The worker can (and should) periodically call back
 // to update its status
-void Conductor::workerStatusUpdate(VPackSlice const& data) {
+void Conductor::workerStatusUpdate(StatusUpdated&& update) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto update = deserialize<Status>(data.get(Utils::payloadKey));
-  auto sender = data.get(Utils::senderKey).copyString();
+  LOG_PREGEL("76632", TRACE) << fmt::format("Update received {}", update);
 
-  LOG_PREGEL("76632", DEBUG)
-      << fmt::format("Update received {}", data.toJson());
-
-  _status.updateWorkerStatus(sender, std::move(update));
+  _status.updateWorkerStatus(update.sender, std::move(update.status));
 }
 
-void Conductor::finishedWorkerStartup(VPackSlice const& data) {
+void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto sender = graphLoaded.sender;
+  _ensureUniqueResponse(sender);
+
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
-
-  ServerID sender = data.get(Utils::senderKey).copyString();
   LOG_PREGEL("08142", WARN)
       << fmt::format("finishedWorkerStartup, got response from {}.", sender);
 
-  _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
-  _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
+  _totalVerticesCount += graphLoaded.vertexCount;
+  _totalEdgesCount += graphLoaded.edgeCount;
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -361,33 +375,30 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator values
-VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
+void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
-  if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
-                                   _state == ExecutionState::CANCELED)) {
+  if (data.gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
+                                        _state == ExecutionState::CANCELED)) {
     LOG_PREGEL("dc904", WARN)
         << "Conductor did received a callback from the wrong superstep";
-    return VPackBuilder();
+    return;
   }
 
   // track message counts to decide when to halt or add global barriers.
   // this will wait for a response from each worker
-  _statistics.accumulateMessageStats(data);
-  _ensureUniqueResponse(data);
+  _statistics.accumulateMessageStats(data.sender, data.messageStats);
+  _ensureUniqueResponse(data.sender);
   LOG_PREGEL("faeb0", WARN)
-      << fmt::format("finishedWorkerStep, got response from {}.",
-                     data.get(Utils::senderKey).copyString());
+      << fmt::format("finishedWorkerStep, got response from {}.", data.sender);
   // wait for the last worker to respond
   if (_respondedServers.size() != _dbServers.size()) {
-    return VPackBuilder();
+    return;
   }
 
   _timing.gss.back().finish();
   LOG_PREGEL("39385", DEBUG)
       << "Finished gss " << _globalSuperstep << " in "
       << _timing.gss.back().elapsedSeconds().count() << "s";
-  //_statistics.debugOutput();
   _globalSuperstep++;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -409,7 +420,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
-  return VPackBuilder();
+  return;
 }
 
 void Conductor::cancel() {
@@ -616,14 +627,13 @@ ErrorCode Conductor::_finalizeWorkers() {
                              VPackBuilder(serialized.get().slice()));
 }
 
-void Conductor::finishedWorkerFinalize(VPackSlice data) {
+void Conductor::finishedWorkerFinalize(Finished const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  ServerID sender = data.get(Utils::senderKey).copyString();
-  LOG_PREGEL("60f0c", WARN)
-      << fmt::format("finishedWorkerFinalize, got response from {}.", sender);
+  LOG_PREGEL("60f0c", WARN) << fmt::format(
+      "finishedWorkerFinalize, got response from {}.", data.sender);
 
-  _ensureUniqueResponse(data);
+  _ensureUniqueResponse(data.sender);
 
   if (_respondedServers.size() != _dbServers.size()) {
     return;
@@ -710,16 +720,25 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
       .executionNumber = _executionNumber, .withId = withId};
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
-    THROW_ARANGO_EXCEPTION(Result{TRI_ERROR_FAILED});
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FAILED,
+        fmt::format("Cannot serialize CollectPregelResults message: {}",
+                    serialized.error().error()));
   }
   // merge results from DBServers
   outBuilder.openArray();
   auto res = _sendToAllDBServers(
       Utils::aqlResultsPath, VPackBuilder(serialized.get().slice()),
       [&](VPackSlice const& payload) {
-        if (payload.isArray()) {
-          outBuilder.add(VPackArrayIterator(payload));
+        auto results = inspection::deserializeWithErrorT<PregelResults>(
+            velocypack::SharedSlice({}, payload));
+        if (!results.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_FAILED,
+              fmt::format("Cannot deserialize PregelResults message: {}",
+                          results.error().error()));
         }
+        outBuilder.add(VPackArrayIterator(results.get().results.slice()));
       });
   outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -872,6 +891,17 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
 
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
+  if (_respondedServers.find(sender) != _respondedServers.end()) {
+    LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
+  }
+  _respondedServers.insert(sender);
+}
+
+void Conductor::_ensureUniqueResponse(std::string const& sender) {
+  _callbackMutex.assertLockedByCurrentThread();
+
+  // check if this the only time we received this
   if (_respondedServers.find(sender) != _respondedServers.end()) {
     LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
