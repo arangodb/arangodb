@@ -148,7 +148,7 @@ void FailedLeader::rollback() {
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
   LOG_TOPIC("46046", INFO, Logger::SUPERVISION)
-      << "Create failedLeader for " + _shard + " from " + _from;
+      << "Create failedLeader for " << _shard << " from " << _from;
 
   if (b == nullptr) {
     _jb = std::make_shared<Builder>();
@@ -208,7 +208,8 @@ bool FailedLeader::start(bool& aborts) {
   }
 
   LOG_TOPIC("0ced0", INFO, Logger::SUPERVISION)
-      << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
+      << "Start failedLeader for " << _shard << " from " << _from << " to "
+      << _to;
 
   using namespace std::chrono;
 
@@ -232,8 +233,8 @@ bool FailedLeader::start(bool& aborts) {
         jobIdNode->get().toBuilder(todo);
       } else {
         LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -515,7 +516,7 @@ JOB_STATUS FailedLeader::status() {
         !basics::VelocyPackHelper::equal(plan_slice.value()[0],
                                          cur_slice.value()[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
-          << "FailedLeader waiting for " << sub + "/" + shard;
+          << "FailedLeader waiting for " << sub << "/" << shard;
       break;
     }
     done = true;
@@ -524,8 +525,8 @@ JOB_STATUS FailedLeader::status() {
   if (done) {
     if (finish("", shard)) {
       LOG_TOPIC("1ead6", INFO, Logger::SUPERVISION)
-          << "Finished failedLeader for " + _shard + " from " + _from + " to " +
-                 _to;
+          << "Finished failedLeader for " << _shard << " from " << _from
+          << " to " << _to;
       return FINISHED;
     }
   }

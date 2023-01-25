@@ -1834,9 +1834,8 @@ void TailingSyncer::fetchLeaderLog(
     } else {
       // success!
       LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION)
-          << "fetching leader log from tick " + StringUtils::itoa(fetchTick) +
-                 " took "
-          << time << " s";
+          << "fetching leader log from tick " << fetchTick << " took " << time
+          << " s";
       sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {
