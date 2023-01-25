@@ -53,7 +53,7 @@ auto vpackHasNoneRecursive(VPackSlice slice) -> bool {
   } else if (slice.isObject()) {
     for (auto it :
          VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
-      if (vpackHasNoneRecursive(it.value)) {
+      if (vpackHasNoneRecursive(it.key) || vpackHasNoneRecursive(it.value)) {
         return true;
       }
     }

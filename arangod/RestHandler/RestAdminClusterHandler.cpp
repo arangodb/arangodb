@@ -772,13 +772,11 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
 
   bool fromFound = false;
   bool isLeader = false;
-  velocypack::ArrayIterator it(shard);
-  while (it.valid()) {
+  for (velocypack::ArrayIterator it(shard); it.valid(); it.next()) {
     if (it.value().isEqualString(ctx->fromServer)) {
       isLeader = it.index() == 0;
       fromFound = true;
     }
-    it.next();
   }
 
   if (!fromFound) {
