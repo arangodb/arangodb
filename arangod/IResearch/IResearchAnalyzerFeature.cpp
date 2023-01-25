@@ -506,8 +506,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
         vocbase.isOneShard()) {
-      TRI_IF_FAILURE("CheckDBWhenSingleShardAndFlagChange") {
-        return {TRI_ERROR_DEBUG, "db is single shard"};
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
@@ -564,11 +564,6 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
         return resultVisitor(visitor, vocbase, slice);
       }
-    }
-    TRI_IF_FAILURE("CheckDBWhenNotSingleShardAndFlagChange") {
-      // means db is not considered single shard even if forceOneShard() is
-      // false, so the optimizations for single shard will not take place
-      return {TRI_ERROR_DEBUG, "db is not single shard"};
     }
 
     network::RequestOptions reqOpts;
