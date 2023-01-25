@@ -4,7 +4,7 @@ devel
 * Expose BlobDB-related options in RocksDB for use with the documents
   column family. Usage of BlobDB is turned off by default.
 
-* Upgrade bundled version of RocksDB to 7.9.
+* Upgrade bundled version of RocksDB to 7.10.
 
 * Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
 
