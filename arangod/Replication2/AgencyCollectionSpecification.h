@@ -40,31 +40,19 @@ struct CollectionGroupId : basics::Identifier {
 struct CollectionGroup {
   CollectionGroupId id;
 
-  struct Collection {
-    explicit Collection(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
-  };
+  struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;
 
   struct ShardSheaf {
     LogId replicatedLog;
-
-    explicit ShardSheaf(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
   };
   std::vector<ShardSheaf> shardSheaves;
 
   struct Attributes {
     std::size_t writeConcern;
     bool waitForSync;
-
-    explicit Attributes(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
   };
   Attributes attributes;
-
-  explicit CollectionGroup(VPackSlice slice);
-  void toVelocyPack(VPackBuilder& builder) const;
 };
 
 }  // namespace arangodb::replication2::agency
