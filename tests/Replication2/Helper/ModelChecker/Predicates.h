@@ -44,6 +44,30 @@ static inline auto isLeaderHealth() {
   });
 }
 
+static inline auto leaderHasSnapshot() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan &&
+        state.replicatedLog->plan->currentTerm) {
+      auto const& term = *state.replicatedLog->plan->currentTerm;
+      if (term.leader) {
+        std::optional<replication2::agency::LogCurrent> const& current =
+            global.state.replicatedLog->current;
+        if (current) {
+          if (auto iter = current->localState.find(term.leader->serverId);
+              iter != current->localState.end()) {
+            // snapshot should be present
+            return iter->second.snapshotAvailable;
+          }
+        }
+        return false;
+      }
+    }
+    // no leader present - ok
+    return true;
+  });
+}
+
 static inline auto isParticipantPlanned(
     replication2::ParticipantId participant) {
   return MC_BOOL_PRED(global, {

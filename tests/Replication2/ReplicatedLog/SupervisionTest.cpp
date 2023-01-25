@@ -276,9 +276,16 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
-      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
+      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"E", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantsAcceptableAsLeaders("A", participants);
+  auto localStates = std::unordered_map<ParticipantId, LogCurrentLocalState>{};
+  localStates["A"].snapshotAvailable = true;
+  localStates["B"].snapshotAvailable = true;
+  localStates["C"].snapshotAvailable = true;
+  localStates["D"].snapshotAvailable = true;
+
+  auto r = getParticipantsAcceptableAsLeaders("A", participants, localStates);
 
   auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
   auto acceptable = std::set<ParticipantId>{};

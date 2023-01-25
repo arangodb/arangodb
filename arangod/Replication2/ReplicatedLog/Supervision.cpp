@@ -113,14 +113,22 @@ auto isLeaderFailed(ServerInstanceReference const& leader,
 //       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
   for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and flags.allowedAsLeader) {
-      acceptableLeaderSet.emplace_back(participant);
+    if (participant == currentLeader or not flags.allowedAsLeader) {
+      continue;
     }
+    // check has snapshot
+    auto iter = localStates.find(participant);
+    if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+      continue;
+    }
+    acceptableLeaderSet.emplace_back(participant);
   }
 
   return acceptableLeaderSet;
@@ -157,9 +165,9 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     auto const healthy = health.notIsFailed(participant);
 
     auto maybeStatus = std::invoke(
-        [&states](ParticipantId const& participant)
-            -> std::optional<LogCurrentLocalState> {
-          auto status = states.find(participant);
+        [&states](
+            ParticipantId const& p) -> std::optional<LogCurrentLocalState> {
+          auto status = states.find(p);
           if (status != states.end()) {
             return status->second;
           } else {
@@ -376,7 +384,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
         current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants);
+        current.leader->committedParticipantsConfig->participants,
+        log.current->localState);
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
