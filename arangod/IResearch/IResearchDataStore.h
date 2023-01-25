@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -96,32 +97,46 @@ class IResearchDataStore {
   /// @brief a snapshot representation of the data-store
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
+  struct DataSnapshot {
+    DataSnapshot(irs::DirectoryReader&& index,
+                 std::shared_ptr<StorageSnapshot> db)
+        : _reader(std::move(index)), _snapshot(std::move(db)) {
+      TRI_ASSERT(_reader);
+      // for now we require that each index has its own snapshot
+      TRI_ASSERT(_snapshot);
+    }
+    irs::DirectoryReader _reader;
+    std::shared_ptr<StorageSnapshot> _snapshot;
+  };
+
+  using DataSnapshotPtr = std::shared_ptr<DataSnapshot>;
+
   class Snapshot {
    public:
     Snapshot(Snapshot const&) = delete;
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(LinkLock&& lock, irs::DirectoryReader&& reader) noexcept
-        : _lock{std::move(lock)}, _reader{std::move(reader)} {}
+    Snapshot(LinkLock&& lock, DataSnapshotPtr&& snapshot) noexcept
+        : _lock{std::move(lock)}, _snapshot{std::move(snapshot)} {}
     Snapshot(Snapshot&& rhs) noexcept
-        : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {}
+        : _lock{std::move(rhs._lock)}, _snapshot{std::move(rhs._snapshot)} {}
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
-        _reader = std::move(rhs._reader);
+        _snapshot = std::move(rhs._snapshot);
       }
       return *this;
     }
 
     [[nodiscard]] auto const& getDirectoryReader() const noexcept {
-      return _reader;
+      return _snapshot->_reader;
     }
 
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
-    irs::DirectoryReader _reader;
+    DataSnapshotPtr _snapshot;
   };
 
   explicit IResearchDataStore(ArangodServer& server);
@@ -140,7 +155,7 @@ class IResearchDataStore {
   ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-  static irs::DirectoryReader reader(LinkLock const& linkLock);
+  static DataSnapshotPtr reader(LinkLock const& linkLock);
 
   [[nodiscard]] virtual Index& index() noexcept = 0;
   [[nodiscard]] virtual Index const& index() const noexcept = 0;
@@ -290,7 +305,6 @@ class IResearchDataStore {
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
     irs::IndexWriter::ptr _writer;
-    irs::DirectoryReader _reader;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
@@ -300,10 +314,22 @@ class IResearchDataStore {
 
     void resetDataStore() noexcept {
       // reset all underlying readers to release file handles
-      _reader = {};
+      storeSnapshot(nullptr);
       _writer.reset();
       _directory.reset();
     }
+
+    [[nodiscard]] DataSnapshotPtr loadSnapshot() const noexcept {
+      return std::atomic_load_explicit(&_snapshot, std::memory_order_acquire);
+    }
+
+    void storeSnapshot(DataSnapshotPtr snapshot) noexcept {
+      std::atomic_store_explicit(&_snapshot, std::move(snapshot),
+                                 std::memory_order_release);
+    }
+
+   private:
+    DataSnapshotPtr _snapshot;
   };
 
   struct UnsafeOpResult {

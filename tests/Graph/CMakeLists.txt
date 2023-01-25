@@ -1,7 +1,6 @@
 add_library(arango_tests_graph OBJECT
   ClusterTraverserCacheTest.cpp
   TraverserCacheTest.cpp
-  ConstantWeightShortestPathFinder.cpp
   GenericGraphProviderTest.cpp
   GraphMockProviderInstances.cpp
   GraphTestTools.cpp
@@ -14,6 +13,7 @@ add_library(arango_tests_graph OBJECT
   FifoQueueTest.cpp
   LifoQueueTest.cpp
   WeightedQueueTest.cpp
+  WeightedTwoSidedFinderTest.cpp
   SingleServerProviderTest.cpp)
 
 target_link_libraries(arango_tests_graph

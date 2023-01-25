@@ -108,7 +108,8 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all indexes
   //////////////////////////////////////////////////////////////////////////////
-  ViewSnapshot::Links getLinks() const;
+  ViewSnapshot::Links getLinks(
+      containers::FlatHashSet<DataSourceId> const* sources) const;
 
   /// LogicalView
 
