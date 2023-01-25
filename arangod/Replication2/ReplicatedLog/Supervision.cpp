@@ -437,7 +437,11 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   if (!log.plan.has_value()) {
     return;
   }
+  if (!log.current.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
+  TRI_ASSERT(log.current.has_value());
   auto const& plan = *log.plan;
 
   if (target.leader.has_value()) {
@@ -459,6 +463,16 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       TRI_ASSERT(plan.participantsConfig.participants.contains(*target.leader));
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
+
+      {
+        auto const& localStates = log.current->localState;
+        auto iter = localStates.find(*target.leader);
+        if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+          ctx.reportStatus<
+              LogCurrentSupervision::TargetLeaderSnapshotMissing>();
+          return;
+        }
+      }
 
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;

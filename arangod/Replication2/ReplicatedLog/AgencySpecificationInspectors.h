@@ -149,6 +149,12 @@ auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderExcluded& x) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::TargetLeaderSnapshotMissing& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderFailed& x) {
   return f.object(x).fields();
 }
@@ -212,6 +218,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetLeaderInvalid::code),
           insp::type<LogCurrentSupervision::TargetLeaderExcluded>(
               LogCurrentSupervision::TargetLeaderExcluded::code),
+          insp::type<LogCurrentSupervision::TargetLeaderSnapshotMissing>(
+              LogCurrentSupervision::TargetLeaderSnapshotMissing::code),
           insp::type<LogCurrentSupervision::TargetLeaderFailed>(
               LogCurrentSupervision::TargetLeaderFailed::code),
           insp::type<LogCurrentSupervision::TargetNotEnoughParticipants>(
