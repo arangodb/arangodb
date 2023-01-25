@@ -102,7 +102,7 @@ std::string extractEndpointFromUrl(std::string const& location) {
   std::string specification;
   size_t delim = std::string::npos;
 
-  if (location.starts_with("http://") {
+  if (location.starts_with("http://")) {
     specification = "http+tcp://" + location.substr(7);
     delim = specification.find_first_of('/', 12);
   } else if (location.starts_with("https://")) {
