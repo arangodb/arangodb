@@ -102,6 +102,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
 
+  Result readFromSnapshot(transaction::Methods* trx,
+                          LocalDocumentId const& token,
+                          IndexIterator::DocumentCallback const& cb,
+                          ReadOwnWrites readOwnWrites,
+                          StorageSnapshot const& snapshot) const override;
+
   /// @brief lookup with callback, not thread-safe on same transaction::Context
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
@@ -208,10 +214,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              rocksdb::PinnableSlice& ps, bool readCache,
                              bool fillCache, ReadOwnWrites readOwnWrites) const;
 
-  Result lookupDocumentVPack(transaction::Methods*,
-                             LocalDocumentId const& documentId,
-                             IndexIterator::DocumentCallback const& cb,
-                             bool withCache, ReadOwnWrites readOwnWrites) const;
+  Result lookupDocumentVPack(
+      transaction::Methods*, LocalDocumentId const& documentId,
+      IndexIterator::DocumentCallback const& cb, bool withCache,
+      ReadOwnWrites readOwnWrites,
+      RocksDBEngine::RocksDBSnapshot const* snapshot = nullptr) const;
 
   /// @brief create hash-cache
   void setupCache() const;

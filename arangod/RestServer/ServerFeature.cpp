@@ -28,6 +28,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -300,11 +301,19 @@ void ServerFeature::waitForHeartbeat() {
     return;
   }
 
+  if (!server().hasFeature<ClusterFeature>()) {
+    return;
+  }
+
+  auto& cf = server().getFeature<ClusterFeature>();
+
   while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
+    auto heartbeatThread = cf.heartbeatThread();
+    TRI_ASSERT(heartbeatThread != nullptr);
+    if (heartbeatThread == nullptr || heartbeatThread->hasRunOnce()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 

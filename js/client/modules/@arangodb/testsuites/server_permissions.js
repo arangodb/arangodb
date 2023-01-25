@@ -254,13 +254,15 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
 }
 
 function server_permissions(options) {
-  return new permissionsRunner(options, "server_permissions").run(
-    tu.scanTestPaths(testPaths.server_permissions, options));
+  let testCases = tu.scanTestPaths(testPaths.server_permissions, options);
+  testCases = tu.splitBuckets(options, testCases);
+  return new permissionsRunner(options, "server_permissions").run(testCases);
 }
 
 function server_parameters(options) {
-  return new permissionsRunner(options, "server_parameters").run(
-    tu.scanTestPaths(testPaths.server_parameters, options));
+  let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
+  testCases = tu.splitBuckets(options, testCases);
+  return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 
 function server_secrets(options) {

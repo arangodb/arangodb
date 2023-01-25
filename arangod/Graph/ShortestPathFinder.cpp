@@ -23,6 +23,9 @@
 
 #include "ShortestPathFinder.h"
 
+// [GraphRefactor] TODO: Can be removed as soon as we transfer
+// KShortestPathFinder to refactored framework
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"

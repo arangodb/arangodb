@@ -120,7 +120,7 @@ bool IResearchViewMeta::operator!=(
   return !(*this == other);
 }
 
-/*static*/ const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
+const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
   static const IResearchViewMeta meta;
 
   return meta;

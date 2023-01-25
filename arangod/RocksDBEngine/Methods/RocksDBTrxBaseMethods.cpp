@@ -33,6 +33,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -464,4 +465,15 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
     }
   }
   return {};
+}
+
+rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
+    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
+    rocksdb::Snapshot const* snapshot) {
+  auto oldSnapshot = _readOptions.snapshot;
+  auto restoreSnapshot = absl::Cleanup{
+      [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
+  _readOptions.snapshot = snapshot;
+  return Get(family, slice, pinnable, rw);
 }

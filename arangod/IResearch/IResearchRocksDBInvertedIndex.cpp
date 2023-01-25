@@ -299,7 +299,7 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+    std::underlying_type_t<Index::Serialize> flags) const {
   bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
   bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);

@@ -178,7 +178,8 @@ class IResearchView final : public LogicalView {
   LinkLock linkLock(std::shared_lock<boost::upgrade_mutex> const& guard,
                     DataSourceId cid) const noexcept;
 
-  ViewSnapshot::Links getLinks() const noexcept;
+  ViewSnapshot::Links getLinks(
+      containers::FlatHashSet<DataSourceId> const* sources) const noexcept;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -173,8 +173,8 @@ class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
 
-  using StoreFunc = VPackSlice (*)(irs::token_stream const* ctx,
-                                   VPackSlice slice, VPackBuffer<uint8_t>& buf);
+  using StoreFunc = irs::bytes_view (*)(irs::token_stream* ctx,
+                                        velocypack::Slice slice);
 
   // type tags for primitive token streams
   struct NullStreamTag {};
@@ -418,7 +418,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///       already have been persisted and feature administration is not
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
+  using EmplaceResult = std::pair<AnalyzerPool::ptr, bool>;
   Result emplace(EmplaceResult& result, std::string_view name,
                  std::string_view type, VPackSlice const properties,
                  Features features = {});

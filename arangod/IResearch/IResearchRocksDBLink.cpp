@@ -62,7 +62,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
 
 void IResearchRocksDBLink::toVelocyPack(
     VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+    std::underlying_type_t<Index::Serialize> flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,

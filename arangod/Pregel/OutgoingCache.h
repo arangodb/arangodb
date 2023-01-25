@@ -27,10 +27,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/voc-types.h"
 
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 namespace arangodb {
 namespace pregel {
@@ -113,6 +113,9 @@ class ArrayOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
+  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
+                           messagesForVertices)
+      -> std::tuple<size_t, VPackBuilder>;
   void flushMessages() override;
 };
 
@@ -132,6 +135,9 @@ class CombiningOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
+  auto messagesToVPack(
+      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      -> VPackBuilder;
   void flushMessages() override;
 };
 }  // namespace pregel
