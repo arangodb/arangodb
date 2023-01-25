@@ -172,10 +172,28 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 
       LOG_CTX("79015", DEBUG, _logContext)
           << "replicated log configured as leader in term " << term.term;
-      auto leader = _participantsFactory->constructLeader(std::move(data.core),
-                                                          info, context);
-      data.participant = leader;
+      auto leader = std::shared_ptr<ILogLeader>();
+      try {
+        leader = _participantsFactory->constructLeader(std::move(data.core),
+                                                       info, context);
+        data.participant = leader;
+      } catch (std::exception const& ex) {
+        // We must not lose the core, even in case of exceptions.
+        ADB_PROD_ASSERT(data.participant == nullptr && data.core != nullptr)
+            << _logContext << " "
+            << "After an exception was caught in " << ADB_HERE
+            << ", replicated log was left in an unexpected state. "
+            << (data.participant == nullptr ? ""
+                                            : "The participant was created, "
+                                              "though it shouldn't have been. ")
+            << (data.core != nullptr
+                    ? ""
+                    : "The log core is gone, though it shouldn't be. ")
+            << "The exception was: " << ex.what();
+        throw;
+      }
       _metrics->replicatedLogLeaderTookOverNumber->count();
+      ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr);
       return leader->waitForLeadership().thenValue([](auto&&) {});
     } else {
       // follower
@@ -187,9 +205,26 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 
       LOG_CTX("7aed7", DEBUG, _logContext)
           << "replicated log configured as follower in term " << term.term;
-      data.participant = _participantsFactory->constructFollower(
-          std::move(data.core), info, context);
+      try {
+        data.participant = _participantsFactory->constructFollower(
+            std::move(data.core), info, context);
+      } catch (std::exception const& ex) {
+        // We must not lose the core, even in case of exceptions.
+        ADB_PROD_ASSERT(data.participant == nullptr && data.core != nullptr)
+            << _logContext << " "
+            << "After an exception was caught in " << ADB_HERE
+            << ", replicated log was left in an unexpected state. "
+            << (data.participant == nullptr
+                    ? ""
+                    : "The participant was created, though it shouldn't be. ")
+            << (data.core != nullptr
+                    ? ""
+                    : "The log core is gone, though it shouldn't be. ")
+            << "The exception was: " << ex.what();
+        throw;
+      }
       _metrics->replicatedLogStartedFollowingNumber->operator++();
+      ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr);
     }
   } else if (auto leader =
                  std::dynamic_pointer_cast<ILogLeader>(data.participant);
@@ -221,6 +256,8 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
     data.core = std::move(core);
     data.participant.reset();
   }
+  ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr)
+      << _logContext;
 }
 
 auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
@@ -234,10 +271,11 @@ auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
 auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
   auto guard = _guarded.getLockedGuard();
   LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
-  ADB_PROD_ASSERT(not guard->resigned);
+  ADB_PROD_ASSERT(not guard->resigned)
+      << _logContext << " replicated log already resigned";
   resetParticipant(guard.get());
   guard->resigned = true;
-  ADB_PROD_ASSERT(guard->core != nullptr);
+  ADB_PROD_ASSERT(guard->participant == nullptr && guard->core != nullptr);
   return std::move(guard->core);
 }
 
@@ -284,7 +322,7 @@ ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
     : _log(log) {}
 
 auto DefaultParticipantsFactory::constructFollower(
-    std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
+    std::unique_ptr<LogCore>&& logCore, FollowerTermInfo info,
     ParticipantContext context) -> std::shared_ptr<ILogFollower> {
   std::shared_ptr<ILeaderCommunicator> leaderComm;
   if (info.leader) {
@@ -298,7 +336,7 @@ auto DefaultParticipantsFactory::constructFollower(
 }
 
 auto DefaultParticipantsFactory::constructLeader(
-    std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
+    std::unique_ptr<LogCore>&& logCore, LeaderTermInfo info,
     ParticipantContext context) -> std::shared_ptr<ILogLeader> {
   return LogLeader::construct(std::move(logCore), std::move(info.initialConfig),
                               std::move(info.myself), info.term,
