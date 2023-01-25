@@ -50,7 +50,8 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
 void CollectionGroupUpdates::addToNewGroup(
     agency::CollectionGroupId const& groupId, arangodb::DataSourceId cid) {
   // Performance: We could make this a map id -> group, however in most cases
-  // this vector will have 1 entry only (it will be used in Graphs and CreateDatabase)
+  // this vector will have 1 entry only (it will be used in Graphs and
+  // CreateDatabase)
   for (auto& entry : newGroups) {
     if (entry.id == groupId) {
       entry.collections.emplace(::toCollectionIdString(cid),
