@@ -37,4 +37,5 @@ pointer-overflow:3rdParty/lz4/lib/lz4.c
 pointer-overflow:3rdParty/iresearch/core/search/bitset_doc_iterator.cpp
 
 # TODO(MBkkt) known issue, fixed in devel, not dangerous and it's not convinient to backport it now
+nonnull-attribute:3rdParty/iresearch/core/formats/formats_burst_trie.cpp
 nullability-arg:3rdParty/iresearch/core/formats/formats_burst_trie.cpp
