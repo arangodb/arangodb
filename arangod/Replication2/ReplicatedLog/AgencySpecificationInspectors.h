@@ -86,9 +86,12 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
-  return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Spearhead, x.spearhead),
-                            f.field("snapshotAvailable", x.snapshotAvailable));
+  return f.object(x).fields(
+      f.field(StaticStrings::Term, x.term),
+      f.field(StaticStrings::Spearhead, x.spearhead),
+      f.field("state", x.state)
+          .transformWith(replicated_log::LocalStateStatusStringTransformer{}),
+      f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 template<typename Enum>

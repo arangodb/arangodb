@@ -210,6 +210,17 @@ auto ReplicatedStateManager<S>::getStatus() const
 }
 
 template<typename S>
+auto ReplicatedStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateStatus {
+  auto guard = _guarded.getLockedGuard();
+  auto status = std::visit(
+      overload{[](auto const& manager) { return manager->getQuickStatus(); }},
+      guard->_currentManager);
+
+  return status;
+}
+
+template<typename S>
 auto ReplicatedStateManager<S>::getFollower() const
     -> std::shared_ptr<IReplicatedFollowerStateBase> {
   auto guard = _guarded.getLockedGuard();
@@ -383,6 +394,7 @@ void LeaderStateManager<S>::recoverEntries() {
         ADB_PROD_ASSERT(tryResult.get().ok()) << tryResult.get();
         if (auto self = weak.lock(); self != nullptr) {
           auto guard = self->_guardedData.getLockedGuard();
+          guard->_recoveryCompleted = true;
           guard->_leaderState->onRecoveryCompleted();
         }
       });
@@ -427,6 +439,16 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
   // TODO remove
   return StateStatus{.variant = std::move(status)};
+}
+
+template<typename S>
+auto LeaderStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateStatus {
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_recoveryCompleted) {
+    return replicated_log::LocalStateStatus::kOperational;
+  }
+  return replicated_log::LocalStateStatus::kRecovery;
 }
 
 template<typename S>
@@ -777,6 +799,12 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 }
 
 template<typename S>
+auto FollowerStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateStatus {
+  return replicated_log::LocalStateStatus::kOperational;
+}
+
+template<typename S>
 auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
   return _guardedData.getLockedGuard()->_followerState;
@@ -807,6 +835,12 @@ auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
   auto unconfiguredStatus = UnconfiguredStatus();
   // TODO remove
   return StateStatus{.variant = std::move(unconfiguredStatus)};
+}
+
+template<typename S>
+auto UnconfiguredStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateStatus {
+  return replicated_log::LocalStateStatus::kUnconfigured;
 }
 
 template<typename S>

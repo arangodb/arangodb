@@ -559,27 +559,25 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
-  return _guardedLeaderData.doUnderLock(
-      [term = _currentTerm](GuardedLeaderData const& leaderData) {
-        if (leaderData._didResign) {
-          throw ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-        }
-        auto commitFailReason = std::optional<CommitFailReason>{};
-        if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
-          commitFailReason = leaderData._lastCommitFailReason;
-        }
-        return QuickLogStatus{
-            .role = ParticipantRole::kLeader,
-            .term = term,
-            .local = leaderData.getLocalStatistics(),
-            .leadershipEstablished = leaderData._leadershipEstablished,
-            .snapshotAvailable = true,
-            .commitFailReason = commitFailReason,
-            .activeParticipantsConfig = leaderData.activeParticipantsConfig,
-            .committedParticipantsConfig =
-                leaderData.committedParticipantsConfig};
-      });
+  auto guard = _guardedLeaderData.getLockedGuard();
+  if (guard->_didResign) {
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+  }
+  auto commitFailReason = std::optional<CommitFailReason>{};
+  if (guard->calculateCommitLag() > std::chrono::seconds{20}) {
+    commitFailReason = guard->_lastCommitFailReason;
+  }
+  return QuickLogStatus{
+      .role = ParticipantRole::kLeader,
+      .localState = _stateHandle->getQuickStatus(),
+      .term = _currentTerm,
+      .local = guard->getLocalStatistics(),
+      .leadershipEstablished = guard->_leadershipEstablished,
+      .snapshotAvailable = true,
+      .commitFailReason = commitFailReason,
+      .activeParticipantsConfig = guard->activeParticipantsConfig,
+      .committedParticipantsConfig = guard->committedParticipantsConfig};
 }
 
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)

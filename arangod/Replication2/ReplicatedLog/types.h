@@ -236,4 +236,15 @@ struct QuorumData {
   void toVelocyPack(velocypack::Builder& builder) const;
 };
 
+enum class LocalStateStatus { kUnconfigured, kRecovery, kOperational };
+auto to_string(LocalStateStatus) noexcept -> std::string_view;
+
+struct LocalStateStatusStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(LocalStateStatus source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, LocalStateStatus& target) const
+      -> inspection::Status;
+};
+
 }  // namespace arangodb::replication2::replicated_log

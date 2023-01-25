@@ -479,6 +479,7 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
     constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{
         .role = ParticipantRole::kFollower,
+        .localState = _stateHandle->getQuickStatus(),
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
         .leadershipEstablished = followerData._commitIndex > kBaseIndex,

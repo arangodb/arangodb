@@ -169,6 +169,7 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
   bool snapshotAvailable{false};
+  replicated_log::LocalStateStatus state;
 
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;

@@ -1337,8 +1337,19 @@ static auto reportCurrentReplicatedLogLocal(
   if (auto localTerm = status.getCurrentTerm(); localTerm.has_value()) {
     // If so, check if there is nothing in Agency/Current or the term value is
     // different. Also update snapshot information.
-    if (currentLocal == nullptr || currentLocal->term != *localTerm ||
-        currentLocal->snapshotAvailable != status.snapshotAvailable) {
+    const bool wantUpdate = [&] {
+      if (currentLocal == nullptr || currentLocal->term != *localTerm) {
+        return true;
+      }
+      if (currentLocal->localState != status.localState) {
+        return true;
+      }
+      if (currentLocal->snapshotAvailable != status.snapshotAvailable) {
+        return true;
+      }
+      return false;
+    }();
+    if (wantUpdate) {
       auto localStats = status.getLocalStatistics();
       TRI_ASSERT(
           localStats
@@ -1347,6 +1358,7 @@ static auto reportCurrentReplicatedLogLocal(
       localState.term = localTerm.value();
       localState.spearhead = localStats->spearHead;
       localState.snapshotAvailable = status.snapshotAvailable;
+      localState.localState = status.localState;
       return localState;
     }
   }
