@@ -288,14 +288,14 @@ constexpr const char* kStringRecovery = "RecoveryInProgress";
 constexpr const char* kStringOperational = "ServiceOperational";
 }  // namespace
 
-auto replicated_log::to_string(LocalStateStatus status) noexcept
+auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
     -> std::string_view {
   switch (status) {
-    case LocalStateStatus::kUnconfigured:
+    case LocalStateMachineStatus::kUnconfigured:
       return kStringUnconfigured;
-    case LocalStateStatus::kRecovery:
+    case LocalStateMachineStatus::kRecovery:
       return kStringRecovery;
-    case LocalStateStatus::kOperational:
+    case LocalStateMachineStatus::kOperational:
       return kStringOperational;
   }
   LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
@@ -303,25 +303,4 @@ auto replicated_log::to_string(LocalStateStatus status) noexcept
       << static_cast<std::underlying_type_t<decltype(status)>>(status);
   TRI_ASSERT(false);
   return "(unknown status code)";
-}
-auto LocalStateStatusStringTransformer::toSerialized(LocalStateStatus source,
-                                                     std::string& target) const
-    -> arangodb::inspection::Status {
-  target = to_string(source);
-  return {};
-}
-
-auto LocalStateStatusStringTransformer::fromSerialized(
-    std::string const& source, LocalStateStatus& target) const
-    -> arangodb::inspection::Status {
-  if (source == kStringUnconfigured) {
-    target = LocalStateStatus::kUnconfigured;
-  } else if (source == kStringRecovery) {
-    target = LocalStateStatus::kRecovery;
-  } else if (source == kStringOperational) {
-    target = LocalStateStatus::kOperational;
-  } else {
-    return inspection::Status{"Invalid state status: " + std::string{source}};
-  }
-  return {};
 }

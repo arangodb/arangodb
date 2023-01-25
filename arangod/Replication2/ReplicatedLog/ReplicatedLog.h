@@ -94,7 +94,7 @@ struct IReplicatedStateHandle {
   [[nodiscard]] virtual auto getStatus() const
       -> std::optional<replicated_state::StateStatus> = 0;
   [[nodiscard]] virtual auto getQuickStatus() const
-      -> replicated_log::LocalStateStatus = 0;
+      -> replicated_log::LocalStateMachineStatus = 0;
   [[nodiscard]] virtual auto getFollower() const
       -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> = 0;
   [[nodiscard]] virtual auto getLeader() const

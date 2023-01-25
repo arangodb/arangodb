@@ -211,7 +211,7 @@ auto ReplicatedStateManager<S>::getStatus() const
 
 template<typename S>
 auto ReplicatedStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateStatus {
+    -> replicated_log::LocalStateMachineStatus {
   auto guard = _guarded.getLockedGuard();
   auto status = std::visit(
       overload{[](auto const& manager) { return manager->getQuickStatus(); }},
@@ -443,12 +443,12 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto LeaderStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateStatus {
+    -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
   if (guard->_recoveryCompleted) {
-    return replicated_log::LocalStateStatus::kOperational;
+    return replicated_log::LocalStateMachineStatus::kOperational;
   }
-  return replicated_log::LocalStateStatus::kRecovery;
+  return replicated_log::LocalStateMachineStatus::kRecovery;
 }
 
 template<typename S>
@@ -800,8 +800,8 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateStatus {
-  return replicated_log::LocalStateStatus::kOperational;
+    -> replicated_log::LocalStateMachineStatus {
+  return replicated_log::LocalStateMachineStatus::kOperational;
 }
 
 template<typename S>
@@ -839,8 +839,8 @@ auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto UnconfiguredStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateStatus {
-  return replicated_log::LocalStateStatus::kUnconfigured;
+    -> replicated_log::LocalStateMachineStatus {
+  return replicated_log::LocalStateMachineStatus::kUnconfigured;
 }
 
 template<typename S>
