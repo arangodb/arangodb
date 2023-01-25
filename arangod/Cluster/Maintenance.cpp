@@ -1338,12 +1338,15 @@ static auto reportCurrentReplicatedLogLocal(
     // If so, check if there is nothing in Agency/Current or the term value is
     // different. Also update snapshot information.
     const bool wantUpdate = [&] {
+      // always report if no local present or term is different
       if (currentLocal == nullptr || currentLocal->term != *localTerm) {
         return true;
       }
-      if (currentLocal->localState != status.localState) {
+      // report is state has changed
+      if (currentLocal->state != status.localState) {
         return true;
       }
+      // report is snapshot status has changed
       if (currentLocal->snapshotAvailable != status.snapshotAvailable) {
         return true;
       }
@@ -1358,7 +1361,7 @@ static auto reportCurrentReplicatedLogLocal(
       localState.term = localTerm.value();
       localState.spearhead = localStats->spearHead;
       localState.snapshotAvailable = status.snapshotAvailable;
-      localState.localState = status.localState;
+      localState.state = status.localState;
       return localState;
     }
   }
