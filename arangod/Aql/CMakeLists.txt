@@ -213,8 +213,9 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
   )
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
 endif ()
-
-set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)
+endif ()
