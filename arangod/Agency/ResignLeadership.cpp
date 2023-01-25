@@ -152,7 +152,7 @@ JOB_STATUS ResignLeadership::status() {
 
 bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("dead7", DEBUG, Logger::SUPERVISION)
-      << "Todo: Resign leadership server " + _server;
+      << "Todo: Resign leadership server " << _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -195,7 +195,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("dead8", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -296,8 +296,8 @@ bool ResignLeadership::start(bool& aborts) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("deadb", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -355,13 +355,13 @@ bool ResignLeadership::start(bool& aborts) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("deadd", DEBUG, Logger::SUPERVISION)
-        << "Pending: Clean out server " + _server;
+        << "Pending: Clean out server " << _server;
 
     return true;
   }
 
   LOG_TOPIC("deade", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting ResignLeadership job " + _jobId;
+      << "Precondition failed for starting ResignLeadership job " << _jobId;
 
   return false;
 }
