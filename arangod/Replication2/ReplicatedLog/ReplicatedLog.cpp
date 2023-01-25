@@ -246,7 +246,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 }
 
 void ReplicatedLog::resetParticipant(GuardedData& data) {
-  ADB_PROD_ASSERT(data.participant != nullptr || data.core != nullptr);
+  ADB_PROD_ASSERT((data.participant == nullptr) != (data.core == nullptr));
   if (data.participant) {
     ADB_PROD_ASSERT(data.core == nullptr);
     LOG_CTX("9a54b", DEBUG, _logContext)
@@ -256,7 +256,7 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
     data.core = std::move(core);
     data.participant.reset();
   }
-  ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr)
+  ADB_PROD_ASSERT(data.participant == nullptr && data.core != nullptr)
       << _logContext;
 }
 
