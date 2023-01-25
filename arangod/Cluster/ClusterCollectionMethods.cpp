@@ -616,6 +616,11 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   for (auto& c : collections) {
     auto shards = ClusterCollectionMethods::generateShardNames(
         feature.clusterInfo(), c.numberOfShards.value());
+
+    // Temporarily add shardsR2 here. This is going to be done by the
+    // supervision in the future.
+    c.shardsR2 = shards;
+
     auto distributionType = ClusterCollectionMethods::selectDistributeType(
         feature.clusterInfo(), vocbase.name(), c, enforceReplicationFactor,
         shardDistributionList);
