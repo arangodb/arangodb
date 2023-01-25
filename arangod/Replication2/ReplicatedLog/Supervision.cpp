@@ -443,7 +443,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
     if (!health.notIsFailed(*target.leader)) {
       ctx.reportStatus<LogCurrentSupervision::TargetLeaderFailed>();
       return;
-    };
+    }
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
@@ -736,6 +736,16 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   }
 
   if (!current.leader->leadershipEstablished) {
+    return;
+  }
+
+  auto allStatesReady = std::all_of(
+      log.current->localState.begin(), log.current->localState.end(),
+      [](auto const& pair) -> bool {
+        return pair.second.state ==
+               replicated_log::LocalStateMachineStatus::kOperational;
+      });
+  if (!allStatesReady) {
     return;
   }
 
