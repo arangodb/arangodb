@@ -27,8 +27,7 @@
 
 #include <openssl/evp.h>
 
-TRI_SHA256Functor::TRI_SHA256Functor()
-    : _context(EVP_MD_CTX_new()) {
+TRI_SHA256Functor::TRI_SHA256Functor() : _context(EVP_MD_CTX_new()) {
   auto* context = static_cast<EVP_MD_CTX*>(_context);
   if (context == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

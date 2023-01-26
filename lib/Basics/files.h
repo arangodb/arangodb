@@ -431,4 +431,3 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);
-
