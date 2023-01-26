@@ -674,7 +674,6 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ShortestPathExecutor<WeightedShortestPathCluster>,
                   ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor,
-                  // EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
                   EnumeratePathsExecutor<KPath>,
                   EnumeratePathsExecutor<KPathTracer>,
                   EnumeratePathsExecutor<KPathCluster>,

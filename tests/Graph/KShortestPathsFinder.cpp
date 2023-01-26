@@ -29,7 +29,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Random/RandomGenerator.h"

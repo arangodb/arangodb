@@ -43,7 +43,6 @@
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"

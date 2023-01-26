@@ -7,7 +7,6 @@ add_library(arango_tests_graph OBJECT
   KPathFinderTest.cpp
   AllShortestPathsFinderTest.cpp
   DFSFinderTest.cpp
-  KShortestPathsFinder.cpp
   PathStoreTest.cpp
   PathValidatorTest.cpp
   FifoQueueTest.cpp

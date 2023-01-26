@@ -33,7 +33,6 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>

@@ -29,7 +29,6 @@
 #include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Graph/KShortestPathsFinder.h"
 
 #include <velocypack/Builder.h>
 
@@ -43,9 +42,7 @@ class Slice;
 
 namespace graph {
 template<class ProviderType>
-class KShortestPathsFinder;
-class ShortestPathFinder;
-class ShortestPathResult;
+class KShortestPathsFinder;  // TODO Check if still required
 class TraverserCache;
 }  // namespace graph
 

@@ -27,12 +27,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Transaction/Helpers.h"
 
@@ -244,13 +241,9 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
-        return _finder.startKShortestPathsTraversal(source, target);
-      } else {
-        _finder.reset(arangodb::velocypack::HashedStringRef(source),
-                      arangodb::velocypack::HashedStringRef(target));
-        return true;
-      }
+      _finder.reset(arangodb::velocypack::HashedStringRef(source),
+                    arangodb::velocypack::HashedStringRef(target));
+      return true;
     }
   }
   return false;
@@ -262,14 +255,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
 
-  bool nextPath;
-  if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
-    nextPath = _finder.getNextPathAql(*tmp.builder());
-  } else {
-    nextPath = _finder.getNextPath(*tmp.builder());
-  }
-
-  if (nextPath) {
+  if (_finder.getNextPath(*tmp.builder())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
@@ -342,12 +328,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template<class FinderType>
 [[nodiscard]] auto EnumeratePathsExecutor<FinderType>::stats() -> Stats {
-  if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
-    // No Stats available on original variant
-    return TraversalStats{};
-  } else {
-    return _finder.stealStats();
-  }
+  return _finder.stealStats();
 }
 
 /* SingleServerProvider Section */
@@ -436,11 +417,3 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
 //     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 // template class ::arangodb::aql::EnumeratePathsExecutor<
 //     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-
-/* TODO [GraphRefactor]: Fallback Section - Can be removed completely after
- * refactor is done */
-
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    arangodb::graph::KShortestPathsFinderInterface>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    arangodb::graph::KShortestPathsFinderInterface>;

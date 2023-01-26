@@ -45,7 +45,6 @@
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
