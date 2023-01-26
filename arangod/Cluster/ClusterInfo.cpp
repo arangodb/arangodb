@@ -70,6 +70,7 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
@@ -1719,8 +1720,8 @@ void ClusterInfo::loadPlan() {
         CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroup>(
-              groupSlice);
+          auto spec = std::make_shared<replication2::agency::CollectionGroup>();
+          velocypack::deserialize(groupSlice, *spec);
           groups.emplace(spec->id, std::move(spec));
         }
         stuff->collectionGroups = std::move(groups);

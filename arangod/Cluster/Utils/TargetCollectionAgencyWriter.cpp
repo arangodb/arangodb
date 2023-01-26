@@ -30,6 +30,8 @@
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntryReplication2.h"
 #include "Inspection/VPack.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "VocBase/LogicalCollection.h"
@@ -57,6 +59,11 @@ inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
   return paths::target()->replicatedLogs()->database(std::string{databaseName});
 }
 
+inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
+  return paths::target()->collectionGroups()->database(
+      std::string{databaseName});
+}
+
 inline auto pathCollectionInCurrent(std::string_view databaseName) {
   return paths::current()->collections()->database(std::string{databaseName});
 }
@@ -71,9 +78,11 @@ inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
 TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
     std::vector<PlanCollectionEntryReplication2> collectionPlanEntries,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
-        shardDistributionsUsed)
+        shardDistributionsUsed,
+    replication2::CollectionGroupUpdates collectionGroups)
     : _collectionPlanEntries{std::move(collectionPlanEntries)},
-      _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
+      _shardDistributionsUsed{std::move(shardDistributionsUsed)},
+      _collectionGroups{std::move(collectionGroups)} {}
 
 std::shared_ptr<CurrentWatcher>
 TargetCollectionAgencyWriter::prepareCurrentWatcher(
@@ -187,6 +196,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
   auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
+  auto const baseGroupPath = pathCollectionGroupInTarget(databaseName);
 
   VPackBufferUInt8 data;
   VPackBuilder builder(data);
@@ -196,6 +206,26 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   auto writes = std::move(envelope).write();
   // Increase plan version
   writes = std::move(writes).inc(paths::plan()->version()->str());
+
+  // Write All new Collection Groups
+  for (auto const& g : _collectionGroups.newGroups) {
+    writes = std::move(writes).emplace_object(
+        baseGroupPath->group(std::to_string(g.id.id()))->str(),
+        [&](VPackBuilder& builder) { velocypack::serialize(builder, g); });
+  }
+
+  // Inject entries into old CollectionGroups
+  for (auto const& g : _collectionGroups.additionsToGroup) {
+    writes = std::move(writes).emplace_object(
+        baseGroupPath->group(std::to_string(g.id.id()))
+            ->collections()
+            ->collection(g.collectionId)
+            ->str(),
+        [](VPackBuilder& builder) {
+          replication2::agency::CollectionGroup::Collection c;
+          velocypack::serialize(builder, c);
+        });
+  }
 
   // Write all requested Collection entries
   for (auto const& entry : _collectionPlanEntries) {
@@ -233,6 +263,21 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
       std::move(preconditions)
           .isIntersectionEmpty(paths::target()->cleanedServers()->str(),
                                serversPlanned);
+
+  // Preconditions for Collection Groups
+  for (auto const& g : _collectionGroups.newGroups) {
+    // No one has stolen our new group id
+    preconditions =
+        std::move(preconditions)
+            .isEmpty(baseGroupPath->group(std::to_string(g.id.id()))->str());
+  }
+
+  for (auto const& g : _collectionGroups.additionsToGroup) {
+    // No one has meanwhile removed the group we want to participate in
+    preconditions =
+        std::move(preconditions)
+            .isNotEmpty(baseGroupPath->group(std::to_string(g.id.id()))->str());
+  }
 
   // Created preconditions that no one has stolen our id
   for (auto const& entry : _collectionPlanEntries) {
