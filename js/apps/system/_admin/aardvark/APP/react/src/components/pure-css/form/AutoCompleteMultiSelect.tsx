@@ -81,7 +81,8 @@ const AutoCompleteMultiSelect = ({
                  onClick={getRemoveHandler(value)}/>
             </li>
             : <li className={'select2-search-choice'} key={value.key} style={{
-              paddingLeft: 25
+              paddingLeft: 25,
+              textDecoration: 'underline'
             }}>
               <div>{value.value}</div>
               <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
