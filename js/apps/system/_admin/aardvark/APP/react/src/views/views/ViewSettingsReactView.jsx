@@ -405,9 +405,9 @@ const ViewSettingsReactView = ({ name }) => {
                           isAdminUser
                             ? <JsonForm formState={formState} dispatch={dispatch}
                             renderKey={state.renderKey}/>
-                            : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                            : <Textarea disabled={true} value={jsonFormState}
                                         rows={jsonRows}
-                                        style={{ cursor: 'text' }}/>
+                                        style={{ cursor: 'text', marginTop: '0', marginBottom: '0', width: '100%' }}/>
                         }
                       </Cell>
                     </Grid>
