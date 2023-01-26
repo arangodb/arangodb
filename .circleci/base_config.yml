@@ -196,7 +196,7 @@ jobs:
 
 workflows:
   lint:
-     when:
+    when:
       matches:
         pattern: /^(bug-fix|feature|chore)\/.*$/
         value: << pipeline.git.branch >>
