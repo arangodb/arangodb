@@ -116,12 +116,15 @@ class Supervision : public arangodb::Thread {
    * @param  del       Agency transaction builder
    * @param  todelete  List of servers to be removed
    */
-  static void removeTransactionBuilder(
-      velocypack::Builder& del, std::vector<std::string> const& todelete);
+  static void buildRemoveTransaction(velocypack::Builder& del,
+                                     std::vector<std::string> const& todelete);
 
   static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
   static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
   static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
+  // should never be stored in the agency. only used internally to return an
+  // unclear health status
+  static constexpr std::string_view HEALTH_STATUS_UNCLEAR = "UNCLEAR";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 
