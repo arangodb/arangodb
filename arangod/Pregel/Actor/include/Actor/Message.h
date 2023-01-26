@@ -104,10 +104,12 @@ template<typename... Args0, typename... Args1>
 struct concatenator<std::variant<Args0...>, std::variant<Args1...>> {
   std::variant<Args0..., Args1...> item;
   concatenator(std::variant<Args0...> a) {
-    std::visit(overloaded{[this](auto&& arg) { this->item = arg; }}, a);
+    std::visit(overloaded{[this](auto&& arg) { this->item = std::move(arg); }},
+               std::move(a));
   }
   concatenator(std::variant<Args1...> b) {
-    std::visit(overloaded{[this](auto&& arg) { this->item = arg; }}, b);
+    std::visit(overloaded{[this](auto&& arg) { this->item = std::move(arg); }},
+               std::move(b));
   }
 };
 

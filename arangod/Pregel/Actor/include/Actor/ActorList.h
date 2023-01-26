@@ -31,8 +31,15 @@
 namespace arangodb::pregel::actor {
 
 struct ActorList {
+ private:
   struct ActorMap : std::unordered_map<ActorID, std::shared_ptr<ActorBase>> {};
+  Guarded<ActorMap> actors;
+  struct ActorInfo {
+    ActorID id;
+    std::string_view type;
+  };
 
+ public:
   ActorList(ActorMap map) : actors{std::move(map)} {}
   ActorList() = default;
 
@@ -51,9 +58,8 @@ struct ActorList {
   }
 
   auto add(ActorID id, std::shared_ptr<ActorBase> actor) -> void {
-    actors.doUnderLock([id, actor = std::move(actor)](ActorMap& map) {
-      map.emplace(id, std::move(actor));
-    });
+    actors.doUnderLock(
+        [&id, &actor](ActorMap& map) { map.emplace(id, std::move(actor)); });
   }
 
   auto remove(ActorID id) -> void {
@@ -66,8 +72,8 @@ struct ActorList {
   auto removeIf(
       std::function<bool(std::shared_ptr<ActorBase> const&)> deletable)
       -> void {
-    actors.doUnderLock([deletable = std::move(deletable)](ActorMap& map) {
-      std::erase_if(map, [deletable = std::move(deletable)](const auto& item) {
+    actors.doUnderLock([&deletable](ActorMap& map) {
+      std::erase_if(map, [&deletable](const auto& item) {
         auto& [_, actor] = item;
         return deletable(actor);
       });
@@ -75,7 +81,7 @@ struct ActorList {
   }
 
   auto apply(std::function<void(std::shared_ptr<ActorBase>&)> fn) -> void {
-    actors.doUnderLock([fn = std::move(fn)](ActorMap& map) {
+    actors.doUnderLock([&fn](ActorMap& map) {
       for (auto&& [id, actor] : map) {
         fn(actor);
       }
@@ -96,16 +102,16 @@ struct ActorList {
     return actors.doUnderLock([](ActorMap const& map) { return map.size(); });
   }
 
-  Guarded<ActorMap> actors;
-
-  struct ActorInfo {
-    ActorID id;
-    std::string_view type;
-  };
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ActorInfo& x);
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ActorMap& x);
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ActorList& x);
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorList::ActorInfo& x) {
-  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type));
+  return f.object(x).fields(f.field("id", x.id), f.field("type", x.type));
 }
 template<typename Inspector>
 auto inspect(Inspector& f, ActorList::ActorMap& x) {

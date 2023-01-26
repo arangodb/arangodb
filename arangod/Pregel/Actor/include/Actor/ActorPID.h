@@ -33,11 +33,19 @@ struct ActorID {
 
   auto operator<=>(ActorID const& other) const = default;
 };
-template<typename Inspector>
+template<class Inspector>
 auto inspect(Inspector& f, ActorID& x) {
-  return f.object(x).fields(f.field("id", x.id));
+  if constexpr (Inspector::isLoading) {
+    auto v = size_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = ActorID{.id = v};
+    }
+    return res;
+  } else {
+    return f.apply(x.id);
+  }
 }
-
 }  // namespace arangodb::pregel::actor
 
 template<>
@@ -65,7 +73,7 @@ struct ActorPID {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id));
+  return f.object(x).fields(f.field("server", x.server), f.field("id", x.id));
 }
 
 }  // namespace arangodb::pregel::actor

@@ -74,7 +74,7 @@ concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
 
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
-struct Actor : ActorBase {
+struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
         std::unique_ptr<typename Config::State> initialState)
       : pid(pid), runtime(runtime), state(std::move(initialState)) {}
@@ -105,7 +105,6 @@ struct Actor : ActorBase {
           pid, sender,
           ActorError{UnknownMessage{.sender = sender, .receiver = pid}});
     }
-    kick();
   }
 
   void process(ActorPID sender, velocypack::SharedSlice msg) override {
@@ -127,7 +126,6 @@ struct Actor : ActorBase {
         std::abort();
       }
     }
-    kick();
   }
 
   auto finish() -> void override { finished.store(true); }
@@ -145,21 +143,24 @@ struct Actor : ActorBase {
 
  private:
   void push(ActorPID sender, typename Config::Message&& msg) {
-    inbox.push(std::make_unique<InternalMessage>(
+    pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<MessageOrError<typename Config::Message>>(msg)));
   }
   void push(ActorPID sender, ActorError&& msg) {
-    inbox.push(std::make_unique<InternalMessage>(
+    pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<MessageOrError<typename Config::Message>>(msg)));
   }
 
   void kick() {
     // Make sure that *someone* works here
-    // TODO make sure that "this" still exist when this->work() is called
-    //      or add check befor call to this->work()
-    (*runtime->scheduler)([this]() { this->work(); });
+    (*runtime->scheduler)([self = this->weak_from_this()]() {
+      auto me = self.lock();
+      if (me != nullptr) {
+        me->work();
+      }
+    });
   }
 
   void work() {
@@ -201,6 +202,13 @@ struct Actor : ActorBase {
   auto inspect(Inspector& f, InternalMessage& x) {
     return f.object(x).fiels(f.field("sender", x.sender),
                              f.field("payload", x.payload));
+  }
+
+  auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
+    inbox.push(std::move(msg));
+    if (not busy.load()) {
+      kick();
+    }
   }
 
  public:

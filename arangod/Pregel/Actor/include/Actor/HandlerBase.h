@@ -50,6 +50,7 @@ struct HandlerBase {
 
   auto finish() -> void { runtime->finish(self); }
 
+ protected:
   ActorPID self;
   ActorPID sender;
   std::unique_ptr<State> state;
