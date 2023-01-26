@@ -24,11 +24,16 @@
 #pragma once
 
 #include "AgentInterface.h"
+#include "Agency/Node.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "RestServer/arangod.h"
-#include "Node.h"
+
+#include <iostream>
 #include <map>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 namespace arangodb {
 namespace consensus {
@@ -158,12 +163,12 @@ class Store {
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
-  static std::vector<std::string> split(std::string const& str);
+  static std::vector<std::string> split(std::string_view str);
 
   using AgencyTriggerCallback =
       std::function<void(std::string_view path, VPackSlice trx)>;
 
-  void registerPrefixTrigger(std::string prefix, AgencyTriggerCallback);
+  void registerPrefixTrigger(std::string const& prefix, AgencyTriggerCallback);
 
 #if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:

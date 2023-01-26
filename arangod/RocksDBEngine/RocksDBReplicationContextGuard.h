@@ -18,28 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
-/// @author Simon Grätzer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <memory>
 
-#include <velocypack/Slice.h>
+namespace arangodb {
+class RocksDBReplicationContext;
+class RocksDBReplicationManager;
 
-#include <string_view>
+class RocksDBReplicationContextGuard {
+ public:
+  // create an empty guard, without a context
+  explicit RocksDBReplicationContextGuard(RocksDBReplicationManager& manager);
 
-namespace arangodb::auth {
+  RocksDBReplicationContextGuard(
+      RocksDBReplicationManager& manager,
+      std::shared_ptr<RocksDBReplicationContext> ctx);
 
-/// Supported access levels for data
-enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
+  RocksDBReplicationContextGuard(
+      RocksDBReplicationContextGuard&& other) noexcept;
 
-/// Supported source types of users sources
-enum class Source : char { Local, LDAP };
+  ~RocksDBReplicationContextGuard();
 
-auth::Level convertToAuthLevel(velocypack::Slice grants);
-auth::Level convertToAuthLevel(std::string_view grant);
-std::string_view convertFromAuthLevel(auth::Level lvl);
+  RocksDBReplicationContext* operator->();
 
-}  // namespace arangodb::auth
+  explicit operator bool() const noexcept { return _ctx != nullptr; }
+
+  void setDeleted() noexcept { _deleted = true; }
+
+ private:
+  void release() noexcept;
+
+  RocksDBReplicationManager& _manager;
+  std::shared_ptr<RocksDBReplicationContext> _ctx;
+  bool _deleted = false;
+};
+}  // namespace arangodb

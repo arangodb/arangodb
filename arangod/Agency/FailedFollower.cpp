@@ -93,7 +93,7 @@ void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
   LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
-      << "Create failedFollower for " + _shard + " from " + _from;
+      << "Create failedFollower for " << _shard << " from " << _from;
 
   _created = system_clock::now();
 
@@ -164,7 +164,7 @@ bool FailedFollower::start(bool& aborts) {
   bool found = false;
   if (planned.isArray()) {
     for (VPackSlice s : VPackArrayIterator(planned)) {
-      if (s.isString() && _from == s.copyString()) {
+      if (s.isString() && _from == s.stringView()) {
         found = true;
         break;
       }
@@ -198,7 +198,7 @@ bool FailedFollower::start(bool& aborts) {
     if (s.isString()) {
       std::string id = s.copyString();
       if (failoverCands.find(id) == failoverCands.end()) {
-        excludes.push_back(s.copyString());
+        excludes.push_back(std::move(id));
       }
     }
   }
@@ -220,7 +220,8 @@ bool FailedFollower::start(bool& aborts) {
   }
 
   LOG_TOPIC("80b9d", INFO, Logger::SUPERVISION)
-      << "Start failedFollower for " + _shard + " from " + _from + " to " + _to;
+      << "Start failedFollower for " << _shard << " from " << _from << " to "
+      << _to;
 
   // Copy todo to pending
   Builder todo;
@@ -232,8 +233,8 @@ bool FailedFollower::start(bool& aborts) {
         jobIdNode->get().toBuilder(todo);
       } else {
         LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -274,7 +275,7 @@ bool FailedFollower::start(bool& aborts) {
                   VPackValue(timepointToString(system_clock::now())));
           job.add("toServer", VPackValue(_to));  // toServer
           for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-            job.add(obj.key.copyString(), obj.value);
+            job.add(obj.key.stringView(), obj.value);
           }
         }
         addRemoveJobFromSomewhere(job, "ToDo", _jobId);
@@ -294,7 +295,7 @@ bool FailedFollower::start(bool& aborts) {
         job.add(VPackValue(healthPrefix + _from + "/Status"));
         {
           VPackObjectBuilder stillExists(&job);
-          job.add("old", VPackValue("FAILED"));
+          job.add("old", VPackValue(Supervision::HEALTH_STATUS_FAILED));
         }
         // Plan still as we see it:
         addPreconditionUnchanged(job, planPath, planned);
@@ -317,7 +318,7 @@ bool FailedFollower::start(bool& aborts) {
         // shard not blocked
         addPreconditionShardNotBlocked(job, _shard);
         // toServer in good condition
-        addPreconditionServerHealth(job, _to, "GOOD");
+        addPreconditionServerHealth(job, _to, Supervision::HEALTH_STATUS_GOOD);
       }
     }
   }
@@ -359,13 +360,15 @@ bool FailedFollower::start(bool& aborts) {
 
   auto slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _from, "Status"}));
-  if (slice.isString() && slice.copyString() != "FAILED") {
+  if (slice.isString() &&
+      slice.stringView() != Supervision::HEALTH_STATUS_FAILED) {
     finish("", _shard, false, "Server " + _from + " no longer failing.");
   }
 
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-  if (!slice.isString() || slice.copyString() != "GOOD") {
+  if (!slice.isString() ||
+      slice.stringView() != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("4785b", INFO, Logger::SUPERVISION)
         << "Destination server " << _to << " is no longer in good condition";
   }
@@ -383,7 +386,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("ad849", INFO, Logger::SUPERVISION)
         << "Destination " << _to << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   slice = result.get(std::vector<std::string>(
@@ -391,7 +394,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("57da4", INFO, Logger::SUPERVISION)
         << "Shard " << _shard << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   return false;
