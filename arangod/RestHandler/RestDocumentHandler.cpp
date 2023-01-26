@@ -36,6 +36,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
@@ -251,6 +252,17 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+
+  {
+    // HACK for SmartEdgeCollections to trigger a coordinator wide lock, and no local lock
+    CollectionNameResolver resolver{_vocbase};
+    auto col = resolver.getCollection(cname);
+    TRI_ASSERT(col != nullptr) << "YOLO collection";
+    if (col->isSmartEdgeCollection()) {
+      _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
+
 
   Result res = _activeTrx->begin();
 

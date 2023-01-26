@@ -41,6 +41,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
 
@@ -107,11 +108,26 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
-      auto shardIds = c.collection()->shardIds();
-      for (auto const& pair : *shardIds) {
-        std::vector<arangodb::ShardID> const& servers = pair.second;
-        if (!servers.empty()) {
-          leaders.emplace(servers[0]);
+      if (c.collection()->isSmartEdgeCollection()) {
+        CollectionNameResolver resolver{_vocbase};
+        for (auto const& real : c.collection()->realNames()) {
+          auto realCol = resolver.getCollection(real);
+          TRI_ASSERT(realCol != nullptr);
+          auto shardIds = realCol->shardIds();
+          for (auto const& pair : *shardIds) {
+            std::vector<arangodb::ShardID> const& servers = pair.second;
+            if (!servers.empty()) {
+              leaders.emplace(servers[0]);
+            }
+          }
+        }
+      } else {
+        auto shardIds = c.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          std::vector<arangodb::ShardID> const& servers = pair.second;
+          if (!servers.empty()) {
+            leaders.emplace(servers[0]);
+          }
         }
       }
       return true;  // continue
