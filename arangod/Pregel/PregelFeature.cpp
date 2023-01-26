@@ -322,13 +322,40 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     }
   }
 
+  uint64_t maxSuperstep = basics::VelocyPackHelper::getNumericValue(
+      options.userParameters.slice(), Utils::maxGSS, 500);
+  if (options.userParameters.slice().hasKey(Utils::maxNumIterations)) {
+    // set to "infinity"
+    maxSuperstep = std::numeric_limits<uint64_t>::max();
+  }
+  auto useMemoryMapsVar = basics::VelocyPackHelper::getBooleanValue(
+      options.userParameters.slice(), Utils::useMemoryMapsKey, useMemoryMaps());
+
+  VPackSlice storeSlice = options.userParameters.slice().get("store");
+  auto storeResults = !storeSlice.isBool() || storeSlice.getBool();
+
+  // time-to-live for finished/failed Pregel jobs before garbage collection.
+  // default timeout is 10 minutes for each conductor
+  auto ttl = TTL{.duration = std::chrono::seconds(
+                     basics::VelocyPackHelper::getNumericValue(
+                         options.userParameters.slice(), "ttl", 600))};
+
   auto en = createExecutionNumber();
 
+  auto pregelConstants = PregelConstants{
+      .executionNumber = en,
+      .algorithm = options.algorithm,
+      .vertexCollections = vertexCollections,
+      .edgeCollections = edgeColls,
+      .edgeCollectionRestrictions = edgeCollectionRestrictionsPerShard,
+      .maxSuperstep = maxSuperstep,
+      .useMemoryMaps = useMemoryMapsVar,
+      .storeResults = storeResults,
+      .ttl = ttl,
+      .userParameters = options.userParameters};
+
   // TODO needs to be part of the conductor state
-  auto c = std::make_shared<pregel::Conductor>(
-      en, vocbase, vertexCollections, edgeColls,
-      edgeCollectionRestrictionsPerShard, options.algorithm,
-      options.userParameters.slice(), *this);
+  auto c = std::make_shared<pregel::Conductor>(pregelConstants, vocbase, *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
@@ -1018,7 +1045,7 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
       ++nr;
       LOG_TOPIC("41564", WARN, Logger::PREGEL)
           << fmt::format("Conductor for executionNumber {} is in state {}.",
-                         c->_executionNumber, ExecutionStateNames[c->_state]);
+                         c->executionNumber(), ExecutionStateNames[c->_state]);
     }
   }
   return nr;

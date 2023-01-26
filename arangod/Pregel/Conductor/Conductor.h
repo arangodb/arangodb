@@ -33,10 +33,11 @@
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Worker/Messages.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
+#include "Pregel/Worker/Messages.h"
 
 #include <chrono>
 #include <set>
@@ -67,60 +68,33 @@ struct Error {
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
 
-  ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
-  std::chrono::system_clock::time_point _created;
-  std::chrono::system_clock::time_point _expires;
-  std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
-  ExecutionNumber const _executionNumber;
-  VPackBuilder _userParams;
-  std::unique_ptr<IAlgorithm> _algorithm;
-  mutable Mutex
-      _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
+  PregelConstants _constants;
 
-  std::vector<CollectionID> _vertexCollections;
-  std::vector<CollectionID> _edgeCollections;
-  std::vector<ServerID> _dbServers;
-  std::vector<ShardID> _allShards;  // persistent shard list
-
-  // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is
-  // at least one entry for the collection!
-  std::unordered_map<CollectionID, std::vector<CollectionID>>
-      _edgeCollectionRestrictions;
-
-  // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
+  std::unique_ptr<IAlgorithm> _algorithm;
+
+  ExecutionState _state = ExecutionState::DEFAULT;
+  mutable Mutex
+      _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
+  std::vector<ServerID> _dbServers;
   /// tracks the servers which responded, only used for stages where we expect
   /// an unique response
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
-  /// adjustable maximum gss for some algorithms
-  /// some algorithms need several gss per iteration and it is more natural
-  /// for the user to give a maximum number of iterations
-  /// If Utils::maxNumIterations is given, _maxSuperstep is set to infinity.
-  /// In that case, Utils::maxNumIterations can be captured in the algorithm
-  /// (when the algorithm is created in AlgoRegistry, parameter userParams)
-  /// and used in MasterContext::postGlobalSuperstep which returns whether to
-  /// continue.
-  uint64_t _maxSuperstep = 500;
-
-  bool _useMemoryMaps = true;
-  bool _storeResults = false;
-
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
 
-  /// Timings
-  ExecutionTimings _timing;
-
   Scheduler::WorkHandle _workHandle;
 
+  std::chrono::system_clock::time_point _created;
+  std::chrono::system_clock::time_point _expires;
+  ExecutionTimings _timing;
   // Work in Progress: Move data incrementally into this
   // struct; sort it into categories and make it (de)serialisable
   // with the Inspecotr framework
@@ -143,15 +117,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerStep(GlobalSuperStepFinished const& data);
   void finishedWorkerFinalize(Finished const& data);
 
-  std::vector<ShardID> getShardIds(ShardID const& collection) const;
-
  public:
-  Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
-            std::vector<CollectionID> const& vertexCollections,
-            std::vector<CollectionID> const& edgeCollections,
-            std::unordered_map<std::string, std::vector<std::string>> const&
-                edgeCollectionRestrictions,
-            std::string const& algoName, VPackSlice const& userConfig,
+  Conductor(PregelConstants const& constants, TRI_vocbase_t& vocbase,
             PregelFeature& feature);
 
   ~Conductor();
@@ -163,7 +130,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool canBeGarbageCollected() const;
 
-  ExecutionNumber executionNumber() const { return _executionNumber; }
+  ExecutionNumber executionNumber() const { return _constants.executionNumber; }
 
  private:
   void cancelNoLock();

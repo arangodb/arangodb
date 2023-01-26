@@ -22,10 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <variant>
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Types.h"
+#include "Inspection/Format.h"
+#include "Pregel/ExecutionNumber.h"
 #include "velocypack/Builder.h"
 
 namespace arangodb::pregel {
@@ -94,4 +97,63 @@ struct PregelOptions {
   GraphSource graphSource;
 };
 
+struct TTL {
+  std::chrono::seconds duration;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, TTL& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = size_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = TTL{.duration = std::chrono::seconds(v)};
+    }
+    return res;
+  } else {
+    return f.apply(x.duration.count());
+  }
+}
+
+struct PregelConstants {
+  ExecutionNumber executionNumber;
+  std::string const& algorithm;
+  std::vector<CollectionID> const& vertexCollections;
+  std::vector<CollectionID> const& edgeCollections;
+  // maps from vertex collection name to a list of edge collections that this
+  // vertex collection is restricted to. only use for a collection if there is
+  // at least one entry for the collection!
+  std::unordered_map<std::string, std::vector<std::string>> const&
+      edgeCollectionRestrictions;
+  /// adjustable maximum gss for some algorithms
+  /// some algorithms need several gss per iteration and it is more natural
+  /// for the user to give a maximum number of iterations
+  /// If Utils::maxNumIterations is given, _maxSuperstep is set to infinity.
+  /// In that case, Utils::maxNumIterations can be captured in the algorithm
+  /// (when the algorithm is created in AlgoRegistry, parameter userParams)
+  /// and used in MasterContext::postGlobalSuperstep which returns whether to
+  /// continue.
+  uint64_t maxSuperstep;
+  bool useMemoryMaps;
+  bool storeResults;
+  TTL ttl;
+  VPackBuilder const& userParameters;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelConstants& x) {
+  return f.object(x).fields(
+      f.field("executionNumber", x.executionNumber),
+      f.field("algorithm", x.algorithm),
+      f.field("vertexCollections", x.vertexCollections),
+      f.field("edgeCollections", x.edgeCollections),
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
+      f.field("maxSuperstep", x.maxSuperstep),
+      f.field("useMemoryMaps", x.useMemoryMaps),
+      f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
+      f.field("userParamters", x.userParameters));
+}
+
 }  // namespace arangodb::pregel
+
+template<>
+struct fmt::formatter<arangodb::pregel::PregelConstants>
+    : arangodb::inspection::inspection_formatter {};
