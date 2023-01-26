@@ -73,6 +73,7 @@ const ViewSettingsReactView = ({ name }) => {
   };
 
   const PrimarySortContent = () => {
+    const noPrimarySortInfo = formState.primarySort.length === 0 ? "No fields set" : null;
     return (<table>
       <tbody>
       {
@@ -88,11 +89,13 @@ const ViewSettingsReactView = ({ name }) => {
           </tr>
         ))
       }
+      {noPrimarySortInfo}
       </tbody>
       </table>)
   };
 
   const StoredValuesContent = () => {
+    const noStoredValuesInfo = formState.storedValues.length === 0 ? "No fields set" : null;
     return (<table>
       <tbody>
       {
@@ -109,6 +112,7 @@ const ViewSettingsReactView = ({ name }) => {
           </tr>
         ))
       }
+      {noStoredValuesInfo}
       </tbody>
       </table>)
   };
