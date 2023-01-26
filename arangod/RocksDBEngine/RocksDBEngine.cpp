@@ -803,8 +803,8 @@ struct RocksDBAsyncLogWriteBatcherMetricsImpl
         &metricsFeature->add(arangodb_replication2_rocksdb_sync_time{});
 
     operationLatencyInsert = &metricsFeature->add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "insert"));
+        arangodb_replication2_storage_operation_latency{}.withLabel("op",
+                                                                    "insert"));
     operationLatencyRemoveFront = &metricsFeature->add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-front"));
@@ -2574,6 +2574,44 @@ void RocksDBEngine::pruneWalFiles() {
       << "current number of prunable WAL files: " << _prunableWalFiles.size();
 }
 
+Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
+  auto* cfDefs = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  auto bounds = RocksDBKeyBounds::DatabaseStates(databaseId);
+  auto upper = bounds.end();
+  auto readOptions = rocksdb::ReadOptions();
+  readOptions.iterate_upper_bound = &upper;
+
+  auto rv = Result();
+
+  auto iter = _db->NewIterator(readOptions, cfDefs);
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    ADB_PROD_ASSERT(databaseId == RocksDBKey::databaseId(iter->key()));
+
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
+    auto* cfLogs = RocksDBColumnFamilyManager::get(
+        RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+    auto methods = RocksDBLogStorageMethods(info.objectId, databaseId,
+                                            info.stateId, _logPersistor, _db,
+                                            cfDefs, cfLogs, _logMetrics);
+    auto res = methods.drop();
+    // Save the first error we encounter, but try to drop the rest.
+    if (rv.ok() && res.fail()) {
+      rv = res;
+    }
+    // TODO Should we do this here and now, or defer it, or don't do it at all?
+    //      To answer that, check whether and how compaction is usually done
+    //      after dropping a collection or database.
+    std::ignore = methods.compact();
+  }
+
+  return rv;
+}
+
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   arangodb::Result res;
@@ -2583,6 +2621,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove view definitions
   res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
                                      true, /*rangeDel*/ false);
+  if (res.fail()) {
+    return res;
+  }
+
+  // remove replicated states
+  res = dropReplicatedStates(id);
   if (res.fail()) {
     return res;
   }
@@ -2868,21 +2912,25 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 }
 
 void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
-      readOptions, RocksDBColumnFamilyManager::get(
-                       RocksDBColumnFamilyManager::Family::Definitions)));
-  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
-       iter->Next()) {
-    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
+  auto* cfDefs = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  auto bounds = RocksDBKeyBounds::DatabaseStates(vocbase.id());
+  auto upper = bounds.end();
+  auto readOptions = rocksdb::ReadOptions();
+  readOptions.iterate_upper_bound = &upper;
+
+  auto iter = _db->NewIterator(readOptions, cfDefs);
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    ADB_PROD_ASSERT(vocbase.id() == RocksDBKey::databaseId(iter->key()));
 
     auto slice =
         VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+    // TODO Is this applicable? I think we can safely remove the following
+    //      lines.
     if (basics::VelocyPackHelper::getBooleanValue(
             slice, StaticStrings::DataSourceDeleted, false)) {
+      TRI_ASSERT(false) << "Please tell Team CINFRA if you see this happening.";
       continue;
     }
 
@@ -3656,7 +3704,10 @@ auto RocksDBEngine::createReplicatedState(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       _logMetrics);
-  methods->updateMetadata(info);
+  auto res = methods->updateMetadata(info);
+  if (res.fail()) {
+    return res;
+  }
   return {std::move(methods)};
 }
 
