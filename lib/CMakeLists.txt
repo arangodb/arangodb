@@ -103,12 +103,6 @@ add_library(arango_lightweight STATIC
         Random/RandomGenerator.cpp
 )
 
-if (USE_ENTERPRISE)
-  target_sources(arango_lightweight PRIVATE
-    Basics/files-slurp-decrypt.cpp
-    Basics/files-slurp-decrypt.h)
-endif ()
-
 if (MSVC)
   target_sources(arango_lightweight PRIVATE
           Basics/locks-win32.cpp
@@ -238,6 +232,13 @@ add_library(arango STATIC
   Zip/unzip.cpp
   Zip/zip.cpp
 )
+
+if (USE_ENTERPRISE)
+  target_sources(arango PRIVATE
+    Basics/files-slurp-decrypt.cpp
+    Basics/files-slurp-decrypt.h)
+endif ()
+
 
 target_link_libraries(arango PUBLIC
   s2
