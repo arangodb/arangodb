@@ -115,7 +115,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsFirstRun,
                                                        this.friendlyName,
                                                        rootDir);
-	  global.theInstanceManager = this.instanceManager;
+	        global.theInstanceManager = this.instanceManager;
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
