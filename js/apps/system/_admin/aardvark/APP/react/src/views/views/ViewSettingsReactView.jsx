@@ -291,7 +291,15 @@ const ViewSettingsReactView = ({ name }) => {
     jsonRows = jsonFormState.split('\n').length;
   }
 
-  return <>
+  return <ViewContext.Provider
+                  value={{
+                    formState,
+                    dispatch,
+                    isAdminUser,
+                    changed,
+                    setChanged
+                  }}
+                >
       <div class="viewsstickyheader">
         <EditableViewName />
         {
@@ -361,15 +369,7 @@ const ViewSettingsReactView = ({ name }) => {
                 },
                 {
                   index: 4,
-                  content: <div><ViewContext.Provider
-                  value={{
-                    formState,
-                    dispatch,
-                    isAdminUser,
-                    changed,
-                    setChanged
-                  }}
-                >
+                  content: <div>
                   <HashRouter basename={`view/${name}`} hashType={'noslash'}>
                     <Switch>
                       <Route path={'/:link'}>
@@ -381,7 +381,7 @@ const ViewSettingsReactView = ({ name }) => {
                       </Route>
                     </Switch>
                   </HashRouter>
-                </ViewContext.Provider></div>,
+                </div>,
                   label: "Links",
                   testID: "accordionItem5",
                   defaultActive: true
@@ -417,6 +417,6 @@ const ViewSettingsReactView = ({ name }) => {
           </div>
         </SplitPane>
       </section>
-  </>;
+      </ViewContext.Provider>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;

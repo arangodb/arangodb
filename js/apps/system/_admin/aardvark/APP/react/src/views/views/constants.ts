@@ -331,7 +331,13 @@ export const ViewContext = createContext({
   dispatch: noop,
   isAdminUser: false,
   changed: false,
-  setChanged: noop
+  setChanged: noop,
+  history: {
+    push: noop
+  },
+  location: {
+    pathname: ""
+  }
 });
 
 export type ViewProps = Pick<BaseFormState, 'name'>;

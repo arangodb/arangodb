@@ -1,6 +1,6 @@
-import { FormState } from "../../constants";
+import { FormState, ViewContext } from "../../constants";
 import { FormProps } from "../../../../utils/constants";
-import React, { ChangeEvent, useEffect, useState } from "react";
+import React, { ChangeEvent, useContext, useEffect, useState } from "react";
 import { find, sortBy, pick } from "lodash";
 import useSWRImmutable from "swr/immutable";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
@@ -15,6 +15,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const [sortedViews, setSortedViews] = useState(sortBy(views, 'name'));
   const [selectedView, setSelectedView] = useState(sortedViews[0]);
   const { data } = useSWRImmutable(`/view/${selectedView.name}/properties`, (path) => getApiRouteForCurrentDB().get(path));
+  const { location, history } = useContext(ViewContext);
 
   const fullView = data ? data.body : selectedView;
 
@@ -32,6 +33,9 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
       formState: fullView as FormState
     });
     dispatch({ type: 'regenRenderKey' });
+    if(location) {
+      history.push("/"); 
+    }
   };
 
   const updateSelectedView = (event: ChangeEvent<HTMLSelectElement>) => {
