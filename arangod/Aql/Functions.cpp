@@ -2689,7 +2689,8 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     VPackSlice slice = materializer.slice(search, false);
     matchPatterns.reserve(slice.length());
     replacePatterns.reserve(slice.length());
-    for (auto it : VPackObjectIterator(slice)) {
+    for (auto it :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(
@@ -9130,7 +9131,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
     VPackArrayIterator end;
   };
 
-  std::list<ArrayIteratorPair> iters;
+  std::list<velocypack::ArrayIterator> iters;
   std::vector<AqlValueMaterializer> materializers;
   materializers.reserve(parameters.size());
 
@@ -9146,9 +9147,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
       continue;  // skip empty array here
     }
 
-    VPackArrayIterator iter(slice);
-    ArrayIteratorPair pair{iter.begin(), iter.end()};
-    iters.emplace_back(pair);
+    iters.emplace_back(velocypack::ArrayIterator(slice));
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -9156,10 +9155,10 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   while (!iters.empty()) {  // in this loop we only deal with nonempty arrays
     for (auto i = iters.begin(); i != iters.end();) {
-      builder->add(i->current.value());  // thus this will always be valid on
-                                         // the first iteration
-      i->current++;
-      if (i->current == i->end) {
+      builder->add(i->value());  // thus this will always be valid on
+                                 // the first iteration
+      i->next();
+      if (*i == std::default_sentinel) {
         i = iters.erase(i);
       } else {
         i++;
@@ -9304,7 +9303,8 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
         *builder,
         std::string_view(logicalCollection->keyGenerator().generate(input)),
         /*closeObject*/ false);
-    for (auto cur : VPackObjectIterator(input)) {
+    for (auto cur :
+         VPackObjectIterator(input, /*useSequentialIteration*/ true)) {
       builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
