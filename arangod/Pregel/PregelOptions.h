@@ -136,6 +136,7 @@ struct PregelConstants {
   bool useMemoryMaps;
   bool storeResults;
   TTL ttl;
+  size_t parallelism;
   VPackBuilder const& userParameters;
 };
 template<typename Inspector>
@@ -149,6 +150,7 @@ auto inspect(Inspector& f, PregelConstants& x) {
       f.field("maxSuperstep", x.maxSuperstep),
       f.field("useMemoryMaps", x.useMemoryMaps),
       f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
+      f.field("parallelism", x.parallelism),
       f.field("userParamters", x.userParameters));
 }
 

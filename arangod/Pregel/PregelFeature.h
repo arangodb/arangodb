@@ -114,6 +114,8 @@ class PregelFeature final : public ArangodFeature {
   size_t defaultParallelism() const noexcept;
   size_t minParallelism() const noexcept;
   size_t maxParallelism() const noexcept;
+  size_t parallelism(VPackSlice params) const noexcept;
+
   std::string tempPath() const;
   bool useMemoryMaps() const noexcept;
 

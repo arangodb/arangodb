@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
@@ -331,8 +332,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto useMemoryMapsVar = basics::VelocyPackHelper::getBooleanValue(
       options.userParameters.slice(), Utils::useMemoryMapsKey, useMemoryMaps());
 
-  VPackSlice storeSlice = options.userParameters.slice().get("store");
-  auto storeResults = !storeSlice.isBool() || storeSlice.getBool();
+  auto storeResults = basics::VelocyPackHelper::getBooleanValue(
+      options.userParameters.slice(), "store", true);
+
+  auto parallelismVar = parallelism(options.userParameters.slice());
 
   // time-to-live for finished/failed Pregel jobs before garbage collection.
   // default timeout is 10 minutes for each conductor
@@ -352,6 +355,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .useMemoryMaps = useMemoryMapsVar,
       .storeResults = storeResults,
       .ttl = ttl,
+      .parallelism = parallelismVar,
       .userParameters = options.userParameters};
 
   // TODO needs to be part of the conductor state
@@ -737,6 +741,20 @@ size_t PregelFeature::minParallelism() const noexcept {
 
 size_t PregelFeature::maxParallelism() const noexcept {
   return _maxParallelism;
+}
+
+size_t PregelFeature::parallelism(VPackSlice params) const noexcept {
+  size_t parallelism = defaultParallelism();
+  if (params.isObject()) {
+    // then update parallelism value from user config
+    if (VPackSlice parallel = params.get(Utils::parallelismKey);
+        parallel.isInteger()) {
+      // limit parallelism to configured bounds
+      parallelism = std::clamp(parallel.getNumber<size_t>(), minParallelism(),
+                               maxParallelism());
+    }
+  }
+  return parallelism;
 }
 
 bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }

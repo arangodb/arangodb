@@ -99,10 +99,7 @@ Conductor::Conductor(PregelConstants const& constants, TRI_vocbase_t& vocbase,
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
   LOG_PREGEL("00f5f", INFO) << fmt::format(
-      "Starting pregel in database {} with parallelism {} and constants {}",
-      vocbase.name(),
-      WorkerConfig::parallelism(_feature, constants.userParameters.slice()),
-      constants);
+      "Starting pregel in database {} with {}", vocbase.name(), constants);
 }
 
 Conductor::~Conductor() {
@@ -752,10 +749,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  VPackSlice p = _constants.userParameters.slice().get(Utils::parallelismKey);
-  if (!p.isNone()) {
-    result.add("parallelism", p);
-  }
+  result.add("parallelism", VPackValue(_constants.parallelism));
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
