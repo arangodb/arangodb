@@ -115,7 +115,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsFirstRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+	        global.theInstanceManager = this.instanceManager;
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
@@ -192,7 +192,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+          global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
           if (failurePoints) {
