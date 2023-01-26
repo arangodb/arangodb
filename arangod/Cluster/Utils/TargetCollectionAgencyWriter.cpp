@@ -139,42 +139,37 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
             collectionPath->str(arangodb::cluster::paths::SkipComponents(1)),
             cid, callback);
       }
+    }
+  }
 
-      for (auto const& [shardId, servers] : expectedShards.shards) {
-        // NOTE: This is a bit too much work here, and could be narrowed down a
-        // bit. But as we are waiting on Agency roundtrips here performance
-        // should not matter too much.
-        auto orderedSpec =
-            entry.getReplicatedLogForTarget(shardId, servers, databaseName);
-        auto const statePath =
-            baseStatePath->log(orderedSpec.id)->supervision();
-        TRI_ASSERT(orderedSpec.version.has_value());
-        auto callback = [report,
-                         id = basics::StringUtils::itoa(orderedSpec.id.id()),
-                         version = orderedSpec.version.value()](
-                            velocypack::Slice slice) -> bool {
-          if (report->hasReported(id)) {
-            // This replicatedLog has already reported
-            return true;
-          }
-          if (slice.isNone()) {
-            return false;
-          }
+  for (auto const& group : _collectionGroups.newGroups) {
+    for (auto const& shardSheaf : group.shardSheaves) {
+      auto const& logId = shardSheaf.replicatedLog;
 
-          auto supervision = velocypack::deserialize<
-              replication2::agency::LogCurrentSupervision>(slice);
-          if (supervision.targetVersion.has_value() &&
-              supervision.targetVersion >= version) {
-            // Right now there cannot be any error on replicated states.
-            // SO if they show up in correct version we just take them.
-            report->addReport(id, TRI_ERROR_NO_ERROR);
-          }
+      auto const statePath = baseStatePath->log(logId)->supervision();
+      auto callback = [report,
+                       id = to_string(logId)](velocypack::Slice slice) -> bool {
+        if (report->hasReported(id)) {
+          // This replicatedLog has already reported
           return true;
-        };
-        report->addWatchPath(
-            statePath->str(arangodb::cluster::paths::SkipComponents(1)),
-            basics::StringUtils::itoa(orderedSpec.id.id()), callback);
-      }
+        }
+        if (slice.isNone()) {
+          return false;
+        }
+
+        auto supervision = velocypack::deserialize<
+            replication2::agency::LogCurrentSupervision>(slice);
+        if (supervision.targetVersion.has_value() &&
+            supervision.targetVersion >= 1) {
+          // Right now there cannot be any error on replicated states.
+          // SO if they show up in correct version we just take them.
+          report->addReport(id, TRI_ERROR_NO_ERROR);
+        }
+        return true;
+      };
+      report->addWatchPath(
+          statePath->str(arangodb::cluster::paths::SkipComponents(1)),
+          to_string(logId), callback);
     }
   }
 
@@ -228,7 +223,9 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   }
 
   // Write all requested Collection entries
-  for (auto const& entry : _collectionPlanEntries) {
+  for (std::size_t it(0); it < _collectionPlanEntries.size(); ++it) {
+    auto const& entry = _collectionPlanEntries[it];
+
     writes = std::move(writes).emplace_object(
         baseCollectionPath->collection(entry.getCID())->str(),
         [&](VPackBuilder& builder) {
@@ -240,8 +237,12 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
 
     // Create a replicated state for each shard.
     for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-      auto spec =
-          entry.getReplicatedLogForTarget(shardId, serverIds, databaseName);
+      // This code only works when every collection gets its own group.
+      auto const& collectionGroup = _collectionGroups.newGroups.at(it);
+      auto shardIdIndex = entry.indexOfShardId(shardId);
+      auto shardSheaf = collectionGroup.shardSheaves.at(shardIdIndex);
+      auto spec = entry.getReplicatedLogForTarget(
+          shardSheaf.replicatedLog, serverIds, databaseName, shardId);
       writes = std::move(writes).emplace_object(
           baseReplicatedLogsPath->log(spec.id)->str(),
           [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });

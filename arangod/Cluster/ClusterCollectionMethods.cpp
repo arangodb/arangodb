@@ -720,6 +720,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   std::unordered_map<std::string, replication2::agency::CollectionGroupId>
       selfCreatedGroups;
   for (auto& col : collections) {
+#if false
     if (col.distributeShardsLike.has_value()) {
       auto const& leadingName = col.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
@@ -740,11 +741,18 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
       }
     } else {
       // Create a new CollectionGroup
-      auto groupId = groups.addNewGroup(col);
+      auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
       // Remember it for reuse
       selfCreatedGroups.emplace(col.name, groupId);
       col.groupId = groupId;
     }
+#else
+    // Create a new CollectionGroup
+    auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
+    // Remember it for reuse
+    selfCreatedGroups.emplace(col.name, groupId);
+    col.groupId = groupId;
+#endif
   }
   return groups;
 }

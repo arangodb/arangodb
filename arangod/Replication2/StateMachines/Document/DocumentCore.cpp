@@ -43,7 +43,7 @@ DocumentCore::DocumentCore(
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
 
-  _shardId = fmt::format("s{}", _gid.id);
+  _shardId = _params.shardId;
   auto shardResult = _shardHandler->createLocalShard(
       _shardId, _params.collectionId, collectionProperties);
   TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state "

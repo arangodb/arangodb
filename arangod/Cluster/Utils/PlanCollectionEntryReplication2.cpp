@@ -66,17 +66,17 @@ PlanShardToServerMapping PlanCollectionEntryReplication2::getShardMapping()
 
 [[nodiscard]] replication2::agency::LogTarget
 PlanCollectionEntryReplication2::getReplicatedLogForTarget(
-    ShardID const& shardId, ResponsibleServerList const& serverIds,
-    std::string_view databaseName) const {
+    replication2::LogId const& logId, ResponsibleServerList const& serverIds,
+    std::string_view databaseName, ShardID const& shardId) const {
   using namespace replication2::replicated_state;
 
   replication2::agency::LogTarget spec;
 
-  spec.id = LogicalCollection::shardIdToStateId(shardId);
+  spec.id = logId;
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters =
-      document::DocumentCoreParameters{getCID(), std::string{databaseName}};
+  auto parameters = document::DocumentCoreParameters{
+      getCID(), std::string{databaseName}, shardId};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.servers.empty());
@@ -94,6 +94,15 @@ PlanCollectionEntryReplication2::getReplicatedLogForTarget(
   spec.version = 1;
 
   return spec;
+}
+
+[[nodiscard]] std::size_t PlanCollectionEntryReplication2::indexOfShardId(
+    ShardID const& shard) const {
+  TRI_ASSERT(_properties.shardsR2.has_value());
+  auto const& it = std::find(_properties.shardsR2->begin(),
+                             _properties.shardsR2->end(), shard);
+  TRI_ASSERT(it != _properties.shardsR2->end());
+  return it - _properties.shardsR2->begin();
 }
 
 // Remove the isBuilding flags, call it if we are completed

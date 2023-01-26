@@ -571,8 +571,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters =
-      document::DocumentCoreParameters{info.collectionID, databaseName};
+  auto parameters = document::DocumentCoreParameters{info.collectionID,
+                                                     databaseName, shardId};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
