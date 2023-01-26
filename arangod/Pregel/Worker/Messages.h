@@ -25,7 +25,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/Graph.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 
