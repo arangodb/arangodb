@@ -93,28 +93,12 @@ Conductor::Conductor(
       _algorithm(
           AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
       _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections) {
+      _edgeCollections(edgeCollections),
+      _edgeCollectionRestrictions(edgeCollectionRestrictions) {
   if (!config.isObject()) {
     _userParams.add(VPackSlice::emptyObjectSlice());
   } else {
     _userParams.add(config);
-  }
-
-  // handle edge collection restrictions
-  if (ServerState::instance()->isCoordinator()) {
-    for (auto const& it : edgeCollectionRestrictions) {
-      for (auto const& shardId : getShardIds(it.first)) {
-        // intentionally create key in map
-        auto& restrictions = _edgeCollectionRestrictions[shardId];
-        for (auto const& cn : it.second) {
-          for (auto const& edgeShardId : getShardIds(cn)) {
-            restrictions.push_back(edgeShardId);
-          }
-        }
-      }
-    }
-  } else {
-    _edgeCollectionRestrictions = edgeCollectionRestrictions;
   }
 
   if (!_algorithm) {
@@ -904,27 +888,6 @@ void Conductor::_ensureUniqueResponse(std::string const& sender) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);
-}
-
-std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
-  TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-
-  std::vector<ShardID> result;
-  try {
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    result.reserve(shardIDs->size());
-    for (auto const& it : *shardIDs) {
-      result.emplace_back(it);
-    }
-  } catch (...) {
-    result.clear();
-  }
-
-  return result;
 }
 
 void Conductor::updateState(ExecutionState state) {

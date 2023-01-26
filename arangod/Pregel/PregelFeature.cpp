@@ -109,6 +109,27 @@ network::Headers buildHeaders() {
   return headers;
 }
 
+std::vector<ShardID> getShardIds(TRI_vocbase_t& vocbase,
+                                 ShardID const& collection) {
+  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::vector<ShardID> result;
+  try {
+    std::shared_ptr<LogicalCollection> lc =
+        ci.getCollection(vocbase.name(), collection);
+    std::shared_ptr<std::vector<ShardID>> shardIDs =
+        ci.getShardList(std::to_string(lc->id().id()));
+    result.reserve(shardIDs->size());
+    for (auto const& it : *shardIDs) {
+      result.emplace_back(it);
+    }
+  } catch (...) {
+    result.clear();
+  }
+
+  return result;
+}
+
 }  // namespace
 
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
@@ -167,6 +188,25 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   }
 
   ServerState* ss = ServerState::instance();
+
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictionsPerShard;
+  if (ss->isSingleServer()) {
+    edgeCollectionRestrictionsPerShard = std::move(edgeCollectionRestrictions);
+  } else {
+    for (auto const& [vertexCollection, edgeCollections] :
+         edgeCollectionRestrictions) {
+      for (auto const& shardId : getShardIds(vocbase, vertexCollection)) {
+        // intentionally create key in map
+        auto& restrictions = edgeCollectionRestrictionsPerShard[shardId];
+        for (auto const& edgeCollection : edgeCollections) {
+          for (auto const& edgeShardId : getShardIds(vocbase, edgeCollection)) {
+            restrictions.push_back(edgeShardId);
+          }
+        }
+      }
+    }
+  }
 
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
@@ -286,8 +326,9 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   // TODO needs to be part of the conductor state
   auto c = std::make_shared<pregel::Conductor>(
-      en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      options.algorithm, options.userParameters.slice(), *this);
+      en, vocbase, vertexCollections, edgeColls,
+      edgeCollectionRestrictionsPerShard, options.algorithm,
+      options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
