@@ -106,8 +106,8 @@ bool EnsureIndex::first() {
     auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << " in database " + database;
+      error << "failed to lookup local collection " << shard << " in database "
+            << database;
       LOG_TOPIC("12767", ERR, Logger::MAINTENANCE)
           << "EnsureIndex: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
