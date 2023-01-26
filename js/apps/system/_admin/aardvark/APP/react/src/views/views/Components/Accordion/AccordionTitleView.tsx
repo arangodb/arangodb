@@ -8,7 +8,6 @@ const AccordionTitleView = ({
   label,
   clickHandler
 }: IAccordionTitleViewArgs) => {
-  //{active ? <b className='caret rotate-180' /> : <b className='caret' />}
   return (
     <span data-testid={testID}>
       <div
@@ -19,7 +18,7 @@ const AccordionTitleView = ({
       >
         <div className="accordion-flex" data-testid={`${testID}Flex`}>
           <span data-testid={`${testID}TitleLabel`}>{label}</span>
-          {active ? <i className='fa fa-caret-down' /> : <i className='fa fa-caret-up' />}
+          {active ? <i className='fa fa-caret-up' /> : <i className='fa fa-caret-down' />}
         </div>
       </div>
     </span>
