@@ -38,7 +38,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// @brief read buffer size (used for bulk file reading)
-#define READBUFFER_SIZE 8192
+constexpr auto READBUFFER_SIZE = std::size_t{8192};
 char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature,
                            char const* filename, char const* keyfile,
                            size_t* length) {
