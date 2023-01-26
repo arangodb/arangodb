@@ -331,7 +331,7 @@ void EnumeratePathsNode::doToVelocyPack(VPackBuilder& nodes,
 // 2. or SingleServerProvider<SingleServerProviderStep>
 // 3. or ClusterProvider<ClusterProviderStep>
 
-template<typename KPathRefactored, typename Provider, typename ProviderOptions>
+template<typename KPath, typename Provider, typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
@@ -339,7 +339,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
     PathValidatorOptions validatorOptions, const RegisterId& outputRegister,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
-  auto kPathUnique = std::make_unique<KPathRefactored>(
+  auto kPathUnique = std::make_unique<KPath>(
       Provider{opts->query(), std::move(forwardProviderOptions),
                opts->query().resourceMonitor()},
       Provider{opts->query(), std::move(backwardProviderOptions),
@@ -351,8 +351,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
       outputRegister, engine.getQuery(), std::move(kPathUnique),
       std::move(sourceInput), std::move(targetInput));
 
-  return std::make_unique<
-      ExecutionBlockImpl<EnumeratePathsExecutor<KPathRefactored>>>(
+  return std::make_unique<ExecutionBlockImpl<EnumeratePathsExecutor<KPath>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 };
 
@@ -381,7 +380,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
   GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
   GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);
-  auto checkWeight = [&]<typename ProviderOptionsType>(
+  /*auto checkWeight = [&]<typename ProviderOptionsType>(
                          ProviderOptionsType& forwardProviderOptions,
                          ProviderOptionsType& backwardProviderOptions) {
     if (opts->useWeight()) {
@@ -423,16 +422,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
             });
       }
     }
-  };
+  };*/
 
 #ifdef USE_ENTERPRISE
   waitForSatelliteIfRequired(&engine);
 #endif
-
-  // [GraphRefactor] TODO: Plan is to get rid of that pathType section in total.
-  const bool isKPaths = pathType() == arangodb::graph::PathType::Type::KPaths;
-  const bool isAllShortestPaths =
-      pathType() == arangodb::graph::PathType::Type::AllShortestPaths;
 
   // Can only be specified in ShortestPathNode.cpp - not allowed here
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
@@ -489,8 +483,26 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
         case arangodb::graph::PathType::Type::KShortestPaths:
-          std::abort();
+          if (!opts->useWeight()) {
+            return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
+                                           Provider,
+                                           SingleServerBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            return _makeExecutionBlockImpl<
+                WeightedKShortestPathsEnumerator<Provider>, Provider,
+                SingleServerBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
+
         default:
+          TRI_ASSERT(false);
           std::abort();
       }
     } else {

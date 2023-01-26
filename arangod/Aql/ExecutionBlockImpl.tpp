@@ -93,10 +93,10 @@
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-using KPathRefactored = arangodb::graph::KPathEnumerator<
+using KPath = arangodb::graph::KPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using KPathRefactoredTracer = arangodb::graph::TracedKPathEnumerator<
+using KPathTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
@@ -106,6 +106,20 @@ using AllShortestPathsTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
+
+using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
+    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
+    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using WeightedKShortestPaths =
+    arangodb::graph::WeightedKShortestPathsEnumerator<
+        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using WeightedKShortestPathsTracer =
+    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
+        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
@@ -123,16 +137,31 @@ using WeightedShortestPathTracer =
             arangodb::graph::SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
-using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
+using KPathCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathRefactoredClusterTracer = arangodb::graph::TracedKPathEnumerator<
+using KPathClusterTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using AllShortestPathsClusterTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using KShortestPathsClusterTracer =
+    arangodb::graph::TracedKShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedKShortestPathsCluster =
+    arangodb::graph::WeightedKShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedKShortestPathsClusterTracer =
+    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
@@ -645,15 +674,23 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ShortestPathExecutor<WeightedShortestPathCluster>,
                   ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor,
-                  EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
-                  EnumeratePathsExecutor<KPathRefactored>,
-                  EnumeratePathsExecutor<KPathRefactoredTracer>,
-                  EnumeratePathsExecutor<KPathRefactoredCluster>,
-                  EnumeratePathsExecutor<KPathRefactoredClusterTracer>,
+                  // EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
+                  EnumeratePathsExecutor<KPath>,
+                  EnumeratePathsExecutor<KPathTracer>,
+                  EnumeratePathsExecutor<KPathCluster>,
+                  EnumeratePathsExecutor<KPathClusterTracer>,
                   EnumeratePathsExecutor<AllShortestPaths>,
                   EnumeratePathsExecutor<AllShortestPathsTracer>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
                   EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<KShortestPaths>,
+                  EnumeratePathsExecutor<KShortestPathsTracer>,
+                  EnumeratePathsExecutor<KShortestPathsCluster>,
+                  EnumeratePathsExecutor<KShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedKShortestPaths>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -1000,8 +1037,9 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryStartExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1068,8 +1106,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryEndExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1379,7 +1418,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
-        constexpr static int depthOffset = ([]() consteval->int {
+        constexpr static int depthOffset = ([]() consteval -> int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
           } else {
@@ -2346,8 +2385,9 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
 //       ScatterExecutor and in DistributeClientExecutor
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
-    SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
+    SharedAqlItemBlockPtr block, SkipResult skipped) -> void
+  requires std::same_as<Executor, IdExecutor<ConstFetcher>>
+{
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -2382,7 +2422,9 @@ auto ExecutionBlockImpl<Executor>::injectConstantBlock(
 // this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
-    -> RegisterId requires std::same_as<
-        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
+    -> RegisterId
+  requires std::same_as<Executor,
+                        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>
+{
   return _executorInfos.getOutputRegister();
 }

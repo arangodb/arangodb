@@ -55,31 +55,6 @@ static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
   return id.stringView().find('/') != std::string_view::npos;
 }
-
-template<class FinderType>
-constexpr auto isNewStyleFinder() {
-  return std::is_same_v<
-             FinderType,
-             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                        SingleServerProviderStep>>> ||
-         std::is_same_v<
-             FinderType,
-             KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-         std::is_same_v<
-             FinderType,
-             TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-         std::is_same_v<FinderType,
-                        AllShortestPathsEnumerator<
-                            SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType,
-                        TracedAllShortestPathsEnumerator<
-                            SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType, AllShortestPathsEnumerator<ClusterProvider<
-                                        ClusterProviderStep>>> ||
-         std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
-                                        ClusterProvider<ClusterProviderStep>>>;
-}
 }  // namespace
 
 template<class FinderType>
@@ -166,12 +141,9 @@ auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 template<class FinderType>
 auto EnumeratePathsExecutorInfos<FinderType>::cache() const
     -> graph::TraverserCache* {
-  if constexpr (isNewStyleFinder<FinderType>()) {
-    TRI_ASSERT(false);
-    return nullptr;
-  } else {
-    return _finder->options().cache();
-  }
+  // TODO: can be removed in total later
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 template<class FinderType>
@@ -315,14 +287,9 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
       AqlValue const& in = row.getValue(vertex.reg);
       if (in.isObject()) {
         try {
-          std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and
           // check then here
-          if constexpr (isNewStyleFinder<FinderType>()) {
-            idString = _trx.extractIdString(in.slice());
-          } else {
-            idString = _finder.options().trx()->extractIdString(in.slice());
-          }
+          std::string idString = _trx.extractIdString(in.slice());
 
           builder.clear();
           builder.add(VPackValue(idString));
@@ -393,6 +360,16 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<SingleServer>>;
 
 // template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//     KShortestPathsEnumerator<SingleServer>>;
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//     TracedKShortestPathsEnumerator<SingleServer>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    WeightedKShortestPathsEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 //     KPathEnumerator<SingleServer>>;
 // template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 //    TracedKPathEnumerator<SingleServer>>;
@@ -401,6 +378,16 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<SingleServer>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     KShortestPathsEnumerator<SingleServer>>;
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     TracedKShortestPathsEnumerator<SingleServer>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    WeightedKShortestPathsEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
 // template class ::arangodb::aql::EnumeratePathsExecutor<
 //    KPathEnumerator<SingleServer>>;
@@ -414,6 +401,17 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 // template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//   KShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//     TracedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedWeightedKShortestPathsEnumerator<
+        ClusterProvider<ClusterProviderStep>>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 //     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 // template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 //    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
@@ -422,6 +420,17 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     KShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     TracedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedWeightedKShortestPathsEnumerator<
+        ClusterProvider<ClusterProviderStep>>>;
 
 // template class ::arangodb::aql::EnumeratePathsExecutor<
 //     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
