@@ -219,7 +219,7 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
-  if (health != "GOOD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("deada", DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
         << ", not starting ResignLeadership job " << _jobId;
@@ -239,7 +239,7 @@ bool ResignLeadership::start(bool& aborts) {
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
     for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
-      if (x.isString() && x.copyString() == _server) {
+      if (x.isString() && x.stringView() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
       }
@@ -344,7 +344,8 @@ bool ResignLeadership::start(bool& aborts) {
     {
       VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
-      addPreconditionServerHealth(*pending, _server, "GOOD");
+      addPreconditionServerHealth(*pending, _server,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
     }
@@ -393,7 +394,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           int count = 0;
           for (VPackSlice dbserver :
                VPackArrayIterator(shard.second->slice())) {
-            if (dbserver.copyString() == _server) {
+            if (dbserver.stringView() == _server) {
               found = count;
               break;
             }
