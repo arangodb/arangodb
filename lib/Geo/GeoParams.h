@@ -122,6 +122,10 @@ struct QueryParams {
   double maxDistance = kMaxDistanceBetweenPoints;
   bool maxInclusive = false;
 
+  /// Some condition on min and max distances are given, this starts out
+  /// as false and must be set whenever the values minDistance, minInclusive
+  /// maxDistance and maxInclusive are intended to take effect.
+  bool distanceRestricted = false;
   /// @brief results need to be sorted by distance to centroid
   bool sorted = false;
   /// @brief Default order is from closest to farthest
