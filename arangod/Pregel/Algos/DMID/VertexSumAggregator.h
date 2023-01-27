@@ -27,7 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "Pregel/Graph/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
 
 #include <map>
 #include <string>
