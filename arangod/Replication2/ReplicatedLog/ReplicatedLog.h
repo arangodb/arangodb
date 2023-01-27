@@ -124,11 +124,15 @@ struct ParticipantContext {
 
 struct IParticipantsFactory {
   virtual ~IParticipantsFactory() = default;
-  virtual auto constructFollower(std::unique_ptr<LogCore> logCore,
+  // Exception guarantee: either constructFollower succeeds to create an
+  // `ILogFollower`, or `logCore` stays untouched.
+  virtual auto constructFollower(std::unique_ptr<LogCore>&& logCore,
                                  FollowerTermInfo info,
                                  ParticipantContext context)
       -> std::shared_ptr<ILogFollower> = 0;
-  virtual auto constructLeader(std::unique_ptr<LogCore> logCore,
+  // Exception guarantee: either constructLeader succeeds to create an
+  // `ILogLeader`, or `logCore` stays untouched.
+  virtual auto constructLeader(std::unique_ptr<LogCore>&& logCore,
                                LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> = 0;
 };
@@ -260,10 +264,10 @@ struct ReplicatedLogConnection {
 struct DefaultParticipantsFactory : IParticipantsFactory {
   explicit DefaultParticipantsFactory(
       std::shared_ptr<IAbstractFollowerFactory> followerFactory);
-  auto constructFollower(std::unique_ptr<LogCore> logCore,
+  auto constructFollower(std::unique_ptr<LogCore>&& logCore,
                          FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> override;
-  auto constructLeader(std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
+  auto constructLeader(std::unique_ptr<LogCore>&& logCore, LeaderTermInfo info,
                        ParticipantContext context)
       -> std::shared_ptr<ILogLeader> override;
 
