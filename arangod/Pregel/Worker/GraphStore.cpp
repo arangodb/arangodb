@@ -709,7 +709,7 @@ void GraphStore<V, E>::storeVertices(
       commitTransaction();
 
       currentShard = it->shard();
-      shard = globalShards[currentShard];
+      shard = globalShards[currentShard.value];
 
       auto ctx =
           transaction::StandaloneContext::Create(_vocbaseGuard.database());

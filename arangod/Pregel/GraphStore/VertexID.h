@@ -27,11 +27,8 @@
 namespace arangodb::pregel {
 
 struct VertexID {
-  std::string key;
-  PregelShard shard;
-
   VertexID() : shard(InvalidPregelShard) {}
-  VertexID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
+  VertexID(PregelShard s, std::string k) : shard(s), key(std::move(k)) {}
 
   bool operator==(const VertexID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -48,6 +45,9 @@ struct VertexID {
   [[nodiscard]] bool isValid() const {
     return shard != InvalidPregelShard && !key.empty();
   }
+
+  PregelShard shard;
+  std::string key;
 };
 
 }  // namespace arangodb::pregel
@@ -63,7 +63,7 @@ struct hash<arangodb::pregel::VertexID> {
     // second and third and combine them using XOR
     // and bit shifting:
     size_t h1 = std::hash<std::string>()(k.key);
-    size_t h2 = std::hash<size_t>()(k.shard);
+    size_t h2 = std::hash<arangodb::pregel::PregelShard>()(k.shard);
     return h2 ^ (h1 << 1);
   }
 };
