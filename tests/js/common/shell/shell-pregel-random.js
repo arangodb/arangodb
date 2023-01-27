@@ -198,7 +198,7 @@ function randomTestSuite() {
       checkCancel(key);
     },
     
-    testGarbageCollectionForJob: function () {
+    test_garbage_collects_job: function () {
       let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
       assertTrue(typeof pid === "string");
           
@@ -212,7 +212,6 @@ function randomTestSuite() {
       assertEqual(15, stats.ttl);
 
       stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
-      assertEqual("done", stats.state);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
 
@@ -220,49 +219,45 @@ function randomTestSuite() {
       let i = 1000;
       do {
         try {
-          stats = pregel.status(key);
+          stats = pregel.status(pid);
           assertEqual(pregelTestHelpers.runFinishedSuccessfully(stats), stats.state);
         } catch (err) {
-          // fine.
+          // run was garbage collected and therefore does not exist anymore
           break;
         }
         internal.sleep(0.2);
       } while (i-- >= 0);
       assertTrue(i > 0, "timeout in pregel execution");
     },
-    
-    testAllJobsStatus: function () {
-      const initialIds = pregel.status().map((job) => job.id);
 
-      let ourJobs = [];
+    test_garbage_collects_all_jobs: function () {
       for (let i = 0; i < 5; ++i) {
         let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
         assertTrue(typeof key === "string");
-        ourJobs.push(key);
       }
-          
+
+      // helper function
+      const unique = function (value, index, self) {
+        return self.indexOf(value) === index;
+      }
       // wait for garbage collection
       let i = 1000;
-      let found;
+      let runningPregelIDs = [];
       do {
-        let stats = pregel.status();
-        found = [];
-        stats.forEach((job) => {
-          if (initialIds.indexOf(job.id) === -1) {
-            assertEqual(5, job.ttl);
-            assertEqual("_system", job.database);
-            assertEqual("hits", job.algorithm);
-            found.push(job.id);
-          }
-        });
-
-        if (found.length === 0) {
-          break;
-        }
         internal.sleep(0.2);
-      } while (i-- >= 0);
-      assertTrue(i > 0, "timeout in pregel execution");
-      assertEqual(0, found.length);
+        let allStats = pregel.status();
+        runningPregelIDs = allStats.map((job) => job.id).filter(unique);
+        runningPregelIDs.forEach((pid) => {
+          const mostRecentStatsForPID = allStats.filter((job) => job.id === pid).pop();
+          assertEqual(5, mostRecentStatsForPID.ttl);
+          assertEqual("_system", mostRecentStatsForPID.database);
+          assertEqual("hits", mostRecentStatsForPID.algorithm);
+        });
+        if (i-- == 0) {
+          assertTrue(false, "timeout in pregel execution: not everything was garbage collected");
+          return;
+				}
+      } while (runningPregelIDs.length > 0)
     },
 
   };

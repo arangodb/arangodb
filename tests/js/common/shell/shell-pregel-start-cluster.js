@@ -145,8 +145,7 @@ function basicTestSuite() {
         if (d[a] && d[a] !== -1) {
           var diff = Math.abs(d[a] - d.result);
           if (diff > EPS) {
-            console.log("Error on " + JSON.stringify(d));
-            assertTrue(false);// peng
+            assertTrue(false, "Error on " + JSON.stringify(d));
           }
         }
       });
