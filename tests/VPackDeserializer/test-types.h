@@ -227,14 +227,13 @@ struct object_iterator {
   };
 
   object_iterator begin() const { return {iter.begin(), tape, prefix}; }
-  object_iterator end() const { return {iter.end(), tape, prefix}; }
   object_iterator& operator++() {
     iter.operator++();
     return *this;
   }
 
   bool operator!=(object_iterator const& other) const {
-    return iter.operator!=(other.iter);
+    return !iter.operator==(other.iter);
   }
 
   pair operator*() const {
@@ -262,7 +261,6 @@ struct array_iterator {
       : iter(slice.slice), tape(slice.tape), prefix(slice.prefix), index(0){};
 
   array_iterator begin() const { return {iter.begin(), tape, prefix}; }
-  array_iterator end() const { return {iter.end(), tape, prefix}; }
 
   recording_slice operator*() const {
     tape->record(prefix, slice_access::type::ARRAY_ITER_ACCESS,
@@ -273,7 +271,7 @@ struct array_iterator {
   }
 
   bool operator!=(array_iterator const& other) const {
-    return iter.operator!=(other.iter);
+    return !iter.operator==(other.iter);
   }
 
   array_iterator& operator++() {

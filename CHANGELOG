@@ -2,6 +2,15 @@ devel
 -----
 
 * Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries which do not use GEO_DISTANCE.
+
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+  creating a database and then restarting the cluster with the startup option
+  `--cluster.force-one-shard` set to true, when the formerly created database
+  has more than one shard, but the flag is set to true, this could lead to 
+  arangosearch's analyzers to use optimizations that should not be used if not 
+  in a single shard mode. For this not to happen, the verification of the 
+  parameter being true as a condition to run optimizations was removed. 
 
 * Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
 

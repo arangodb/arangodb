@@ -56,14 +56,12 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
                              network::EndpointSpec& spec) {
   using namespace arangodb;
 
-  if (dest.compare(0, 6, "tcp://", 6) == 0 ||
-      dest.compare(0, 6, "ssl://", 6) == 0) {
+  if (dest.starts_with("tcp://") || dest.starts_with("ssl://")) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
   }
 
-  if (dest.compare(0, 11, "http+tcp://", 11) == 0 ||
-      dest.compare(0, 11, "http+ssl://", 11) == 0) {
+  if (dest.starts_with("http+tcp://") || dest.starts_with("http+ssl://")) {
     spec.endpoint = dest.substr(5);
     return TRI_ERROR_NO_ERROR;
   }
@@ -74,7 +72,7 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
 
-  if (dest.compare(0, 6, "shard:", 6) == 0) {
+  if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID> const> resp =
@@ -88,7 +86,7 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
         return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
     }
-  } else if (dest.compare(0, 7, "server:", 7) == 0) {
+  } else if (dest.starts_with("server:")) {
     spec.serverId = dest.substr(7);
   } else {
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)

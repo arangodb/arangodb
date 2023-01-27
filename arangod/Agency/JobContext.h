@@ -36,7 +36,7 @@ namespace consensus {
 class JobContext {
  public:
   /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+  JobContext(JOB_STATUS status, std::string const& id, Node const& snapshot,
              AgentInterface* agent);
 
   /// @brief Create job
