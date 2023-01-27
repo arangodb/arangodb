@@ -648,6 +648,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto getLogSnapshot() -> InMemoryLog override {
       return _log.copyInMemoryLog();
     }
+    auto getLogIterator(LogRange)
+        -> std::unique_ptr<LogRangeIterator> override {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
     auto insert(LogPayload payload) -> LogIndex override {
       return _log.insert(std::move(payload));
     }

@@ -49,6 +49,11 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
     return follower.storage->getCommittedLog();
   }
 
+  auto getLogIterator(LogRange range)
+      -> std::unique_ptr<LogRangeIterator> override {
+    return follower.storage->getCommittedLogIterator(range);
+  }
+
   auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
     return follower.commit->waitFor(index);
   }
