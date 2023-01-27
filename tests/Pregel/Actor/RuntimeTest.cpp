@@ -254,8 +254,7 @@ TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
                     ActorPID{.server = serverID, .id = finishing_actor},
                     FinishingActor::Message{FinishingFinish{}});
 
-  ASSERT_TRUE(
-      runtime->actors.find(finishing_actor)->get()->finishedAndNotBusy());
+  ASSERT_TRUE(runtime->actors.find(finishing_actor)->get()->finishedAndIdle());
 }
 
 TEST(ActorRuntimeTest, garbage_collects_finished_actor) {

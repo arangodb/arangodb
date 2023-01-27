@@ -41,7 +41,7 @@ struct ActorBaseMock : ActorBase {
     return arangodb::velocypack::SharedSlice();
   };
   auto finish() -> void override { finished = true; };
-  auto finishedAndNotBusy() -> bool override { return finished; };
+  auto finishedAndIdle() -> bool override { return finished; };
 
   std::string type;
   bool finished = false;
@@ -154,8 +154,8 @@ TEST(ActorListTest, applies_function_to_each_actor) {
 
   list.apply(
       [](std::shared_ptr<ActorBase>& actor) -> void { actor->finish(); });
-  ASSERT_TRUE(list.find(ActorID{1}).value()->finishedAndNotBusy());
-  ASSERT_TRUE(list.find(ActorID{2}).value()->finishedAndNotBusy());
-  ASSERT_TRUE(list.find(ActorID{3}).value()->finishedAndNotBusy());
-  ASSERT_TRUE(list.find(ActorID{4}).value()->finishedAndNotBusy());
+  ASSERT_TRUE(list.find(ActorID{1}).value()->finishedAndIdle());
+  ASSERT_TRUE(list.find(ActorID{2}).value()->finishedAndIdle());
+  ASSERT_TRUE(list.find(ActorID{3}).value()->finishedAndIdle());
+  ASSERT_TRUE(list.find(ActorID{4}).value()->finishedAndIdle());
 }

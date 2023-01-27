@@ -109,10 +109,10 @@ TEST(ActorTest, sets_itself_to_finish) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_FALSE(actor->finishedAndNotBusy());
+  ASSERT_FALSE(actor->finishedAndIdle());
 
   actor->finish();
-  ASSERT_TRUE(actor->finishedAndNotBusy());
+  ASSERT_TRUE(actor->finishedAndIdle());
 }
 
 TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {

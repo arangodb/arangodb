@@ -129,8 +129,8 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   }
 
   auto finish() -> void override { finished.store(true); }
-  auto finishedAndNotBusy() -> bool override {
-    return finished.load() and not busy.load();
+  auto finishedAndIdle() -> bool override {
+    return finished.load() and idle.load();
   }
 
   auto serialize() -> velocypack::SharedSlice override {
@@ -167,25 +167,31 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     if (finished.load() == true) {
       return;
     }
-    auto was_false = false;
-    if (busy.compare_exchange_strong(was_false, true)) {
-      auto i = batchSize;
+    auto i = batchSize;
 
-      while (auto msg = inbox.pop()) {
-        state = std::visit(
-            typename Config::template Handler<Runtime>{
-                {pid, msg->sender, std::move(state), runtime}},
-            msg->payload->item);
-        i--;
-        if (i == 0) {
-          break;
+    while (auto msg = inbox.pop()) {
+      state = std::visit(
+          typename Config::template Handler<Runtime>{
+              {pid, msg->sender, std::move(state), runtime}},
+          msg->payload->item);
+      i--;
+      if (i == 0) {
+        // push more work to scheduler if queue is still not empty
+        if (not inbox.empty()) {
+          kick();
+          return;
         }
+        break;
       }
-      busy.store(false);
+    }
 
-      if (!inbox.empty()) {
-        kick();
-      }
+    idle.store(true);
+
+    // push more work to scheduler if a message was added to queue after
+    // previous inbox.empty check
+    auto isIdle = true;
+    if (not inbox.empty() and idle.compare_exchange_strong(isIdle, false)) {
+      kick();
     }
   }
 
@@ -206,14 +212,18 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
     inbox.push(std::move(msg));
-    if (not busy.load()) {
+
+    // only push work to scheduler if actor is idle (meaning no work is waiting
+    // on the scheduler and no work is currently processed in work())
+    auto isIdle = idle.load();
+    if (isIdle and idle.compare_exchange_strong(isIdle, false)) {
       kick();
     }
   }
 
  public:
   ActorPID pid;
-  std::atomic<bool> busy;
+  std::atomic<bool> idle{true};
   std::atomic<bool> finished;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;

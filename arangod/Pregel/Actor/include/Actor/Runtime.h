@@ -135,7 +135,7 @@ struct Runtime
   // TODO call this function regularly
   auto garbageCollect() {
     actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-      return actor->finishedAndNotBusy();
+      return actor->finishedAndIdle();
     });
   }
 
