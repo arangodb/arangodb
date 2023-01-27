@@ -56,7 +56,7 @@ const syncShardsWithLogs = function(dbn) {
   for (const [colId, colInfo] of Object.entries(collections)) {
     const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, colId);
     for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardsToLogs[shardId]
+      const logId = shardsToLogs[shardId];
       if (logId in logs) {
         helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
       }

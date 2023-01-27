@@ -612,7 +612,7 @@ const getShardsToLogsMapping = function (dbName, colId) {
     }
   }
   return mapping;
-}
+};
 
 const setLeader = (database, logId, newLeader) => {
   const url = getServerUrl(_.sample(coordinators));
