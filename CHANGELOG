@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allowing enabling/disabling supervision maintenance mode also via followers
+  in active failover mode. Previously the supervision maintenance mode could
+  only be enabled/disabled by making a call to the active failover leader.
+
 * Fix bug in hotbackup download/restore to make sure no data is mixed up
   between servers. This fixes a bug introduced in 3.10.
 
