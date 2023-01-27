@@ -91,9 +91,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<ClusterUpgradeFeature>) {
           return std::make_unique<ClusterUpgradeFeature>(
-              server, server.template getFeature<arangodb::DatabaseFeature>(),
-              server.template getFeature<arangodb::ClusterFeature>()
-                  .agencyCache());
+              server, server.template getFeature<arangodb::DatabaseFeature>());
         },
         [&name](auto& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, name);

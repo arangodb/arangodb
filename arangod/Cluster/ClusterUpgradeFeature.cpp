@@ -47,12 +47,10 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
 ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server,
-                                             DatabaseFeature& databaseFeature,
-                                             AgencyCache& agencyCache)
+                                             DatabaseFeature& databaseFeature)
     : ArangodFeature{server, *this},
       _upgradeMode("auto"),
-      _databaseFeature(databaseFeature),
-      _agencyCache(agencyCache) {
+      _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 
@@ -131,7 +129,8 @@ void ClusterUpgradeFeature::setBootstrapVersion() {
 void ClusterUpgradeFeature::tryClusterUpgrade() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  auto [acb, idx] = _agencyCache.read(
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = cache.read(
       std::vector<std::string>{AgencyCommHelper::path(::upgradeVersionKey)});
   auto res = acb->slice();
 
@@ -185,8 +184,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   AgencyComm agency(server());
   AgencyCommResult result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
-    _agencyCache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>())
-        .get();
+    auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
     // we are responsible for the upgrade!
     LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER)
