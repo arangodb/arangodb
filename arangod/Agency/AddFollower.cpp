@@ -230,7 +230,7 @@ bool AddFollower::start(bool&) {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerHealth(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != Supervision::HEALTH_STATUS_GOOD) {
       it = available.erase(it);
     } else {
       ++it;
@@ -355,7 +355,7 @@ bool AddFollower::start(bool&) {
           });
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
