@@ -233,8 +233,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(std::string_view args,
-                                             std::string& out) {
+bool AqlAnalyzer::normalize_vpack(std::string_view args, std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
   if (normalize_slice(slice, builder)) {
@@ -245,8 +244,7 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ bool AqlAnalyzer::normalize_json(std::string_view args,
-                                            std::string& out) {
+bool AqlAnalyzer::normalize_json(std::string_view args, std::string& out) {
   auto src = VPackParser::fromJson(args.data(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
@@ -256,14 +254,12 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
-    std::string_view args) {
+irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(std::string_view args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
-    std::string_view args) {
+irs::analysis::analyzer::ptr AqlAnalyzer::make_json(std::string_view args) {
   auto builder = VPackParser::fromJson(args.data(), args.size());
   return make_slice(builder->slice());
 }

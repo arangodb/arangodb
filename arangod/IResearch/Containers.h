@@ -177,12 +177,11 @@ class AsyncValue {
 template<typename T>
 class UniqueHeapInstance {
  public:
-  template<typename... Args,
-           typename = typename std::enable_if<!std::is_same<
-               typelist<UniqueHeapInstance>,
-               typelist<typename std::decay<Args>::type...>>::value>::
-               type  // prevent matching of copy/move constructor
-           >
+  template<
+      typename... Args,
+      // prevent matching of copy/move constructor
+      typename = std::enable_if_t<!std::is_same_v<
+          typelist<UniqueHeapInstance>, typelist<std::decay_t<Args&&>...>>>>
   explicit UniqueHeapInstance(Args&&... args)
       : _instance(std::make_unique<T>(std::forward<Args>(args)...)) {}
 
@@ -246,13 +245,12 @@ class UniqueHeapInstance {
 template<typename CharType, typename V>
 struct UnorderedRefKeyMapBase {
  public:
-  typedef std::unordered_map<irs::hashed_basic_string_view<CharType>,
-                             std::pair<std::basic_string<CharType>, V>>
-      MapType;
+  using MapType = std::unordered_map<irs::hashed_basic_string_view<CharType>,
+                                     std::pair<std::basic_string<CharType>, V>>;
 
-  typedef typename MapType::key_type KeyType;
-  typedef V value_type;
-  typedef std::hash<typename MapType::key_type::base_t> KeyHasher;
+  using KeyType = typename MapType::key_type;
+  using value_type = V;
+  using KeyHasher = std::hash<typename MapType::key_type::base_t>;
 
   struct KeyGenerator {
     KeyType operator()(KeyType const& key,
@@ -274,11 +272,11 @@ class UnorderedRefKeyMap
       private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
       private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
  public:
-  typedef UnorderedRefKeyMapBase<CharType, V> MyBase;
-  typedef typename MyBase::MapType MapType;
-  typedef typename MyBase::KeyType KeyType;
-  typedef typename MyBase::KeyGenerator KeyGenerator;
-  typedef typename MyBase::KeyHasher KeyHasher;
+  using MyBase = UnorderedRefKeyMapBase<CharType, V>;
+  using MapType = typename MyBase::MapType;
+  using KeyType = typename MyBase::KeyType;
+  using KeyGenerator = typename MyBase::KeyGenerator;
+  using KeyHasher = typename MyBase::KeyHasher;
 
   class ConstIterator {
    public:

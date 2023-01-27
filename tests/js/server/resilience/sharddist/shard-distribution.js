@@ -334,14 +334,23 @@ function ShardDistributionTest({replVersion}) {
     testDistributeShardsLikeDistribution: function () {
       cleanUp();
       internal.db._create(colName, {replicationFactor, numberOfShards});
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      internal.db._create(followCollection, {
+        replicationFactor,
+        numberOfShards,
+        distributeShardsLike: colName
+      });
+      expect(waitForSynchronousReplication(followCollection)).to.equal(true);
       compareDistributions();
     },
 
     testDistributeShardsLikeOnIdenticalServers: function () {
       internal.db._create(colName, {replicationFactor, numberOfShards});
       expect(waitForSynchronousReplication(colName)).to.equal(true);
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      internal.db._create(followCollection, {
+        replicationFactor,
+        numberOfShards,
+        distributeShardsLike: colName
+      });
       expect(waitForSynchronousReplication(followCollection)).to.equal(true);
       compareDistributions();
     },

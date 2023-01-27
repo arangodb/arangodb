@@ -42,6 +42,7 @@
 #include <Shlwapi.h>
 #include <tchar.h>
 #include <windows.h>
+#include "Basics/win-utils.h"
 #endif
 
 #ifndef _WIN32
@@ -88,8 +89,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-
-#include <absl/crc/crc32c.h>
 
 using namespace arangodb::basics;
 using namespace arangodb;

@@ -120,7 +120,7 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename String>
 inline bool parseValue(String& value, aql::AstNode const& node) {
-  typedef typename String::traits_type traits_t;
+  using traits_t = typename String::traits_type;
 
   switch (node.value.type) {
     case aql::VALUE_TYPE_NULL:
@@ -202,7 +202,7 @@ enum ScopedValueType {
 ////////////////////////////////////////////////////////////////////////////////
 struct AqlValueTraits {
   static ScopedValueType type(aql::AqlValue const& value) noexcept {
-    typedef typename std::underlying_type<ScopedValueType>::type underlying_t;
+    using underlying_t = std::underlying_type_t<ScopedValueType>;
 
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
@@ -306,7 +306,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? _node->getBoolValue() : _value.toBoolean();
   }
 
-  bool getDouble(double_t& value) const {
+  bool getDouble(double& value) const {
     bool failed = false;
     value =
         _node->isConstant() ? _node->getDoubleValue() : _value.toDouble(failed);
@@ -462,20 +462,6 @@ struct NormalizedCmpNode {
   aql::AstNode const* value;
   aql::AstNodeType cmp;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @returns pointer to type name for the specified value if it's present in
-///          TypeMap, nullptr otherwise
-////////////////////////////////////////////////////////////////////////////////
-inline std::string const* getNodeTypeName(aql::AstNodeType type) noexcept {
-  auto const it = aql::AstNode::TypeNames.find(type);
-
-  if (aql::AstNode::TypeNames.end() == it) {
-    return nullptr;
-  }
-
-  return &it->second;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns pointer to 'idx'th member of type 'expectedType', or nullptr

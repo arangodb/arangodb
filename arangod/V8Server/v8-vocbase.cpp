@@ -1406,36 +1406,28 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
             .FromMaybe(v8::Local<v8::Object>());
     auto* collection = UnwrapCollection(isolate, value);
 
-    // check if the collection is from the same database
-    if (collection && &(collection->vocbase()) == &vocbase) {
-      // we cannot use collection->getStatusLocked() here, because we
-      // have no idea who is calling us (db[...]). The problem is that
-      // if we are called from within a JavaScript transaction, the
-      // caller may have already acquired the collection's status lock
-      // with that transaction. if we now lock again, we may deadlock!
-      auto status = collection->status();
-      auto cid = collection->id();
-      auto internalVersion = collection->v8CacheVersion();
-
-      // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid.isSet() &&
-          !ServerState::instance()->isCoordinator()) {
+    // check if the collection is from the same database and
+    // hasn't been deleted
+    if (!ServerState::instance()->isCoordinator() && collection &&
+        &(collection->vocbase()) == &vocbase && !collection->deleted()) {
+      if (auto cid = collection->id(); cid.isSet()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
-        TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           DataSourceId cachedCid{TRI_ObjectToUInt64(
               isolate,
               value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()),
               true)};
-          uint32_t cachedVersion = (uint32_t)TRI_ObjectToInt64(
+
+          TRI_GET_GLOBAL_STRING(VersionKeyHidden);
+          uint32_t cachedVersion = static_cast<uint32_t>(TRI_ObjectToInt64(
               isolate, value->Get(context, VersionKeyHidden)
-                           .FromMaybe(v8::Local<v8::Value>()));
+                           .FromMaybe(v8::Local<v8::Value>())));
+          auto internalVersion = collection->v8CacheVersion();
 
           if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
             TRI_V8_RETURN(value);
           }
-
           // store the updated version number in the object for future
           // comparisons
           value
@@ -1465,7 +1457,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
                        .getCollectionNT(vocbase.name(), std::string(key));
     }
   } else {
-    collection = vocbase.lookupCollection(std::string(key));
+    collection = vocbase.lookupCollection(std::string_view(key, keyLength));
   }
 
   if (collection == nullptr) {

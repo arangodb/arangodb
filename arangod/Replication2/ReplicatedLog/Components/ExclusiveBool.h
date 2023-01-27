@@ -58,7 +58,7 @@ struct ExclusiveBool {
     }
   }
 
-  ExclusiveBool() = default;
+  ExclusiveBool() { value.clear(); }
   ~ExclusiveBool() = default;  // TODO assert value == false
 
   ExclusiveBool(ExclusiveBool const&) = delete;
@@ -68,7 +68,7 @@ struct ExclusiveBool {
 
  private:
   friend struct ExclusiveBoolGuard;
-  std::atomic_flag value{false};
+  std::atomic_flag value;
 };
 
 inline void ExclusiveBoolGuard::reset() noexcept {

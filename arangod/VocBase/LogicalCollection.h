@@ -48,6 +48,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
@@ -116,7 +117,7 @@ class LogicalCollection : public LogicalDataSource {
    * add a new value make sure it is the next free 2^n value.
    * For Backwards Compatibility a value can never be reused.
    */
-  enum InternalValidatorType {
+  enum InternalValidatorType : std::uint64_t {
     None = 0,
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
@@ -135,13 +136,13 @@ class LogicalCollection : public LogicalDataSource {
       std::string_view shardId);
 
   // SECTION: Meta Information
-  Version version() const { return _version; }
+  Version version() const noexcept { return _version; }
 
-  void setVersion(Version version) { _version = version; }
+  void setVersion(Version version) noexcept { _version = version; }
 
-  uint32_t v8CacheVersion() const;
+  uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const;
+  TRI_col_type_e type() const noexcept { return _type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -156,16 +157,7 @@ class LogicalCollection : public LogicalDataSource {
 
   RevisionId newRevisionId() const;
 
-  TRI_vocbase_col_status_e status() const;
-  TRI_vocbase_col_status_e getStatusLocked();
-
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-
-  /// @brief try to fetch the collection status under a lock
-  /// the boolean value will be set to true if the lock could be acquired
-  /// if the boolean is false, the return value is always
-  /// TRI_VOC_COL_STATUS_CORRUPTED
-  TRI_vocbase_col_status_e tryFetchStatus(bool&);
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -223,6 +215,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
@@ -280,7 +273,6 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -399,8 +391,6 @@ class LogicalCollection : public LogicalDataSource {
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  void increaseV8Version();
-
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
@@ -432,9 +422,6 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Collection type
   TRI_col_type_e const _type;
 
-  // @brief Current state of this colletion
-  std::atomic<TRI_vocbase_col_status_e> _status;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
@@ -451,10 +438,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  bool _usesRevisionsAsDocumentIds;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 

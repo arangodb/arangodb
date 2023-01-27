@@ -53,10 +53,14 @@
         }
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
+        let numberOfShards = 3;
+        if (dbArgs.sharding === "single") {
+          numberOfShards = 1;
+        }
 
-        let c = db._create(cn, {numberOfShards: 3});
-        let c2 = db._create(cn1, {numberOfShards: 3});
-        let c3 = db._create(cn2, {numberOfShards: 3});
+        let c = db._create(cn, {numberOfShards});
+        let c2 = db._create(cn1, {numberOfShards});
+        let c3 = db._create(cn2, {numberOfShards});
         if (isSearchField) {
           let props = {
             type: "inverted", includeAllFields: true,
@@ -542,4 +546,3 @@
     };
   };
 }());
-

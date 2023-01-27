@@ -21,7 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#ifdef _LIBCPP_VERSION
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 14000
 #include <experimental/coroutine>
 namespace std_coro = std::experimental;
 #else
@@ -38,7 +38,7 @@ struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     std::move(_future).thenFinal(
-        [coro, this](futures::Try<T>&& result) noexcept {
+        [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
           coro.resume();
         });

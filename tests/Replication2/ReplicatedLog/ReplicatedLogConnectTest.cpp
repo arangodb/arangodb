@@ -113,6 +113,7 @@ struct LogLeaderMock : replicated_log::ILogLeader {
                   std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
       resign2, (), (override, ref(&&)));
 
+  MOCK_METHOD(WaitForFuture, waitForLeadership, (), (override));
   MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
   MOCK_METHOD(InMemoryLog, copyInMemoryLog, (), (const, override));
@@ -205,7 +206,12 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{1});
             EXPECT_EQ(*info.initialConfig, config.get());
-            return leaderMock = std::make_shared<LogLeaderMock>();
+            leaderMock = std::make_shared<LogLeaderMock>();
+            EXPECT_CALL(*leaderMock, waitForLeadership)
+                .WillOnce([]() -> futures::Future<WaitForResult> {
+                  return WaitForResult{};
+                });
+            return leaderMock;
           });
 
   log->updateConfig(term.get(), config.get());
@@ -248,7 +254,12 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{1});
             EXPECT_EQ(*info.initialConfig, config.get());
-            return leaderMock = std::make_shared<LogLeaderMock>();
+            leaderMock = std::make_shared<LogLeaderMock>();
+            EXPECT_CALL(*leaderMock, waitForLeadership)
+                .WillOnce([]() -> futures::Future<WaitForResult> {
+                  return WaitForResult{};
+                });
+            return leaderMock;
           });
 
   log->updateConfig(term.get(), config.get());
@@ -286,7 +297,12 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{1});
             EXPECT_EQ(*info.initialConfig, config.get());
-            return leaderMock = std::make_shared<LogLeaderMock>();
+            leaderMock = std::make_shared<LogLeaderMock>();
+            EXPECT_CALL(*leaderMock, waitForLeadership)
+                .WillOnce([]() -> futures::Future<WaitForResult> {
+                  return WaitForResult{};
+                });
+            return leaderMock;
           });
   // create initial state and connection
   auto connection =
@@ -366,7 +382,12 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{2});
             EXPECT_EQ(*info.initialConfig, config.get());
-            return leaderMock = std::make_shared<LogLeaderMock>();
+            leaderMock = std::make_shared<LogLeaderMock>();
+            EXPECT_CALL(*leaderMock, waitForLeadership)
+                .WillOnce([]() -> futures::Future<WaitForResult> {
+                  return WaitForResult{};
+                });
+            return leaderMock;
           });
   EXPECT_CALL(std::move(*followerMock), resign2).WillOnce([&] {
     return std::make_tuple(
@@ -408,8 +429,12 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
               LeaderTermInfo info, ParticipantContext context) {
             EXPECT_EQ(methods.release(), methodsPtr);
             EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
-            return leaderMock =
-                       std::make_shared<testing::StrictMock<LogLeaderMock>>();
+            leaderMock = std::make_shared<testing::StrictMock<LogLeaderMock>>();
+            EXPECT_CALL(*leaderMock, waitForLeadership)
+                .WillOnce([]() -> futures::Future<WaitForResult> {
+                  return WaitForResult{};
+                });
+            return leaderMock;
           });
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});

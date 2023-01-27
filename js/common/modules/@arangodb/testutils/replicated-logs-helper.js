@@ -35,6 +35,8 @@ const helper = require('@arangodb/test-helper-common');
 const serverHelper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
+  const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
+  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length-1, count)];
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -49,7 +51,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
     if (count % 10 === 0) {
       console.log(result);
     }
-    wait(0.5); // 240 * .5s = 2 minutes
+    wait(getWaitTime(count));
   }
   if (onErrorCallback !== undefined) {
     onErrorCallback(result);
@@ -60,7 +62,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const readAgencyValueAt = function (key) {
   const response = serverHelper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {

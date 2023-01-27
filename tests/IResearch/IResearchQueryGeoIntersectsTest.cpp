@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
 
@@ -30,7 +32,7 @@ namespace {
 
 class QueryGeoIntersects : public QueryTest {
  protected:
-  void createAnalyzers() {
+  void createAnalyzers(std::string_view analyzer) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -118,10 +120,10 @@ class QueryGeoIntersects : public QueryTest {
     auto links = [&] {
       if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
-        return impl.getLinks();
+        return impl.getLinks(nullptr);
       }
       auto& impl = basics::downCast<iresearch::IResearchView>(*view);
-      return impl.getLinks();
+      return impl.getLinks(nullptr);
     };
     // ensure presence of special a column for geo indices
     {
@@ -204,12 +206,7 @@ class QueryGeoIntersects : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -218,17 +215,20 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(d.geometry, box)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -237,8 +237,16 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(box, d.geometry)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     //
     {
@@ -364,14 +372,29 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
 };
 
 TEST_P(QueryGeoIntersectsView, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createView();
   queryTests();
 }
 
 TEST_P(QueryGeoIntersectsSearch, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes();
+  createSearch();
+  queryTests();
+}
+
+TEST_P(QueryGeoIntersectsView, TestS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createView();
+  queryTests();
+}
+
+TEST_P(QueryGeoIntersectsSearch, TestS2) {
+  createAnalyzers("geojson-s2");
   createCollections();
   createIndexes();
   createSearch();
