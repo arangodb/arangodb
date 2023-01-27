@@ -37,7 +37,7 @@ jobs:
 
   clang-format:
     docker:
-      - image: cimg/base:current
+      - image: alpine:3.15 # cimg/base:current
     resource_class: small
     steps:
       - attach_workspace:
@@ -45,8 +45,9 @@ jobs:
       - run:
           name: Install clang-format
           command: |
-            sudo apt-get -yy update
-            sudo apt-get -yy install clang-format
+            apk add --no-cache coreutils grep clang-extra-tools=12
+            # sudo apt-get -yy update
+            # sudo apt-get -yy install clang-format
       - run:
           name: Print clang-format version
           command: clang-format --version
