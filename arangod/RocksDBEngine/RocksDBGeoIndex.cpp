@@ -773,9 +773,10 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
        params.filterType == geo::FilterType::INTERSECTS) &&
-      (params.minDistance <= geo::kMetersEps &&
-       params.maxDistance >=
-           geo::kMaxDistanceBetweenPoints - geo::kMetersEps)) {
+      !params.distanceRestricted) {
+    LOG_TOPIC("54612", DEBUG, Logger::AQL)
+        << "Using RDBCoveringIterator for geo index query: "
+        << params.toString();
     return std::make_unique<RDBCoveringIterator>(&_collection, trx, this,
                                                  std::move(params));
   }
@@ -804,6 +805,9 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
+
+  LOG_TOPIC("54613", DEBUG, Logger::AQL)
+      << "Using RDBNearIterator for geo index query: " << params.toString();
 
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
