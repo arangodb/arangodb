@@ -6,7 +6,7 @@ v3.10.4 (XXXX-XX-XX)
   GEO_DISTANCE.
 
 
-v3.10.3 (XXXX-XX-XX)
+v3.10.3 (2023-01-23)
 --------------------
 
 * Log information about follower state/apply progress in supervision job that
