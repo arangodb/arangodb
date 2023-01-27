@@ -131,7 +131,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("02cef", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -230,7 +230,7 @@ bool AddFollower::start(bool&) {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerHealth(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != Supervision::HEALTH_STATUS_GOOD) {
       it = available.erase(it);
     } else {
       ++it;
@@ -289,8 +289,8 @@ bool AddFollower::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("24c50", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -355,7 +355,7 @@ bool AddFollower::start(bool&) {
           });
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
@@ -372,7 +372,7 @@ bool AddFollower::start(bool&) {
   }
 
   LOG_TOPIC("63ba4", INFO, Logger::SUPERVISION)
-      << "Start precondition failed for AddFollower " + _jobId;
+      << "Start precondition failed for AddFollower " << _jobId;
   return false;
 }
 
