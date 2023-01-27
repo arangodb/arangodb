@@ -2,7 +2,8 @@ devel
 -----
 
 * Activate RDB_CoveringIterator and use it for some geo index queries.
-  This speeds up and simplifies geo queries which do not use GEO_DISTANCE.
+  This speeds up and simplifies geo queries with geo index which do not
+  use GEO_DISTANCE.
 
 * BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
   creating a database and then restarting the cluster with the startup option
