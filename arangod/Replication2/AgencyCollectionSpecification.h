@@ -24,11 +24,9 @@
 
 #include <unordered_map>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
-#include <Basics/Identifier.h>
+#include "Basics/Identifier.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::replication2::agency {
@@ -37,22 +35,74 @@ struct CollectionGroupId : basics::Identifier {
   using Identifier::Identifier;
 };
 
+/***
+ * SECTION Collection Groups
+ */
 struct CollectionGroup {
   CollectionGroupId id;
 
   struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;
 
+  struct Attributes {
+
+    struct MutableAttributes {
+      std::size_t writeConcern;
+      std::size_t replicationFactor;
+      bool waitForSync;
+    };
+
+    MutableAttributes mutableAttributes;
+
+    struct ImmutableAttributes {
+      std::size_t numberOfShards;
+    };
+
+    ImmutableAttributes immutableAttributes;
+
+  };
+  Attributes attributes;
+};
+
+struct CollectionGroupTargetSpecification : public CollectionGroup {};
+
+struct CollectionGroupPlanSpecification : public CollectionGroup {
   struct ShardSheaf {
     LogId replicatedLog;
   };
   std::vector<ShardSheaf> shardSheaves;
+};
 
-  struct Attributes {
-    std::size_t writeConcern;
-    bool waitForSync;
+/***
+ * SECTION Collections
+ */
+
+struct Collection {
+  // TODO: Fill Attributes.
+  CollectionGroupId groupId;
+
+  struct MutableProperties {
+
   };
-  Attributes attributes;
+
+  MutableProperties mutableProperties;
+
+  struct ImmutableProperties {
+
+  };
+
+  ImmutableProperties immutableProperties;
+};
+
+struct CollectionTargetSpecification : public Collection {};
+
+struct CollectionPlanSpecification : public Collection {
+  std::vector<ShardID> shardList;
+
+  // Note this is still here for compatibility, and temporary reasons.
+  // We think we can get away with just above shardList and CollectionGroups
+  // as soon as everything is in place.
+  PlanShardToServerMapping deprecatedShardMap;
 };
 
 }  // namespace arangodb::replication2::agency

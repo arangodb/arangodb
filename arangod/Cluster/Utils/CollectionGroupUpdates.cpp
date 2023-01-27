@@ -39,8 +39,8 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
   auto newId = agency::CollectionGroupId(collection.id.id());
   agency::CollectionGroup g;
   g.id = newId;
-  g.attributes.waitForSync = false;
-  g.attributes.writeConcern = 1;
+  g.attributes.mutableAttributes.waitForSync = false;
+  g.attributes.mutableAttributes.writeConcern = 1;
   g.collections.emplace(::toCollectionIdString(collection.id),
                         agency::CollectionGroup::Collection{});
   newGroups.emplace_back(std::move(g));
