@@ -255,17 +255,18 @@ RestStatus RestDocumentHandler::insertDocument() {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
                                  std::move(trxOpts));
 
-  if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
-
   {
     // HACK for SmartEdgeCollections to trigger a coordinator wide lock, and no local lock
     CollectionNameResolver resolver{_vocbase};
     auto col = resolver.getCollection(cname);
-    TRI_ASSERT(col != nullptr) << "YOLO collection";
+    ADB_PROD_ASSERT(col != nullptr) << "Get collection API should have thrown.";
     if (col->isSmartEdgeCollection()) {
       _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    } else {
+      if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
+        _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+      }
+
     }
   }
 
