@@ -245,15 +245,6 @@ constexpr std::string_view kStringOperational = "ServiceOperational";
 enum class LocalStateMachineStatus { kUnconfigured, kRecovery, kOperational };
 auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
 
-struct LocalStateMachineStatusStringTransformer {
-  using SerializedType = std::string;
-  auto toSerialized(LocalStateMachineStatus source, std::string& target) const
-      -> inspection::Status;
-  auto fromSerialized(std::string const& source,
-                      LocalStateMachineStatus& target) const
-      -> inspection::Status;
-};
-
 template<class Inspector>
 auto inspect(Inspector& f, LocalStateMachineStatus& x) {
   return f.enumeration(x).values(
