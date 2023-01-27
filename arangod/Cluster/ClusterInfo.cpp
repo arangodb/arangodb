@@ -4124,7 +4124,6 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 
   VPackBuilder builder = VPackCollection::merge(
       collectionWithoutOldSchema.slice(), temp.slice(), true);
-
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyValueOperationType::SET, builder.slice());
