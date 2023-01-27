@@ -1272,15 +1272,14 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable =
-      []<typename... Args>(basics::SourceLocation location,
-                           fmt::format_string<Args...> formatString,
-                           Args&&... args) {
-        throw basics::Exception(
-            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            fmt::vformat(formatString, fmt::make_format_args(args...)),
-            location);
-      };
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+  };
+
 
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
