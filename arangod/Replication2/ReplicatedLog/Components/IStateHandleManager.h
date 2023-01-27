@@ -37,7 +37,8 @@ struct IStateHandleManager {
   virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
-  virtual void acquireSnapshot(ParticipantId const& leader) noexcept = 0;
+  virtual void acquireSnapshot(ParticipantId const& leader,
+                               std::uint64_t version) noexcept = 0;
 };
 }  // namespace comp
 }  // namespace replicated_log

@@ -77,7 +77,7 @@ struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
-  virtual auto snapshotCompleted() -> Result = 0;
+  virtual auto snapshotCompleted(std::uint64_t version) -> Result = 0;
 };
 
 // TODO Move to namespace replicated_state (and different file?)
@@ -89,7 +89,7 @@ struct IReplicatedStateHandle {
       std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
-  virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
+  virtual void acquireSnapshot(ServerID leader, LogIndex, std::uint64_t) = 0;
   virtual void updateCommitIndex(LogIndex) = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)

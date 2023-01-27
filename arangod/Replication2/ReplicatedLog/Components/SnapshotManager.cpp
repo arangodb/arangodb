@@ -33,36 +33,38 @@
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;
 
-auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
-  return guardedData.getLockedGuard()->state;
-}
+/*
+ * on invalidate snapshot
+ * 1. Persist on disk, that no snapshot is available.
+ * 2. Call acquire snapshot on state handle, with new version.
+ *
+ * on setSnapshotStateAvailable:
+ * 1. check correct version
+ * 2. persist snapshot state
+ * 3. update leader via LeaderComm
+ *
+ * on startup:
+ * 1. if no snapshot available:
+ *    1.1. if there is leader => acquireSnapshot
+ */
 
 auto SnapshotManager::invalidateSnapshotState() -> arangodb::Result {
-  return updateSnapshotState(SnapshotState::MISSING);
-}
-
-auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
-  if (auto guard = guardedData.getLockedGuard(); guard->state != state) {
-    auto trx = guard->storage.beginMetaInfoTrx();
-    trx->get().snapshot.status =
-        state == SnapshotState::AVAILABLE
-            ? replicated_state::SnapshotStatus::kCompleted
-            : replicated_state::SnapshotStatus::kInvalidated;
-    auto result = guard->storage.commitMetaInfoTrx(std::move(trx));
+  auto guard = guardedData.getLockedGuard();
+  if (guard->state == SnapshotState::AVAILABLE) {
+    auto result = guard->updatePersistedSnapshotState(SnapshotState::MISSING);
     if (result.fail()) {
+      LOG_CTX("0601b", ERR, loggerContext)
+          << "failed to persist information that snapshot is missing";
       return result;
     }
-
-    LOG_CTX("b2c65", INFO, loggerContext)
-        << "snapshot status locally updated to " << to_string(state);
-    guard->state = state;
-    ADB_PROD_ASSERT(termInfo->leader.has_value());
-    auto& stateHandle = guard->stateHandle;
-    guard.unlock();
-    if (state == SnapshotState::MISSING) {
-      stateHandle.acquireSnapshot(*termInfo->leader);
-    }
   }
+  LOG_CTX("6b38e", INFO, loggerContext) << "invalidating snapshot";
+  auto& stateHandle = guard->stateHandle;
+  auto newVersion = ++guard->lastSnapshotVersion;
+  guard.unlock();
+  LOG_CTX("a5f6f", DEBUG, loggerContext)
+      << "acquiring new snapshot with version " << newVersion;
+  stateHandle.acquireSnapshot(*termInfo->leader, newVersion);
   return {};
 }
 
@@ -75,6 +77,21 @@ SnapshotManager::GuardedData::GuardedData(IStorageManager& storage,
               : SnapshotState::MISSING;
 }
 
+auto SnapshotManager::GuardedData::updatePersistedSnapshotState(
+    SnapshotState newState) -> arangodb::Result {
+  auto trx = storage.beginMetaInfoTrx();
+  trx->get().snapshot.status =
+      newState == SnapshotState::AVAILABLE
+          ? replicated_state::SnapshotStatus::kCompleted
+          : replicated_state::SnapshotStatus::kInvalidated;
+  auto result = storage.commitMetaInfoTrx(std::move(trx));
+  if (result.fail()) {
+    return result;
+  }
+  state = newState;
+  return {};
+}
+
 SnapshotManager::SnapshotManager(
     IStorageManager& storage, IStateHandleManager& stateHandle,
     std::shared_ptr<FollowerTermInformation const> termInfo,
@@ -84,12 +101,40 @@ SnapshotManager::SnapshotManager(
       termInfo(std::move(termInfo)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
-      guardedData(storage, stateHandle) {}
+      guardedData(storage, stateHandle) {
+  auto guard = guardedData.getLockedGuard();
+  if (this->termInfo->leader.has_value() and
+      guard->state == SnapshotState::MISSING) {
+    auto version = ++guard->lastSnapshotVersion;
+    guard.unlock();
+    LOG_CTX("5426a", INFO, loggerContext)
+        << "detected missing snapshot - acquire new one";
+    stateHandle.acquireSnapshot(*this->termInfo->leader, version);
+  }
+}
 
-auto SnapshotManager::setSnapshotStateAvailable(
-    arangodb::replication2::replicated_log::MessageId msgId)
+auto SnapshotManager::setSnapshotStateAvailable(MessageId msgId,
+                                                std::uint64_t version)
     -> arangodb::Result {
-  auto result = updateSnapshotState(SnapshotState::AVAILABLE);
+  auto guard = guardedData.getLockedGuard();
+  if (guard->lastSnapshotVersion != version) {
+    LOG_CTX("eb008", INFO, loggerContext)
+        << "dismiss snapshot available message - wrong version, found "
+        << version << " expected " << guard->lastSnapshotVersion;
+    return {};
+  }
+
+  {
+    auto result = guard->updatePersistedSnapshotState(SnapshotState::AVAILABLE);
+    if (result.fail()) {
+      LOG_CTX("52cac", ERR, loggerContext)
+          << "Failed to update snapshot information: " << result.errorMessage();
+      return result;
+    }
+  }
+
+  guard.unlock();
+
   leaderComm->reportSnapshotAvailable(msgId).thenFinal(
       [lctx = loggerContext](auto&& tryResult) {
         auto result = basics::catchToResult([&] { return tryResult.get(); });
@@ -99,7 +144,7 @@ auto SnapshotManager::setSnapshotStateAvailable(
         }
         LOG_CTX("b2d65", INFO, lctx) << "snapshot status updated on leader";
       });
-  return result;
+  return {};
 }
 
 auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
@@ -110,4 +155,8 @@ auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
       return "AVAILABLE";
   }
   std::abort();
+}
+
+auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
+  return guardedData.getLockedGuard()->state;
 }

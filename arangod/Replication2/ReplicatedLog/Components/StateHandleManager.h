@@ -36,7 +36,8 @@ struct StateHandleManager : IStateHandleManager {
   void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods> ptr) override;
 
-  void acquireSnapshot(ParticipantId const& leader) noexcept override;
+  void acquireSnapshot(ParticipantId const& leader,
+                       std::uint64_t version) noexcept override;
 
  private:
   struct GuardedData {
