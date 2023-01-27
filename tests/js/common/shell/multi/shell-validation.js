@@ -737,6 +737,30 @@ function UpdateSchemaCoverageSuite() {
     }
   };
 
+  const validatorJson2 = {
+    "message": "",
+    "level": "new",
+    "type": "json",
+    "rule": {
+      "additionalProperties": true,
+      "properties": {
+        "created": {
+          "type": "integer"
+        },
+        "creator": {
+          "type": "string"
+        },
+        "dog": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created"
+      ],
+      "type": "object"
+    }
+  };
+
 
   return {
 
@@ -757,7 +781,7 @@ function UpdateSchemaCoverageSuite() {
       } catch (ex) {}
     },
 
-    testPropertiesRemoveAttributeAfterInsertion: () => {
+    testPropertiesRemoveAttributeAfterDocInsertion: () => {
       assertNotNull(testCollection);
       const newDoc = {"created": 123, "creator": "Julia"};
       testCollection.insert(newDoc);
@@ -768,6 +792,24 @@ function UpdateSchemaCoverageSuite() {
       assertEqual(schema.level, validatorJson.level);
       assertEqual(schema.type, validatorJson.type);
       assertEqual(schema.rule, validatorJson.rule);
+    },
+    testPropertiesRemoveAndInsertAttributes: () => {
+      assertNotNull(testCollection);
+      const schema = testCollection.properties({ "schema": validatorJson2 }).schema;
+      assertEqual(schema.message, validatorJson2.message);
+      assertEqual(schema.level, validatorJson2.level);
+      assertEqual(schema.type, validatorJson2.type);
+      assertEqual(schema.rule, validatorJson2.rule);
+    },
+    testPropertiesRemove2AttributesAndInsert: () => {
+      assertNotNull(testCollection);
+      delete validatorJson2.rule.properties.creator;
+      assertFalse(validatorJson.rule.hasOwnProperty("creator"));
+      const schema = testCollection.properties({ "schema": validatorJson2 }).schema;
+      assertEqual(schema.message, validatorJson2.message);
+      assertEqual(schema.level, validatorJson2.level);
+      assertEqual(schema.type, validatorJson2.type);
+      assertEqual(schema.rule, validatorJson2.rule);
     },
   };
 } // END - UpdateSchemaCoverageSuite
