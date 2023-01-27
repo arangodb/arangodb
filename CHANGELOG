@@ -2,6 +2,7 @@ v3.10.3 (XXXX-XX-XX)
 --------------------
 
 * Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries which do not use GEO_DISTANCE.
 
 * Log information about follower state/apply progress in supervision job that
   organizes failover in active failover mode.
