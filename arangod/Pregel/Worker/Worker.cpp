@@ -567,7 +567,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
     Vertex<V, E> const* vertexEntry = *it;
 
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
+    ShardID const& shardId = _config.globalShardID(vertexEntry->shard());
 
     results.openObject(/*unindexed*/ true);
 

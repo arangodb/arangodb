@@ -24,7 +24,48 @@
 
 #pragma once
 
+#include <compare>
+
+#include <velocypack/Value.h>
+
 namespace arangodb::pregel {
-typedef uint16_t PregelShard;
-const PregelShard InvalidPregelShard = -1;
+struct PregelShard {
+  using value_type = uint16_t;
+
+  constexpr PregelShard() : value(InvalidPregelShardMarker) {}
+  PregelShard(value_type value) : value(value) {}
+
+  static constexpr value_type InvalidPregelShardMarker =
+      std::numeric_limits<value_type>::max();
+
+  auto isValid() -> bool { return value != InvalidPregelShardMarker; }
+
+  auto operator<=>(PregelShard const& other) const = default;
+
+  // TODO: This is for backwards compatibility and easy transition; as soon as
+  // all uses of VPackValue conversions on PregelShard are removed, this
+  // operator can go, too
+  explicit operator arangodb::velocypack::Value() const {
+    return VPackValue(value);
+  }
+
+  value_type value{};
+};
+constexpr auto InvalidPregelShard = PregelShard();
+
+template<typename Inspector>
+auto inspect(Inspector& f, PregelShard& x) {
+  return f.object(x).fields(f.field("shardID", x.value));
+}
+
 }  // namespace arangodb::pregel
+
+namespace std {
+template<>
+struct hash<arangodb::pregel::PregelShard> {
+  std::size_t operator()(
+      const arangodb::pregel::PregelShard& k) const noexcept {
+    return std::hash<arangodb::pregel::PregelShard::value_type>()(k.value);
+  }
+};
+}  // namespace std
