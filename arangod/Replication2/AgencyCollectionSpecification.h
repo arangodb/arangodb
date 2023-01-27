@@ -27,7 +27,12 @@
 #include "Basics/Identifier.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Inspection/Access.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/Properties/KeyGeneratorProperties.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionInternalProperties.h"
 
 namespace arangodb::replication2::agency {
 
@@ -82,13 +87,28 @@ struct Collection {
   CollectionGroupId groupId;
 
   struct MutableProperties {
+    // TODO: This can be optimized into it's own struct.
+    // Did a short_cut here to avoid concatenated changes
+    arangodb::velocypack::Builder computedValues{VPackSlice::nullSlice()};
 
+    // TODO: This can be optimized into it's own struct.
+    // Did a short_cut here to avoid concatenated changes
+    arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
   };
 
   MutableProperties mutableProperties;
 
-  struct ImmutableProperties {
-
+  struct ImmutableProperties : public CollectionInternalProperties {
+    std::string name{StaticStrings::Empty};
+    bool isSystem{false};
+    TRI_col_type_e type{TRI_col_type_e::TRI_COL_TYPE_DOCUMENT};
+    KeyGeneratorProperties keyOptions{};
+    bool isSmart{false};
+    bool isDisjoint{false};
+    bool cacheEnabled{false};
+    inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
+    inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};
+    inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections{std::nullopt};
   };
 
   ImmutableProperties immutableProperties;

@@ -80,13 +80,30 @@ auto inspect(Inspector& f, CollectionGroupPlanSpecification& x) {
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, Collection::MutableProperties& x) {
-  return f.object(x).fields();
+auto inspect(Inspector& f, Collection::MutableProperties& props) {
+  return f.object(props).fields(
+      f.field(StaticStrings::Schema, props.schema),
+      f.field(StaticStrings::ComputedValues, props.computedValues));
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, Collection::ImmutableProperties& x) {
-  return f.object(x).fields();
+auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
+  return f.object(props).fields(
+      f.field(StaticStrings::DataSourceName, props.name)
+          .invariant(UtilityInvariants::isNonEmpty),
+      f.field(StaticStrings::DataSourceSystem, props.isSystem),
+      f.field(StaticStrings::IsSmart, props.isSmart),
+      f.field(StaticStrings::IsDisjoint, props.isDisjoint),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
+      f.field(StaticStrings::GraphSmartGraphAttribute,
+              props.smartGraphAttribute)
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      f.field(StaticStrings::DataSourceType, props.type),
+      f.field(StaticStrings::KeyOptions, props.keyOptions),
+      f.field(StaticStrings::ShadowCollections, props.shadowCollections),
+      f.template embedFields<CollectionInternalProperties>(props));
 }
 
 template<class Inspector>
