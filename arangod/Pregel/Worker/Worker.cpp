@@ -98,18 +98,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 template<typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   _state = WorkerState::DONE;
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(50));  // wait for threads to die
-  delete _readCache;
-  delete _writeCache;
-  for (InCache<M>* cache : _inCaches) {
-    delete cache;
-  }
-  for (OutCache<M>* cache : _outCaches) {
-    delete cache;
-  }
-  _writeCache = nullptr;
-
   _feature.metrics()->pregelWorkersNumber->fetch_sub(1);
   _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(
       _graphStore->allocatedSize());
@@ -119,28 +107,26 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _config.parallelism();
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
-                                          _messageCombiner.get());
+    _readCache = std::make_unique<CombiningInCache<M>>(
+        &_config, _messageFormat.get(), _messageCombiner.get());
+    _writeCache = std::make_unique<CombiningInCache<M>>(
+        &_config, _messageFormat.get(), _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<CombiningInCache<M>>(
-          nullptr, _messageFormat.get(), _messageCombiner.get());
-      _inCaches.push_back(incoming.get());
-      _outCaches.push_back(new CombiningOutCache<M>(
+      _inCaches.push_back(std::make_shared<CombiningInCache<M>>(
+          nullptr, _messageFormat.get(), _messageCombiner.get()));
+      _outCaches.push_back(std::make_shared<CombiningOutCache<M>>(
           &_config, _messageFormat.get(), _messageCombiner.get()));
-      incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
+    _readCache =
+        std::make_unique<ArrayInCache<M>>(&_config, _messageFormat.get());
+    _writeCache =
+        std::make_unique<ArrayInCache<M>>(&_config, _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
-      auto incoming =
-          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
-      _inCaches.push_back(incoming.get());
+      _inCaches.push_back(
+          std::make_shared<ArrayInCache<M>>(nullptr, _messageFormat.get()));
       _outCaches.push_back(
-          new ArrayOutCache<M>(&_config, _messageFormat.get()));
-      incoming.release();
+          std::make_shared<ArrayOutCache<M>>(&_config, _messageFormat.get()));
     }
   }
 }
@@ -372,10 +358,10 @@ bool Worker<V, E, M>::_processVertices(
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[threadId];
-  OutCache<M>* outCache = _outCaches[threadId];
+  auto& inCache = _inCaches[threadId];
+  auto& outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
-  outCache->setLocalCache(inCache);
+  outCache->setLocalCache(inCache.get());
   TRI_ASSERT(outCache->sendCount() == 0);
 
   AggregatorHandler workerAggregator(_algorithm.get());
@@ -420,11 +406,8 @@ bool Worker<V, E, M>::_processVertices(
     return false;
   }
 
-  // double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
-  // TODO ask how to implement message sending without waiting for a response
-  // t = TRI_microtime() - t;
 
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
   MessageStats stats;

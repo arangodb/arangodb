@@ -112,13 +112,13 @@ class Worker : public IWorker {
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 
   // from previous or current superstep
-  InCache<M>* _readCache = nullptr;
+  std::unique_ptr<InCache<M>> _readCache;
   // for the current or next superstep
-  InCache<M>* _writeCache = nullptr;
+  std::unique_ptr<InCache<M>> _writeCache;
   // preallocated incoming caches
-  std::vector<InCache<M>*> _inCaches;
-  // preallocated ootgoing caches
-  std::vector<OutCache<M>*> _outCaches;
+  std::vector<std::shared_ptr<InCache<M>>> _inCaches;
+  // preallocated outgoing caches
+  std::vector<std::shared_ptr<OutCache<M>>> _outCaches;
 
   GssObservables _currentGssObservables;
   Guarded<AllGssStatus> _allGssStatus;

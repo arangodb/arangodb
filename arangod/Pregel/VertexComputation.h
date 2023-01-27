@@ -119,7 +119,7 @@ class VertexContext {
 template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _cache = nullptr;
+  std::shared_ptr<OutCache<M>> _cache = nullptr;
 
  public:
   virtual ~VertexComputation() = default;

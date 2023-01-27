@@ -121,9 +121,10 @@ void ArrayInCache<M>::_set(PregelShard shard, std::string_view const& key,
 
 template<typename M>
 void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
-                                 InCache<M> const* otherCache) {
-  ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
-  this->_containedMessageCount += other->_containedMessageCount;
+                                 std::shared_ptr<InCache<M> const> otherCache) {
+  auto const& other = static_cast<ArrayInCache<M> const&>(*otherCache);
+
+  this->_containedMessageCount += other._containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
@@ -138,8 +139,8 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
     i = (i + 1) % randomized.size();
     PregelShard shardId = randomized[i];
 
-    auto const& it = other->_shardMap.find(shardId);
-    if (it != other->_shardMap.end() && it->second.size() > 0) {
+    auto const& it = other._shardMap.find(shardId);
+    if (it != other._shardMap.end() && it->second.size() > 0) {
       std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId],
                                          std::try_to_lock);
 
@@ -245,9 +246,9 @@ void CombiningInCache<M>::_set(PregelShard shard, std::string_view const& key,
 
 template<typename M>
 void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
-                                     InCache<M> const* otherCache) {
-  CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
-  this->_containedMessageCount += other->_containedMessageCount;
+                                     std::shared_ptr<InCache<M> const> otherCache) {
+  auto const& other = static_cast<CombiningInCache<M> const&>(*otherCache);
+  this->_containedMessageCount += other._containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
@@ -261,8 +262,8 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
     i = (i + 1) % randomized.size();
     PregelShard shardId = randomized[i];
 
-    auto const& it = other->_shardMap.find(shardId);
-    if (it != other->_shardMap.end() && it->second.size() > 0) {
+    auto const& it = other._shardMap.find(shardId);
+    if (it != other._shardMap.end() && it->second.size() > 0) {
       std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId],
                                          std::try_to_lock);
 
