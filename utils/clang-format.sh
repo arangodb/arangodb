@@ -24,7 +24,7 @@ done
 # and maybe should be moved otherplace
 find arangod lib client-tools tests \
   \( -name '*.cpp' -o -name '*.hpp' -o -name '*.tpp' \) \
-  \! -name lib/Basics/sdt.hpp \
+  \! -wholename lib/Basics/sdt.hpp \
   -type f \
   -exec clang-format -i {} \+
 
