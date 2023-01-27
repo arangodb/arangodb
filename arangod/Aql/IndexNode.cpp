@@ -72,7 +72,7 @@ IndexNode::IndexNode(
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
   TRI_ASSERT(_condition != nullptr);
-
+  TRI_ASSERT(_indexes.size() == _options.numIndexesTotal);
   prepareProjections();
 }
 

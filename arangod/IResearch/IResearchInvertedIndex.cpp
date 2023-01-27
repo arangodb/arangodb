@@ -38,6 +38,7 @@
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchReadUtils.h"
+#include "IResearch/SearchDoc.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
@@ -450,14 +451,16 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::IndexReader const* _reader;
+  irs::DirectoryReader const* _reader;
   StorageSnapshot const& _snapshot;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
   int _mutableConditionIdx;
+  std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
 };
 
+template<bool emitLocalDocumentId>
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
@@ -541,17 +544,33 @@ class IResearchInvertedIndexIterator final
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
-          if (_doc->value == _pkDocItr->seek(_doc->value)) {
-            LocalDocumentId documentId;
+          LocalDocumentId documentId;
+          // For !withCovering that means actual doc reading
+          // if combined with "produce".
+          // And we must read LocalDocumentId anyway.
+          // Otherwise we read it only if required.
+          constexpr bool needReadLocalDocumentId =
+              !withCovering || emitLocalDocumentId;
+          if (!needReadLocalDocumentId ||
+              _doc->value == _pkDocItr->seek(_doc->value)) {
             bool const readSuccess =
+                !needReadLocalDocumentId ||
                 DocumentPrimaryKey::read(documentId, _pkValue->value);
             if (readSuccess) {
               if constexpr (withCovering) {
                 _projections.seek(_doc->value);
-                if (callback(documentId, _projections)) {
+                TRI_ASSERT(_readerOffset > 0);
+                SearchDoc doc({_collection->id(),
+                               &(*_reader)[_readerOffset - 1],
+                               _snapshot},
+                              _doc->value);
+                TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
+                if (callback(documentId, _projections,
+                             aql::AqlValue{doc.encode(_buf)})) {
                   --limit;
                 }
               } else {
+                TRI_ASSERT(documentId.isSet());
                 if (callback(documentId)) {
                   --limit;  // count only existing documents
                 }
@@ -583,6 +602,7 @@ class IResearchInvertedIndexIterator final
   CoveringVector _projections;
 };
 
+template<bool emitLocalDocumentId>
 class IResearchInvertedIndexMergeIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
@@ -644,19 +664,34 @@ class IResearchInvertedIndexMergeIterator final
       reset();
     }
     while (limit && _heap_it.next()) {
-      auto& segment = _segments[_heap_it.value()];
+      auto const currentIdx = _heap_it.value();
+      auto& segment = _segments[currentIdx];
       if constexpr (produce) {
-        if (segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
+        // For !withCovering that means actual doc reading
+        // if combined with "produce".
+        // And we must read LocalDocumentId anyway.
+        // Otherwise we read it only if required.
+        constexpr bool needReadLocalDocumentId =
+            !withCovering || emitLocalDocumentId;
+        if (!needReadLocalDocumentId || segment.doc->value ==
+            segment.pkDocItr->seek(segment.doc->value)) {
           LocalDocumentId documentId;
           bool const readSuccess =
+              !needReadLocalDocumentId || 
               DocumentPrimaryKey::read(documentId, segment.pkValue->value);
           if (readSuccess) {
             if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
-              if (callback(documentId, segment.projections)) {
+              SearchDoc doc(
+                  {_collection->id(), &(*this->_reader)[currentIdx], _snapshot},
+                  segment.doc->value);
+              TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
+              if (callback(documentId, segment.projections,
+                           aql::AqlValue{doc.encode(_buf)})) {
                 --limit;
               }
             } else {
+              TRI_ASSERT(documentId.isSet());
               if (callback(documentId)) {
                 --limit;  // count only existing documents
               }
@@ -968,23 +1003,40 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
-      return std::make_unique<IResearchInvertedIndexIterator>(
-          monitor, collection, &state, trx, node, &_meta, reference,
-          mutableConditionIdx);
+      if (opts.numIndexesTotal > 1) {
+        return std::make_unique<IResearchInvertedIndexIterator<false>>(
+            monitor, collection, &state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      } else {
+        return std::make_unique<IResearchInvertedIndexIterator<true>>(
+            monitor, collection, &state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      }
     } else {
-      return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          monitor, collection, &state, trx, node, &_meta, reference,
-          mutableConditionIdx);
+      if (opts.numIndexesTotal > 1) {
+        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
+            monitor, collection, &state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      } else {
+        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
+            monitor, collection, &state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      }
     }
   } else {
     // sorting  case
 
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
-
-    return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        monitor, collection, &state, trx, node, &_meta, reference,
-        transaction::Methods::kNoMutableConditionIdx);
+    if (opts.numIndexesTotal > 1) {
+      return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
+          monitor, collection, &state, trx, node, &_meta, reference,
+          transaction::Methods::kNoMutableConditionIdx);
+    } else {
+      return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
+          monitor, collection, &state, trx, node, &_meta, reference,
+          transaction::Methods::kNoMutableConditionIdx);
+    }
   }
 }
 

@@ -106,10 +106,12 @@ IndexIterator::CoveringCallback getCallback(
     transaction::Methods::IndexHandle const& index,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndVars,
+  auto impl = [&context, &index, &outNonMaterializedIndVars,
           &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIteratorCoveringData& covering) {
+                                      IndexIteratorCoveringData& covering,
+                                      AqlValue&& searchDoc) {
     if constexpr (checkUniqueness) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -134,12 +136,19 @@ IndexIterator::CoveringCallback getCallback(
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
+    RegisterId registerIdSearchDoc = context.getOutputRegisterSearchDoc();
 
-    // move a document id
-    AqlValue v(AqlValueHintUInt(token.id()));
-    AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
+    // move a document id
+    if (token.isSet()) {
+      AqlValue v(AqlValueHintUInt(token.id()));
+      AqlValueGuard guard{v, true};
+      output.moveValueInto(registerId, input, guard);
+    }
+    if (registerIdSearchDoc.isValid()) {
+      AqlValueGuard guard{searchDoc, true};
+      output.moveValueInto(registerIdSearchDoc, input, guard);
+    }
 
     // hash/skiplist/persistent
     if (covering.isArray()) {
@@ -170,6 +179,12 @@ IndexIterator::CoveringCallback getCallback(
     output.advanceRow();
     return true;
   };
+
+  return {[impl](LocalDocumentId const& token,
+                 IndexIteratorCoveringData& covering) {
+            return impl(token, covering, AqlValue(AqlValueHintNull()));
+          },
+          impl};
 }
 
 }  // namespace
