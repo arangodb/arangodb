@@ -10,38 +10,36 @@ add_library(arango_replication2 STATIC
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp)
 
 
-
-
 target_link_libraries(arango_replication2
-  arango # -> V8
-  arango_network # NetworkWorkAttachedFollower
-  arangoserver # RestHandler, arango_rocksdb
-  arango_futures
-  fmt
-  immer)
+        arango # -> V8
+        arango_network # NetworkWorkAttachedFollower
+        arangoserver # RestHandler, arango_rocksdb
+        arango_futures
+        fmt
+        immer)
 
 target_include_directories(arango_replication2 PRIVATE
-  "${PROJECT_SOURCE_DIR}/arangod"
-  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+        "${PROJECT_SOURCE_DIR}/arangod"
+        "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_library(arango_replication2_pure STATIC
-		MetricsHelper.cpp
-		ReplicatedState/StateStatus.cpp
-		ReplicatedState/StateCommon.cpp
-		ReplicatedLog/NetworkMessages.cpp
-		ReplicatedLog/Algorithms.cpp
+        MetricsHelper.cpp
+        ReplicatedState/StateStatus.cpp
+        ReplicatedState/StateCommon.cpp
+        ReplicatedLog/NetworkMessages.cpp
+        ReplicatedLog/Algorithms.cpp
         ReplicatedLog/ILogInterfaces.cpp
-		)
+        ReplicatedLog/TermIndexMapping.cpp)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight
-		velocypack immer fmt arango_metrics_base arango_futures)
+        velocypack immer fmt arango_metrics_base arango_futures)
 
 target_include_directories(arango_replication2_pure PUBLIC
-		"${PROJECT_SOURCE_DIR}/arangod"
-		"${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+        "${PROJECT_SOURCE_DIR}/arangod"
+        "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 target_link_libraries(arango_replication2
-		arango_replication2_pure)
+        arango_replication2_pure)
 
 add_subdirectory(Exceptions)
 add_subdirectory(ReplicatedLog)

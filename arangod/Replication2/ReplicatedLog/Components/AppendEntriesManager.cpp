@@ -32,6 +32,7 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/MetricsHelper.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -190,8 +191,9 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
 
   // It is always allowed to replace the log entirely
   if (request.prevLogEntry.index > LogIndex{0}) {
-    auto log = storage.getCommittedLog();
-    if (auto conflict = algorithms::detectConflict(log, request.prevLogEntry);
+    auto termIndexMap = storage.getTermIndexMapping();
+    if (auto conflict =
+            algorithms::detectConflict(termIndexMap, request.prevLogEntry);
         conflict.has_value()) {
       auto [reason, next] = *conflict;
       LOG_CTX("568c7", TRACE, lctx)

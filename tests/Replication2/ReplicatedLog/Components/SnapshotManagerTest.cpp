@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 #if defined(__GNUC__)
@@ -64,6 +65,7 @@ struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
   MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
+  MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
   MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
               (const, override));
   MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
