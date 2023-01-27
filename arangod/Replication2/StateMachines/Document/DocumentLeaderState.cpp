@@ -44,10 +44,13 @@ DocumentLeaderState::DocumentLeaderState(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
       _handlersFactory(std::move(handlersFactory)),
+      _snapshotHandler(
+          _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager),
-      _snapshotHandler(_handlersFactory->createSnapshotHandler(gid)),
-      _isResigning(false) {}
+      _isResigning(false) {
+  ADB_PROD_ASSERT(_snapshotHandler.getLockedGuard().get() != nullptr);
+}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
@@ -55,9 +58,12 @@ auto DocumentLeaderState::resign() && noexcept
 
   auto snapshotsGuard = _snapshotHandler.getLockedGuard();
   if (auto& snapshotHandler = snapshotsGuard.get(); snapshotHandler) {
-    // The snapshot could be null in case the vocbase was being dropped while
-    // the replicated state was being created.
     snapshotHandler->clear();
+    // The snapshot handler holds a reference to the underlying vocbase. It must
+    // not be accessed after a resign, so the database can be dropped safely.
+    snapshotHandler.reset();
+  } else {
+    TRI_ASSERT(false) << "Double-resign in document leader state " << gid;
   }
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
@@ -90,17 +96,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       return TRI_ERROR_CLUSTER_NOT_LEADER;
     }
 
-    auto transactionHandler =
-        self->_handlersFactory->createTransactionHandler(self->gid);
-    if (transactionHandler == nullptr) {
-      // TODO this is a temporary fix, see CINFRA-588
-      LOG_CTX("8cd17", ERR, self->loggerContext) << fmt::format(
-          "Transaction handler is missing from "
-          "DocumentLeaderState {}! This happens if the vocbase cannot be "
-          "found during DocumentState construction.",
-          self->shardId);
-      return Result{};
-    }
+    auto transactionHandler = self->_handlersFactory->createTransactionHandler(
+        data.core->getVocbase(), self->gid);
+    ADB_PROD_ASSERT(transactionHandler != nullptr);
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
@@ -226,9 +224,10 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
           return handler->status();
         }
         return Result{
-            TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-            "Snapshot handler failed to be initialized! This could happen if "
-            "the database was dropped before the state was initialized!"};
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+            fmt::format(
+                "Could not get snapshot statuses of {}, state resigned.",
+                to_string(gid))};
       });
 }
 
@@ -240,9 +239,10 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
       [&](auto& handler) -> ResultT<std::weak_ptr<Snapshot>> {
         if (handler == nullptr) {
           return Result{
-              TRI_ERROR_INTERNAL,
-              "Snapshot handler failed to be initialized! This could happen if "
-              "the database was dropped before the state was initialized!"};
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+              fmt::format(
+                  "Could not get snapshot statuses of {}, state resigned.",
+                  to_string(gid))};
         }
         if (_isResigning.load()) {
           return ResultT<std::weak_ptr<Snapshot>>::error(

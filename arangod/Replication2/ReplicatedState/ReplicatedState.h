@@ -36,6 +36,8 @@
 
 #include <map>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 class Result;
 
@@ -102,6 +104,7 @@ struct ReplicatedStateBase {
   }
 
   [[nodiscard]] virtual auto createStateHandle(
+      TRI_vocbase_t& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameters)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
 
@@ -384,11 +387,13 @@ struct ReplicatedState final
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   auto createStateHandle(
+      TRI_vocbase_t& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
  private:
-  auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
+  auto buildCore(TRI_vocbase_t& vocbase,
+                 std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }

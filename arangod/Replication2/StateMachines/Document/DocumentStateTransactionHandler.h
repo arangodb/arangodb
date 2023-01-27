@@ -55,8 +55,8 @@ struct IDocumentStateTransactionHandler {
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(
-      GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+  DocumentStateTransactionHandler(
+      GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
       std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
   auto ensureTransaction(DocumentLogEntry const& doc)
@@ -70,7 +70,7 @@ class DocumentStateTransactionHandler
 
  private:
   GlobalLogIdentifier _gid;
-  std::unique_ptr<IDatabaseGuard> _dbGuard;
+  TRI_vocbase_t* _vocbase;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   TransactionMap _transactions;
 };
