@@ -212,10 +212,10 @@ auto ReplicatedStateManager<S>::getStatus() const
 template<typename S>
 auto ReplicatedStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
-  auto guard = _guarded.getLockedGuard();
+  auto manager = _guarded.getLockedGuard()->_currentManager;
   auto status = std::visit(
       overload{[](auto const& manager) { return manager->getQuickStatus(); }},
-      guard->_currentManager);
+      manager);
 
   return status;
 }
@@ -447,6 +447,10 @@ template<typename S>
 auto LeaderStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
+  if (guard->_leaderState == NULL) {
+    // we have already resigned
+    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  }
   if (guard->_recoveryCompleted) {
     return replicated_log::LocalStateMachineStatus::kOperational;
   }
@@ -467,6 +471,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
+  _leaderState = NULL;
   return {std::move(core), std::move(methods)};
 }
 
@@ -771,6 +776,7 @@ auto FollowerStateManager<S>::resign() && noexcept
   auto guard = _guardedData.getLockedGuard();
   auto core = std::move(*guard->_followerState).resign();
   auto methods = std::move(*guard->_stream).resign();
+  guard->_followerState = NULL;
   guard->_stream.reset();
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
@@ -799,6 +805,11 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_followerState == NULL) {
+    // already resigned
+    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  }
   return replicated_log::LocalStateMachineStatus::kOperational;
 }
 
