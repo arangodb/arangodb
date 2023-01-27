@@ -51,9 +51,9 @@ TEST(ActorTest, has_a_type_name) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{}, runtime, std::make_unique<TrivialState>());
-  ASSERT_EQ(actor.typeName(), "TrivialActor");
+  ASSERT_EQ(actor->typeName(), "TrivialActor");
 }
 
 TEST(ActorTest, formats_actor) {
@@ -61,11 +61,11 @@ TEST(ActorTest, formats_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(
-      fmt::format("{}", actor),
+      fmt::format("{}", *actor),
       R"({"pid":{"server":"A","id":1},"state":{"state":"","called":0},"batchsize":16})");
 }
 
@@ -74,15 +74,15 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(*actor->state, (TrivialState{.state = "", .called = 0}));
 
   auto message = std::make_unique<MessagePayload<TrivialMessages>>(
       TrivialMessage{"Hello"});
-  actor.process(ActorPID{.server = "A", .id = {5}}, std::move(message));
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
+  actor->process(ActorPID{.server = "A", .id = {5}}, std::move(message));
+  ASSERT_EQ(*actor->state, (TrivialState{.state = "Hello", .called = 1}));
 }
 
 TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
@@ -90,15 +90,15 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(*actor->state, (TrivialState{.state = "", .called = 0}));
 
   auto message = TrivialMessages{TrivialMessage{"Hello"}};
-  actor.process(ActorPID{.server = "A", .id = {5}},
-                arangodb::inspection::serializeWithErrorT(message).get());
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
+  actor->process(ActorPID{.server = "A", .id = {5}},
+                 arangodb::inspection::serializeWithErrorT(message).get());
+  ASSERT_EQ(*actor->state, (TrivialState{.state = "Hello", .called = 1}));
 }
 
 TEST(ActorTest, sets_itself_to_finish) {
@@ -106,13 +106,13 @@ TEST(ActorTest, sets_itself_to_finish) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_FALSE(actor.finishedAndNotBusy());
+  ASSERT_FALSE(actor->finishedAndNotBusy());
 
-  actor.finish();
-  ASSERT_TRUE(actor.finishedAndNotBusy());
+  actor->finish();
+  ASSERT_TRUE(actor->finishedAndNotBusy());
 }
 
 TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
@@ -120,13 +120,13 @@ TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+  auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  actor.finish();
+  actor->finish();
 
   auto message = TrivialMessages{TrivialMessage{"Hello"}};
-  actor.process(ActorPID{.server = "A", .id = {5}},
-                arangodb::inspection::serializeWithErrorT(message).get());
-  ASSERT_EQ(*actor.state, (TrivialState{}));
+  actor->process(ActorPID{.server = "A", .id = {5}},
+                 arangodb::inspection::serializeWithErrorT(message).get());
+  ASSERT_EQ(*actor->state, (TrivialState{}));
 }
