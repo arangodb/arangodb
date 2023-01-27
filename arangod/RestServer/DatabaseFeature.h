@@ -145,34 +145,45 @@ class DatabaseFeature : public ArangodFeature {
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
-  bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
-  bool checkVersion() const { return _checkVersion; }
-  bool upgrade() const { return _upgrade; }
-  bool waitForSync() const { return _defaultWaitForSync; }
-  replication::Version defaultReplicationVersion() const {
+  bool ignoreDatafileErrors() const noexcept { return _ignoreDatafileErrors; }
+  bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
+  bool checkVersion() const noexcept { return _checkVersion; }
+  bool upgrade() const noexcept { return _upgrade; }
+  bool waitForSync() const noexcept { return _defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const noexcept {
     return _defaultReplicationVersion;
   }
 
   /// @brief whether or not extended names for databases can be used
-  bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
+  bool extendedNamesForDatabases() const noexcept {
+    return _extendedNamesForDatabases;
+  }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNamesForDatabases(bool value) {
+  void extendedNamesForDatabases(bool value) noexcept {
     _extendedNamesForDatabases = value;
   }
 
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForCollections() const { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForViews() const { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForAnalyzers() const { return false; }
+  /// @brief whether or not extended names for collections and indexes can be
+  /// used
+  bool extendedNamesForCollections() const noexcept {
+    return _extendedNamesForCollections;
+  }
+  /// @brief will be called only during startup when reading stored value from
+  /// storage engine
+  void extendedNamesForCollections(bool value) noexcept {
+    _extendedNamesForCollections = value;
+  }
 
-  void enableCheckVersion() { _checkVersion = true; }
-  void enableUpgrade() { _upgrade = true; }
-  void disableUpgrade() { _upgrade = false; }
-  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForViews() const noexcept { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForAnalyzers() const noexcept { return false; }
+
+  void enableCheckVersion() noexcept { _checkVersion = true; }
+  void enableUpgrade() noexcept { _upgrade = true; }
+  void disableUpgrade() noexcept { _upgrade = false; }
+  void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -209,8 +220,10 @@ class DatabaseFeature : public ArangodFeature {
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended database names or not
+  // allow extended names for databases
   bool _extendedNamesForDatabases{false};
+  // allow extended names for collections and indexes
+  bool _extendedNamesForCollections{false};
   bool _performIOHeartbeat{true};
   std::atomic<bool> _started{false};
 

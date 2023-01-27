@@ -805,7 +805,8 @@ void ClusterFeature::start() {
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId
       << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint
+      << ", advertised endpoint: "
+      << (_myAdvertisedEndpoint.empty() ? "-" : _myAdvertisedEndpoint)
       << ", role: " << ServerState::roleToString(role);
 
   auto [acb, idx] = _agencyCache->read(std::vector<std::string>{

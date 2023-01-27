@@ -65,6 +65,12 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <vector>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -330,6 +336,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30900);
 
   options
+      ->addOption("--database.extended-names-collections",
+                  "Allow most UTF-8 characters in collection and index names. "
+                  "Once in use, "
+                  "this option cannot be turned off again.",
+                  new BooleanParameter(&_extendedNamesForCollections),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
+
+  options
       ->addOption("--database.io-heartbeat",
                   "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
@@ -391,10 +408,21 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
+  std::vector<std::string> what;
+
   if (_extendedNamesForDatabases) {
+    what.push_back("databases");
+  }
+  if (_extendedNamesForCollections) {
+    what.push_back("collections");
+    what.push_back("indexes");
+  }
+
+  if (!what.empty()) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Extended names for databases are an experimental feature which "
-           "can "
+        << "Enabling extended names for "
+        << basics::StringUtils::join(what, ", ")
+        << " is an experimental feature which can "
         << "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
   }
