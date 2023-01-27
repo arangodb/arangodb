@@ -117,6 +117,16 @@ class WeightedQueue {
     return steps;
   }
 
+  Step const& peek() const {
+    TRI_ASSERT(!_queue.empty());
+    // will return a pointer to the step with the lowest weight amount possible.
+    // The heap structure guarantees that the first element in the queue
+    // is the "largest" element (in our case it is the smallest, as we
+    // inverted the comperator)
+    auto const& first = _queue.front();
+    return first;
+  }
+
   Step pop() {
     TRI_ASSERT(!isEmpty());
     // std::pop_heap will move the front element (the one we would like to

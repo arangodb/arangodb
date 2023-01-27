@@ -43,11 +43,11 @@ DocumentCore::DocumentCore(
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
 
-  auto shardResult = _shardHandler->createLocalShard(_params.collectionId,
-                                                     collectionProperties);
+  _shardId = fmt::format("s{}", _gid.id);
+  auto shardResult = _shardHandler->createLocalShard(
+      _shardId, _params.collectionId, collectionProperties);
   TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state "
-                               << _gid << ": " << shardResult.result();
-  _shardId = shardResult.get();
+                               << _gid << ": " << shardResult;
 
   auto commResult = _agencyHandler->reportShardInCurrent(
       _params.collectionId, _shardId, collectionProperties);
@@ -61,12 +61,16 @@ DocumentCore::DocumentCore(
       << "Created shard " << _shardId << " for replicated state " << _gid;
 }
 
-auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
+auto DocumentCore::getShardId() -> ShardID const& { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
+auto DocumentCore::getCollectionId() -> std::string const& {
+  return _params.collectionId;
+}
+
 void DocumentCore::drop() {
-  auto result = _shardHandler->dropLocalShard(_params.collectionId);
+  auto result = _shardHandler->dropLocalShard(_shardId, _params.collectionId);
   if (result.fail()) {
     LOG_CTX("b7f0d", FATAL, this->loggerContext)
         << "Failed to drop shard " << _shardId << " for replicated state "

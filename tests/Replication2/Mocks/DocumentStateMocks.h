@@ -35,6 +35,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -205,10 +206,12 @@ struct MockDocumentStateAgencyHandler
 
 struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
-  MOCK_METHOD(ResultT<std::string>, createLocalShard,
-              (std::string const&, std::shared_ptr<velocypack::Builder> const&),
+  MOCK_METHOD(Result, createLocalShard,
+              (ShardID const&, std::string const&,
+               std::shared_ptr<velocypack::Builder> const&),
               (override));
-  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
+  MOCK_METHOD(Result, dropLocalShard, (ShardID const&, std::string const&),
+              (override));
 };
 
 struct MockDocumentStateSnapshotHandler
@@ -341,7 +344,7 @@ struct MockProducerStream
 struct DocumentLogEntryIterator
     : TypedLogRangeIterator<streams::StreamEntryView<
           replicated_state::document::DocumentLogEntry>> {
-  DocumentLogEntryIterator(
+  explicit DocumentLogEntryIterator(
       std::vector<replicated_state::document::DocumentLogEntry> entries);
 
   auto next() -> std::optional<streams::StreamEntryView<

@@ -27,8 +27,8 @@
 #include <fmt/format.h>
 
 #include "Inspection/VPackSaveInspector.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Inspection/detail/traits.h"
-#include <Inspection/VPack.h>
 
 template<>
 struct fmt::formatter<VPackSlice> {
@@ -77,8 +77,16 @@ struct inspection_formatter : fmt::formatter<VPackSlice> {
            typename Inspector = VPackSaveInspector<NoContext>>
   requires detail::HasInspectOverload<T, Inspector>::value auto format(
       const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
-    auto sharedSlice = arangodb::velocypack::serialize(value);
-    return fmt::formatter<VPackSlice>::format(sharedSlice.slice(), ctx);
+    auto sharedSlice = inspection::serializeWithErrorT(value);
+    if (not sharedSlice.ok()) {
+      VPackBuilder error;
+      {
+        VPackObjectBuilder ob(&error);
+        error.add("error", VPackValue(sharedSlice.error().error()));
+      }
+      return fmt::formatter<VPackSlice>::format(error.slice(), ctx);
+    }
+    return fmt::formatter<VPackSlice>::format(sharedSlice.get().slice(), ctx);
   }
 };
 }  // namespace arangodb::inspection

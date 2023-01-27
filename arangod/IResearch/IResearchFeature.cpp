@@ -121,10 +121,10 @@ class IResearchLogTopic final : public LogTopic {
   }
 
  private:
-  static LogLevel const kDefaultLevel = LogLevel::INFO;
+  static constexpr LogLevel kDefaultLevel = LogLevel::INFO;
 
-  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
-  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
+  using irsLogLevelType = std::underlying_type_t<irs::logger::level_t>;
+  using arangoLogLevelType = std::underlying_type_t<LogLevel>;
 
   static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
                         static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&

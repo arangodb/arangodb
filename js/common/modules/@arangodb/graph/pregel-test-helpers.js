@@ -245,7 +245,7 @@ const makeSetUp = function (smart, smartAttribute, numberOfShards) {
             smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
                 {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
         } else {
-            db._create(vColl, {numberOfShards: numberOfShards});
+            db._create(vColl, {numberOfShards: numberOfShards, replicationFactor: 1});
             db._createEdgeCollection(eColl, {
                 numberOfShards: numberOfShards,
                 replicationFactor: 1,

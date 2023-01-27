@@ -42,8 +42,9 @@ struct DocumentCore {
 
   LoggerContext const loggerContext;
 
-  auto getShardId() -> std::string_view;
+  auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
+  auto getCollectionId() -> std::string const&;
 
   void drop();
 

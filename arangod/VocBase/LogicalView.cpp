@@ -136,15 +136,15 @@ Result LogicalView::drop() {
     return {};  // view already dropped
   }
   // mark as deleted to avoid double-delete (including recursive calls)
-  deleted(true);
+  setDeleted();
   try {
     auto r = dropImpl();
     if (!r.ok()) {
-      deleted(false);
+      setUndeleted();
     }
     return r;
   } catch (...) {
-    deleted(false);
+    setUndeleted();
     throw;
   }
 }

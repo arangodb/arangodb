@@ -30,7 +30,6 @@
 #include "velocypack/Builder.h"
 
 namespace arangodb {
-
 class RebootId {
  public:
   using value_type = uint64_t;
@@ -42,7 +41,24 @@ class RebootId {
 
   [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
 
-  auto operator<=>(RebootId const&) const noexcept = default;
+  [[nodiscard]] bool operator==(RebootId other) const noexcept {
+    return value() == other.value();
+  }
+  [[nodiscard]] bool operator!=(RebootId other) const noexcept {
+    return value() != other.value();
+  }
+  [[nodiscard]] bool operator<(RebootId other) const noexcept {
+    return value() < other.value();
+  }
+  [[nodiscard]] bool operator>(RebootId other) const noexcept {
+    return value() > other.value();
+  }
+  [[nodiscard]] bool operator<=(RebootId other) const noexcept {
+    return value() <= other.value();
+  }
+  [[nodiscard]] bool operator>=(RebootId other) const noexcept {
+    return value() >= other.value();
+  }
 
   [[nodiscard]] static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<value_type>::max()};

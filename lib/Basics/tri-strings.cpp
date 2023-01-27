@@ -27,6 +27,11 @@
 
 #include "Basics/conversions.h"
 #include "Basics/memory.h"
+#include "Basics/operating-system.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a unicode escape sequence

@@ -62,21 +62,6 @@ ErrorCode arangodb::basics::StringBuffer::inflate(
     length -= skip;
   }
 
-  /* TODO: figure out if the following code needs to be re-enabled
-  // nginx seems to skip the header - which is wrong according to the
-  // RFC. The following is a hack to find out, if a header is present.
-  // There is a 1 in 31 chance that this will not work.
-  if (2 <= len) {
-    uint32_t first = (((uint32_t)start[0]) << 8) | ((uint32_t)start[1]);
-
-    if (first % 31 == 0) {
-      raw = false;
-    }
-  }
-
-  int res = raw ? inflateInit2(&strm, -15) : inflateInit(&strm);
-  */
-
   return arangodb::encoding::gzipInflate(p, length, out);
 }
 

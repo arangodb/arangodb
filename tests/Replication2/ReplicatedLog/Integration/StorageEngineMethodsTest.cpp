@@ -116,15 +116,14 @@ struct RocksDBAsyncLogWriteBatcherMetricsMock
     writeBatchSize =
         makeMetric<arangodb_replication2_rocksdb_write_batch_size>();
     rocksdbWriteTimeInUs =
-        makeMetric<arangodb_replication2_rocksdb_write_time_us>();
-    rocksdbSyncTimeInUs =
-        makeMetric<arangodb_replication2_rocksdb_sync_time_us>();
+        makeMetric<arangodb_replication2_rocksdb_write_time>();
+    rocksdbSyncTimeInUs = makeMetric<arangodb_replication2_rocksdb_sync_time>();
     operationLatencyInsert =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
     operationLatencyRemoveFront =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
     operationLatencyRemoveBack =
-        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+        makeMetric<arangodb_replication2_storage_operation_latency>();
   }
 
   template<typename Builder>
@@ -150,7 +149,8 @@ struct RocksDBFactory {
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {
     auto& rocksdbMethods = dynamic_cast<RocksDBLogStorageMethods&>(*methods);
     rocksdbMethods.ctx.waitForCompletion();
-    rocksdbMethods.drop();
+    auto res = rocksdbMethods.drop();
+    ASSERT_TRUE(res.ok());
   }
 
   static auto BuildMethods(

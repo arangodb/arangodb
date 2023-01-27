@@ -91,7 +91,9 @@ add_library(arango_tests_replication2_pure OBJECT
         ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
         ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
         ReplicatedLog/Supervision/SupervisionTest.cpp
+        ReplicatedLog/Components/SnapshotManagerTest.cpp
 )
+
 
 target_sources(arango_tests_replication2_pure PRIVATE
         Mocks/ReplicatedLogMetricsMock.cpp

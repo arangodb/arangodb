@@ -1319,7 +1319,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == StaticStrings::IdString) {
+          member->getStringView() == StaticStrings::IdString) {
         start = member->getMember(0);
         break;
       }
@@ -1397,7 +1397,7 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = vertex->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == StaticStrings::IdString) {
+          member->getStringView() == StaticStrings::IdString) {
         vertex = member->getMember(0);
         break;
       }

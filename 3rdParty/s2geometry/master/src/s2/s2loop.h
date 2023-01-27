@@ -470,6 +470,9 @@ class S2Loop final : public S2Region {
   // details).
 #ifndef SWIG
   class Shape : public S2Shape {
+    // To update `loop_` in `S2Loop` move constructor/assignment.
+    friend class S2Loop;
+
    public:
     Shape() : loop_(nullptr) {}  // Must call Init().
 
