@@ -62,11 +62,11 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   do {
     internal.sleep(0.2);
     status = pregel.status(pid);
-    if (wakeupsLeft-- == 0) {
+    if (wakeupsLeft-- === 0) {
       assertTrue(false, "timeout in pregel execution");
       return;
     }
-  } while (!runFinished(status))
+  } while (!runFinished(status));
 
   if (runFinishedUnsuccessfully(status)) {
     assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
