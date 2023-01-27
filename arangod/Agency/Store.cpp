@@ -44,26 +44,28 @@
 
 #include <ctime>
 #include <iomanip>
+#include <string_view>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
 /// Build endpoint from URL
-static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
+static bool endpointPathFromUrl(std::string_view url, std::string& endpoint,
                                 std::string& path) {
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
 
-  if (url.compare(0, pos, "http://") == 0) {
+  if (url.starts_with("http://")) {
     ep << "tcp://";
-  } else if (url.compare(0, ++pos, "https://") == 0) {
+  } else if (url.starts_with("https://")) {
     ep << "ssl://";
+    pos = 8;
   } else {
     return false;
   }
 
-  size_t slash_p = url.find("/", pos);
+  size_t slash_p = url.find('/', pos);
   if (slash_p == std::string::npos) {
     ep << url.substr(pos);
   } else {
@@ -71,9 +73,17 @@ static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
     path = url.substr(slash_p);
   }
 
-  if (ep.str().find(':') == std::string::npos) {
-    ep << ":8529";
-  }
+  TRI_ASSERT(ep.str().find(':') != std::string::npos);
+  // the following if condition should never be true, as we
+  // have always added one of the protocol strings "tcp://" or
+  // "ssl://" to ep when we get here. these protocol strings
+  // both contain a colon character.
+  // TODO: remove it entirely if the assertion above does
+  // never trigger
+  //
+  //   if (ep.str().find(':') == std::string::npos) {
+  //    ep << ":8529";
+  //   }
 
   endpoint = ep.str();
 
@@ -137,7 +147,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
-            size_t pos = o.key.copyString().find(RECONFIGURE);
+            size_t pos = o.key.stringView().find(RECONFIGURE);
             if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
               break;
@@ -246,8 +256,8 @@ struct notify_t {
   std::string key;
   std::string modified;
   std::string oper;
-  notify_t(std::string const& k, std::string const& m, std::string const& o)
-      : key(k), modified(m), oper(o) {}
+  notify_t(std::string const& k, std::string m, std::string o)
+      : key(k), modified(std::move(m)), oper(std::move(o)) {}
 };
 
 /// Apply (from logs)
@@ -258,28 +268,28 @@ std::vector<bool> Store::applyLogEntries(
 
   // Apply log entries
   {
-    VPackArrayIterator queriesIterator(queries.slice());
-
     MUTEX_LOCKER(storeLocker, _storeLock);
 
-    while (queriesIterator.valid()) {
-      applied.push_back(applies(queriesIterator.value()));
-      queriesIterator.next();
+    for (auto it : VPackArrayIterator(queries.slice())) {
+      applied.push_back(applies(it.value()));
     }
   }
 
   if (inform && _agent->leading()) {
     // Find possibly affected callbacks
     std::multimap<std::string, std::shared_ptr<notify_t>> in;
-    VPackArrayIterator queriesIterator(queries.slice());
 
-    while (queriesIterator.valid()) {
-      VPackSlice const& i = queriesIterator.value();
+    for (auto it : VPackArrayIterator(queries.slice())) {
+      for (auto j : VPackObjectIterator(it.value())) {
+        if (!j.value.isObject()) {
+          continue;
+        }
 
-      for (auto const& j : VPackObjectIterator(i)) {
-        if (j.value.isObject() && j.value.hasKey("op")) {
-          std::string oper = j.value.get("op").copyString();
-          if (!(oper == "observe" || oper == "unobserve")) {
+        if (auto operSlice = j.value.get("op"); !operSlice.isNone()) {
+          // we have an "op" key
+
+          if (operSlice.stringView() != "observe" &&
+              operSlice.stringView() != "unobserve") {
             std::string uri = j.key.copyString();
             if (!uri.empty() && uri.at(0) != '/') {
               uri = std::string("/") + uri;
@@ -290,9 +300,9 @@ std::vector<bool> Store::applyLogEntries(
                 MUTEX_LOCKER(storeLocker, _storeLock);
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second,
-                             std::make_shared<notify_t>(
-                                 it->first, j.key.copyString(), oper));
+                  in.emplace(it->second, std::make_shared<notify_t>(
+                                             it->first, j.key.copyString(),
+                                             operSlice.copyString()));
                 }
               }
               size_t pos = uri.find_last_of('/');
@@ -306,11 +316,9 @@ std::vector<bool> Store::applyLogEntries(
           }
         }
       }
-
-      queriesIterator.next();
     }
 
-    // Sort by URLS to avoid multiple callbacks
+    // Sort by URLs to avoid multiple callbacks
     std::vector<std::string> urls;
     for (auto it = in.begin(), end = in.end(); it != end;
          it = in.upper_bound(it->first)) {
@@ -415,9 +423,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   _storeLock.assertLockedByCurrentThread();
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
-
-    std::string key = precond.key.copyString();
-    std::vector<std::string> pv = split(key);
+    std::vector<std::string> pv = split(precond.key.stringView());
 
     Node const* node = &Node::dummyNode();
 
@@ -430,7 +436,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
-        std::string const& oper = op.key.copyString();
+        std::string_view oper = op.key.stringView();
         if (oper == "old") {  // old
           if (*node != op.value) {
             ret.push_back(precond.key);
@@ -1093,7 +1099,7 @@ std::string Store::normalize(char const* key, size_t length) {
 
 /// @brief Split strings by forward slashes, omitting empty strings,
 /// and ignoring multiple subsequent forward slashes
-std::vector<std::string> Store::split(std::string const& str) {
+std::vector<std::string> Store::split(std::string_view str) {
   std::vector<std::string> result;
 
   char const* p = str.data();
@@ -1154,7 +1160,7 @@ void Store::callTriggers(std::string_view key, std::string_view op,
   }
 }
 
-void Store::registerPrefixTrigger(std::string prefix,
+void Store::registerPrefixTrigger(std::string const& prefix,
                                   AgencyTriggerCallback cb) {
   std::unique_lock guard(_triggersMutex);
   auto normalized = normalize(prefix);

@@ -1928,8 +1928,8 @@ bool attributesEqual(VPackSlice first, VPackSlice second,
         if (!attributesEqual(*it1, *it2, next, end)) {
           return false;
         }
-        it1++;
-        it2++;
+        ++it1;
+        ++it2;
       }
       return true;
     }
