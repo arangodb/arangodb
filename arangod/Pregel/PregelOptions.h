@@ -114,7 +114,7 @@ auto inspect(Inspector& f, TTL& x) {
   }
 }
 
-struct PregelConstants {
+struct ExecutionSpecifications {
   ExecutionNumber executionNumber;
   std::string const& algorithm;
   std::vector<CollectionID> const& vertexCollections;
@@ -140,7 +140,7 @@ struct PregelConstants {
   VPackBuilder const& userParameters;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, PregelConstants& x) {
+auto inspect(Inspector& f, ExecutionSpecifications& x) {
   return f.object(x).fields(
       f.field("executionNumber", x.executionNumber),
       f.field("algorithm", x.algorithm),
@@ -157,5 +157,5 @@ auto inspect(Inspector& f, PregelConstants& x) {
 }  // namespace arangodb::pregel
 
 template<>
-struct fmt::formatter<arangodb::pregel::PregelConstants>
+struct fmt::formatter<arangodb::pregel::ExecutionSpecifications>
     : arangodb::inspection::inspection_formatter {};

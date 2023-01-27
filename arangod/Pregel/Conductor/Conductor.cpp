@@ -74,32 +74,32 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _constants.executionNumber.value << "] "
+      << "[job " << _specifications.executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
-Conductor::Conductor(PregelConstants const& constants, TRI_vocbase_t& vocbase,
+Conductor::Conductor(ExecutionSpecifications const& specifications, TRI_vocbase_t& vocbase,
                      PregelFeature& feature)
     : _feature(feature),
       _vocbaseGuard(vocbase),
-      _constants(constants),
+      _specifications(specifications),
       _algorithm(
-          AlgoRegistry::createAlgorithm(vocbase.server(), constants.algorithm,
-                                        constants.userParameters.slice())),
+          AlgoRegistry::createAlgorithm(vocbase.server(), specifications.algorithm,
+                                        specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
   _masterContext.reset(
-      _algorithm->masterContext(constants.userParameters.slice()));
+      _algorithm->masterContext(specifications.userParameters.slice()));
   _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
   LOG_PREGEL("00f5f", INFO) << fmt::format(
-      "Starting pregel in database {} with {}", vocbase.name(), constants);
+      "Starting pregel in database {} with {}", vocbase.name(), specifications);
 }
 
 Conductor::~Conductor() {
@@ -149,7 +149,7 @@ bool Conductor::_startGlobalStep() {
   _totalEdgesCount = 0;
 
   auto prepareGss =
-      PrepareGlobalSuperStep{.executionNumber = _constants.executionNumber,
+      PrepareGlobalSuperStep{.executionNumber = _specifications.executionNumber,
                              .gss = _globalSuperstep,
                              .vertexCount = _totalVerticesCount,
                              .edgeCount = _totalEdgesCount};
@@ -205,11 +205,11 @@ bool Conductor::_startGlobalStep() {
   }
 
   // TODO make maximum configurable
-  if (!proceed || done || _globalSuperstep >= _constants.maxSuperstep) {
+  if (!proceed || done || _globalSuperstep >= _specifications.maxSuperstep) {
     // tells workers to store / discard results
     _timing.computation.finish();
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
-    if (_constants.storeResults) {
+    if (_specifications.storeResults) {
       updateState(ExecutionState::STORING);
       _feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
       _timing.storing.start();
@@ -240,7 +240,7 @@ bool Conductor::_startGlobalStep() {
     _aggregators->serializeValues(agg);
   }
   auto runGss =
-      RunGlobalSuperStep{.executionNumber = _constants.executionNumber,
+      RunGlobalSuperStep{.executionNumber = _specifications.executionNumber,
                          .gss = _globalSuperstep,
                          .vertexCount = _totalVerticesCount,
                          .edgeCount = _totalEdgesCount,
@@ -449,12 +449,12 @@ ErrorCode Conductor::_initializeWorkers() {
   std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : _constants.vertexCollections) {
+  for (CollectionID const& collectionID : _specifications.vertexCollections) {
     resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
                 vertexMap,
                 shardList);  // store or
   }
-  for (CollectionID const& collectionID : _constants.edgeCollections) {
+  for (CollectionID const& collectionID : _specifications.edgeCollections) {
     resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
                 edgeMap,
                 shardList);  // store or
@@ -476,12 +476,12 @@ ErrorCode Conductor::_initializeWorkers() {
     auto const& edgeShardMap = edgeMap[server];
 
     auto createWorker = CreateWorker{
-        .executionNumber = _constants.executionNumber,
+        .executionNumber = _specifications.executionNumber,
         .algorithm = _algorithm->name(),
-        .userParameters = _constants.userParameters,
+        .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
-        .useMemoryMaps = _constants.useMemoryMaps,
-        .edgeCollectionRestrictions = _constants.edgeCollectionRestrictions,
+        .useMemoryMaps = _specifications.useMemoryMaps,
+        .edgeCollectionRestrictions = _specifications.edgeCollectionRestrictions,
         .vertexShards = vertexShardMap,
         .edgeShards = edgeShardMap,
         .collectionPlanIds = collectionPlanIdMap,
@@ -504,7 +504,7 @@ ErrorCode Conductor::_initializeWorkers() {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
       std::shared_ptr<IWorker> worker =
-          _feature.worker(_constants.executionNumber);
+          _feature.worker(_specifications.executionNumber);
 
       if (worker) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -516,8 +516,8 @@ ErrorCode Conductor::_initializeWorkers() {
                                                 createWorker, _feature);
 
       TRI_ASSERT(created.get() != nullptr);
-      _feature.addWorker(std::move(created), _constants.executionNumber);
-      worker = _feature.worker(_constants.executionNumber);
+      _feature.addWorker(std::move(created), _specifications.executionNumber);
+      worker = _feature.worker(_specifications.executionNumber);
       TRI_ASSERT(worker);
       worker->setupWorker();
 
@@ -574,7 +574,7 @@ ErrorCode Conductor::_finalizeWorkers() {
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   auto finalize = FinalizeExecution{
-      .executionNumber = _constants.executionNumber, .store = store};
+      .executionNumber = _specifications.executionNumber, .store = store};
   auto serialized = inspection::serializeWithErrorT(finalize);
   if (!serialized.ok()) {
     return TRI_ERROR_FAILED;
@@ -633,7 +633,7 @@ void Conductor::finishedWorkerFinalize(Finished const& data) {
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
-      auto exe = _constants.executionNumber;
+      auto exe = _specifications.executionNumber;
       scheduler->queue(RequestLane::CLUSTER_AQL,
                        [this, exe, self = shared_from_this()] {
                          _feature.cleanupConductor(exe);
@@ -668,12 +668,12 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  if (_constants.storeResults) {
+  if (_specifications.storeResults) {
     return;
   }
 
   auto collectResults = CollectPregelResults{
-      .executionNumber = _constants.executionNumber, .withId = withId};
+      .executionNumber = _specifications.executionNumber, .withId = withId};
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -707,7 +707,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 
   result.openObject();
   result.add("id",
-             VPackValue(std::to_string(_constants.executionNumber.value)));
+             VPackValue(std::to_string(_specifications.executionNumber.value)));
   result.add("database", VPackValue(_vocbaseGuard.database().name()));
   if (_algorithm != nullptr) {
     result.add("algorithm", VPackValue(_algorithm->name()));
@@ -716,7 +716,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   if (_expires != std::chrono::system_clock::time_point{}) {
     result.add("expires", VPackValue(timepointToString(_expires)));
   }
-  result.add("ttl", VPackValue(_constants.ttl.duration.count()));
+  result.add("ttl", VPackValue(_specifications.ttl.duration.count()));
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
 
@@ -749,12 +749,12 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  result.add("parallelism", VPackValue(_constants.parallelism));
+  result.add("parallelism", VPackValue(_specifications.parallelism));
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
-  result.add("useMemoryMaps", VPackValue(_constants.useMemoryMaps));
+  result.add("useMemoryMaps", VPackValue(_specifications.useMemoryMaps));
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
@@ -855,6 +855,6 @@ void Conductor::updateState(ExecutionState state) {
   _state = state;
   if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
       _state == ExecutionState::FATAL_ERROR) {
-    _expires = std::chrono::system_clock::now() + _constants.ttl.duration;
+    _expires = std::chrono::system_clock::now() + _specifications.ttl.duration;
   }
 }

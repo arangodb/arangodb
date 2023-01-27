@@ -70,7 +70,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   PregelFeature& _feature;
   const DatabaseGuard _vocbaseGuard;
-  PregelConstants _constants;
+  ExecutionSpecifications _specifications;
 
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
@@ -118,7 +118,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerFinalize(Finished const& data);
 
  public:
-  Conductor(PregelConstants const& constants, TRI_vocbase_t& vocbase,
+  Conductor(ExecutionSpecifications const& specifications, TRI_vocbase_t& vocbase,
             PregelFeature& feature);
 
   ~Conductor();
@@ -130,7 +130,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool canBeGarbageCollected() const;
 
-  ExecutionNumber executionNumber() const { return _constants.executionNumber; }
+  ExecutionNumber executionNumber() const { return _specifications.executionNumber; }
 
  private:
   void cancelNoLock();
