@@ -76,6 +76,16 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   return status;
 };
 
+const uniquePregelResults = function(documentCursor) {
+  let myset = new Set();
+  while (documentCursor.hasNext()) {
+    const doc = documentCursor.next();
+    assertTrue(doc.result != undefined, "Found no pregel result in document " + doc);
+    myset.add(doc.result);
+  }
+  return myset;
+}
+
 /**
  * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
  * @param expected the expected value, a number
@@ -1740,3 +1750,4 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
+exports.uniquePregelResults = uniquePregelResults;

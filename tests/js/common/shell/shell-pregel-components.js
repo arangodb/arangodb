@@ -206,13 +206,8 @@ function componentsTestSuite() {
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
             let c = db[vColl].all();
-            let mySet = new Set();
-            while (c.hasNext()) {
-                let doc = c.next();
-                assertTrue(doc.result !== undefined, doc);
-                mySet.add(doc.result);
-            }
-            assertEqual(mySet.size, numComponents);
+            const uniquePregelResults = pregelTestHelpers.uniquePregelResults(c);
+            assertEqual(uniquePregelResults.size, numComponents);
 
         },
 

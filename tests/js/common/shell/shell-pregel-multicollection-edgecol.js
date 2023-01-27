@@ -219,17 +219,14 @@ function multiCollectionTestSuite() {
       assertEqual(stats.edgeCount, numComponents * (m + n), stats);
       assertFalse(stats.hasOwnProperty("parallelism"));
 
-      let mySet = new Set();
+      let allUniquePregelResults = new Set();
       for (let j = 0; j < cn; ++j) {
         let c = db[`${vColl}_${j}`].all();
-        while (c.hasNext()) {
-          let doc = c.next();
-          assertTrue(doc.result !== undefined, doc);
-          mySet.add(doc.result);
-        }
+        const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+        allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
       }
 
-      assertEqual(mySet.size, numComponents);
+      assertEqual(allUniquePregelResults.size, numComponents);
 
     },
     
@@ -244,17 +241,13 @@ function multiCollectionTestSuite() {
         assertTrue(stats.hasOwnProperty("parallelism"));
         assertEqual(parallelism, stats.parallelism);
 
-        let mySet = new Set();
+        let allUniquePregelResults = new Set();
         for (let j = 0; j < cn; ++j) {
           let c = db[`${vColl}_${j}`].all();
-          while (c.hasNext()) {
-            let doc = c.next();
-            assertTrue(doc.result !== undefined, doc);
-            mySet.add(doc.result);
-          }
+          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
         }
-
-        assertEqual(mySet.size, numComponents);
+        assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
     
@@ -269,17 +262,13 @@ function multiCollectionTestSuite() {
         assertTrue(stats.hasOwnProperty("parallelism"), stats);
         assertEqual(parallelism, stats.parallelism, stats);
 
-        let mySet = new Set();
+        let allUniquePregelResults = new Set();
         for (let j = 0; j < cn; ++j) {
           let c = db[`${vColl}_${j}`].all();
-          while (c.hasNext()) {
-            let doc = c.next();
-            assertTrue(doc.result !== undefined, doc);
-            mySet.add(doc.result);
-          }
+          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
         }
-
-        assertEqual(mySet.size, numComponents);
+        assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
 
