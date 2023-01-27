@@ -341,39 +341,6 @@ const ViewSettingsReactView = ({ name }) => {
               accordionConfig={[
                 {
                   index: 0,
-                  content: (
-                    <div>
-                      <GeneralContent />
-                    </div>
-                  ),
-                  label: "General",
-                  testID: "accordionItem1"
-                },
-                {
-                  index: 1,
-                  content: (
-                    <div>
-                      <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                          disabled={!isAdminUser}/>
-                    </div>
-                  ),
-                  label: "Consolidation Policy",
-                  testID: "accordionItem2"
-                },
-                {
-                  index: 2,
-                  content: <div><PrimarySortContent /></div>,
-                  label: <PrimarySortTitle />,
-                  testID: "accordionItem3"
-                },
-                {
-                  index: 3,
-                  content: <div><StoredValuesContent /></div>,
-                  label: "Stored Values",
-                  testID: "accordionItem4"
-                },
-                {
-                  index: 4,
                   content: <div>
                   <HashRouter basename={`view/${name}`} hashType={'noslash'}>
                     <Switch>
@@ -388,8 +355,41 @@ const ViewSettingsReactView = ({ name }) => {
                   </HashRouter>
                 </div>,
                   label: "Links",
-                  testID: "accordionItem5",
+                  testID: "accordionItem0",
                   defaultActive: true
+                },
+                {
+                  index: 1,
+                  content: (
+                    <div>
+                      <GeneralContent />
+                    </div>
+                  ),
+                  label: "General",
+                  testID: "accordionItem1"
+                },
+                {
+                  index: 2,
+                  content: (
+                    <div>
+                      <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                          disabled={!isAdminUser}/>
+                    </div>
+                  ),
+                  label: "Consolidation Policy",
+                  testID: "accordionItem2"
+                },
+                {
+                  index: 3,
+                  content: <div><PrimarySortContent /></div>,
+                  label: <PrimarySortTitle />,
+                  testID: "accordionItem3"
+                },
+                {
+                  index: 4,
+                  content: <div><StoredValuesContent /></div>,
+                  label: "Stored Values",
+                  testID: "accordionItem4"
                 }
               ]}
             />
