@@ -19,10 +19,10 @@ do
   mv $file $(dirname $file)/$(basename $file .h).hpp
 done
 
-clang-format -i arangod/**/*.{cpp,hpp,tpp}
-clang-format -i lib/**/*.{cpp,hpp,tpp}
-clang-format -i client-tools/**/*.{cpp,hpp,tpp}
-clang-format -i tests/**/*.{cpp,hpp,tpp}
+find arangod lib client-tools tests \
+  \( -name '*.cpp' -o -name '*.hpp' -o -name '*.tpp' \) \
+  -type f \
+  -exec clang-format -i {} \+
 
 for file in $(cat $HEADERNAMES) ;
 do
