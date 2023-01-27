@@ -30,7 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-AggregatorHandler::~AggregatorHandler() {
+ AggregatorHandler::~AggregatorHandler() {
   WRITE_LOCKER(guard, _lock);
   for (auto const& it : _values) {
     delete it.second;
