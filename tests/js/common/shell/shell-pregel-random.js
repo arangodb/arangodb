@@ -239,7 +239,7 @@ function randomTestSuite() {
       // helper function
       const unique = function (value, index, self) {
         return self.indexOf(value) === index;
-      }
+      };
       // wait for garbage collection
       let i = 1000;
       let runningPregelIDs = [];
@@ -253,11 +253,11 @@ function randomTestSuite() {
           assertEqual("_system", mostRecentStatsForPID.database);
           assertEqual("hits", mostRecentStatsForPID.algorithm);
         });
-        if (i-- == 0) {
+        if (i-- === 0) {
           assertTrue(false, "timeout in pregel execution: not everything was garbage collected");
           return;
 				}
-      } while (runningPregelIDs.length > 0)
+      } while (runningPregelIDs.length > 0);
     },
 
   };

@@ -80,11 +80,11 @@ const uniquePregelResults = function(documentCursor) {
   let myset = new Set();
   while (documentCursor.hasNext()) {
     const doc = documentCursor.next();
-    assertTrue(doc.result != undefined, "Found no pregel result in document " + doc);
+    assertTrue(doc.result !== undefined, "Found no pregel result in document " + doc);
     myset.add(doc.result);
   }
   return myset;
-}
+};
 
 /**
  * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
