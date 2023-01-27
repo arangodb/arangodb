@@ -50,7 +50,6 @@ struct CollectionGroup {
   std::unordered_map<CollectionID, Collection> collections;
 
   struct Attributes {
-
     struct MutableAttributes {
       std::size_t writeConcern;
       std::size_t replicationFactor;
@@ -64,7 +63,6 @@ struct CollectionGroup {
     };
 
     ImmutableAttributes immutableAttributes;
-
   };
   Attributes attributes;
 };
@@ -108,7 +106,8 @@ struct Collection {
     bool cacheEnabled{false};
     inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
     inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};
-    inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections{std::nullopt};
+    inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections{
+        std::nullopt};
   };
 
   ImmutableProperties immutableProperties;

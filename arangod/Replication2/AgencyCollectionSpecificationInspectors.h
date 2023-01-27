@@ -36,7 +36,8 @@ auto inspect(Inspector& f, CollectionGroup::Attributes::MutableAttributes& x) {
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, CollectionGroup::Attributes::ImmutableAttributes& x) {
+auto inspect(Inspector& f,
+             CollectionGroup::Attributes::ImmutableAttributes& x) {
   return f.object(x).fields(
       f.field(StaticStrings::NumberOfShards, x.numberOfShards));
 }
@@ -61,9 +62,7 @@ auto inspect(Inspector& f, CollectionGroup::Collection& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroupTargetSpecification& x) {
-  return f.object(x).fields(
-      f.template embedFields<CollectionGroup>(x)
-  );
+  return f.object(x).fields(f.template embedFields<CollectionGroup>(x));
 }
 
 template<class Inspector>
@@ -73,10 +72,8 @@ auto inspect(Inspector& f, CollectionGroupPlanSpecification::ShardSheaf& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroupPlanSpecification& x) {
-  return f.object(x).fields(
-      f.template embedFields<CollectionGroup>(x),
-      f.field("shardSheaves", x.shardSheaves)
-  );
+  return f.object(x).fields(f.template embedFields<CollectionGroup>(x),
+                            f.field("shardSheaves", x.shardSheaves));
 }
 
 template<class Inspector>
@@ -111,8 +108,7 @@ auto inspect(Inspector& f, Collection& x) {
   return f.object(x).fields(
       f.field("groupId", x.groupId),
       f.field("mutableProperties", x.mutableProperties),
-      f.field("immutableProperties", x.immutableProperties)
-  );
+      f.field("immutableProperties", x.immutableProperties));
 }
 
 template<class Inspector>
