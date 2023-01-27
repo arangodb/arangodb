@@ -411,7 +411,7 @@ const ViewSettingsReactView = ({ name }) => {
                             renderKey={state.renderKey}/>
                             : <Textarea disabled={true} value={jsonFormState}
                                         rows={jsonRows}
-                                        style={{ cursor: 'text', marginTop: '0', marginBottom: '0', width: '100%' }}/>
+                                        style={{ cursor: 'text', marginTop: '0', marginBottom: '0', width: '100%', height: '95vh', paddingLeft: '0', paddingRight: '0', border: '0' }}/>
                         }
                       </Cell>
                     </Grid>
