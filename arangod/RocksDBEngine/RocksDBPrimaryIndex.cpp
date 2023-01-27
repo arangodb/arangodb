@@ -64,6 +64,8 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
+#include <absl/strings/str_cat.h>
+
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 
@@ -988,8 +990,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // keep lower bound
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") +
-                                  aap.value->getTypeString());
+          TRI_ERROR_INTERNAL, absl::StrCat("unhandled type for valNode: ",
+                                           aap.value->getTypeString()));
     }
 
     // strip collection name prefix from comparison value

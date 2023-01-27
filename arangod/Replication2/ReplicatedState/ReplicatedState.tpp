@@ -969,8 +969,8 @@ auto ReplicatedState<S>::createStateHandle(
 
   struct Wrapper : replicated_log::IReplicatedStateHandle {
     explicit Wrapper(ReplicatedStateManager<S>& manager) : manager(manager) {}
-    auto resignCurrentState() noexcept
-        -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override {
+    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>
+    resignCurrentState() noexcept override {
       return manager.resignCurrentState();
     }
     void leadershipEstablished(

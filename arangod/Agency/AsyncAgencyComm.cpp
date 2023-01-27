@@ -432,6 +432,20 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
 namespace arangodb {
 
+futures::Future<consensus::index_t> AsyncAgencyComm::getCurrentCommitIndex()
+    const {
+  auto future = sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config",
+                                 120s, RequestType::READ, {});
+  return std::move(future).thenValue([](AsyncAgencyCommResult&& response) {
+    if (auto result = response.asResult(); result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    auto slice = response.slice();
+    return slice.get("commitIndex").extract<consensus::index_t>();
+  });
+}
+
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url,
     network::Timeout timeout, RequestType type, uint64_t index) const {

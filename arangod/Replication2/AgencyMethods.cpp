@@ -289,6 +289,10 @@ auto methods::replaceReplicatedStateParticipant(
                 return std::move(precs).isEqual(*path->leader(),
                                                 *currentLeader);
               })
+        .cond(not currentLeader.has_value(),
+              [&](auto&& precs) {
+                return std::move(precs).isEmpty(*path->leader());
+              })
         .end()
         .done();
   }

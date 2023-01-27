@@ -27,7 +27,6 @@
 #include "Aql/QueryResult.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
@@ -42,8 +41,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -57,7 +54,8 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("CREATE_CURSOR(<data>, <batchSize>, <ttl>)");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "CREATE_CURSOR(<data>, <batchSize>, <ttl>, <allowRetry>)");
   }
 
   if (!args[0]->IsArray()) {
@@ -88,6 +86,12 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = 30.0;  // default ttl
   }
 
+  bool isRetriable = false;
+
+  if (args.Length() >= 4) {
+    isRetriable = TRI_ObjectToBoolean(isolate, args[3]);
+  }
+
   auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
 
@@ -98,7 +102,8 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(builder.get() != nullptr);
 
   arangodb::Cursor* cursor = cursors->createFromQueryResult(
-      std::move(result), static_cast<size_t>(batchSize), ttl, true);
+      std::move(result), static_cast<size_t>(batchSize), ttl, true,
+      isRetriable);
   TRI_ASSERT(cursor != nullptr);
   auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 
@@ -323,6 +328,9 @@ struct V8Cursor final {
     size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(
         options.slice(), "batchSize", 1000);
 
+    bool isRetriable =
+        VelocyPackHelper::getBooleanValue(options.slice(), "allowRetry", false);
+
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
@@ -334,7 +342,8 @@ struct V8Cursor final {
         aql::QueryOptions(options.slice()));
 
     // specify ID 0 so it uses the external V8 context
-    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    Cursor* cc =
+        cursors->createQueryStream(std::move(q), batchSize, ttl, isRetriable);
     // a soft shutdown will throw here!
 
     arangodb::ScopeGuard releaseCursorGuard([&]() noexcept { cc->release(); });

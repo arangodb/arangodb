@@ -21,6 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -389,11 +390,11 @@ Result applyStatusChangeCallbacks(Methods& trx, Status status) noexcept try {
   return Result(TRI_ERROR_OUT_OF_MEMORY);
 }
 
-void throwCollectionNotFound(std::string const& name) {
+void throwCollectionNotFound(std::string_view name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-          ": " + name);
+      absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                   ": ", name));
 }
 
 /// @brief Insert an error reported instead of the new document
@@ -1769,7 +1770,7 @@ TransactionCollection* transaction::Methods::trxCollection(
 
 /// @brief return the transaction collection for a document collection
 TransactionCollection* transaction::Methods::trxCollection(
-    std::string const& name, AccessMode::Type type) const {
+    std::string_view name, AccessMode::Type type) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
@@ -2966,7 +2967,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
 
 /// @brief return the collection
 arangodb::LogicalCollection* transaction::Methods::documentCollection(
-    std::string const& name) const {
+    std::string_view name) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 

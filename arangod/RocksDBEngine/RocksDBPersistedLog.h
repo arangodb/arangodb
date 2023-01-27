@@ -136,12 +136,12 @@ struct ApplyEntriesRttScale {
     return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
   }
 };
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time_us,
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time,
                   ApplyEntriesRttScale,
                   "Replicated log batches write time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time_us,
-                  ApplyEntriesRttScale, "Replicated log batches sync time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency_us,
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time, ApplyEntriesRttScale,
+                  "Replicated log batches sync time[us]");
+DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency,
                   ApplyEntriesRttScale,
                   "Replicated log storage operation latency[us]");
 
@@ -269,28 +269,31 @@ struct RocksDBLogStorageMethods final
       rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf,
       std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics);
 
-  auto updateMetadata(replication2::replicated_state::PersistedStateInfo info)
+  [[nodiscard]] auto updateMetadata(
+      replication2::replicated_state::PersistedStateInfo info)
       -> Result override;
-  auto readMetadata()
+  [[nodiscard]] auto readMetadata()
       -> ResultT<replication2::replicated_state::PersistedStateInfo> override;
-  auto read(replication2::LogIndex first)
+  [[nodiscard]] auto read(replication2::LogIndex first)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  auto insert(std::unique_ptr<replication2::PersistedLogIterator> ptr,
-              WriteOptions const&)
+  [[nodiscard]] auto insert(
+      std::unique_ptr<replication2::PersistedLogIterator> ptr,
+      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeFront(replication2::LogIndex stop,
+                                 WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  auto removeFront(replication2::LogIndex stop, WriteOptions const&)
+  [[nodiscard]] auto removeBack(replication2::LogIndex start,
+                                WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  auto removeBack(replication2::LogIndex start, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> override;
-  auto getObjectId() -> std::uint64_t override;
-  auto getLogId() -> replication2::LogId override;
+  [[nodiscard]] auto getObjectId() -> std::uint64_t override;
+  [[nodiscard]] auto getLogId() -> replication2::LogId override;
 
-  auto getSyncedSequenceNumber() -> SequenceNumber override;
-  auto waitForSync(SequenceNumber number)
+  [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
+  [[nodiscard]] auto waitForSync(SequenceNumber number)
       -> futures::Future<futures::Unit> override;
 
-  auto drop() -> Result;
-  auto compact() -> Result;
+  [[nodiscard]] auto drop() -> Result;
+  [[nodiscard]] auto compact() -> Result;
 
   void waitForCompletion() override;
 

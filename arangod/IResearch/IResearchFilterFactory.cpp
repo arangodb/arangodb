@@ -142,26 +142,23 @@ void setupAllTypedFilter(irs::Or& disjunction, FilterContext const& ctx,
   allDocs.boost(ctx.boost);
 }
 
-bool setupGeoFilter(FieldMeta::Analyzer const& a,
-                    S2RegionTermIndexer::Options& opts) {
+Result setupGeoFilter(FieldMeta::Analyzer const& a,
+                      GeoFilterOptionsBase& options) {
   if (!a._pool) {
-    return false;
+    return {TRI_ERROR_INTERNAL, "Malformed analyzer pool."};
   }
-
   auto& pool = *a._pool;
-
-  if (isGeoAnalyzer(pool.type())) {
-    auto stream = pool.get();
-
-    if (!stream) {
-      return false;
-    }
-    auto const& impl = basics::downCast<GeoAnalyzer>(*stream);
-    impl.prepare(opts);
-    return true;
+  if (!kludge::isGeoAnalyzer(pool.type())) {
+    return {TRI_ERROR_BAD_PARAMETER, absl::StrCat("Analyzer '", pool.type(),
+                                                  "' is not a geo analyzer.")};
   }
-
-  return false;
+  auto stream = pool.get();
+  if (!stream) {
+    return {TRI_ERROR_INTERNAL, "Malformed geo analyzer stream."};
+  }
+  auto const& impl = basics::downCast<GeoAnalyzer>(*stream);
+  impl.prepare(options);
+  return {};
 }
 
 Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
@@ -256,7 +253,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
       return {};
     case SCOPED_VALUE_TYPE_DOUBLE:
       if (filter) {
-        double_t dblValue;
+        double dblValue;
 
         if (!value.getDouble(dblValue)) {
           // something went wrong
@@ -372,14 +369,14 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
   irs::numeric_token_stream stream;
 
   // setup min bound
-  stream.reset(static_cast<double_t>(rangeData._low));
+  stream.reset(static_cast<double>(rangeData._low));
 
   auto* opts = range.mutable_options();
   irs::set_granular_term(opts->range.min, stream);
   opts->range.min_type = irs::BoundType::INCLUSIVE;
 
   // setup max bound
-  stream.reset(static_cast<double_t>(rangeData._high));
+  stream.reset(static_cast<double>(rangeData._high));
   irs::set_granular_term(opts->range.max, stream);
   opts->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -442,7 +439,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
     }
     case SCOPED_VALUE_TYPE_DOUBLE: {
       if (filter) {
-        double_t minDblValue, maxDblValue;
+        double minDblValue, maxDblValue;
 
         if (!min.getDouble(minDblValue) || !max.getDouble(maxDblValue)) {
           // can't parse value as double
@@ -600,7 +597,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
     }
     case SCOPED_VALUE_TYPE_DOUBLE: {
       if (filter) {
-        double_t dblValue;
+        double dblValue;
 
         if (!value.getDouble(dblValue)) {
           // can't parse as double
@@ -769,7 +766,7 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
-  double_t minDistance = 0;
+  double minDistance = 0;
 
   auto rv =
       evaluateArg(minDistance, tmpValue, funcName, args, 2, buildFilter, ctx);
@@ -778,7 +775,7 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     return rv;
   }
 
-  double_t maxDistance = 0;
+  double maxDistance = 0;
 
   rv = evaluateArg(maxDistance, tmpValue, funcName, args, 3, buildFilter, ctx);
 
@@ -820,7 +817,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    setupGeoFilter(analyzer, options->options);
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->origin = centroid.ToPoint();
     if (minDistance != 0.) {
       options->range.min = minDistance;
@@ -893,7 +893,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     }
   }
 
-  double_t distance{};
+  double distance{};
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
@@ -928,7 +928,10 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    setupGeoFilter(analyzer, options->options);
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->origin = centroid.ToPoint();
     switch (node.cmp) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -1033,7 +1036,7 @@ Result fromRange(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_RANGE == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(
         TRI_ERROR_BAD_PARAMETER,
         absl::StrCat("wrong number of arguments in range expression: ",
@@ -1382,7 +1385,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type ||
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("error in Array comparison operator: ",
                                  rv.errorMessage()));
@@ -1702,7 +1705,7 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
              aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("error in from In", rv.errorMessage()));
   }
@@ -1838,7 +1841,7 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_OPERATOR_UNARY_NOT == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("Bad node in negation", rv.errorMessage()));
   }
@@ -1882,7 +1885,7 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter,
              aql::NODE_TYPE_OPERATOR_NARY_AND == node.type);
 
   if (node.numMembers() != 2) {
-    logMalformedNode(node.type);
+    logMalformedNode(node);
     return false;  // wrong number of members
   }
 
@@ -2074,7 +2077,7 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
   ScopedAqlValue tmpValue;
 
   // 2nd argument defines a boost
-  double_t boostValue = 0;
+  double boostValue = 0;
   auto rv = evaluateArg<decltype(boostValue), true>(
       boostValue, tmpValue, funcName, args, 1, filter != nullptr, ctx);
 
@@ -2474,10 +2477,9 @@ class ArgsTraits<VPackSlice> {
   static Result evaluateArg(T& out, ValueType& value, char const* funcName,
                             VPackSlice args, size_t i, bool /*isFilter*/,
                             QueryContext const& /*ctx*/) {
-    static_assert(std::is_same<T, std::string_view>::value ||
-                  std::is_same<T, int64_t>::value ||
-                  std::is_same<T, double_t>::value ||
-                  std::is_same<T, bool>::value);
+    static_assert(std::is_same_v<T, std::string_view> ||
+                  std::is_same_v<T, int64_t> || std::is_same_v<T, double> ||
+                  std::is_same_v<T, bool>);
 
     if (!args.isArray() || args.length() <= i) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -2485,21 +2487,21 @@ class ArgsTraits<VPackSlice> {
                            "' AQL function: invalid argument index ", i)};
     }
     value = args.at(i);
-    if constexpr (std::is_same<T, std::string_view>::value) {
+    if constexpr (std::is_same_v<T, std::string_view>) {
       if (value.isString()) {
         out = value.stringView();
         return {};
       }
-    } else if constexpr (std::is_same<T, int64_t>::value) {
+    } else if constexpr (std::is_same_v<T, int64_t>) {
       if (value.isNumber()) {
         out = value.getInt();
         return {};
       }
-    } else if constexpr (std::is_same<T, double>::value) {
+    } else if constexpr (std::is_same_v<T, double>) {
       if (value.getDouble(out)) {
         return {};
       }
-    } else if constexpr (std::is_same<T, bool>::value) {
+    } else if constexpr (std::is_same_v<T, bool>) {
       if (value.isBoolean()) {
         out = value.getBoolean();
         return {};
@@ -2784,7 +2786,7 @@ Result fromFuncPhraseLevenshteinMatch(
       struct top_term_visitor final : irs::filter_visitor {
         explicit top_term_visitor(size_t size) : collector(size) {}
 
-        virtual void prepare(const irs::sub_reader& segment,
+        virtual void prepare(const irs::SubReader& segment,
                              const irs::term_reader& field,
                              const irs::seek_term_iterator& terms) override {
           collector.prepare(segment, field, terms);
@@ -3842,7 +3844,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    setupGeoFilter(analyzer, options->options);
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->type = GEO_INTERSECT_FUNC == funcName
                         ? GeoFilterType::INTERSECTS
                         : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
@@ -3864,7 +3869,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
   TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   auto const* args = getNode(node, 0, aql::NODE_TYPE_ARRAY);
@@ -3924,7 +3929,7 @@ Result fromFCall(irs::boolean_filter* filter, FilterContext const& filterCtx,
   auto const* fn = static_cast<aql::Function*>(node.getData());
 
   if (!fn || node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   if (!isFilter(*fn)) {
@@ -3954,7 +3959,7 @@ Result fromFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_FILTER == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(
         rv.errorNumber(),
         absl::StrCat("wrong number of parameters: ", rv.errorMessage()));
@@ -4109,9 +4114,9 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   }
 }
 
-/*static*/ Result FilterFactory::filter(irs::boolean_filter* filter,
-                                        FilterContext const& filterCtx,
-                                        aql::AstNode const& node) {
+Result FilterFactory::filter(irs::boolean_filter* filter,
+                             FilterContext const& filterCtx,
+                             aql::AstNode const& node) {
   if (node.willUseV8()) {
     return {TRI_ERROR_NOT_IMPLEMENTED,
             "using V8 dependent function is not allowed in SEARCH statement"};

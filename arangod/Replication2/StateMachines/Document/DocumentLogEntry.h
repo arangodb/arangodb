@@ -46,6 +46,8 @@ enum class OperationType {
   kAbort,
   kAbortAllOngoingTrx,
   kIntermediateCommit,
+  kCreateShard,
+  kDropShard
 };
 
 template<class Inspector>
@@ -59,7 +61,9 @@ auto inspect(Inspector& f, OperationType& p) {
       OperationType::kCommit, "Commit",                          //
       OperationType::kAbort, "Abort",                            //
       OperationType::kAbortAllOngoingTrx, "AbortAllOngoingTrx",  //
-      OperationType::kIntermediateCommit, "IntermediateCommit"   //
+      OperationType::kIntermediateCommit, "IntermediateCommit",  //
+      OperationType::kCreateShard, "CreateShard",                //
+      OperationType::kDropShard, "DropShard"                     //
   );
 }
 

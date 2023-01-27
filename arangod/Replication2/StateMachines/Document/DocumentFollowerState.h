@@ -45,7 +45,7 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  ShardID const shardId;
+  ShardID const shardId;  // TODO we have to get rid of this member
   LoggerContext const loggerContext;
 
   // unprotected for gtests. TODO think about whether there's a better way
@@ -64,20 +64,22 @@ struct DocumentFollowerState
   auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<Result>;
 
  private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+        : core(std::move(core)), currentSnapshotVersion{0} {};
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::uint64_t currentSnapshotVersion;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
+  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;

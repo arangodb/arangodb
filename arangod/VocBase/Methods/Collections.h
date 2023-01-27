@@ -40,7 +40,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
-struct PlanCollection;
+struct CreateCollectionBody;
 
 namespace transaction {
 class Methods;
@@ -96,9 +96,9 @@ struct Collections {
   create(                      // create collection
       TRI_vocbase_t& vocbase,  // collection vocbase
       OperationOptions const& options,
-      std::vector<PlanCollection> collections,  // Collections to create
-      bool createWaitsForSyncReplication,       // replication wait flag
-      bool enforceReplicationFactor,            // replication factor flag
+      std::vector<CreateCollectionBody> collections,  // Collections to create
+      bool createWaitsForSyncReplication,             // replication wait flag
+      bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called during restore
 
@@ -148,7 +148,6 @@ struct Collections {
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
       bool allowDropSystem,               // allow dropping system collection
-      double timeout,                     // single-server drop timeout
       bool keepUserRights =
           false  // flag if we want to keep access rights in-place
   );
@@ -166,11 +165,16 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(
       arangodb::velocypack::Slice slice, bool allowDC2DCAttributes);
+
+ private:
+  static void appendSmartEdgeCollections(
+      CreateCollectionBody& collection,
+      std::vector<CreateCollectionBody>& collectionList,
+      std::function<DataSourceId()> const&);
 };
 
 #ifdef USE_ENTERPRISE
-Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem,
-                         double singleServerTimeout);
+Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
 }  // namespace methods
 }  // namespace arangodb

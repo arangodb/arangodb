@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <memory>
+#include <string>
 
 namespace arangodb::replication2 {
 struct LogIndex;
