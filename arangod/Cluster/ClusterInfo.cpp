@@ -3015,7 +3015,33 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   if (!collections.empty() &&
       collections.front()->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> replicatedStates;
+    std::set<CollectionID> collectionIds;
+
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    VPackBuilder groupsBuilder;
+    std::ignore =
+        agencyCache.get(groupsBuilder, "Target/CollectionGroups/" + name);
+    auto groupsSlice = groupsBuilder.slice();
+    for (auto const& group : VPackObjectIterator(groupsSlice)) {
+      auto collectionGroup =
+          velocypack::deserialize<replication2::agency::CollectionGroup>(
+              group.value);
+      for (auto const& shardSheaf : collectionGroup.shardSheaves) {
+        replicatedStates.emplace_back(shardSheaf.replicatedLog);
+      }
+      for (auto const& [colId, _] : collectionGroup.collections) {
+        collectionIds.emplace(colId);
+      }
+    }
+
     for (auto const& collection : collections) {
+      if (collectionIds.contains(std::to_string(collection->id().id()))) {
+        // Skip collections that are part of a CollectionGroup
+        continue;
+      }
+
+      // The following code is there to support collection which are not part of
+      // any collection group, soon to be removed
       auto shardIds = collection->shardIds();
       replicatedStates.reserve(replicatedStates.size() + shardIds->size());
       std::transform(

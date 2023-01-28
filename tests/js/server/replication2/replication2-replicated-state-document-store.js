@@ -250,7 +250,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       db._drop(collectionName);
       collection = null;
       for (const shard of shards) {
-        let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
+        let {plan} = lh.readReplicatedLogAgency(database, shardsToLogs[shard]);
         assertEqual(plan, undefined);
       }
     },
@@ -623,18 +623,21 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
     tearDown: lh.registerAgencyTestEnd,
 
     testDropDatabase: function() {
-      /*
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       let shards = collection.shards();
-       */
+      let shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
       db._useDatabase("_system");
-      db._dropDatabase(database);
-      /*
       for (const shard of shards) {
-        let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
-        assertEqual(plan, undefined, `Expected nothing in plan for shard ${shard}, got ${JSON.stringify(plan)}`);
+        let logId = shardsToLogs[shard];
+        let {plan} = lh.readReplicatedLogAgency(database, logId);
+        assertFalse(plan === undefined, `Expected plan entry for shard ${logId}`);
       }
-       */
+      db._dropDatabase(database);
+      for (const shard of shards) {
+        let logId = shardsToLogs[shard];
+        let {plan} = lh.readReplicatedLogAgency(database, logId);
+        assertEqual(plan, undefined, `Expected nothing in plan for replicated log ${logId}, got ${JSON.stringify(plan)}`);
+      }
     },
   };
 };
@@ -736,8 +739,9 @@ const replicatedStateRecoverySuite = function () {
  * This test suite checks that replication2 leaves no side effects when creating a replication1 DB.
  */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
+  const dbNameR1 = "replication1TestDatabase";
   const {setUpAll, tearDownAll, setUp, tearDown} =
-    lh.testHelperFunctions(database, {replicationVersion: "1"});
+    lh.testHelperFunctions(dbNameR1, {replicationVersion: "1"});
 
   return {
     setUpAll,
@@ -746,11 +750,9 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     tearDown,
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
-      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
-      for (const shard of collection.shards()) {
-        let {target} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
-        assertEqual(target, undefined, `Expected nothing in target for shard ${shard}, got ${JSON.stringify(target)}`);
-      }
+      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${"replication1TestDatabase"}`);
+      assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
   };
 };
