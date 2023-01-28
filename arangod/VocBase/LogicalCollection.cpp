@@ -1280,7 +1280,6 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
         fmt::vformat(formatString, fmt::make_format_args(args...)), location);
   };
 
-
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
     throwUnavailable(ADB_HERE,
