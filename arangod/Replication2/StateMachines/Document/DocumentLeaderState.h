@@ -86,12 +86,12 @@ struct DocumentLeaderState
                                 ProcessFunc processSnapshot) -> ResultType;
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
-  Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
-  transaction::IManager& _transactionManager;
   Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
+  Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
+  transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
 };
 }  // namespace arangodb::replication2::replicated_state::document

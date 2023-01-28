@@ -83,11 +83,13 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+    GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
     std::shared_ptr<IDocumentStateHandlersFactory> factory)
-    : _gid(std::move(gid)),
-      _dbGuard(std::move(dbGuard)),
-      _factory(std::move(factory)) {}
+    : _gid(std::move(gid)), _vocbase(vocbase), _factory(std::move(factory)) {
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_vocbase != nullptr);
+#endif
+}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {
@@ -168,7 +170,7 @@ auto DocumentStateTransactionHandler::ensureTransaction(
     return trx;
   }
 
-  trx = _factory->createTransaction(doc, *_dbGuard);
+  trx = _factory->createTransaction(doc, *_vocbase);
   _transactions.emplace(tid, trx);
   return trx;
 }
