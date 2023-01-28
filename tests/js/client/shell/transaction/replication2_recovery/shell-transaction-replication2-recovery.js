@@ -364,8 +364,8 @@ function transactionReplication2Recovery() {
       request.put({url: coordinatorEndpoint + url, timeout: 3});
 
       let leaderServer = replicatedLogsHelper.getServerUrl(leader);
-      replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
-        "test1", false));
+      replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", false)();
 
       // Resume enough participants to reach write concern.
       for (let cnt = 0; cnt < WC - 1; ++cnt) {
