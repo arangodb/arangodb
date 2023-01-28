@@ -407,7 +407,10 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
             count++;
           }
         } else {
-          auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+          auto stateId =
+              getReplicatedStateId(_snapshot, database.first, collptr.first,
+                                   shard.first)
+                  .value_or(LogicalCollection::shardIdToStateId(shard.first));
           if (isServerLeaderForState(_snapshot, database.first, stateId,
                                      _server)) {
             found = 0;
@@ -427,7 +430,10 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           if (isLeader) {
             std::string toServer;
             if (isRepl2) {
-              auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+              auto stateId = getReplicatedStateId(_snapshot, database.first,
+                                                  collptr.first, shard.first)
+                                 .value_or(LogicalCollection::shardIdToStateId(
+                                     shard.first));
               toServer = Job::findOtherHealthyParticipant(
                   _snapshot, database.first, stateId, _server);
             } else {
