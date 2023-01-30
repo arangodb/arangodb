@@ -124,7 +124,7 @@ struct JsonPrintInspector
     } else {
       _stream << ',';
     }
-    _stream << _linebreak << _indentation << name << ':' << _separator;
+    _stream << _linebreak << _indentation << '"' << name << "\":" << _separator;
     return {};
   }
 

@@ -80,10 +80,10 @@ TEST_F(JsonPrintInspectorTest, store_object) {
   EXPECT_TRUE(result.ok());
 
   auto expected = R"({
-  i: 42,
-  d: 123.456,
-  b: true,
-  s: "foobar"
+  "i": 42,
+  "d": 123.456,
+  "b": true,
+  "s": "foobar"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -94,11 +94,11 @@ TEST_F(JsonPrintInspectorTest, store_nested_object) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  dummy: {
-    i: 42,
-    d: 123.456,
-    b: true,
-    s: "foobar"
+  "dummy": {
+    "i": 42,
+    "d": 123.456,
+    "b": true,
+    "s": "foobar"
   }
 })";
   EXPECT_EQ(expected, stream.str());
@@ -109,7 +109,7 @@ TEST_F(JsonPrintInspectorTest, store_nested_object_without_nesting) {
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
 
-  auto expected = "{\n  i: 42\n}";
+  auto expected = "{\n  \"i\": 42\n}";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -119,18 +119,18 @@ TEST_F(JsonPrintInspectorTest, store_list) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  vec: [
+  "vec": [
     {
-      i: 1
+      "i": 1
     },
     {
-      i: 2
+      "i": 2
     },
     {
-      i: 3
+      "i": 3
     }
   ],
-  list: [
+  "list": [
     4,
     5
   ]
@@ -145,18 +145,18 @@ TEST_F(JsonPrintInspectorTest, store_map) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  map: {
+  "map": {
     "1": {
-      i: 1
+      "i": 1
     },
     "2": {
-      i: 2
+      "i": 2
     },
     "3": {
-      i: 3
+      "i": 3
     }
   },
-  unordered: {
+  "unordered": {
     "5": 5,
     "4": 4
   }
@@ -173,20 +173,20 @@ TEST_F(JsonPrintInspectorTest, store_tuples) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  tuple: [
+  "tuple": [
     "foo",
     42,
     12.34
   ],
-  pair: [
+  "pair": [
     987,
     "bar"
   ],
-  array1: [
+  "array1": [
     "a",
     "b"
   ],
-  array2: [
+  "array2": [
     1,
     2,
     3
@@ -206,15 +206,15 @@ TEST_F(JsonPrintInspectorTest, store_optional) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: null,
-  b: null,
-  y: "blubb",
-  vec: [
+  "a": null,
+  "b": null,
+  "y": "blubb",
+  "vec": [
     1,
     null,
     3
   ],
-  map: {
+  "map": {
     "1": 1,
     "2": null,
     "3": 3
@@ -238,17 +238,17 @@ TEST_F(JsonPrintInspectorTest, store_optional_pointer) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  b: 42,
-  d: {
-    i: 43
+  "b": 42,
+  "d": {
+    "i": 43
   },
-  vec: [
+  "vec": [
     1,
     null,
     2
   ],
-  x: null,
-  y: null
+  "x": null,
+  "y": null
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -259,7 +259,7 @@ TEST_F(JsonPrintInspectorTest, store_object_with_field_transform) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  x: "42"
+  "x": "42"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -269,8 +269,8 @@ TEST_F(JsonPrintInspectorTest, store_object_with_optional_field_transform) {
   auto result = inspector.apply(f);
 
   auto expected = R"({
-  x: "1",
-  z: "3"
+  "x": "1",
+  "z": "3"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -281,8 +281,8 @@ TEST_F(JsonPrintInspectorTest, store_type_with_custom_specialization) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  i: 42,
-  s: "foobar"
+  "i": 42,
+  "s": "foobar"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -293,7 +293,7 @@ TEST_F(JsonPrintInspectorTest, store_type_with_explicitly_ignored_fields) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  s: "foobar"
+  "s": "foobar"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -310,9 +310,9 @@ TEST_F(JsonPrintInspectorTest, store_type_with_unsafe_fields) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  view: "foobar",
-  slice: "blubb",
-  hashed: "hashedString"
+  "view": "foobar",
+  "slice": "blubb",
+  "hashed": "hashedString"
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -327,26 +327,26 @@ TEST_F(JsonPrintInspectorTest, store_qualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: "foobar",
-  b: {
-    t: "int",
-    v: 42
+  "a": "foobar",
+  "b": {
+    "t": "int",
+    "v": 42
   },
-  c: {
-    t: "Struct1",
-    v: {
-      v: 1
+  "c": {
+    "t": "Struct1",
+    "v": {
+      "v": 1
     }
   },
-  d: {
-    t: "Struct2",
-    v: {
-      v: 2
+  "d": {
+    "t": "Struct2",
+    "v": {
+      "v": 2
     }
   },
-  e: {
-    t: "nil",
-    v: {
+  "e": {
+    "t": "nil",
+    "v": {
     }
   }
 })";
@@ -363,22 +363,22 @@ TEST_F(JsonPrintInspectorTest, store_unqualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: {
-    string: "foobar"
+  "a": {
+    "string": "foobar"
   },
-  b: 42,
-  c: {
-    Struct1: {
-      v: 1
+  "b": 42,
+  "c": {
+    "Struct1": {
+      "v": 1
     }
   },
-  d: {
-    Struct2: {
-      v: 2
+  "d": {
+    "Struct2": {
+      "v": 2
     }
   },
-  e: {
-    nil: {
+  "e": {
+    "nil": {
     }
   }
 })";
@@ -458,17 +458,17 @@ TEST_F(JsonPrintInspectorTest, store_inline_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: "foobar",
-  b: {
-    v: 42
+  "a": "foobar",
+  "b": {
+    "v": 42
   },
-  c: [
+  "c": [
     1,
     2,
     3
   ],
-  d: 123,
-  e: [
+  "d": 123,
+  "e": [
     "blubb",
     987,
     true
@@ -486,20 +486,20 @@ TEST_F(JsonPrintInspectorTest, store_embedded_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: {
-    t: "Struct1",
-    v: 1
+  "a": {
+    "t": "Struct1",
+    "v": 1
   },
-  b: {
-    t: "Struct2",
-    v: 2
+  "b": {
+    "t": "Struct2",
+    "v": 2
   },
-  c: {
-    t: "Struct3",
-    a: 1,
-    b: 2
+  "c": {
+    "t": "Struct3",
+    "a": 1,
+    "b": 2
   },
-  d: true
+  "d": true
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -511,10 +511,10 @@ TEST_F(JsonPrintInspectorTest, store_embedded_fields) {
   ASSERT_TRUE(result.ok());
 
   auto expected = R"({
-  a: 1,
-  i: 42,
-  s: "foobar",
-  b: 2
+  "a": 1,
+  "i": 42,
+  "s": "foobar",
+  "b": 2
 })";
   EXPECT_EQ(expected, stream.str());
 }
@@ -537,7 +537,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_object) {
   auto result = inspector.apply(f);
   EXPECT_TRUE(result.ok());
 
-  auto expected = R"({ i: 42, d: 123.456, b: true, s: "foobar" })";
+  auto expected = R"({ "i": 42, "d": 123.456, "b": true, "s": "foobar" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -546,7 +546,8 @@ TEST_F(JsonPrintInspectorCompactTest, store_nested_object) {
   auto result = inspector.apply(b);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({ dummy: { i: 42, d: 123.456, b: true, s: "foobar" } })";
+  auto expected =
+      R"({ "dummy": { "i": 42, "d": 123.456, "b": true, "s": "foobar" } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -555,7 +556,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_nested_object_without_nesting) {
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
 
-  auto expected = "{ i: 42 }";
+  auto expected = "{ \"i\": 42 }";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -565,7 +566,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_list) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ vec: [ { i: 1 }, { i: 2 }, { i: 3 } ], list: [ 4, 5 ] })";
+      R"({ "vec": [ { "i": 1 }, { "i": 2 }, { "i": 3 } ], "list": [ 4, 5 ] })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -576,7 +577,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_map) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ map: { "1": { i: 1 }, "2": { i: 2 }, "3": { i: 3 } }, unordered: { "5": 5, "4": 4 } })";
+      R"({ "map": { "1": { "i": 1 }, "2": { "i": 2 }, "3": { "i": 3 } }, "unordered": { "5": 5, "4": 4 } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -589,7 +590,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_tuples) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ tuple: [ "foo", 42, 12.34 ], pair: [ 987, "bar" ], array1: [ "a", "b" ], array2: [ 1, 2, 3 ] })";
+      R"({ "tuple": [ "foo", 42, 12.34 ], "pair": [ 987, "bar" ], "array1": [ "a", "b" ], "array2": [ 1, 2, 3 ] })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -604,7 +605,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_optional) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ a: null, b: null, y: "blubb", vec: [ 1, null, 3 ], map: { "1": 1, "2": null, "3": 3 } })";
+      R"({ "a": null, "b": null, "y": "blubb", "vec": [ 1, null, 3 ], "map": { "1": 1, "2": null, "3": 3 } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -623,7 +624,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_optional_pointer) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ b: 42, d: { i: 43 }, vec: [ 1, null, 2 ], x: null, y: null })";
+      R"({ "b": 42, "d": { "i": 43 }, "vec": [ 1, null, 2 ], "x": null, "y": null })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -632,7 +633,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_object_with_field_transform) {
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({ x: "42" })";
+  auto expected = R"({ "x": "42" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -641,7 +642,7 @@ TEST_F(JsonPrintInspectorCompactTest,
   OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
   auto result = inspector.apply(f);
 
-  auto expected = R"({ x: "1", z: "3" })";
+  auto expected = R"({ "x": "1", "z": "3" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -650,7 +651,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_type_with_custom_specialization) {
   auto result = inspector.apply(s);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({ i: 42, s: "foobar" })";
+  auto expected = R"({ "i": 42, "s": "foobar" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -660,7 +661,7 @@ TEST_F(JsonPrintInspectorCompactTest,
   auto result = inspector.apply(e);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({ s: "foobar" })";
+  auto expected = R"({ "s": "foobar" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -676,7 +677,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_type_with_unsafe_fields) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ view: "foobar", slice: "blubb", hashed: "hashedString" })";
+      R"({ "view": "foobar", "slice": "blubb", "hashed": "hashedString" })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -690,7 +691,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_qualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ a: "foobar", b: { t: "int", v: 42 }, c: { t: "Struct1", v: { v: 1 } }, d: { t: "Struct2", v: { v: 2 } }, e: { t: "nil", v: { } } })";
+      R"({ "a": "foobar", "b": { "t": "int", "v": 42 }, "c": { "t": "Struct1", "v": { "v": 1 } }, "d": { "t": "Struct2", "v": { "v": 2 } }, "e": { "t": "nil", "v": { } } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -704,7 +705,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_unqualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ a: { string: "foobar" }, b: 42, c: { Struct1: { v: 1 } }, d: { Struct2: { v: 2 } }, e: { nil: { } } })";
+      R"({ "a": { "string": "foobar" }, "b": 42, "c": { "Struct1": { "v": 1 } }, "d": { "Struct2": { "v": 2 } }, "e": { "nil": { } } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -747,7 +748,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_inline_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ a: "foobar", b: { v: 42 }, c: [ 1, 2, 3 ], d: 123, e: [ "blubb", 987, true ] })";
+      R"({ "a": "foobar", "b": { "v": 42 }, "c": [ 1, 2, 3 ], "d": 123, "e": [ "blubb", 987, true ] })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -760,7 +761,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_embedded_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ a: { t: "Struct1", v: 1 }, b: { t: "Struct2", v: 2 }, c: { t: "Struct3", a: 1, b: 2 }, d: true })";
+      R"({ "a": { "t": "Struct1", "v": 1 }, "b": { "t": "Struct2", "v": 2 }, "c": { "t": "Struct3", "a": 1, "b": 2 }, "d": true })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -770,7 +771,7 @@ TEST_F(JsonPrintInspectorCompactTest, store_embedded_fields) {
   auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({ a: 1, i: 42, s: "foobar", b: 2 })";
+  auto expected = R"({ "a": 1, "i": 42, "s": "foobar", "b": 2 })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -792,7 +793,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_object) {
   auto result = inspector.apply(f);
   EXPECT_TRUE(result.ok());
 
-  auto expected = R"({i:42,d:123.456,b:true,s:"foobar"})";
+  auto expected = R"({"i":42,"d":123.456,"b":true,"s":"foobar"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -801,7 +802,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_nested_object) {
   auto result = inspector.apply(b);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({dummy:{i:42,d:123.456,b:true,s:"foobar"}})";
+  auto expected = R"({"dummy":{"i":42,"d":123.456,"b":true,"s":"foobar"}})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -810,7 +811,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_nested_object_without_nesting) {
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
 
-  auto expected = "{i:42}";
+  auto expected = "{\"i\":42}";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -819,7 +820,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_list) {
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({vec:[{i:1},{i:2},{i:3}],list:[4,5]})";
+  auto expected = R"({"vec":[{"i":1},{"i":2},{"i":3}],"list":[4,5]})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -830,7 +831,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_map) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({map:{"1":{i:1},"2":{i:2},"3":{i:3}},unordered:{"5":5,"4":4}})";
+      R"({"map":{"1":{"i":1},"2":{"i":2},"3":{"i":3}},"unordered":{"5":5,"4":4}})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -843,7 +844,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_tuples) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({tuple:["foo",42,12.34],pair:[987,"bar"],array1:["a","b"],array2:[1,2,3]})";
+      R"({"tuple":["foo",42,12.34],"pair":[987,"bar"],"array1":["a","b"],"array2":[1,2,3]})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -858,7 +859,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_optional) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({a:null,b:null,y:"blubb",vec:[1,null,3],map:{"1":1,"2":null,"3":3}})";
+      R"({"a":null,"b":null,"y":"blubb","vec":[1,null,3],"map":{"1":1,"2":null,"3":3}})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -876,7 +877,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_optional_pointer) {
   auto result = inspector.apply(p);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({b:42,d:{i:43},vec:[1,null,2],x:null,y:null})";
+  auto expected = R"({"b":42,"d":{"i":43},"vec":[1,null,2],"x":null,"y":null})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -885,7 +886,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_object_with_field_transform) {
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({x:"42"})";
+  auto expected = R"({"x":"42"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -894,7 +895,7 @@ TEST_F(JsonPrintInspectorMinimalTest,
   OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
   auto result = inspector.apply(f);
 
-  auto expected = R"({x:"1",z:"3"})";
+  auto expected = R"({"x":"1","z":"3"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -903,7 +904,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_type_with_custom_specialization) {
   auto result = inspector.apply(s);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({i:42,s:"foobar"})";
+  auto expected = R"({"i":42,"s":"foobar"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -913,7 +914,7 @@ TEST_F(JsonPrintInspectorMinimalTest,
   auto result = inspector.apply(e);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({s:"foobar"})";
+  auto expected = R"({"s":"foobar"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -928,7 +929,8 @@ TEST_F(JsonPrintInspectorMinimalTest, store_type_with_unsafe_fields) {
   auto result = inspector.apply(u);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({view:"foobar",slice:"blubb",hashed:"hashedString"})";
+  auto expected =
+      R"({"view":"foobar","slice":"blubb","hashed":"hashedString"})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -942,7 +944,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_qualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({a:"foobar",b:{t:"int",v:42},c:{t:"Struct1",v:{v:1}},d:{t:"Struct2",v:{v:2}},e:{t:"nil",v:{}}})";
+      R"({"a":"foobar","b":{"t":"int","v":42},"c":{"t":"Struct1","v":{"v":1}},"d":{"t":"Struct2","v":{"v":2}},"e":{"t":"nil","v":{}}})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -956,7 +958,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_unqualified_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({a:{string:"foobar"},b:42,c:{Struct1:{v:1}},d:{Struct2:{v:2}},e:{nil:{}}})";
+      R"({"a":{"string":"foobar"},"b":42,"c":{"Struct1":{"v":1}},"d":{"Struct2":{"v":2}},"e":{"nil":{}}})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -999,7 +1001,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_inline_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({a:"foobar",b:{v:42},c:[1,2,3],d:123,e:["blubb",987,true]})";
+      R"({"a":"foobar","b":{"v":42},"c":[1,2,3],"d":123,"e":["blubb",987,true]})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -1012,7 +1014,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_embedded_variant) {
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({a:{t:"Struct1",v:1},b:{t:"Struct2",v:2},c:{t:"Struct3",a:1,b:2},d:true})";
+      R"({"a":{"t":"Struct1","v":1},"b":{"t":"Struct2","v":2},"c":{"t":"Struct3","a":1,"b":2},"d":true})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -1022,7 +1024,7 @@ TEST_F(JsonPrintInspectorMinimalTest, store_embedded_fields) {
   auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
 
-  auto expected = R"({a:1,i:42,s:"foobar",b:2})";
+  auto expected = R"({"a":1,"i":42,"s":"foobar","b":2})";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -1032,10 +1034,10 @@ TEST(JsonPrint, stream_output) {
   {
     stream << inspection::json(f, inspection::JsonPrintFormat::kPretty);
     auto expected = R"({
-  i: 42,
-  d: 123.456,
-  b: true,
-  s: "foobar"
+  "i": 42,
+  "d": 123.456,
+  "b": true,
+  "s": "foobar"
 })";
     EXPECT_EQ(expected, stream.str());
   }
@@ -1044,7 +1046,7 @@ TEST(JsonPrint, stream_output) {
     stream.str("");
     stream.clear();
     stream << inspection::json(f);
-    auto expected = R"({ i: 42, d: 123.456, b: true, s: "foobar" })";
+    auto expected = R"({ "i": 42, "d": 123.456, "b": true, "s": "foobar" })";
     EXPECT_EQ(expected, stream.str());
   }
 }
@@ -1054,10 +1056,10 @@ TEST(JsonPrint, format_output) {
 
   {
     auto expected = R"(Dummy - {
-  i: 42,
-  d: 123.456,
-  b: true,
-  s: "foobar"
+  "i": 42,
+  "d": 123.456,
+  "b": true,
+  "s": "foobar"
 })";
     auto actual = fmt::format("Dummy - {:p}", inspection::json(f));
     EXPECT_EQ(expected, actual);
@@ -1069,7 +1071,8 @@ TEST(JsonPrint, format_output) {
   }
 
   {
-    auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
+    auto expected =
+        R"(Dummy - { "i": 42, "d": 123.456, "b": true, "s": "foobar" })";
     auto actual = fmt::format("Dummy - {}", inspection::json(f));
     EXPECT_EQ(expected, actual);
     actual = fmt::format("Dummy - {:c}", inspection::json(f));
@@ -1077,7 +1080,7 @@ TEST(JsonPrint, format_output) {
   }
 
   {
-    auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
+    auto expected = R"(Dummy - {"i":42,"d":123.456,"b":true,"s":"foobar"})";
     auto actual = fmt::format("Dummy - {:m}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
