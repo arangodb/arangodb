@@ -54,6 +54,18 @@ def testing_runner(testing_instance, this, arangosh):
                                    this.name_enum,
                                    this.temp_dir,
                                    True) #verbose?
+        if ret["progressive_timeout"]:
+            logging.error("progressive_timeout is set")
+            this.success = False
+
+        if ret["have_deadline"]:
+            logging.error("have_deadline is set")
+            this.success = False
+
+        if ret["rc_exit"] != 0:
+            logging.error("rc_exit is not zero!")
+            this.success = False
+
         this.success = (
             not ret["progressive_timeout"] or
             not ret["have_deadline"] or
@@ -64,7 +76,11 @@ def testing_runner(testing_instance, this, arangosh):
         this.delta_seconds = this.delta.total_seconds()
         logging.info(f'done with {this.name_enum}')
         this.crashed = not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
-        this.success = this.success and this.success_file.exists() and this.success_file.read_text() == "true"
+        if not this.success_file.exists() or not this.success_file.read_text() == "true":
+            logging.error("Success file is missing or does not contain 'true'")
+            this.success = False
+
+        #this.success = this.success and this.success_file.exists() and this.success_file.read_text() == "true"
         if this.report_file.exists():
             this.structured_results = this.report_file.read_text(encoding="UTF-8", errors='ignore')
         this.summary = ret['error']
@@ -93,6 +109,7 @@ def testing_runner(testing_instance, this, arangosh):
         except FileExistsError as ex:
             logging.error(f"can't expand the temp directory {ex} to {final_name}")
     except Exception as ex:
+        logging.exception(f"Python exception caught during test execution")
         this.crashed = True
         this.success = False
         this.summary = f"Python exception caught during test execution: {ex}"
@@ -140,7 +157,7 @@ class TestingRunner():
               " => Disk I/O: " + str(psutil.disk_io_counters()))
         sys.stdout.flush()
         if load[0] > self.cfg.overload:
-            logging.info(f"{now} {load[0]} | {used_slots} | {running_slots}", file=self.overload_report_fh)
+            print(f"{now} {load[0]} | {used_slots} | {running_slots}", file=self.overload_report_fh)
 
     def done_job(self, parallelity):
         """ if one job is finished... """
@@ -316,6 +333,7 @@ class TestingRunner():
         if self.success:
             for scenario in self.scenarios:
                 if not scenario.success:
+                    logging.info(f"Scenario {scenario.name} failed")
                     self.success = False
 
     def generate_report_txt(self, moremsg):

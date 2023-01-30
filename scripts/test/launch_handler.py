@@ -20,7 +20,7 @@ def launch(args, tests):
             runner.register_test_func(args.cluster, test)
         runner.sort_by_priority()
     except Exception as exc:
-        logging.error(exc)
+        logging.exception()
         raise exc
     create_report = True
     if args.no_report:
@@ -47,11 +47,11 @@ def launch_runner(runner, create_report):
             if not runner.cfg.is_asan:
                 runner.generate_crash_report()
     except Exception as exc:
-        logging.error("Caught exception in launch runner")
+        logging.exception("Caught exception in launch runner")
         runner.success = False
         sys.stderr.flush()
         sys.stdout.flush()
-        logging.error(exc, file=sys.stderr)
+        print(exc, file=sys.stderr)
         print_exc()
     finally:
         sys.stderr.flush()
