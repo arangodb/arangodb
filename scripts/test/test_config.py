@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ keep the config for one testsuite to execute """
 import copy
+import logging
 import os
 
 from site_config import IS_WINDOWS, IS_MAC, TEMP
@@ -45,7 +46,7 @@ class TestConfig():
         # pylint: disable=global-variable-not-assigned
         global TEST_LOG_FILES
         try:
-            print(TEST_LOG_FILES.index(str(self.log_file)))
+            logging.info(TEST_LOG_FILES.index(str(self.log_file)))
             raise Exception(f'duplicate testfile {str(self.log_file)}')
         except ValueError:
             TEST_LOG_FILES.append(str(self.log_file))
@@ -62,7 +63,7 @@ class TestConfig():
                 if paramname in os.environ:
                     self.args += os.environ[paramname].split(' ')
                 else:
-                    print("Error: failed to expand environment variable: '" + param + "' for '" + self.name + "'")
+                    logging.error("Error: failed to expand environment variable: '" + param + "' for '" + self.name + "'")
             else:
                 self.args.append(param)
         self.args += ['--coreCheck', 'true', '--disableMonitor', 'true', '--writeXmlReport', 'true']

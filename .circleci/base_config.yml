@@ -154,7 +154,7 @@ jobs:
 
   run-js-tests:
     docker:
-      - image: cimg/cimg/python:3.11.1
+      - image: cimg/python:3.11.1
     parameters:
       suiteName:
         type: string
@@ -238,3 +238,4 @@ workflows:
           filter: "arangodbtests-iresearch"
           requires:
             - build-community-pr
+# VS Code Extension Version: 1.5.1

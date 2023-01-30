@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ launch tests from the config, write reports, etc. Control logic """
 from pathlib import Path
+import logging
 import sys
 import time
 from threading  import Thread
@@ -19,11 +20,11 @@ def launch(args, tests):
             runner.register_test_func(args.cluster, test)
         runner.sort_by_priority()
     except Exception as exc:
-        print(exc)
+        logging.error(exc)
         raise exc
     create_report = True
     if args.no_report:
-        print("won't generate report as you demanded!")
+        logging.info("won't generate report as you demanded!")
         create_report = False
     launch_runner(runner, create_report)
 
@@ -35,9 +36,9 @@ def launch_runner(runner, create_report):
         dmesg_thread = Thread(target=dmesg_runner, args=[dmesg])
         dmesg_thread.start()
         time.sleep(3)
-    print(runner.scenarios)
+    logging.info(runner.scenarios)
     try:
-        print("about to start test")
+        logging.info("about to start test")
         runner.testing_runner()
         runner.overload_report_fh.close()
         runner.generate_report_txt("")
@@ -46,11 +47,11 @@ def launch_runner(runner, create_report):
             if not runner.cfg.is_asan:
                 runner.generate_crash_report()
     except Exception as exc:
-        print("Caught exception in launch runner")
+        logging.error("Caught exception in launch runner")
         runner.success = False
         sys.stderr.flush()
         sys.stdout.flush()
-        print(exc, file=sys.stderr)
+        logging.error(exc, file=sys.stderr)
         print_exc()
     finally:
         sys.stderr.flush()
@@ -59,6 +60,6 @@ def launch_runner(runner, create_report):
         runner.create_testruns_file()
         if IS_LINUX:
             dmesg.end_run()
-            print('joining dmesg threads')
+            logging.info('joining dmesg threads')
             dmesg_thread.join()
         runner.print_and_exit_closing_stance()

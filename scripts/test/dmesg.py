@@ -4,6 +4,7 @@ on supported systems launch a thread that will follow system messages
 to detect serious incidents like oom
 """
 
+import logging
 import psutil
 
 from async_client import (
@@ -28,7 +29,7 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
     def launch(self):
        # pylint: disable=R0913 disable=R0902
         """ dmesg wrapper """
-        print('------')
+        logging.info('------')
         args = ['-wT']
         verbose = False
         self.params = make_tail_params(verbose,
@@ -51,8 +52,8 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
 
     def end_run(self):
         """ terminate dmesg again """
-        print(f"killing dmesg {self.params['pid']}")
+        logging.info(f"killing dmesg {self.params['pid']}")
         try:
             psutil.Process(self.params['pid']).kill()
         except psutil.NoSuchProcess:
-            print('dmesg already gone?')
+            logging.info('dmesg already gone?')

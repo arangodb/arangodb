@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ check which resources we have on the test host """
 from datetime import datetime, timedelta
+import logging
 import os
 from pathlib import Path
 import platform
@@ -56,7 +57,7 @@ def get_workspace():
     return Path.cwd() / 'work'
 
 for env in os.environ:
-    print(f'{env}={os.environ[env]}')
+    logging.info(f'{env}={os.environ[env]}')
 TEMP = Path("/tmp/")
 if 'TMP' in os.environ:
     TEMP = Path(os.environ['TMP'])
@@ -79,7 +80,7 @@ if TEMP.exists():
     except Exception as ex:
         msg = f"failed to clean temporary directory: {ex} - won't launch tests!"
         (get_workspace() / 'testfailures.txt').write_text(msg + '\n')
-        print(msg)
+        logging.info(msg)
         sys.exit(2)
 else:
     TEMP.mkdir(parents=True)
@@ -106,7 +107,7 @@ class SiteConfig:
         self.small_machine = False
         self.extra_args = []
         if psutil.cpu_count(logical=False) <= 12:
-            print("Small machine detected, quadrupling deadline, disabling buckets!")
+            logging.info("Small machine detected, quadrupling deadline, disabling buckets!")
             self.small_machine = True
             self.port_offset = 400
             self.timeout *= 4
@@ -136,14 +137,14 @@ class SiteConfig:
         self.rapid_fire = round(self.available_slots / 10)
         self.is_asan = 'SAN' in os.environ and os.environ['SAN'] == 'On'
         if self.is_asan:
-            print('SAN enabled, reducing possible system capacity')
+            logging.info('SAN enabled, reducing possible system capacity')
             self.rapid_fire = 1
             self.available_slots /= 4
             #self.timeout *= 1.5
             self.loop_sleep *= 2
             self.max_load /= 2
             if os.environ['SAN_MODE'] == 'AULSan':
-                print('Aulsan must reduce even more!')
+                logging.info('Aulsan must reduce even more!')
         self.deadline = datetime.now() + timedelta(seconds=self.timeout)
         self.hard_deadline = datetime.now() + timedelta(seconds=self.timeout + 660)
         if definition_file.is_file():
@@ -161,7 +162,7 @@ class SiteConfig:
         except psutil.AccessDenied:
             pass
 
-        print(f"""Machine Info [{psutil.Process().pid}]:
+        logging.info(f"""Machine Info [{psutil.Process().pid}]:
  - {psutil.cpu_count(logical=False)} Cores / {psutil.cpu_count(logical=True)} Threads
  - {platform.processor()} processor architecture
  - {psutil.virtual_memory()} virtual Memory

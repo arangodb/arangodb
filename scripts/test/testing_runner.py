@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import pprint
+import logging
 import re
 import shutil
 import signal
@@ -61,7 +62,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        print(f'done with {this.name_enum}')
+        logging.info(f'done with {this.name_enum}')
         this.crashed = not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         this.success = this.success and this.success_file.exists() and this.success_file.read_text() == "true"
         if this.report_file.exists():
@@ -70,17 +71,17 @@ def testing_runner(testing_instance, this, arangosh):
         if this.summary_file.exists():
             this.summary += this.summary_file.read_text()
         else:
-            print(f'{this.name_enum} no testreport!')
+            logging.warning(f'{this.name_enum} no testreport!')
         final_name = TEMP / this.name
         if this.crashed or not this.success:
-            print(str(this.log_file.name))
-            print(this.log_file.parent / ("FAIL_" + str(this.log_file.name))
+            logging.info(str(this.log_file.name))
+            logging.info(this.log_file.parent / ("FAIL_" + str(this.log_file.name))
                   )
             failname = this.log_file.parent / ("FAIL_" + str(this.log_file.name))
             this.log_file.rename(failname)
             this.log_file = failname
             if (this.summary == "" and failname.stat().st_size < 1024*10):
-                print("pulling undersized test output into testfailures.txt")
+                logging.info("pulling undersized test output into testfailures.txt")
                 this.summary = failname.read_text(encoding='utf-8')
             with arangosh.slot_lock:
                 if this.crashed:
@@ -90,7 +91,7 @@ def testing_runner(testing_instance, this, arangosh):
         try:
             this.temp_dir.rename(final_name)
         except FileExistsError as ex:
-            print(f"can't expand the temp directory {ex} to {final_name}")
+            logging.error(f"can't expand the temp directory {ex} to {final_name}")
     except Exception as ex:
         this.crashed = True
         this.success = False
@@ -132,14 +133,14 @@ class TestingRunner():
         with self.slot_lock:
             used_slots = str(self.used_slots)
             running_slots = str(self.running_suites)
-        print(str(load) + "<= Load " +
+        logging.info(str(load) + "<= Load " +
               "Running: " + str(self.running_suites) +
               " => Active Slots: " + used_slots +
               " => Swap: " + str(psutil.swap_memory()) +
               " => Disk I/O: " + str(psutil.disk_io_counters()))
         sys.stdout.flush()
         if load[0] > self.cfg.overload:
-            print(f"{now} {load[0]} | {used_slots} | {running_slots}", file=self.overload_report_fh)
+            logging.info(f"{now} {load[0]} | {used_slots} | {running_slots}", file=self.overload_report_fh)
 
     def done_job(self, parallelity):
         """ if one job is finished... """
@@ -150,12 +151,12 @@ class TestingRunner():
         """ launch one testing job """
         if do_loadcheck:
             if self.scenarios[offset].parallelity > (self.cfg.available_slots - self.used_slots):
-                print("no more slots available")
+                logging.info("no more slots available")
                 return -1
             try:
                 sock_count = get_socket_count()
                 if sock_count > 8000:
-                    print(f"Socket count: {sock_count}, waiting before spawning more")
+                    logging.info(f"Socket count: {sock_count}, waiting before spawning more")
                     return -1
             except psutil.AccessDenied:
                 pass
@@ -164,7 +165,7 @@ class TestingRunner():
             if ((load[0] > self.cfg.max_load) or
                 (load[1] > self.cfg.max_load1) or
                 (load[0] + load_estimate > self.cfg.overload)):
-                print(F"{str(load)} <= {load_estimate} Load to high; waiting before spawning more - Disk I/O: " +
+                logging.info(F"{str(load)} <= {load_estimate} Load to high; waiting before spawning more - Disk I/O: " +
                       str(psutil.swap_memory()))
                 return -1
         parallelity = 0
@@ -175,7 +176,7 @@ class TestingRunner():
         this.counter = counter
         this.temp_dir = TEMP / str(counter)
         this.name_enum = f"{this.name} {str(counter)}"
-        print(f"launching {this.name_enum}")
+        logging.info(f"launching {this.name_enum}")
         pp.pprint(this)
 
         with self.slot_lock:
@@ -195,13 +196,13 @@ class TestingRunner():
         # 5 minutes for threads to clean up their stuff, else we consider them blocked
         more_running = True
         mica = None
-        print(f"Main: {str(datetime.now())} soft deadline reached: {str(self.cfg.deadline)} now waiting for hard deadline {str(self.cfg.hard_deadline)}")
+        logging.info(f"Main: {str(datetime.now())} soft deadline reached: {str(self.cfg.deadline)} now waiting for hard deadline {str(self.cfg.hard_deadline)}")
         while ((datetime.now() < self.cfg.hard_deadline) and more_running):
             time.sleep(1)
             with self.slot_lock:
                 more_running = self.used_slots != 0
         if more_running:
-            print("Main: reaching hard Time limit!")
+            logging.info("Main: reaching hard Time limit!")
             list_all_processes()
             mica = os.getpid()
             myself = psutil.Process(mica)
@@ -209,7 +210,7 @@ class TestingRunner():
             for one_child in children:
                 if one_child.pid != mica:
                     try:
-                        print(f"Main: killing {one_child.name()} - {str(one_child.pid)}")
+                        logging.info(f"Main: killing {one_child.name()} - {str(one_child.pid)}")
                         one_child.resume()
                     except psutil.NoSuchProcess:
                         pass
@@ -221,17 +222,17 @@ class TestingRunner():
                         pass
             if IS_WINDOWS:
                 kill_all_arango_processes()
-            print("Main: waiting for the children to terminate")
+            logging.info("Main: waiting for the children to terminate")
             psutil.wait_procs(children, timeout=20)
-            print("Main: giving workers 20 more seconds to exit.")
+            logging.info("Main: giving workers 20 more seconds to exit.")
             time.sleep(60)
             with self.slot_lock:
                 more_running = self.used_slots != 0
         else:
-            print("Main: workers terminated on time")
+            logging.info("Main: workers terminated on time")
         if more_running:
             self.generate_report_txt("ALL: some suites didn't even abort!\n")
-            print("Main: force-terminates the python process due to overall unresponsiveness! Geronimoooo!")
+            logging.info("Main: force-terminates the python process due to overall unresponsiveness! Geronimoooo!")
             list_all_processes()
             sys.stdout.flush()
             self.success = False
@@ -259,7 +260,7 @@ class TestingRunner():
             some_scenario.base_logdir.mkdir()
         if not some_scenario.base_testdir.exists():
             some_scenario.base_testdir.mkdir()
-        print(self.cfg.deadline)
+        logging.info(self.cfg.deadline)
         parallelity = 0
         sleep_count = 0
         last_started_count = -1
@@ -273,7 +274,7 @@ class TestingRunner():
                 (start_offset < len(self.scenarios)) and
                  ((last_started_count < 0) or
                   (sleep_count - last_started_count > parallelity)) ):
-                print(f"Launching more: {self.cfg.available_slots} > {used_slots} {counter} {last_started_count} ")
+                logging.info(f"Launching more: {self.cfg.available_slots} > {used_slots} {counter} {last_started_count} ")
                 sys.stdout.flush()
                 rapid_fire = 0
                 par = 1
@@ -295,7 +296,7 @@ class TestingRunner():
                     self.print_active()
                 else:
                     if used_slots == 0 and start_offset >= len(self.scenarios):
-                        print("done")
+                        logging.info("done")
                         break
                     self.print_active()
                     sleep_count += 1
@@ -310,7 +311,7 @@ class TestingRunner():
             self.handle_deadline()
         for worker in self.workers:
             if self.deadline_reached:
-                print("Deadline: Joining threads of " + worker.name)
+                logging.info("Deadline: Joining threads of " + worker.name)
             worker.join()
         if self.success:
             for scenario in self.scenarios:
@@ -319,19 +320,19 @@ class TestingRunner():
 
     def generate_report_txt(self, moremsg):
         """ create the summary testfailures.txt from all bits """
-        print(self.scenarios)
+        logging.info(self.scenarios)
         summary = moremsg
         if self.deadline_reached:
             summary = "Deadline reached during test execution!\n"
         for testrun in self.scenarios:
-            print(testrun)
+            logging.info(testrun)
             if testrun.crashed or not testrun.success:
                 summary += f"\n=== {testrun.name} ===\n{testrun.summary}"
             if testrun.start is None:
                 summary += f"\n=== {testrun.name} ===\nhasn't been launched at all!"
             elif testrun.finish is None:
                 summary += f"\n=== {testrun.name} ===\nwouldn't exit for some reason!"
-        print(summary)
+        logging.info(summary)
         self.testfailures_file.write_text(summary)
 
     def append_report_txt(self, text):
@@ -353,7 +354,7 @@ class TestingRunner():
         for one_file in self.cfg.bin_dir.iterdir():
             if (one_file.suffix == '.lib' or
                 (one_file.stem not in needed) ):
-                print(f'Deleting {str(one_file)}')
+                logging.info(f'Deleting {str(one_file)}')
                 one_file.unlink(missing_ok=True)
 
     def generate_crash_report(self):
@@ -390,14 +391,14 @@ class TestingRunner():
             files_unsorted = []
         files_unsorted += system_corefiles
         if len(files_unsorted) == 0 or core_max_count <= 0:
-            print(f'Coredumps are not collected: {str(len(files_unsorted))} coredumps found; coredumps max limit to collect is {str(core_max_count)}!')
+            logging.info(f'Coredumps are not collected: {str(len(files_unsorted))} coredumps found; coredumps max limit to collect is {str(core_max_count)}!')
             return
 
         for one_file in files_unsorted:
             if one_file.is_file():
                 size = (one_file.stat().st_size / (1024 * 1024))
                 if 0 < MAX_COREFILE_SIZE_MB and MAX_COREFILE_SIZE_MB < size:
-                    print(f'deleting coredump {str(one_file)} its too big: {str(size)}')
+                    logging.info(f'deleting coredump {str(one_file)} its too big: {str(size)}')
                     files_unsorted.remove(one_file)
             else:
                 files_unsorted.remove(one_file)
@@ -407,7 +408,7 @@ class TestingRunner():
             for one_crash_file in files_unsorted:
                 count += 1
                 if count > core_max_count:
-                    print(f'{core_max_count} reached. will not archive {one_crash_file}')
+                    logging.info(f'{core_max_count} reached. will not archive {one_crash_file}')
                     one_crash_file.unlink(missing_ok=True)
 
         is_empty = len(files_unsorted) == 0
@@ -421,14 +422,14 @@ class TestingRunner():
                     except shutil.Error as ex:
                         msg = f"generate_crash_report: failed to move file while while gathering coredumps: {ex}"
                         self.append_report_txt('\n' + msg + '\n')
-                        print(msg)
+                        logging.info(msg)
                     except PermissionError as ex:
-                        print(f"won't move {str(one_file)} - not an owner! {str(ex)}")
+                        logging.info(f"won't move {str(one_file)} - not an owner! {str(ex)}")
                         self.append_report_txt(f"won't move {str(one_file)} - not an owner! {str(ex)}")
 
         if self.crashed or not is_empty:
             crash_report_file = get_workspace() / datetime.now(tz=None).strftime(f"crashreport-{self.cfg.datetime_format}")
-            print("creating crashreport: " + str(crash_report_file))
+            logging.info("creating crashreport: " + str(crash_report_file))
             sys.stdout.flush()
             try:
                 shutil.make_archive(str(crash_report_file),
@@ -437,11 +438,11 @@ class TestingRunner():
                                     core_dir.name,
                                     True)
             except Exception as ex:
-                print("Failed to create binaries zip: " + str(ex))
+                logging.error("Failed to create binaries zip: " + str(ex))
                 self.append_report_txt("Failed to create binaries zip: " + str(ex))
             self.cleanup_unneeded_binary_files()
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(f"binaries-{self.cfg.datetime_format}")
-            print("creating crashreport binary support zip: " + str(binary_report_file))
+            logging.info("creating crashreport binary support zip: " + str(binary_report_file))
             sys.stdout.flush()
             try:
                 shutil.make_archive(str(binary_report_file),
@@ -450,10 +451,10 @@ class TestingRunner():
                                     self.cfg.bin_dir.name,
                                     True)
             except Exception as ex:
-                print("Failed to create crashdump zip: " + str(ex))
+                logging.error("Failed to create crashdump zip: " + str(ex))
                 self.append_report_txt("Failed to create crashdump zip: " + str(ex))
             for corefile in core_dir.glob(core_pattern):
-                print("Deleting corefile " + str(corefile))
+                logging.info("Deleting corefile " + str(corefile))
                 sys.stdout.flush()
                 corefile.unlink()
             if not is_empty and move_files:
@@ -462,7 +463,7 @@ class TestingRunner():
     def generate_test_report(self):
         """ regular testresults zip """
         tarfile = get_workspace() / datetime.now(tz=None).strftime(f"testreport-{self.cfg.datetime_format}")
-        print('flattening inner dir structure')
+        logging.info('flattening inner dir structure')
         for subdir in TEMP.iterdir():
             for subsubdir in subdir.iterdir():
                 path_segment = subsubdir.parts[len(subsubdir.parts) - 1]
@@ -474,11 +475,11 @@ class TestingRunner():
                         except shutil.Error as ex:
                             msg = f"generate_test_report: failed to move file while cleaning up temporary files: {ex}"
                             self.append_report_txt('\n' + msg + '\n')
-                            print(msg)
+                            logging.info(msg)
                             clean_subdir = False
                     if clean_subdir:
                         subsubdir.rmdir()
-        print("Creating " + str(tarfile))
+        logging.info("Creating " + str(tarfile))
         sys.stdout.flush()
         try:
             shutil.make_archive(self.cfg.run_root / 'innerlogs',
@@ -486,7 +487,7 @@ class TestingRunner():
                                 (TEMP / '..').resolve(),
                                 TEMP.name)
         except Exception as ex:
-            print("Failed to create inner zip: " + str(ex))
+            logging.error("Failed to create inner zip: " + str(ex))
             self.append_report_txt("Failed to create inner zip: " + str(ex))
             self.success = False
 
@@ -498,13 +499,13 @@ class TestingRunner():
                                 '.',
                                 True)
         except Exception as ex:
-            print("Failed to create testreport zip: " + str(ex))
+            logging.error("Failed to create testreport zip: " + str(ex))
             self.append_report_txt("Failed to create testreport zip: " + str(ex))
             self.success = False
         try:
             shutil.rmtree(self.cfg.run_root, ignore_errors=False)
         except Exception as ex:
-            print("Failed to clean up: " + str(ex))
+            logging.error("Failed to clean up: " + str(ex))
             self.append_report_txt("Failed to clean up: " + str(ex))
             self.success = False
 
@@ -592,7 +593,7 @@ class TestingRunner():
 
     def print_and_exit_closing_stance(self):
         """ our finaly good buye stance. """
-        print("\n" + "SUCCESS" if self.success else "FAILED")
+        logging.info("\n" + "SUCCESS" if self.success else "FAILED")
         retval = 0
         if not self.success:
             retval = 1

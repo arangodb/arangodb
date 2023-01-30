@@ -1,5 +1,11 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
+import logging
+logging.basicConfig(filename="work/test_launcher.log",
+                    filemode='a',
+                    format='%(asctime)s [%(levelname)s] %(message)s',
+                    level=logging.DEBUG)
+
 import argparse
 import sys
 from pathlib import Path
@@ -43,10 +49,8 @@ def main():
     """ entrypoint """
     try:
         args = parse_arguments()
-        print(args)
         suite = args.suites
         extraArgs = args.extraArgs.split()
-        print(extraArgs)
         suffix = args.suffix
         name = suite
         if suffix:
@@ -54,7 +58,6 @@ def main():
         if args.cluster:
             extraArgs += ['--cluster', 'true', '--dumpAgencyOnError', 'true']
         extraArgs += ['--testBuckets', args.testBuckets]
-        print(extraArgs)
         runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
         runner.scenarios.append(
                 TestConfig(runner.cfg,

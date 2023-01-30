@@ -2,6 +2,7 @@
 """ manipulate processes """
 import sys
 import psutil
+import logging
 
 def list_all_processes():
     """list all processes for later reference"""
@@ -19,8 +20,8 @@ def list_all_processes():
             pass
         except psutil.NoSuchProcess:
             pass
-        print(f"PID: {process.pid} PPID: {process.ppid()} {cmdline}")
-    print(pseaf)
+        logging.info(f"PID: {process.pid} PPID: {process.ppid()} {cmdline}")
+    logging.info(pseaf)
     sys.stdout.flush()
 
 def kill_all_arango_processes():
@@ -31,7 +32,7 @@ def kill_all_arango_processes():
         if (process.name().lower().find('arango') >= 0 or
             process.name().lower().find('tshark') >= 0):
             try:
-                print(f"Main: killing {process.name()} - {str(process.pid)}")
+                logging.info(f"Main: killing {process.name()} - {str(process.pid)}")
                 process.resume()
             except psutil.NoSuchProcess:
                 pass
