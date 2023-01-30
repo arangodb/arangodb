@@ -154,7 +154,7 @@ jobs:
 
   run-js-tests:
     docker:
-      - image: cimg/base:2022.12
+      - image: cimg/cimg/python:3.11.1
     parameters:
       suiteName:
         type: string
@@ -181,9 +181,13 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          name: Install dependencies
+          command: pip install psutil
+      - run:
           name: Run << parameters.suiteName >> tests
           command: |
-            scripts/unittest << parameters.suites >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> << parameters.extraArgs >>
+            mkdir work
+            python3 scripts/test/test_launch_controller.py << parameters.suites >> --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> --extraArgs "<< parameters.extraArgs >>" --definition tests/test-definitions.txt
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -191,9 +195,9 @@ jobs:
           when: on_fail
       - store_artifacts:
           destination: << parameters.suiteName >>
-          path: ./out/
+          path: ./work/
       - store_test_results:
-          path: ./out/
+          path: ./work/
 
 workflows:
   lint:
