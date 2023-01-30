@@ -232,6 +232,7 @@ function randomTestSuite() {
 
     test_garbage_collects_all_jobs: function () {
       let allNewRuns = [];
+
       for (let i = 0; i < 5; ++i) {
         let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
 				allNewRuns.push(pid);
