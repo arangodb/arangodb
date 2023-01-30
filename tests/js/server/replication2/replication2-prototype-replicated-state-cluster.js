@@ -73,7 +73,7 @@ const removeEntry = function (url, stateId, entry) {
 };
 
 const dropState = function (url, stateId) {
-  return request.delete({url: `${url}/_db/${database}/_api/replicated-state/${stateId}`});
+  return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
 };
 
 const removeEntries = function (url, stateId, entries) {
@@ -86,6 +86,25 @@ const removeEntries = function (url, stateId, entries) {
 
 const getSnapshot = function (url, stateId, waitForIndex) {
   return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot?waitForIndex=${waitForIndex}`});
+};
+
+const getStatus = function(url, stateId) {
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
+};
+
+const prototypeStateIsReady = function (url, stateId) {
+  return function () {
+    let result = getStatus(url, stateId);
+    try {
+      const res = lh.checkRequestResult(result);
+      if (res.json.code !== 200) {
+        return Error(`expected status call to return 200, found ${res.json.code}`);
+      }
+      return true;
+    } catch(e) {
+      return Error("status call threw exception: " + e);
+    }
+  };
 };
 
 const replicatedStateSuite = function () {
@@ -124,25 +143,13 @@ const replicatedStateSuite = function () {
         participants[server] = {};
       }
 
-      sh.updateReplicatedStateTarget(database, stateId,
-                                  function(target) {
-                                    return {
-                                      id: stateId,
-                                      participants: participants,
-                                      config: {
-                                        waitForSync: true,
-                                        writeConcern: 2,
-                                        softWriteConcern: 3,
-                                      },
-                                      properties: {
-                                        implementation: {
-                                          type: "prototype"
-                                        }
-                                      }
-                                    };
+      lh.replicatedLogSetTarget(database, stateId, {
+        id: stateId,
+        config: {writeConcern: 2, waitForSync: false},
+        participants: lh.getParticipantsObjectForServers(servers),
+        supervision: {maxActionsTraceLength: 20},
+        properties: {implementation: {type: "prototype", parameters: {}}},
       });
-
-      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
       lh.waitForReplicatedLogAvailable(stateId);
 
       let {leader} = lh.getReplicatedLogLeaderPlan(database, stateId);
@@ -159,6 +166,9 @@ const replicatedStateSuite = function () {
         }
       }
       let followerUrl = lh.getServerUrl(follower);
+
+      // wait for prototype state to be ready
+      lh.waitFor(prototypeStateIsReady(leaderUrl, stateId));
 
       let result = insertEntries(leaderUrl, stateId, {foo0 : "bar0", foo1: "bar1", foo2: "bar2"});
       lh.checkRequestResult(result);
@@ -263,7 +273,8 @@ const replicatedStateSuite = function () {
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
       assertEqual(result.json.code, 409);
 
-      dropState(coordUrl, stateId);
+      result = dropState(coordUrl, stateId);
+      lh.checkRequestResult(result);
       lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },

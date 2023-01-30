@@ -127,7 +127,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
 
   _cursor = _trx.indexScan(
-      _infos.getCollection()->name(),
+      _infos.getQuery().resourceMonitor(), _infos.getCollection()->name(),
       (_infos.getRandom() ? transaction::Methods::CursorType::ANY
                           : transaction::Methods::CursorType::ALL),
       infos.canReadOwnWrites());

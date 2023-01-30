@@ -102,41 +102,42 @@ void RocksDBRestWalHandler::flush() {
   }
 
   bool waitForSync = false;
-  bool waitForCollector = false;
+  bool flushColumnFamilies = false;
 
   if (slice.isObject()) {
     // got a request body
-    VPackSlice value = slice.get("waitForSync");
+    VPackSlice value = slice.get(StaticStrings::WaitForSyncString);
     if (value.isString()) {
-      waitForSync = basics::StringUtils::boolean(value.copyString());
+      waitForSync = basics::StringUtils::boolean(value.stringView());
     } else if (value.isBoolean()) {
       waitForSync = value.getBoolean();
     }
 
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = basics::StringUtils::boolean(value.copyString());
+      flushColumnFamilies = basics::StringUtils::boolean(value.stringView());
     } else if (value.isBoolean()) {
-      waitForCollector = value.getBoolean();
+      flushColumnFamilies = value.getBoolean();
     }
   } else {
     // no request body
-    waitForSync = _request->parsedValue("waitForSync", waitForSync);
-    waitForCollector =
-        _request->parsedValue("waitForCollector", waitForCollector);
+    waitForSync =
+        _request->parsedValue(StaticStrings::WaitForSyncString, waitForSync);
+    flushColumnFamilies =
+        _request->parsedValue("waitForCollector", flushColumnFamilies);
   }
 
-  auto res = TRI_ERROR_NO_ERROR;
+  Result res;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
     if (waitForSync) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal();
     }
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,

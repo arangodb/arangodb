@@ -39,13 +39,10 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
-
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
+struct ResourceMonitor;
 
 namespace velocypack {
 class Builder;
@@ -431,25 +428,36 @@ class Index {
 
   /// @brief create a new index iterator for the (specialized) condition
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   bool canUseConditionPart(
       aql::AstNode const* access, aql::AstNode const* other,
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  /// @brief Transform the list of search slices to search values.
-  ///        This will multiply all IN entries and simply return all other
-  ///        entries.
-  void expandInSearchValues(velocypack::Slice const,
-                            velocypack::Builder&) const;
-
-  virtual void warmup(transaction::Methods* trx,
-                      std::shared_ptr<basics::LocalTaskQueue> queue);
+  virtual bool canWarmup() const noexcept;
+  virtual Result warmup();
 
   static size_t sortWeight(aql::AstNode const* node);
+
+  /// @brief generate error result
+  /// @param code the error key
+  /// @param key the conflicting key
+  Result& addErrorMsg(Result& r, ErrorCode code,
+                      std::string_view key = {}) const {
+    if (code != TRI_ERROR_NO_ERROR) {
+      r.reset(code);
+      return addErrorMsg(r, key);
+    }
+    return r;
+  }
+
+  /// @brief generate error result
+  /// @param key the conflicting key
+  Result& addErrorMsg(Result& r, std::string_view key = {}) const;
 
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
@@ -464,22 +472,7 @@ class Index {
   /// single attribute
   std::string const& getAttribute() const;
 
-  /// @brief generate error result
-  /// @param code the error key
-  /// @param key the conflicting key
-  Result& addErrorMsg(Result& r, ErrorCode code,
-                      std::string const& key = "") const {
-    if (code != TRI_ERROR_NO_ERROR) {
-      r.reset(code);
-      return addErrorMsg(r, key);
-    }
-    return r;
-  }
-
-  /// @brief generate error result
-  /// @param key the conflicting key
-  Result& addErrorMsg(Result& r, std::string const& key = "") const;
-  void addErrorMsg(result::Error& err, std::string const& key) const;
+  void addErrorMsg(result::Error& err, std::string_view key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified

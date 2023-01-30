@@ -59,7 +59,7 @@ struct ExpressionCompilationContext {
 };
 
 struct ExpressionExecutionContext final : irs::attribute {
-  static const irs::string_ref type_name() noexcept {
+  static const std::string_view type_name() noexcept {
     return "arangodb::iresearch::ExpressionExecutionContext";
   }
 
@@ -79,7 +79,7 @@ struct ExpressionExecutionContext final : irs::attribute {
 // User-side filter based on arbitrary ArangoDB `Expression`.
 class ByExpression final : public irs::filter {
  public:
-  static const irs::string_ref type_name() noexcept {
+  static const std::string_view type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
   }
 
@@ -93,7 +93,7 @@ class ByExpression final : public irs::filter {
   using irs::filter::prepare;
 
   virtual irs::filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::Order const& ord, irs::score_t boost,
+      irs::IndexReader const& index, irs::Order const& ord, irs::score_t boost,
       irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;

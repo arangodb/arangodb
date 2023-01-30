@@ -96,7 +96,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
       server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(
           extendedNames,
-          std::string_view(splittedAnalyzerName.second.c_str(),
+          std::string_view(splittedAnalyzerName.second.data(),
                            splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -108,7 +108,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second,
                                                   _vocbase.name());
 
-  irs::string_ref type;
+  std::string_view type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
 
   if (!typeSlice.isString()) {
@@ -128,7 +128,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   if (properties.isString()) {  // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
     propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(
-        string_ref.c_str(), string_ref.size());
+        string_ref.data(), string_ref.size());
     properties = propertiesFromStringBuilder->slice();
   }
 
@@ -355,7 +355,7 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
   bool extendedNames =
       server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames, std::string_view(name.c_str(), name.size()))) {
+          extendedNames, std::string_view(name.data(), name.size()))) {
     generateError(
         arangodb::Result(TRI_ERROR_BAD_PARAMETER,
                          std::string("Invalid characters in analyzer name '")

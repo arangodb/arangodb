@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"
@@ -36,7 +38,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -85,7 +86,7 @@ class QueryStringTerm : public QueryTest {
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -121,9 +122,9 @@ class QueryStringTerm : public QueryTest {
   void queryTests() {
     // ArangoDB specific string comparer
     struct StringComparer {
-      bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+      bool operator()(std::string_view lhs, std::string_view rhs) const {
         return arangodb::basics::VelocyPackHelper::compareStringValues(
-                   lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                   lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
       }
     };
 
@@ -147,7 +148,7 @@ class QueryStringTerm : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -189,7 +190,7 @@ class QueryStringTerm : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -233,7 +234,7 @@ class QueryStringTerm : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -285,7 +286,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -308,7 +309,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -332,7 +333,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -356,7 +357,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -374,7 +375,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -393,14 +394,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name == 'A', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -432,7 +433,7 @@ class QueryStringTerm : public QueryTest {
 
     // d.same == 'same', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -469,7 +470,7 @@ class QueryStringTerm : public QueryTest {
 
     // d.same == 'same', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -508,7 +509,7 @@ class QueryStringTerm : public QueryTest {
 
     // d.duplicated == 'abcd', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
                        {"K", _insertedDocs[10]}, {"U", _insertedDocs[20]},
@@ -542,7 +543,7 @@ class QueryStringTerm : public QueryTest {
 
     // d.duplicated == 'abcd', name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
@@ -583,7 +584,7 @@ class QueryStringTerm : public QueryTest {
 
     // d.duplicated == 'abcd', TFIDF() ASC, name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
@@ -660,7 +661,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -684,7 +685,7 @@ class QueryStringTerm : public QueryTest {
 
     // expression, d.duplicated == 'abcd', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
                        {"K", _insertedDocs[10]}, {"U", _insertedDocs[20]},
@@ -720,7 +721,7 @@ class QueryStringTerm : public QueryTest {
 
     // expression+variable, d.duplicated == 'abcd', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
                        {"K", _insertedDocs[10]}, {"U", _insertedDocs[20]},
@@ -756,7 +757,7 @@ class QueryStringTerm : public QueryTest {
 
     // expression+variable, d.duplicated == 'abcd', unordered, LIMIT 2
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}, {"E", _insertedDocs[4]}};
 
@@ -791,7 +792,7 @@ class QueryStringTerm : public QueryTest {
 
     // expression, d.duplicated == 'abcd', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]},  {"E", _insertedDocs[4]},
                        {"K", _insertedDocs[10]}, {"U", _insertedDocs[20]},
@@ -828,7 +829,7 @@ class QueryStringTerm : public QueryTest {
     // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN
     // i)[0].name), unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -876,7 +877,7 @@ class QueryStringTerm : public QueryTest {
     // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN
     // i)[0].name), unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -925,7 +926,7 @@ class QueryStringTerm : public QueryTest {
 
     // invalid type, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -962,7 +963,7 @@ class QueryStringTerm : public QueryTest {
 
     // invalid type, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1034,7 +1035,7 @@ class QueryStringTerm : public QueryTest {
 
     // missing term, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1083,14 +1084,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // existing unique term, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1129,7 +1130,7 @@ class QueryStringTerm : public QueryTest {
 
     // existing unique term, unordered (not all documents contain field)
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
 
@@ -1242,7 +1243,7 @@ class QueryStringTerm : public QueryTest {
 
     // expression: invalid type, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1351,7 +1352,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1369,7 +1370,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1387,14 +1388,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name < 'H', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1446,7 +1447,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1506,7 +1507,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1524,7 +1525,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1542,14 +1543,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name <= 'H', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1657,7 +1658,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1675,7 +1676,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1693,14 +1694,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name > 'H', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1808,7 +1809,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1826,7 +1827,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1844,14 +1845,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name >= 'H', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1963,7 +1964,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1982,7 +1983,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2001,14 +2002,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name > 'H' AND d.name < 'S', unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -2140,7 +2141,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2159,7 +2160,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2178,14 +2179,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name >= 'H' AND d.name < 'S' , unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -2315,7 +2316,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2334,7 +2335,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2353,14 +2354,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name >= 'H' AND d.name <= 'S' , unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -2490,7 +2491,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2509,7 +2510,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2528,14 +2529,14 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
 
     // d.name >= 'H' AND d.name <= 'S' , unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -2820,13 +2821,13 @@ class QueryStringTermView : public QueryStringTerm {
       "links": {
         "collection_1": {
           "includeAllFields": true,
-          "version": %u },
+          "version": $0 },
         "collection_2": {
-          "version": %u,
+          "version": $1,
           "includeAllFields": true }
     }})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
           static_cast<uint32_t>(linkVersion()));
 

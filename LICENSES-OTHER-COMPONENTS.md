@@ -16,8 +16,8 @@
 ### Abseil - C++ Common Libraries
 
 * Name: abseil-cpp
-* Version: 7f850b3167fb38e6b4a9ce1824e6fabd733b5d62
-* Date: 2022-02-18
+* Version: 13708db87b1ab69f4f2b3214f3f51e986546f282
+* Date: 2022-11-22
 * Project Home: https://abseil.io
 * License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE
 * License Name: Apache License 2.0
@@ -359,10 +359,10 @@ _Enterprise Edition only_
 ### immer
 
 * Name: immer
-* Version: 0.7.0
-* Date: 2021-11-08 17:27:00 UTC
+* Version: 0.8.0
+* Date: 2022-12-06 11:30 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.8.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc
@@ -464,8 +464,8 @@ _Enterprise Edition only_
 ### S2 Geometry Library
 
 * Name: s2geometry
-* Version: dfefe0c
-* Date: 2018-11-29 15:49:17Z
+* Version: ce14f45ae0b6c28e3f47cbcf6646d988d41046b5
+* Date: 2023-01-04
 * Project Home: https://s2geometry.io/
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/s2geometry/dfefe0c/LICENSE
 * License Name: Apache License 2.0

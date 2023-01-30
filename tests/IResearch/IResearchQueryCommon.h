@@ -30,7 +30,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -274,7 +274,7 @@ class QueryTest : public IResearchQueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view{testResourceDir};
       resource /= std::string_view{"simple_sequential.json"};
       auto builder =
@@ -439,8 +439,7 @@ class QueryTest : public IResearchQueryTest {
     return it.size() == expectedCount && errorCount == 0;
   }
 
-  TRI_vocbase_t _vocbase{TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                         testDBInfo(server.server())};
+  TRI_vocbase_t _vocbase{testDBInfo(server.server())};
   std::vector<velocypack::Builder> _insertedDocs;
 
  private:

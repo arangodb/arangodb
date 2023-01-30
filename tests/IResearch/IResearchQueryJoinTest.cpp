@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <regex>
 
 #include "Aql/OptimizerRule.h"
@@ -233,7 +235,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -256,7 +258,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -332,7 +334,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -359,7 +361,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 

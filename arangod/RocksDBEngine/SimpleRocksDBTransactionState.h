@@ -65,12 +65,14 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
 
   uint64_t numOperations() const noexcept override;
 
+  uint64_t numPrimitiveOperations() const noexcept override;
+
   bool ensureSnapshot() override;
 
   rocksdb::SequenceNumber beginSeq() const override;
 
   /// @brief only called on replication2 follower
-  virtual arangodb::Result triggerIntermediateCommit() override;
+  arangodb::Result triggerIntermediateCommit() override;
 
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;

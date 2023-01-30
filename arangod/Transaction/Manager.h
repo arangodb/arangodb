@@ -277,6 +277,7 @@ class Manager final : public IManager {
   static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
 
   bool transactionIdExists(TransactionId const& tid) const;
+
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);

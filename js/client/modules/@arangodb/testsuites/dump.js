@@ -369,6 +369,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let retryCount = 0;
     do {
       this.results.restore = this.arangorestore();
+      if (!this.instanceManager.checkInstanceAlive()) {
+        this.results.failed = true;
+        return false;
+      }
       if (this.results.restore.exitCode === 38) {
         retryCount += 1;
         if (retryCount === 21) {
@@ -1002,41 +1006,20 @@ function hotBackup (options) {
   return helper.extractResults();
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
   testFns['dump'] = dump;
-  defaultFns.push('dump');
-
   testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
-  defaultFns.push('dump_mixed_cluster_single');
-
   testFns['dump_mixed_single_cluster'] = dumpMixedSingleCluster;
-  defaultFns.push('dump_mixed_single_cluster');
-
   testFns['dump_authentication'] = dumpAuthentication;
-  defaultFns.push('dump_authentication');
-  
   testFns['dump_jwt'] = dumpJwt;
-  defaultFns.push('dump_jwt');
-
   testFns['dump_encrypted'] = dumpEncrypted;
-  defaultFns.push('dump_encrypted');
-
   testFns['dump_maskings'] = dumpMaskings;
-  defaultFns.push('dump_maskings');
-
   testFns['dump_multiple'] = dumpMultiple;
-  defaultFns.push('dump_multiple');
-
   testFns['dump_no_envelope'] = dumpNoEnvelope;
-  defaultFns.push('dump_no_envelope');
-
   testFns['dump_with_crashes'] = dumpWithCrashes;
-  defaultFns.push('dump_with_crashes');
-
   testFns['hot_backup'] = hotBackup;
-  defaultFns.push('hot_backup');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

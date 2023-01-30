@@ -29,9 +29,10 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(
+std::string_view columnCompressionToString(
     irs::type_info::type_id type) noexcept;
-irs::type_info::type_id columnCompressionFromString(irs::string_ref c) noexcept;
+irs::type_info::type_id columnCompressionFromString(
+    std::string_view c) noexcept;
 irs::type_info::type_id getDefaultCompression() noexcept;
 }  // namespace iresearch
 }  // namespace arangodb

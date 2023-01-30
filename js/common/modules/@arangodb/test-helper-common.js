@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global arango, db */
+/*global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -28,11 +28,44 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const fs = require('fs');
 
 let instanceInfo = null;
+
+exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
+  try {
+    db._executeTransaction(trx);
+  } catch (ex) {
+    if ((!abortArangoshOnly || global.arango) &&  // only on arangosh...
+      (ex instanceof arangodb.ArangoError) && // only regular arango errors has the subsequent:
+      (ex.errorNum === errorCode) && // check for right error code
+      (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
+      if (crashOnSuccess) {
+        internal.debugTerminate('crashing server');
+      }
+      return 0;
+    }
+    console.log(ex);
+  }
+  return 1;
+};
+
+exports.truncateFailure = function (collection) {
+  try {
+    collection.truncate();
+    return 1;
+  } catch (ex) {
+    if (!ex instanceof arangodb.ArangoError ||
+      ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
+      throw ex;
+    }
+  }
+  internal.debugTerminate('crashing server');
+};
 
 function getInstanceInfo() {
   if (instanceInfo === null) {
@@ -87,8 +120,8 @@ exports.getEndpointsByType = function (type) {
 
   const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+    .map(toEndpoint)
+    .map(endpointToURL);
 };
 
 exports.Helper = {
@@ -110,56 +143,56 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist =
   for (let testcase in deriveFrom) {
     let targetTestCase = testcase + namespace;
     if (testcase === "setUp" ||
-        testcase === "tearDown" ||
-        testcase === "setUpAll" ||
-        testcase === "tearDownAll" ||
-        testcase === "internal") {
+      testcase === "tearDown" ||
+      testcase === "setUpAll" ||
+      testcase === "tearDownAll" ||
+      testcase === "internal") {
       targetTestCase = testcase;
     }
-    if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)){
+    if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)) {
       continue;
     }
 
     if (deriveTo.hasOwnProperty(targetTestCase)) {
-      throw("Duplicate testname - deriveTo already has the property " + targetTestCase);
+      throw ("Duplicate testname - deriveTo already has the property " + targetTestCase);
     }
     deriveTo[targetTestCase] = deriveFrom[testcase];
   }
 };
 
 exports.deriveTestSuiteWithnamespace = function (deriveFrom, deriveTo, namespace) {
-    let rc = {};
-    for (let testcase in deriveTo) {
-	let targetTestCase = testcase + namespace;
-	if (testcase === "setUp" ||
-            testcase === "tearDown" ||
-            testcase === "setUpAll" ||
-            testcase === "tearDownAll") {
-	    targetTestCase = testcase;
-	}
-	if (rc.hasOwnProperty(targetTestCase)) {
-	    throw("Duplicate testname - rc already has the property " + targetTestCase);
-	}
-	rc[targetTestCase] = deriveTo[testcase];
+  let rc = {};
+  for (let testcase in deriveTo) {
+    let targetTestCase = testcase + namespace;
+    if (testcase === "setUp" ||
+      testcase === "tearDown" ||
+      testcase === "setUpAll" ||
+      testcase === "tearDownAll") {
+      targetTestCase = testcase;
     }
+    if (rc.hasOwnProperty(targetTestCase)) {
+      throw ("Duplicate testname - rc already has the property " + targetTestCase);
+    }
+    rc[targetTestCase] = deriveTo[testcase];
+  }
 
-    for (let testcase in deriveFrom) {
-	let targetTestCase = testcase + namespace;
-	if (testcase === "setUp" ||
-            testcase === "tearDown" ||
-            testcase === "setUpAll" ||
-            testcase === "tearDownAll") {
-	    targetTestCase = testcase;
-	}
-	if (rc.hasOwnProperty(targetTestCase)) {
-	    throw("Duplicate testname - rc already has the property " + targetTestCase);
-	}
-	rc[targetTestCase] = deriveFrom[testcase];
+  for (let testcase in deriveFrom) {
+    let targetTestCase = testcase + namespace;
+    if (testcase === "setUp" ||
+      testcase === "tearDown" ||
+      testcase === "setUpAll" ||
+      testcase === "tearDownAll") {
+      targetTestCase = testcase;
     }
-    return rc;
+    if (rc.hasOwnProperty(targetTestCase)) {
+      throw ("Duplicate testname - rc already has the property " + targetTestCase);
+    }
+    rc[targetTestCase] = deriveFrom[testcase];
+  }
+  return rc;
 };
 
-exports.typeName = function  (value) {
+exports.typeName = function (value) {
   if (value === null) {
     return 'null';
   }
@@ -188,7 +221,7 @@ exports.typeName = function  (value) {
   throw 'unknown variable type';
 };
 
-exports.isEqual = function(lhs, rhs) {
+exports.isEqual = function (lhs, rhs) {
   var ltype = exports.typeName(lhs), rtype = exports.typeName(rhs), i;
 
   if (ltype !== rtype) {
@@ -251,11 +284,11 @@ let decodeTable = [
   -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, -1, -1, -1,  //  16 - 31
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, 0,  -1, -1,  //  32 - 47
+  -1, -1, -1, -1, -1, 0, -1, -1,  //  32 - 47
   54, 55, 56, 57, 58, 59, 60, 61,
   62, 63, -1, -1, -1, -1, -1, -1,  //  48 - 63
-  -1, 2,  3,  4,  5,  6,  7,  8,
-  9,  10, 11, 12, 13, 14, 15, 16,  //  64 - 79
+  -1, 2, 3, 4, 5, 6, 7, 8,
+  9, 10, 11, 12, 13, 14, 15, 16,  //  64 - 79
   17, 18, 19, 20, 21, 22, 23, 24,
   25, 26, 27, -1, -1, -1, -1, 1,  //  80 - 95
   -1, 28, 29, 30, 31, 32, 33, 34,
@@ -280,7 +313,7 @@ let decodeTable = [
   -1, -1, -1, -1, -1, -1, -1, -1   // 240 - 255
 ];
 
-let decode = function(value) {
+let decode = function (value) {
   let result = 0;
   if (value !== '0') {
     for (var i = 0, n = value.length; i < n; ++i) {
@@ -316,7 +349,7 @@ exports.compareStringIds = function (l, r) {
 
 exports.endpointToURL = (endpoint) => {
   let protocol = endpoint.split('://')[0];
-  switch(protocol) {
+  switch (protocol) {
     case 'ssl':
       return 'https://' + endpoint.substr(6);
     case 'tcp':
@@ -327,5 +360,24 @@ exports.endpointToURL = (endpoint) => {
         return 'http://' + endpoint;
       }
       return 'http' + endpoint.substr(pos);
+  }
+};
+
+exports.checkIndexMetrics = (checkFunction) => {
+  var isMetricsArrived = false;
+  var timeToWait = 100;
+  while (!isMetricsArrived) {
+    try {
+      checkFunction();
+      isMetricsArrived = true;
+    } catch (err) {
+      isMetricsArrived = false;
+      if (timeToWait > 0) {
+        require("internal").sleep(2);
+        timeToWait = timeToWait - 2;
+      } else {
+        throw err;
+      }
+    }
   }
 };

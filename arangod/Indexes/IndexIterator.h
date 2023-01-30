@@ -51,7 +51,11 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <cstdint>
+#include <functional>
 #include <string_view>
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-common.h>
 
 namespace arangodb {
 class Index;
@@ -88,8 +92,6 @@ class IndexIteratorCoveringData {
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
-  friend class MultiIndexIterator;
-
  public:
   class SliceCoveringData final : public IndexIteratorCoveringData {
    public:
@@ -248,6 +250,18 @@ class IndexIterator {
     return false;
   }
 
+  [[nodiscard]] bool rearm(velocypack::Slice slice,
+                           IndexIteratorOptions const& opts) {
+    TRI_ASSERT(canRearm());
+    // intentionally do not reset cache statistics here.
+    _hasMore = true;
+    if (rearmImpl(slice, opts)) {
+      reset();
+      return true;
+    }
+    return false;
+  }
+
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
   ///        afterwards Check hasMore()==true before using this NOTE: This will
@@ -270,13 +284,14 @@ class IndexIterator {
   [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
   getAndResetCacheStats() noexcept;
 
-  void setResetInternals() noexcept { _resetInternals = true; }
-
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
   virtual bool rearmImpl(arangodb::aql::AstNode const* node,
                          arangodb::aql::Variable const* variable,
+                         IndexIteratorOptions const& opts);
+
+  virtual bool rearmImpl(velocypack::Slice slice,
                          IndexIteratorOptions const& opts);
 
   virtual bool nextImpl(LocalDocumentIdCallback const& callback,
@@ -317,7 +332,6 @@ class IndexIterator {
   std::uint64_t _cacheMisses;
 
   bool _hasMore;
-  bool _resetInternals;
 
  private:
   ReadOwnWrites const _readOwnWrites;
@@ -348,48 +362,6 @@ class EmptyIndexIterator final : public IndexIterator {
   void resetImpl() override { _hasMore = false; }
 
   void skipImpl(uint64_t /*count*/, uint64_t& skipped) override { skipped = 0; }
-};
-
-/// @brief a wrapper class to iterate over several IndexIterators.
-///        Each iterator is requested at the index itself.
-///        This iterator does NOT check for uniqueness.
-///        Will always start with the first iterator in the vector. Reverse them
-///        outside if necessary.
-class MultiIndexIterator final : public IndexIterator {
- public:
-  MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                     arangodb::Index const* index,
-                     std::vector<std::unique_ptr<IndexIterator>> iterators)
-      : IndexIterator(collection, trx, ReadOwnWrites::no),
-        _iterators(std::move(iterators)),
-        _currentIdx(0),
-        _current(_iterators.empty() ? nullptr : _iterators[0].get()) {}
-
-  ~MultiIndexIterator() = default;
-
-  std::string_view typeName() const noexcept override {
-    return "multi-index-iterator";
-  }
-
-  /// @brief Get the next elements
-  ///        If one iterator is exhausted, the next one is used.
-  ///        If callback is called less than limit many times
-  ///        all iterators are exhausted
-  bool nextImpl(LocalDocumentIdCallback const& callback,
-                uint64_t limit) override;
-  bool nextDocumentImpl(DocumentCallback const& callback,
-                        uint64_t limit) override;
-  bool nextCoveringImpl(CoveringCallback const& callback,
-                        uint64_t limit) override;
-
-  /// @brief Reset the cursor
-  ///        This will reset ALL internal iterators and start all over again
-  void resetImpl() override;
-
- private:
-  std::vector<std::unique_ptr<IndexIterator>> _iterators;
-  size_t _currentIdx;
-  IndexIterator* _current;
 };
 
 /// Options for creating an index iterator

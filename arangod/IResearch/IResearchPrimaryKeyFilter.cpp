@@ -23,87 +23,55 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchPrimaryKeyFilter.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
+#include "Basics/DownCast.h"
 
 #include "index/index_reader.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
-namespace {
-
-struct typeDefault {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "::typeDefault";
-  }
-};
-
-struct typeRecovery {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "::typeRecovery";
-  }
-};
-
-}  // namespace
-
 namespace arangodb {
 namespace iresearch {
 
-irs::doc_id_t getRemovalBoundary(irs::sub_reader const&, irs::doc_id_t, bool);
+irs::doc_id_t getRemovalBoundary(irs::SubReader const&, irs::doc_id_t, bool);
 #ifndef USE_ENTERPRISE
-FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::sub_reader const&,
-                                              irs::doc_id_t doc, bool) {
+IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
+                                                  irs::doc_id_t doc, bool) {
   return doc;
 }
 #endif
+
+PrimaryKeyFilter::PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept
+    : irs::filter{irs::type<PrimaryKeyFilter>::get()},
+      _pk{DocumentPrimaryKey::encode(value)},
+      _nested{nested} {}
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::ExecutionContext const& ctx) const {
   // re-execution of a fiter is not expected to ever
   // occur without a call to prepare(...)
-  TRI_ASSERT(!_pkSeen);
+  TRI_ASSERT(!irs::doc_limits::valid(_pkIterator.value()));
   auto& segment = ctx.segment;
 
   auto* pkField = segment.field(DocumentPrimaryKey::PK());
 
-  if (!pkField) {
+  if (IRS_UNLIKELY(!pkField)) {
     // no such field
     return irs::doc_iterator::empty();
   }
-
-  auto term = pkField->iterator(irs::SeekMode::RANDOM_ONLY);
 
   auto const pkRef =
       irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
           _pk);
 
-  if (!term->seek(pkRef)) {
+  irs::doc_id_t doc{irs::doc_limits::eof()};
+  pkField->read_documents(pkRef, {&doc, 1});
+
+  if (irs::doc_limits::eof(doc)) {
     // no such term
     return irs::doc_iterator::empty();
   }
 
-  // must not match removed docs
-  auto docs = ctx.segment.mask(term->postings(irs::IndexFeatures::NONE));
-
-  if (!docs->next()) {
-    return irs::doc_iterator::empty();
-  }
-
-  const auto doc = docs->value();
   _pkIterator.reset(getRemovalBoundary(segment, doc, _nested), doc);
-
-  // optimization, since during:
-  // * regular runtime should have at most 1 identical live primary key in the
-  // entire datastore
-  // * recovery should have at most 2 identical live primary keys in the entire
-  // datastore
-  if (irs::filter::type() == irs::type<typeDefault>::id()) {
-    // primary key duplicates should NOT happen in
-    // the same segment in regular runtime
-    TRI_ASSERT(!docs->next());
-    // already matched 1 primary key (should be at most 1 at runtime)
-    _pkSeen = true;
-  }
 
   return irs::memory::to_managed<irs::doc_iterator, false>(
       const_cast<PrimaryKeyIterator*>(&_pkIterator));
@@ -119,32 +87,25 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& /*index*/, irs::Order const& /*ord*/,
+    irs::IndexReader const& /*index*/, irs::Order const& /*ord*/,
     irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
-  // optimization, since during:
-  // * regular runtime should have at most 1 identical primary key in the entire
-  // datastore
-  // * recovery should have at most 2 identical primary keys in the entire
-  // datastore
-  if (_pkSeen) {
-    return irs::filter::prepared::empty();  // already processed
+  // optimization, since during regular runtime should have at most 1 identical
+  // primary key in the entire datastore
+  if (!irs::doc_limits::valid(_pkIterator.value())) {
+    return irs::memory::to_managed<const irs::filter::prepared, false>(this);
   }
 
-  return irs::memory::to_managed<const irs::filter::prepared, false>(this);
+  // already processed
+  return irs::filter::prepared::empty();
 }
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   return filter::equals(rhs) &&
-         _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
-}
-
-/*static*/ irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
-  return engine.inRecovery() ? irs::type<typeRecovery>::get()
-                             : irs::type<typeDefault>::get();
+         _pk == basics::downCast<PrimaryKeyFilter>(rhs)._pk;
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
+    irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
     irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }

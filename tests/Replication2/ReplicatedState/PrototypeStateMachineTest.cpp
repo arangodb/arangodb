@@ -140,7 +140,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -153,7 +153,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
@@ -200,7 +200,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -213,7 +213,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
@@ -246,7 +246,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     auto result = leaderState->set(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
     index = result.get().value;
-    ASSERT_EQ(index, 2);
+    ASSERT_EQ(index, 2U);
   }
 
   // Single get
@@ -270,7 +270,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     follower->runAllAsyncAppendEntries();
     ASSERT_TRUE(result.isReady());
     index = result.get().value;
-    ASSERT_EQ(index, 3);
+    ASSERT_EQ(index, 3U);
   }
 
   // Getting multiple entries
@@ -278,13 +278,13 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     std::vector<std::string> entries = {"foo1", "foo2", "foo3", "nofoo"};
     std::unordered_map<std::string, std::string> result =
         leaderState->get(entries, LogIndex{index}).get().get();
-    ASSERT_EQ(result.size(), 3);
+    ASSERT_EQ(result.size(), 3U);
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
     ASSERT_EQ(result["foo3"], "bar3");
 
     result = followerState->get(entries, LogIndex{index}).get().get();
-    ASSERT_EQ(result.size(), 3);
+    ASSERT_EQ(result.size(), 3U);
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
     ASSERT_EQ(result["foo3"], "bar3");
@@ -296,7 +296,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     follower->runAllAsyncAppendEntries();
     ASSERT_TRUE(result.isReady());
     index = result.get().value;
-    ASSERT_EQ(index, 4);
+    ASSERT_EQ(index, 4U);
     ASSERT_EQ(leaderState->get("foo1", LogIndex{index}).get().get(),
               std::nullopt);
   }
@@ -308,7 +308,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     follower->runAllAsyncAppendEntries();
     ASSERT_TRUE(result.isReady());
     index = result.get().value;
-    ASSERT_EQ(index, 5);
+    ASSERT_EQ(index, 5U);
     ASSERT_EQ(leaderState->get("foo2", LogIndex{index}).get().get(),
               std::nullopt);
     ASSERT_EQ(leaderState->get("foo3", LogIndex{index}).get().get(), "bar3");
@@ -327,7 +327,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     follower->runAllAsyncAppendEntries();
     ASSERT_TRUE(result.isReady());
     index = result.get().get().value;
-    ASSERT_EQ(index, 6);
+    ASSERT_EQ(index, 6U);
   }
 
   // Check final state
@@ -357,7 +357,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -370,7 +370,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(

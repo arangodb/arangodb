@@ -546,7 +546,13 @@ auto inspect(Inspector& f, MyStringEnum& x) {
   return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
                                  MyStringEnum::kValue2, "value2");
 }
+}  // namespace
 
+template<>
+struct fmt::formatter<MyStringEnum>
+    : arangodb::inspection::inspection_formatter {};
+
+namespace {
 enum class MyIntEnum {
   kValue1,
   kValue2,

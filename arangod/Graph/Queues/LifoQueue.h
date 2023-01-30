@@ -74,7 +74,7 @@ class LifoQueue {
   }
 
   bool firstIsVertexFetched() const {
-    if (not isEmpty()) {
+    if (!isEmpty()) {
       auto const& first = _queue.front();
       return first.vertexFetched();
     }
@@ -105,6 +105,13 @@ class LifoQueue {
     }
 
     return steps;
+  }
+
+  Step const& peek() const {
+    // Currently only implemented and used in WeightedQueue
+    TRI_ASSERT(false);
+    auto const& first = _queue.front();
+    return first;
   }
 
   Step pop() {

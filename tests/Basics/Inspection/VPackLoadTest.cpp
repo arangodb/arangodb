@@ -25,6 +25,7 @@
 
 #include <velocypack/Builder.h>
 
+#include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
 
 #include "InspectionTestHelper.h"

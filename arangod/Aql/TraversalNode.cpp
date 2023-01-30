@@ -513,7 +513,7 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       nodes.add(VPackValue("variables"));
       VPackArrayBuilder postFilterVariablesGuard(&nodes);
       for (auto const& var : _postFilterVariables) {
-        var->toVelocyPack(nodes);
+        var->toVelocyPack(nodes, Variable::WithConstantValue{});
       }
     }
   }
@@ -779,7 +779,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           filterConditionVariables,
           opts->collectionToShard(),
           opts->getVertexProjections(),
-          opts->getEdgeProjections()};
+          opts->getEdgeProjections(),
+          opts->produceVertices()};
 }
 
 /// @brief creates corresponding ExecutionBlock

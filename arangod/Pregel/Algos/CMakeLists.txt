@@ -1,5 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  AsyncSCC.cpp
   ConnectedComponents.cpp
   HITS.cpp
   HITSKleinberg.cpp
@@ -11,7 +10,8 @@ target_sources(arango_pregel PRIVATE
   SLPA.cpp
   SSSP.cpp
   ShortestPath.cpp
-  WCC.cpp)
+  WCC.cpp
+  ColorPropagation.cpp)
 
 if (USE_MAINTAINER_MODE)
   target_sources(arango_pregel PRIVATE
@@ -20,4 +20,3 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
-add_subdirectory(AIR)

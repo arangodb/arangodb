@@ -28,14 +28,18 @@
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -288,6 +292,26 @@ void RocksDBTransactionCollection::trackIndexInsert(IndexId iid,
 void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
                                                     uint64_t hash) {
   _trackedIndexOperations[iid].removals.emplace_back(hash);
+}
+
+void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
+                                                         std::string_view key) {
+  _trackedCacheRefills[iid].emplace_back(key.data(), key.size());
+}
+
+void RocksDBTransactionCollection::handleIndexCacheRefills() {
+  if (_trackedCacheRefills.empty()) {
+    return;
+  }
+
+  auto& refiller = _collection->vocbase()
+                       .server()
+                       .getFeature<RocksDBIndexCacheRefillFeature>();
+
+  for (auto const& it : _trackedCacheRefills) {
+    refiller.trackRefill(_collection, it.first, std::move(it.second));
+  }
+  _trackedCacheRefills.clear();
 }
 
 /// @brief lock a collection

@@ -63,7 +63,8 @@ namespace arangodb {
 template<bool isUnique = false>
 class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
-  RocksDBZkdIndexIterator(LogicalCollection* collection,
+  RocksDBZkdIndexIterator(ResourceMonitor& monitor,
+                          LogicalCollection* collection,
                           RocksDBZkdIndexBase* index, transaction::Methods* trx,
                           zkd::byte_string min, zkd::byte_string max,
                           std::size_t dim, ReadOwnWrites readOwnWrites,
@@ -475,9 +476,9 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 
 Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   const LocalDocumentId& documentId,
+                                   LocalDocumentId const& documentId,
                                    velocypack::Slice doc,
-                                   const OperationOptions& options,
+                                   OperationOptions const& options,
                                    bool performChecks) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
@@ -500,8 +501,9 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
 
 Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   const LocalDocumentId& documentId,
-                                   velocypack::Slice doc) {
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice doc,
+                                   OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
@@ -554,32 +556,32 @@ aql::AstNode* RocksDBZkdIndexBase::specializeCondition(
 }
 
 std::unique_ptr<IndexIterator> RocksDBZkdIndexBase::iteratorForCondition(
-    transaction::Methods* trx, const aql::AstNode* node,
-    const aql::Variable* reference, const IndexIteratorOptions& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    const aql::AstNode* node, const aql::Variable* reference,
+    const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites, int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
-      &_collection, this, trx, std::move(min), std::move(max), fields().size(),
-      readOwnWrites, opts.lookahead);
+      monitor, &_collection, this, trx, std::move(min), std::move(max),
+      fields().size(), readOwnWrites, opts.lookahead);
 }
 
 std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
-    transaction::Methods* trx, const aql::AstNode* node,
-    const aql::Variable* reference, const IndexIteratorOptions& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    const aql::AstNode* node, const aql::Variable* reference,
+    const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites, int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(
-      &_collection, this, trx, std::move(min), std::move(max), fields().size(),
-      readOwnWrites, opts.lookahead);
+      monitor, &_collection, this, trx, std::move(min), std::move(max),
+      fields().size(), readOwnWrites, opts.lookahead);
 }
 
 Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     const LocalDocumentId& documentId,
+                                     LocalDocumentId const& documentId,
                                      velocypack::Slice doc,
-                                     const OperationOptions& options,
+                                     OperationOptions const& options,
                                      bool performChecks) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
@@ -612,8 +614,9 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
 
 Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     const LocalDocumentId& documentId,
-                                     velocypack::Slice doc) {
+                                     LocalDocumentId const& documentId,
+                                     velocypack::Slice doc,
+                                     OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 

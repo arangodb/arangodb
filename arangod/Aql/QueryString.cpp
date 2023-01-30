@@ -23,17 +23,13 @@
 
 #include "QueryString.h"
 
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
 
 using namespace arangodb::aql;
 
-void QueryString::append(std::string& out) const {
-  if (empty()) {
-    return;
-  }
-  out.append(_queryString);
-}
+void QueryString::append(std::string& out) const { out.append(_queryString); }
 
 std::string QueryString::extract(size_t maxLength) const {
   if (size() <= maxLength) {
@@ -53,7 +49,7 @@ std::string QueryString::extract(size_t maxLength) const {
     }
     --length;
 
-    // start of a multi-byte sequence
+    // part of a multi-byte sequence
     if ((c & 192) == 192) {
       // decrease length by one more, so the string contains the
       // last part of the previous (multi-byte?) sequence
@@ -62,9 +58,11 @@ std::string QueryString::extract(size_t maxLength) const {
   }
 
   std::string result;
-  result.reserve(length + 3);
+  result.reserve(length + 15);
   result.append(data(), length);
-  result.append("...", 3);
+  result.append("... (", 5);
+  basics::StringUtils::itoa(size() - length, result);
+  result.append(")", 1);
   return result;
 }
 

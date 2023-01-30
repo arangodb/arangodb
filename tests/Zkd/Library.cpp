@@ -21,12 +21,14 @@
 /// @author Tobias Gödderz
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <utility>
 #include <vector>
 #include <functional>
-
+#include <algorithm>
 #include "Zkd/ZkdHelper.h"
 
 #include <rocksdb/comparator.h>

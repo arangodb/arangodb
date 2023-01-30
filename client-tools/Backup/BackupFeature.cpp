@@ -37,6 +37,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -717,22 +719,22 @@ void BackupFeature::collectOptions(
 
   options->addOption(
       "--operation",
-      "operation to perform (may be specified as positional "
-      "argument without '--operation')",
+      "The operation to perform (may be specified as positional "
+      "argument without '--operation').",
       new DiscreteValuesParameter<StringParameter>(&_options.operation,
                                                    ::Operations),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--allow-inconsistent",
-      "whether to attempt to continue in face of errors; "
-      "may result in inconsistent backup state (create operation)",
+      "Whether to attempt to continue in face of errors; "
+      "may result in inconsistent backup state (create operation).",
       new BooleanParameter(&_options.allowInconsistent));
 
   options->addOption(
       "--ignore-version",
-      "ignore stored version of a backup. "
-      "Restore may not work if versions mismatch (restore operation)",
+      "Ignore stored version of a backup. "
+      "Restore may not work if versions mismatch (restore operation).",
       new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
@@ -742,59 +744,59 @@ void BackupFeature::collectOptions(
 
   options->addOption(
       "--label",
-      "an additional label to add to the backup identifier (create operation)",
+      "An additional label to add to the backup identifier (create operation)-",
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait in seconds to acquire a lock on "
-                     "all necessary resources (create operation)",
+                     "The maximum time to wait (in seconds) to acquire a lock "
+                     "on all necessary resources (create operation).",
                      new DoubleParameter(&_options.maxWaitForLock));
 
   options->addOption(
       "--max-wait-for-restart",
-      "maximum time to wait in seconds for the server to restart after a "
-      "restore operation before reporting an error; if zero, arangobackup will "
-      "not wait to check that the server restarts and will simply return the "
-      "result of the restore request (restore operation)",
+      "The maximum time to wait (in seconds) for the server to restart after a "
+      "restore operation before reporting an error; if zero, arangobackup does "
+      "not wait to check that the server restarts and simply returns the "
+      "result of the restore request (restore operation).",
       new DoubleParameter(&_options.maxWaitForRestart));
 
 #ifdef USE_ENTERPRISE
   options->addOption(
       "--status-id",
-      "returns the status of a transfer process "
-      "(upload/download operation)",
+      "Return the status of a transfer process "
+      "(upload/download operation).",
       new StringParameter(&_options.statusId),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
                                           arangodb::options::Flags::Command));
 
   options->addOption("--rclone-config-file",
-                     "filename of the Rclone configuration file used for"
-                     "file transfer (upload/download operation)",
+                     "A path to the rclone configuration file to use for"
+                     "file transfer (upload/download operation).",
                      new StringParameter(&_options.rcloneConfigFile),
                      arangodb::options::makeDefaultFlags(
                          arangodb::options::Flags::Enterprise));
 
   options->addOption("--remote-path",
-                     "remote Rclone path of directory used to store or "
-                     "receive backups (upload/download operation)",
+                     "The remote rclone path of a directory to use to store or "
+                     "receive backups (upload/download operation).",
                      new StringParameter(&_options.remoteDirectory),
                      arangodb::options::makeDefaultFlags(
                          arangodb::options::Flags::Enterprise));
 
   options->addOption(
       "--abort",
-      "abort transfer with given status-id "
-      "(upload/download operation)",
+      "Abort the transfer with the given status-id "
+      "(upload/download operation).",
       new BooleanParameter(&_options.abort),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--force",
-      "abort transactions if needed to ensure a consistent snapshot. "
+      "Abort transactions if needed to ensure a consistent snapshot. "
       "This option can destroy the atomicity of your transactions in the "
       "presence of intermediate commits! Use it with great care and only "
-      "if you really need a consistent backup at all costs (create operation)",
+      "if you really need a consistent backup at all costs (create operation).",
       new BooleanParameter(&_options.abortTransactionsIfNeeded),
       arangodb::options::makeDefaultFlags(
           arangodb::options::Flags::Enterprise));

@@ -153,6 +153,11 @@ uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
   return _rocksMethods->numOperations();
 }
 
+uint64_t ReplicatedRocksDBTransactionCollection::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
   return _rocksMethods->ensureSnapshot();
 }
@@ -227,13 +232,19 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
         kIntermediateCommit;
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
-    return leader
-        ->replicateOperation(velocypack::SharedSlice{}, operation,
-                             _transaction->id(), options)
-        .thenValue([state = _transaction->shared_from_this(),
-                    this](auto&& res) -> Result {
-          return _rocksMethods->triggerIntermediateCommit();
-        });
+    try {
+      return leader
+          ->replicateOperation(velocypack::SharedSlice{}, operation,
+                               _transaction->id(), options)
+          .thenValue([state = _transaction->shared_from_this(),
+                      this](auto&& res) -> Result {
+            return _rocksMethods->triggerIntermediateCommit();
+          });
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.what()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
   }
   return Result{};
 }

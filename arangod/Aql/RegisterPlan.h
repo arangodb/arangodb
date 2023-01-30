@@ -28,10 +28,10 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Aql/VarInfoMap.h"
 
 #include <memory>
 #include <stack>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -48,7 +48,7 @@ struct Variable;
 
 /// @brief static analysis, walker class and information collector
 struct VarInfo {
-  unsigned int depth;
+  unsigned int depth{0};
   RegisterId registerId;
 
   VarInfo() = default;
@@ -112,7 +112,7 @@ struct RegisterPlanT final
   // although they are stored here in the node:
 
   // map VariableIds to their depth and registerId:
-  std::unordered_map<VariableId, VarInfo> varInfo;
+  aql::VarInfoMap varInfo;
 
   // number of variables in this and all outer frames together,
   // the entry with index i here is always the sum of all values

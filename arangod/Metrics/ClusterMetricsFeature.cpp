@@ -53,7 +53,7 @@ void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout in seconds",
+                  "Cluster metrics polling timeout (in seconds).",
                   new options::UInt32Parameter(&_timeout),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -125,9 +125,13 @@ std::optional<std::string> ClusterMetricsFeature::update(
 
 void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
   TRI_ASSERT(_timeout > 0);
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::DELAYED_FUTURE, std::chrono::milliseconds{timeoutMs},
-      [this](bool canceled) noexcept {
+      "metrics-reschedule-timer", RequestLane::DELAYED_FUTURE,
+      std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
         }
@@ -138,9 +142,13 @@ void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
 }
 
 void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_INTERNAL, std::chrono::milliseconds{timeoutMs},
-      [this](bool canceled) noexcept {
+      "metrics-reschedule-update", RequestLane::CLUSTER_INTERNAL,
+      std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
         }

@@ -52,7 +52,7 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption) {
+function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
@@ -128,14 +128,47 @@ function runArangodRecovery (params, useEncryption) {
   
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = params.crashLog;
-  process.env["isAsan"] = params.options.isAsan;
+  process.env["isSan"] = params.options.isSan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
     params.options,
-    'recovery',
+    false,
     params.instance.rootDir,
-    !params.setup && params.options.coreCheck);
+    !params.setup && params.options.coreCheck,
+    0,
+    params.instanceInfo);
+  if (params.setup) {
+    const hasSignal = params.instanceInfo.exitStatus.hasOwnProperty('signal');
+    const hasExitZero = !hasSignal && params.instanceInfo.exitStatus.exit === 0;
+    const hasExitOne = !hasSignal && params.instanceInfo.exitStatus.exit === 1;
+    if (exitFailOk) {
+      if (!hasExitOne) {
+        return {
+          status: false,
+          timeout: false,
+          message: `setup of test didn't exit 1 as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+        };
+      }
+    } else if (exitSuccessOk) {
+      if (!hasExitZero) {
+        return {
+          status: false,
+          timeout: false,
+          message: `setup of test didn't exit success as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+        };
+      }
+    } else if (!hasSignal) {
+      return {
+        status: false,
+        timeout: false,
+        message: `setup of test didn't crash as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+      };
+    }
+  }
+  return {
+    status: true
+  };
 }
 
 function recovery (options) {
@@ -166,7 +199,6 @@ function recovery (options) {
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
-
   let count = 0;
 
   let tmpMgr = new tmpDirMmgr('recovery', options);
@@ -179,6 +211,8 @@ function recovery (options) {
       count += 1;
       let iteration = 0;
       let stateFile = fs.getTempFile();
+      let exitSuccessOk = test.indexOf('-exitzero') >= 0;
+      let exitFailOk = test.indexOf('-exitone') >= 0;
 
       while (true) {
         ++iteration;
@@ -204,8 +238,12 @@ function recovery (options) {
           params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
           fs.makeDirectory(params.keyDir);
         }
-        runArangodRecovery(params, useEncryption);
-
+        let res = runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
+        if (!res.status) {
+          results[test] = res;
+          break;
+        }
+          
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
         params.options.disableMonitor = options.disableMonitor;
@@ -218,7 +256,7 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
-        runArangodRecovery(params, useEncryption);
+        runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
@@ -259,6 +297,7 @@ function recovery (options) {
           if (params.keyDir !== "") {
             fs.removeDirectoryRecursive(params.keyDir, true);
           }
+          params.instance.cleanup();
         }
         break;
       }
@@ -283,7 +322,7 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

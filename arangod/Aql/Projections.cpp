@@ -34,6 +34,7 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
+#include <iostream>
 
 namespace {
 
@@ -42,54 +43,20 @@ constexpr std::string_view projectionsKey("projections");
 
 }  // namespace
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
-Projections::Projections() {}
+Projections::Projections() = default;
 
-Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths) {
-  _projections.reserve(paths.size());
-  for (auto& path : paths) {
-    if (path.empty()) {
-      // ignore all completely empty paths
-      continue;
-    }
-
-    // categorize the projection, based on the attribute name.
-    // we do this here only once in order to not do expensive string
-    // comparisons at runtime later
-    arangodb::aql::AttributeNamePath::Type type = path.type();
-    // take over the projection
-    _projections.emplace_back(
-        Projection{std::move(path), kNoCoveringIndexPosition, 0, type});
-  }
-
-  TRI_ASSERT(_projections.size() <= paths.size());
-
-  init();
+Projections::Projections(std::vector<AttributeNamePath> paths) {
+  init(std::move(paths));
 }
 
-Projections::Projections(
-    std::unordered_set<arangodb::aql::AttributeNamePath> const& paths) {
-  _projections.reserve(paths.size());
-  for (auto& path : paths) {
-    if (path.empty()) {
-      // ignore all completely empty paths
-      continue;
-    }
+Projections::Projections(std::unordered_set<AttributeNamePath> paths) {
+  init(std::move(paths));
+}
 
-    // categorize the projection, based on the attribute name.
-    // we do this here only once in order to not do expensive string
-    // comparisons at runtime later
-    arangodb::aql::AttributeNamePath::Type type = path.type();
-    // take over the projection
-    _projections.emplace_back(
-        Projection{std::move(path), kNoCoveringIndexPosition, 0, type});
-  }
-
-  TRI_ASSERT(_projections.size() <= paths.size());
-
-  init();
+Projections::Projections(containers::FlatHashSet<AttributeNamePath> paths) {
+  init(std::move(paths));
 }
 
 bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
@@ -103,8 +70,8 @@ void Projections::clear() noexcept {
 }
 
 /// @brief set the index context for projections using an index
-void Projections::setCoveringContext(
-    DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
+void Projections::setCoveringContext(DataSourceId const& id,
+                                     std::shared_ptr<Index> const& index) {
   _datasourceId = id;
   _index = index;
 }
@@ -115,7 +82,7 @@ bool Projections::contains(Projection const& other) const noexcept {
 }
 
 /// @brief checks if we have a single attribute projection on the attribute
-bool Projections::isSingle(std::string const& attribute) const noexcept {
+bool Projections::isSingle(std::string_view attribute) const noexcept {
   return _projections.size() == 1 && _projections[0].path[0] == attribute;
 }
 
@@ -136,10 +103,12 @@ uint16_t Projections::coveringIndexPosition(
 }
 
 void Projections::toVelocyPackFromDocument(
-    arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+    velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr) const {
   TRI_ASSERT(b.isOpenObject());
   TRI_ASSERT(slice.isObject());
+
+  size_t levelsOpen = 0;
 
   // the single-attribute projections are easy. we dispatch here based on the
   // attribute type there are a few optimized functions for retrieving _key,
@@ -147,24 +116,29 @@ void Projections::toVelocyPackFromDocument(
   for (auto const& it : _projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {
       // projection for "_id"
+      TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(
                             trxPtr->resolver(), slice, slice)));
 
     } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
       // projection for "_key"
+      TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], transaction::helpers::extractKeyFromDocument(slice));
     } else if (it.type == AttributeNamePath::Type::FromAttribute) {
       // projection for "_from"
+      TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], transaction::helpers::extractFromFromDocument(slice));
     } else if (it.type == AttributeNamePath::Type::ToAttribute) {
       // projection for "_to"
+      TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], transaction::helpers::extractToFromDocument(slice));
     } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
       // projection for any other top-level attribute
+      TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
       VPackSlice found = slice.get(it.path.path[0]);
       if (found.isNone()) {
@@ -180,63 +154,59 @@ void Projections::toVelocyPackFromDocument(
       // multiple sub-objects, e.g. a projection on the sub-attribute a.b.c
       // needs to build
       //   { a: { b: { c: valueOfC } } }
-      // when we get here it is guaranteed that there will be no projections for
-      // sub-attributes with the same prefix, e.g. a.b.c and a.x.y. This would
-      // complicate the logic here even further, so it is not supported.
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
       TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
       TRI_ASSERT(it.path.size() > 1);
-      size_t level = 0;
-      VPackSlice found = slice;
-      VPackSlice prev;
-      size_t const n = it.path.size();
-      while (level < n) {
-        // look up attribute/sub-attribute
-        found = found.get(it.path[level]);
 
-        if (found.isNone()) {
-          // not found. we can exit early
-          b.add(it.path[level], VPackValue(VPackValueType::Null));
+      VPackSlice found = slice;
+      VPackSlice prev = found;
+      size_t level = 0;
+      while (level < it.path.size()) {
+        found = found.get(it.path[level]);
+        if (found.isNone() || level == it.path.size() - 1 ||
+            !found.isObject()) {
           break;
         }
-        if (level < n - 1 && !found.isObject()) {
-          // we would to recurse into a sub-attribute, but what we found
-          // is no object... that means we can already stop here.
-          b.add(it.path[level], VPackValue(VPackValueType::Null));
-          break;
+        if (level >= levelsOpen) {
+          b.add(it.path[level], VPackValue(VPackValueType::Object));
+          ++levelsOpen;
         }
-        if (level == n - 1) {
-          // target value
-          if (found.isCustom()) {
-            b.add(it.path[level],
-                  VPackValue(transaction::helpers::extractIdString(
-                      trxPtr->resolver(), found, prev)));
-          } else {
-            b.add(it.path[level], found);
-          }
-          break;
-        }
-        // recurse into sub-attribute object
-        TRI_ASSERT(level < n - 1);
-        b.add(it.path[level], VPackValue(VPackValueType::Object));
         ++level;
         prev = found;
       }
+      if (level >= it.startsAtLevel) {
+        if (found.isCustom()) {
+          b.add(it.path[level],
+                VPackValue(transaction::helpers::extractIdString(
+                    trxPtr->resolver(), found, prev)));
+        } else {
+          if (found.isNone()) {
+            found = VPackSlice::nullSlice();
+          }
+          b.add(it.path[level], found);
+        }
+      }
 
-      // close all that we opened ourselves, so that the next projection can
-      // again start at the top level
-      while (level-- > 0) {
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
         b.close();
+        --levelsOpen;
       }
     }
   }
+
+  TRI_ASSERT(levelsOpen == 0);
 }
 
 /// @brief projections from a covering index
 void Projections::toVelocyPackFromIndex(
-    arangodb::velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
     transaction::Methods const* trxPtr) const {
   TRI_ASSERT(_index != nullptr);
   TRI_ASSERT(b.isOpenObject());
+
+  size_t levelsOpen = 0;
 
   bool const isArray = covering.isArray();
   for (auto const& it : _projections) {
@@ -254,20 +224,38 @@ void Projections::toVelocyPackFromIndex(
       if (found.isNone()) {
         found = VPackSlice::nullSlice();
       }
+
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+      size_t level = 0;
       size_t const n =
           std::min(it.path.size(), static_cast<size_t>(it.coveringIndexCutoff));
-      TRI_ASSERT(n > 0);
-      for (size_t i = 0; i < n - 1; ++i) {
-        b.add(it.path[i], VPackValue(VPackValueType::Object));
+      while (level < n) {
+        if (level == n - 1) {
+          break;
+        }
+        if (level >= levelsOpen) {
+          b.add(it.path[level], VPackValue(VPackValueType::Object));
+          ++levelsOpen;
+        }
+        ++level;
       }
-      b.add(it.path[n - 1], found);
-      for (size_t i = 0; i < n - 1; ++i) {
+      if (level >= it.startsAtLevel) {
+        b.add(it.path[level], found);
+      }
+
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
         b.close();
+        --levelsOpen;
       }
     } else {
       // no array Slice... this case will be triggered for indexes that
       // contain simple string values, such as the primary index or the
       // edge index
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+
       auto slice = covering.value();
       if (it.type == AttributeNamePath::Type::IdAttribute) {
         b.add(it.path[0], VPackValue(transaction::helpers::makeIdFromParts(
@@ -280,13 +268,15 @@ void Projections::toVelocyPackFromIndex(
       }
     }
   }
+
+  TRI_ASSERT(levelsOpen == 0);
 }
 
-void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
+void Projections::toVelocyPack(velocypack::Builder& b) const {
   toVelocyPack(b, ::projectionsKey);
 }
 
-void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
+void Projections::toVelocyPack(velocypack::Builder& b,
                                std::string_view key) const {
   b.add(key, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
@@ -307,24 +297,22 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
   b.close();
 }
 
-/*static*/ Projections Projections::fromVelocyPack(
-    arangodb::velocypack::Slice slice) {
+/*static*/ Projections Projections::fromVelocyPack(velocypack::Slice slice) {
   return fromVelocyPack(slice, ::projectionsKey);
 }
 
-/*static*/ Projections Projections::fromVelocyPack(
-    arangodb::velocypack::Slice slice, std::string_view key) {
-  std::vector<arangodb::aql::AttributeNamePath> projections;
+/*static*/ Projections Projections::fromVelocyPack(velocypack::Slice slice,
+                                                   std::string_view key) {
+  std::vector<AttributeNamePath> projections;
 
   VPackSlice p = slice.get(key);
   if (p.isArray()) {
-    for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
+    for (auto const& it : velocypack::ArrayIterator(p)) {
       if (it.isString()) {
-        projections.emplace_back(
-            arangodb::aql::AttributeNamePath(it.copyString()));
+        projections.emplace_back(AttributeNamePath(it.copyString()));
       } else if (it.isArray()) {
-        arangodb::aql::AttributeNamePath path;
-        for (auto const& it2 : arangodb::velocypack::ArrayIterator(it)) {
+        AttributeNamePath path;
+        for (auto const& it2 : velocypack::ArrayIterator(it)) {
           path.path.emplace_back(it2.copyString());
         }
         projections.emplace_back(std::move(path));
@@ -332,11 +320,37 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
     }
   }
 
-  return arangodb::aql::Projections(std::move(projections));
+  return Projections(std::move(projections));
 }
 
 /// @brief shared init function
-void Projections::init() {
+template<typename T>
+void Projections::init(T paths) {
+  _projections.reserve(paths.size());
+  for (auto& path : paths) {
+    if (path.empty()) {
+      // ignore all completely empty paths
+      continue;
+    }
+
+    // categorize the projection, based on the attribute name.
+    // we do this here only once in order to not do expensive string
+    // comparisons at runtime later
+    AttributeNamePath::Type type = path.type();
+    size_t length = path.size();
+    if (length >= std::numeric_limits<uint16_t>::max()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "attribute path too long for projection");
+    }
+    // take over the projection
+    _projections.emplace_back(
+        Projection{std::move(path), kNoCoveringIndexPosition,
+                   /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
+                   /*levelsToClose*/ static_cast<uint16_t>(length - 1), type});
+  }
+
+  TRI_ASSERT(_projections.size() <= paths.size());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // validate that no projection contains an empty attribute
   std::for_each(_projections.begin(), _projections.end(),
@@ -344,7 +358,7 @@ void Projections::init() {
 #endif
 
   if (_projections.size() <= 1) {
-    return;
+    //    return;
   }
 
   // sort projections by attribute path, so we have similar prefixes next to
@@ -359,74 +373,57 @@ void Projections::init() {
   std::sort(
       _projections.begin(), _projections.end(),
       [](auto const& lhs, auto const& rhs) { return lhs.path < rhs.path; });
-
-  removeSharedPrefixes();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // make sure all our projections are for distinct top-level attributes.
-  // we currently don't support multiple projections for the same top-level
-  // attribute, e.g. a.b.c and a.x.y.
-  // this would complicate the logic for attribute extraction considerably,
-  // so in this case we will just have combined the two projections into a
-  // single projection on attribute a before.
-  for (auto it = _projections.begin(); it != _projections.end(); ++it) {
-    // we expect all our projections to not have any common prefixes,
-    // because that would immensely complicate the logic inside the
-    // actual projection data extraction functions
-    auto const& current = (*it).path;
-    // this is a quadratic algorithm (:gut:), but it is only activated
-    // as a safety check in maintainer mode, plus we are guaranteed to have
-    // at most five projections right now
-    auto it2 = std::find_if(_projections.begin(), _projections.end(),
-                            [&current](auto const& other) {
-                              return other.path[0] == current.path[0] &&
-                                     other.path.size() != current.path.size();
-                            });
-    TRI_ASSERT(it2 == _projections.end());
-  }
-
-  // validate that no projection contains an empty attribute
-  std::for_each(_projections.begin(), _projections.end(),
-                [](auto const& it) { TRI_ASSERT(!it.path.empty()); });
-#endif
+  handleSharedPrefixes();
 }
 
-/// @brief clean up projections, so that there are no 2 projections with a
-/// shared prefix
-void Projections::removeSharedPrefixes() {
-  TRI_ASSERT(_projections.size() >= 2);
-
+/// @brief clean up projections, so that there are no 2 projections where one
+/// is a true prefix of another. also sets level attributes
+void Projections::handleSharedPrefixes() {
+  size_t levelsOpen = 0;
   auto current = _projections.begin();
 
   while (current != _projections.end()) {
     auto next = current + 1;
+
+    (*current).startsAtLevel = static_cast<uint16_t>(levelsOpen);
+    size_t const currentLength = (*current).path.size();
+    TRI_ASSERT(currentLength >= 1);
+
     if (next == _projections.end()) {
       // done
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
       break;
     }
 
     size_t commonPrefixLength =
-        arangodb::aql::AttributeNamePath::commonPrefixLength((*current).path,
-                                                             (*next).path);
+        AttributeNamePath::commonPrefixLength((*current).path, (*next).path);
     if (commonPrefixLength > 0) {
-      // common prefix detected. now remove the longer of the paths
-      if ((*current).path.size() > (*next).path.size()) {
-        // shorten the other attribute to the shard prefix length
-        (*next).path.shortenTo(commonPrefixLength);
-        (*next).type = (*next).path.type();
-        // current already adjusted
-        current = _projections.erase(current);
-      } else {
+      if (commonPrefixLength == currentLength &&
+          currentLength == (*next).path.size()) {
+        // both projections are exactly identical. remove the second one
         TRI_ASSERT(current != next);
-        (*current).path.shortenTo(commonPrefixLength);
-        (*current).type = (*current).path.type();
         _projections.erase(next);
         // don't move current forward here
+        continue;
+      } else if (commonPrefixLength == currentLength &&
+                 currentLength < (*next).path.size()) {
+        // current is a true prefix of next
+        TRI_ASSERT(current != next);
+        _projections.erase(next);
+        // don't move current forward here
+        continue;
       }
+
+      TRI_ASSERT(currentLength - commonPrefixLength >= 1);
+      (*current).levelsToClose =
+          static_cast<uint16_t>(currentLength - commonPrefixLength - 1);
+      levelsOpen = commonPrefixLength;
     } else {
-      ++current;
-      // move to next element
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
+      levelsOpen = 0;
     }
+    ++current;
+    // move to next element
   }
 }
 
@@ -440,5 +437,35 @@ Projections::Projection& Projections::operator[](size_t index) {
   return _projections[index];
 }
 
-}  // namespace aql
-}  // namespace arangodb
+std::vector<Projections::Projection> const& Projections::projections()
+    const noexcept {
+  return _projections;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         Projections::Projection const& projection) {
+  stream << projection.path;
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, Projections const& projections) {
+  stream << "[ ";
+  size_t i = 0;
+  for (auto const& it : projections.projections()) {
+    if (i++ != 0) {
+      stream << ", ";
+    }
+    stream << it;
+  }
+  stream << " ]";
+  return stream;
+}
+
+template void Projections::init<std::vector<AttributeNamePath>>(
+    std::vector<AttributeNamePath> paths);
+template void Projections::init<std::unordered_set<AttributeNamePath>>(
+    std::unordered_set<AttributeNamePath> paths);
+template void Projections::init<containers::FlatHashSet<AttributeNamePath>>(
+    containers::FlatHashSet<AttributeNamePath> paths);
+
+}  // namespace arangodb::aql

@@ -881,6 +881,7 @@
         }
         assertEqual(figures.numDocs, 5001);
         assertEqual(figures.numLiveDocs, 5001);
+        assertEqual(figures.numPrimaryDocs, 5001);
         assertTrue(figures.numSegments >= 1);
         assertTrue(figures.numFiles >= 7);
         assertTrue(figures.indexSize > 0);

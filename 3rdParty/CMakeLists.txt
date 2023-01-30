@@ -26,34 +26,16 @@ endif ()
 ################################################################################
 
 UpdateModule(${GIT_EXECUTABLE} "gtest" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-
-set(GOOGLETEST_ROOT 3rdParty/gtest/googletest CACHE STRING "Google Test source root")
-set(GOOGLEMOCK_ROOT 3rdParty/gtest/googlemock CACHE STRING "Google Mock source root")
-
-set(GTEST_SOURCES
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/src/gmock-all.cc
-        )
-
-foreach(_source ${GTEST_SOURCES})
-  set_source_files_properties(${_source} PROPERTIES GENERATED 1)
-endforeach()
-
-add_library(gtest ${GTEST_SOURCES})
-target_include_directories(gtest
-        PUBLIC
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}
-        )
+set(INSTALL_GTEST "OFF")
+set(BUILD_GMOCK "ON")
+add_subdirectory(gtest)
 
 ################################################################################
 ## ZLIB
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.13)
+add_subdirectory(zlib/zlib-1.2.13)
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 
@@ -77,7 +59,7 @@ function (add_snappy)
     set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
     set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
     set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
-    add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+    add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
@@ -88,7 +70,7 @@ set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 ################################################################################
 
 if (USE_LIBUNWIND)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libunwind)
+  add_subdirectory(libunwind)
   include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
   set(LIBUNWIND_HOME "${LIBUNWIND_HOME}" PARENT_SCOPE)
   set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
@@ -99,7 +81,7 @@ endif ()
 ################################################################################
 
 if (USE_JEMALLOC)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  add_subdirectory(jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
@@ -121,7 +103,7 @@ set(V8_VERSION
   )
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
+add_subdirectory(V8)
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
@@ -134,21 +116,23 @@ set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 ## Google Abseil
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "abseil-cpp" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+set(ABSL_PROPAGATE_CXX_STD ON)
+
 add_subdirectory(abseil-cpp)
-set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## Google S2
 ################################################################################
 
 add_subdirectory(s2geometry)
-set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## BOOST
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+add_subdirectory(boost)
 set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 ################################################################################
@@ -162,7 +146,7 @@ set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 
-add_subdirectory(velocypack EXCLUDE_FROM_ALL)
+add_subdirectory(velocypack)
 
 ################################################################################
 ## IResearch
@@ -171,7 +155,7 @@ add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
-  IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
+  IMPORTED_LOCATION "boost_system;boost_thread"
 )
 
 # explicitly set since suppressing Boost search
@@ -226,9 +210,7 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
   configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
 endforeach()
 
-add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
-unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
-unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
+add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
 
 ################################################################################
 ## ROCKSDB
@@ -236,7 +218,7 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb EXCLUDE_FROM_ALL)
+add_subdirectory(rocksdb)
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb)
@@ -262,18 +244,18 @@ target_include_directories(llhttp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/llhttp/inc
 ## NGHTTP2
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
+add_subdirectory(nghttp2)
 
 ################################################################################
 ## IMMER
 ################################################################################
 
-set(IMMER_VERSION "0.7.0")
+UpdateModule(${GIT_EXECUTABLE} "immer" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
 set(immer_BUILD_EXAMPLES    OFF CACHE BOOL "don't build examples")
 set(immer_BUILD_EXTRAS    OFF CACHE BOOL "don't build extras")
 set(immer_BUILD_TESTS OFF CACHE BOOL "don't build tests")
 set(immer_BUILD_DOCS OFF CACHE BOOL "don't docs")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+add_subdirectory(immer)
 
 ################################################################################
 ## DATE
@@ -287,9 +269,9 @@ target_include_directories(date_interface SYSTEM INTERFACE ${CMAKE_CURRENT_SOURC
 ################################################################################
 
 add_library(linenoise-ng STATIC
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp)
+  linenoise-ng/src/ConvertUTF.cpp
+  linenoise-ng/src/linenoise.cpp
+  linenoise-ng/src/wcwidth.cpp)
 
 target_include_directories(linenoise-ng SYSTEM PUBLIC
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
@@ -298,7 +280,7 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
 ## fmt
 ################################################################################
 UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
+add_subdirectory(fmt)
 
 ################################################################################
 ## LINK_DIRECTORIES
@@ -345,8 +327,8 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
 set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
-add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
-add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)
+add_subdirectory(taocpp-json)
+add_subdirectory(json-schema-validation)
 
 
 ################################################################################

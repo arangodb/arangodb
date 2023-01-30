@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Pregel/Conductor/Messages.h"
+#include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/AIR/AIR.h"
-#include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
@@ -43,6 +43,7 @@
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
 #endif
+#include "Pregel/Algos/ColorPropagation.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -66,8 +67,6 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::ConnectedComponents(server, userParams);
   } else if (algorithm == "scc") {
     return new algos::SCC(server, userParams);
-  } else if (algorithm == "asyncscc") {
-    return new algos::AsyncSCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
   } else if (algorithm == "hitskleinberg") {
@@ -80,16 +79,15 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if (algorithm == "colorpropagation") {
+    return new algos::ColorPropagation(server, userParams);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
     return new algos::ReadWrite(server, userParams);
   }
 #endif
-  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return new algos::accumulators::ProgrammablePregelAlgorithm(server,
-                                                                userParams);
-  } else {
+  else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
@@ -97,91 +95,79 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
 }
 
 template<typename V, typename E, typename M>
-/*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackSlice body,
-    PregelFeature& feature) {
-  return std::make_shared<Worker<V, E, M>>(vocbase, algo, body, feature);
+std::shared_ptr<IWorker> AlgoRegistry::createWorker(
+    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
+    CreateWorker const& parameters, PregelFeature& feature) {
+  return std::make_shared<Worker<V, E, M>>(vocbase, algo, parameters, feature);
 }
 
-/*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, VPackSlice body, PregelFeature& feature) {
-  VPackSlice algoSlice = body.get(Utils::algorithmKey);
-
-  if (!algoSlice.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Supplied bad parameters to worker");
-  }
-
-  VPackSlice userParams = body.get(Utils::userParametersKey);
-  std::string algorithm = algoSlice.copyString();
+std::shared_ptr<IWorker> AlgoRegistry::createWorker(
+    TRI_vocbase_t& vocbase, CreateWorker const& parameters,
+    PregelFeature& feature) {
+  VPackSlice userParams = parameters.userParameters.slice();
+  std::string algorithm = parameters.algorithm;
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
                  ::tolower);
 
   auto& server = vocbase.server();
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(server, userParams),
-                        body, feature);
+                        parameters, feature);
   } else if (algorithm == "pagerank") {
-    return createWorker(vocbase, new algos::PageRank(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::PageRank(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "recoveringpagerank") {
     return createWorker(vocbase,
-                        new algos::RecoveringPageRank(server, userParams), body,
-                        feature);
+                        new algos::RecoveringPageRank(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "shortestpath") {
     return createWorker(vocbase,
                         new algos::ShortestPathAlgorithm(server, userParams),
-                        body, feature);
+                        parameters, feature);
   } else if (algorithm == "linerank") {
-    return createWorker(vocbase, new algos::LineRank(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::LineRank(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "effectivecloseness") {
     return createWorker(vocbase,
-                        new algos::EffectiveCloseness(server, userParams), body,
-                        feature);
+                        new algos::EffectiveCloseness(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "connectedcomponents") {
     return createWorker(vocbase,
                         new algos::ConnectedComponents(server, userParams),
-                        body, feature);
+                        parameters, feature);
   } else if (algorithm == "scc") {
-    return createWorker(vocbase, new algos::SCC(server, userParams), body,
-                        feature);
-  } else if (algorithm == "asyncscc") {
-    return createWorker(vocbase, new algos::AsyncSCC(server, userParams), body,
+    return createWorker(vocbase, new algos::SCC(server, userParams), parameters,
                         feature);
   } else if (algorithm == "hits") {
-    return createWorker(vocbase, new algos::HITS(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::HITS(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "hitskleinberg") {
     return createWorker(vocbase, new algos::HITSKleinberg(server, userParams),
-                        body, feature);
+                        parameters, feature);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase,
-                        new algos::LabelPropagation(server, userParams), body,
-                        feature);
+                        new algos::LabelPropagation(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "slpa") {
-    return createWorker(vocbase, new algos::SLPA(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::SLPA(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "dmid") {
-    return createWorker(vocbase, new algos::DMID(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::DMID(server, userParams),
+                        parameters, feature);
   } else if (algorithm == "wcc") {
-    return createWorker(vocbase, new algos::WCC(server, userParams), body,
+    return createWorker(vocbase, new algos::WCC(server, userParams), parameters,
                         feature);
+  } else if (algorithm == "colorpropagation") {
+    return createWorker(vocbase,
+                        new algos::ColorPropagation(server, userParams),
+                        parameters, feature);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
-    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
-                        feature);
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams),
+                        parameters, feature);
   }
 #endif
-  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return createWorker(vocbase,
-                        new algos::accumulators::ProgrammablePregelAlgorithm(
-                            server, userParams),
-                        body, feature);
-  }
-
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");
 }

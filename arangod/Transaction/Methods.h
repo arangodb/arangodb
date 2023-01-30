@@ -84,6 +84,7 @@ class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
 struct OperationResult;
+struct ResourceMonitor;
 class Result;
 class RevisionId;
 class TransactionId;
@@ -131,14 +132,17 @@ class Methods {
   typedef Result (*DataSourceRegistrationCallback)(
       LogicalDataSource& dataSource, Methods& trx);
 
+  enum class CallbacksTag {
+    StatusChange = 0,
+  };
+
   /// @brief definition from TransactionState::StatusChangeCallback
   /// @param status the new status of the transaction
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx,
-                             transaction::Status status)>
-      StatusChangeCallback;
+  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
+                                                  transaction::Status status)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -147,7 +151,7 @@ class Methods {
       DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
-  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @param callback nullptr and empty functors are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
   bool removeStatusChangeCallback(StatusChangeCallback const* callback);
@@ -364,14 +368,16 @@ class Methods {
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(
-      IndexHandle const&, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, IndexHandle const&,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      IndexIteratorOptions const&, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
+                                           std::string const& collectionName,
                                            CursorType cursorType,
                                            ReadOwnWrites readOwnWrites);
 
@@ -380,8 +386,7 @@ class Methods {
                                 AccessMode::Type) const;
 
   /// @brief fetch the LogicalCollection by name
-  arangodb::LogicalCollection* documentCollection(
-      std::string const& name) const;
+  arangodb::LogicalCollection* documentCollection(std::string_view name) const;
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
@@ -407,22 +412,22 @@ class Methods {
 
   Result triggerIntermediateCommit();
 
- private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
+  Result determineReplicationTypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  /// @brief return the transaction collection for a document collection
+  TransactionCollection* trxCollection(
+      DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
+
+ private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
-
-  /// @brief build a VPack object with _id, _key and _rev and possibly
-  /// oldRef (if given), the result is added to the builder in the
-  /// argument as a single object.
-  void buildDocumentIdentity(arangodb::LogicalCollection& collection,
-                             velocypack::Builder& builder, DataSourceId cid,
-                             std::string_view key, RevisionId rid,
-                             RevisionId oldRid,
-                             velocypack::Builder const* oldDoc,
-                             velocypack::Builder const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
@@ -441,18 +446,6 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result insertLocalHelper(LogicalCollection& collection,
-                           velocypack::Slice value, RevisionId& newRevisionId,
-                           velocypack::Builder& newDocumentBuilder,
-                           OperationOptions& options,
-                           BatchOptions& batchOptions);
-
-  Result determineReplicationTypeAndFollowers(
-      LogicalCollection& collection, std::string_view operationName,
-      velocypack::Slice value, OperationOptions& options,
-      ReplicationType& replicationType,
-      std::shared_ptr<std::vector<ServerID> const>& followers);
-
   Result determineReplication1TypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
       velocypack::Slice value, OperationOptions& options,
@@ -465,9 +458,6 @@ class Methods {
       ReplicationType& replicationType,
       std::shared_ptr<std::vector<ServerID> const>& followers);
 
-  void trackWaitForSync(LogicalCollection& collection,
-                        OperationOptions& options);
-
   Future<OperationResult> modifyCoordinator(
       std::string const& collectionName, VPackSlice newValue,
       OperationOptions const& options, TRI_voc_document_operation_e operation,
@@ -477,13 +467,6 @@ class Methods {
                                       VPackSlice newValue,
                                       OperationOptions& options, bool isUpdate);
 
-  Result modifyLocalHelper(
-      LogicalCollection& collection, velocypack::Slice value,
-      LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
-      velocypack::Slice previousDocument, RevisionId& newRevisionId,
-      velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-      BatchOptions& batchOptions, bool isUpdate);
-
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
                                             OperationOptions const& options,
@@ -492,13 +475,6 @@ class Methods {
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
                                       OperationOptions& options);
-
-  Result removeLocalHelper(LogicalCollection& collection,
-                           velocypack::Slice value,
-                           LocalDocumentId previousDocumentId,
-                           RevisionId previousRevisionId,
-                           velocypack::Slice previousDocument,
-                           OperationOptions& options);
 
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
@@ -556,12 +532,8 @@ class Methods {
                                      MethodsApi api)
       -> futures::Future<OperationResult>;
 
-  /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(
-      DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
-
-  TransactionCollection* trxCollection(
-      std::string const& name,
+      std::string_view name,
       AccessMode::Type type = AccessMode::Type::READ) const;
 
   futures::Future<OperationResult> countCoordinator(
@@ -583,6 +555,9 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
  private:
+  template<CallbacksTag tag, typename Callback>
+  [[nodiscard]] bool addCallbackImpl(Callback const* callback);
+
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 
@@ -591,6 +566,7 @@ class Methods {
 
   bool _mainTransaction;
 
+ public:
   Future<Result> replicateOperations(
       TransactionCollection& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,

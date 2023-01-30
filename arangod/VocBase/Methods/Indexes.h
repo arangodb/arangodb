@@ -61,7 +61,7 @@ struct Indexes {
                                       velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection* collection,
-                               velocypack::Slice const& indexArg);
+                               velocypack::Slice indexArg);
 
   static arangodb::Result extractHandle(LogicalCollection const* collection,
                                         CollectionNameResolver const* resolver,
@@ -70,16 +70,16 @@ struct Indexes {
 
  private:
   static arangodb::Result ensureIndexCoordinator(
-      LogicalCollection const* collection, velocypack::Slice const& indexDef,
+      LogicalCollection const* collection, velocypack::Slice indexDef,
       bool create, velocypack::Builder& resultBuilder);
 
 #ifdef USE_ENTERPRISE
   static arangodb::Result ensureIndexCoordinatorEE(
       arangodb::LogicalCollection const* collection,
-      arangodb::velocypack::Slice const slice, bool create,
+      arangodb::velocypack::Slice slice, bool create,
       arangodb::velocypack::Builder& resultBuilder);
   static arangodb::Result dropCoordinatorEE(
-      arangodb::LogicalCollection const* collection, IndexId const iid);
+      arangodb::LogicalCollection const* collection, IndexId iid);
 #endif
 };
 }  // namespace methods

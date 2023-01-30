@@ -38,7 +38,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/Logger.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace {

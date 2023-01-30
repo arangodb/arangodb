@@ -25,6 +25,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 #include "ProgramOptions/Parameters.h"
 
 #include <velocypack/Builder.h>
@@ -65,8 +66,13 @@ Option::Option(std::string const& value, std::string const& description,
 #endif
 }
 
-void Option::toVelocyPack(VPackBuilder& builder, bool detailed) const {
+void Option::toVelocyPack(velocypack::Builder& builder, bool detailed) const {
   parameter->toVelocyPack(builder, detailed);
+}
+
+bool Option::hasFlag(Flags flag) const {
+  return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
+         static_cast<std::underlying_type<Flags>::type>(flag);
 }
 
 // format a version string
@@ -98,6 +104,43 @@ std::string Option::toVersionString(
   return result;
 }
 
+// provide a detailed explanation of an option
+Option& Option::setLongDescription(std::string_view longDesc) noexcept {
+  longDescription = longDesc;
+  return *this;
+}
+
+// specifies in which version the option was introduced. version numbers
+// should be specified such as 30402 (version 3.4.2)
+// a version number of 0 means "unknown"
+Option& Option::setIntroducedIn(uint32_t version) {
+  introducedInVersions.push_back(version);
+  return *this;
+}
+
+// specifies in which version the option was deprecated. version numbers
+// should be specified such as 30402 (version 3.4.2)
+// a version number of 0 means "unknown"
+Option& Option::setDeprecatedIn(uint32_t version) {
+  deprecatedInVersions.push_back(version);
+  return *this;
+}
+
+// returns whether or not a long description was set
+bool Option::hasLongDescription() const noexcept {
+  return !longDescription.empty();
+}
+
+// returns whether or not we know in which version(s) an option was added
+bool Option::hasIntroducedIn() const noexcept {
+  return !introducedInVersions.empty();
+}
+
+// returns whether or not we know in which version(s) an option was added
+bool Option::hasDeprecatedIn() const noexcept {
+  return !deprecatedInVersions.empty();
+}
+
 // returns the version in which the option was introduced as a proper
 // version string - if the version is unknown this will return "-"
 std::string Option::introducedInString() const {
@@ -108,6 +151,17 @@ std::string Option::introducedInString() const {
 // version string - if the version is unknown this will return "-"
 std::string Option::deprecatedInString() const {
   return toVersionString(deprecatedInVersions);
+}
+
+// get display name for the option
+std::string Option::displayName() const { return "--" + fullName(); }
+
+// get full name for the option
+std::string Option::fullName() const {
+  if (section.empty()) {
+    return name;
+  }
+  return section + '.' + name;
 }
 
 // print help for an option
@@ -126,7 +180,7 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
       std::string description = parameter->description();
       if (!description.empty()) {
-        value.append(". ");
+        value.append("\n");
         value.append(description);
       }
 
@@ -149,6 +203,10 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
     }
   }
+}
+
+std::string Option::nameWithType() const {
+  return displayName() + " " + parameter->typeDescription();
 }
 
 // determine the width of an option help string
@@ -187,7 +245,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   // split at "."
   size_t pos = name.find('.');
   if (pos == std::string::npos) {
-    // global option
+    // general option
     section = "";
   } else {
     // section-specific option
@@ -195,30 +253,42 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
     name = name.substr(pos + 1);
   }
 
-  return std::make_pair(section, name);
+  return std::make_pair(std::move(section), std::move(name));
 }
 
 std::vector<std::string> Option::wordwrap(std::string const& value,
                                           size_t size) {
   std::vector<std::string> result;
-  std::string next = value;
+  std::string_view next = value;
 
-  if (size > 0) {
-    while (next.size() > size) {
-      size_t m = next.find_last_of("., ", size - 1);
-
-      if (m == std::string::npos || m < size / 2) {
-        m = size;
-      } else {
-        m += 1;
-      }
-
-      result.emplace_back(next.substr(0, m));
-      next = next.substr(m);
-    }
+  if (size == 0) {
+    size = value.size();
   }
 
-  result.emplace_back(next);
+  while (!next.empty()) {
+    size_t skip = 0;
+    size_t m = std::min(size, next.size());
+    TRI_ASSERT(m > 0);
+    size_t n = next.find_last_of("., ", m - 1);
+    if (n != std::string_view::npos && next.size() > size && n >= size / 2 &&
+        n + 1 <= size) {
+      m = n + 1;
+    }
+    n = next.find('\n');
+    if (n != std::string_view::npos && n < m) {
+      m = n;
+      skip = 1;
+    }
+
+    TRI_ASSERT(m <= size);
+    TRI_ASSERT(next.substr(0, m).find('\n') == std::string_view::npos);
+    result.emplace_back(next.data(), m);
+
+    if (m + skip >= next.size()) {
+      break;
+    }
+    next = next.substr(m + skip);
+  }
 
   return result;
 }

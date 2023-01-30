@@ -21,6 +21,8 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/IResearchViewNode.h"
@@ -726,12 +728,12 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
         ASSERT_TRUE(value);
         ASSERT_EQ(doc->value(), valReader->seek(doc->value()));
         if (1 == counter) {  // foo
-          EXPECT_TRUE(value->value.null());
+          EXPECT_TRUE(irs::IsNull(value->value));
           ++counter;
           continue;
         }
         size_t valueSize = value->value.size();
-        auto slice = VPackSlice(value->value.c_str());
+        auto slice = VPackSlice(value->value.data());
         switch (counter) {
           case 0: {
             ASSERT_TRUE(slice.isString());
@@ -887,12 +889,12 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
         ASSERT_TRUE(value);
         ASSERT_EQ(doc->value(), valReader->seek(doc->value()));
         if (1 == counter) {  // foo
-          EXPECT_TRUE(value->value.null());
+          EXPECT_TRUE(irs::IsNull(value->value));
           ++counter;
           continue;
         }
         size_t valueSize = value->value.size();
-        auto slice = VPackSlice(value->value.c_str());
+        auto slice = VPackSlice(value->value.data());
         switch (counter) {
           case 0: {
             ASSERT_TRUE(slice.isString());

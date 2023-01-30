@@ -239,36 +239,30 @@ struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {
 template<typename... Os>
 combined(Os...) -> combined<Os...>;
 
-}  // namespace arangodb::test::model_checker
+namespace detail {
 
-template<char... Chars>
+template<typename T, unsigned N>
 struct Str {
-  static constexpr char value[sizeof...(Chars)] = {Chars...};
+  constexpr Str(const T (&str)[N]) {
+    for (unsigned k = 0; k < N; k++) {
+      buffer[k] = str[k];
+    }
+  }
+  T buffer[N];
 };
 
-template<const char File[], typename>
-struct StringBuffer;
-template<const char File[], std::size_t... Idxs>
-struct StringBuffer<File, std::index_sequence<Idxs...>> {
-  using Data = Str<File[Idxs]...>;
-};
-
-template<const char File[], std::size_t FileLen, std::size_t Line>
+template<Str File, std::size_t Line>
 struct FileLineType {
-  static inline constexpr auto filename =
-      StringBuffer<File, std::make_index_sequence<FileLen>>::Data::value;
-  static inline constexpr std::size_t line = Line;
-
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}:{}", filename, line, message);
+    return fmt::format("{}:{}:{}", File.buffer, Line, message);
   }
 };
+}  // namespace detail
 
-#define MC_HERE                                                \
-  ([] {                                                        \
-    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
-    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
-  }())
+}  // namespace arangodb::test::model_checker
+
+#define MC_HERE \
+  (::arangodb::test::model_checker::detail::FileLineType<__FILE__, __LINE__>{})
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \

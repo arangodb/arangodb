@@ -23,32 +23,41 @@
 
 #pragma once
 
-#include <set>
-
-#include <velocypack/Builder.h>
-
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "StorageEngine/StorageEngine.h"  // consider just forward declaration
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
-#include <boost/container/flat_set.hpp>
+#include <functional>
+#include <memory>
+#include <set>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 
 class LocalDocumentId;
 class Index;
 class IndexIterator;
+class IndexesSnapshot;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
 
@@ -58,22 +67,18 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
-
-  // path to logical collection
-  virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
-  virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
+  virtual Result updateProperties(velocypack::Slice slice) = 0;
+
+  virtual RevisionId revision(transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual ErrorCode close() = 0;
-
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
+
+  void close();
 
   void drop();
 
@@ -89,17 +94,15 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
+  /// if allowUpdate is true, will potentially make a cluster-internal
+  /// roundtrip to fetch current values!
   virtual IndexEstMap clusterIndexEstimates(bool allowUpdating,
                                             TransactionId tid);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
-  virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-
-  bool hasIndexOfType(arangodb::Index::IndexType type) const;
+  virtual void prepareIndexes(velocypack::Slice indexesSlice);
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
@@ -120,12 +123,18 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indices
+  /// @brief get list of all indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
+
+  /// @brief get a snapshot of all indexes of the collection, with the read
+  /// lock on the list of indexes being held while the snapshot is active
+  IndexesSnapshot getIndexesSnapshot();
+
+  virtual Index* primaryIndex() const;
 
   void getIndexesVPack(
       velocypack::Builder&,
-      std::function<bool(arangodb::Index const*,
+      std::function<bool(Index const*,
                          std::underlying_type<Index::Serialize>::type&)> const&
           filter) const;
 
@@ -138,7 +147,7 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
                                              bool restore, bool& created) = 0;
 
-  virtual bool dropIndex(IndexId iid) = 0;
+  virtual Result dropIndex(IndexId iid);
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const = 0;
@@ -176,11 +185,23 @@ class PhysicalCollection {
                            std::pair<LocalDocumentId, RevisionId>&,
                            ReadOwnWrites readOwnWrites) const = 0;
 
+  virtual Result lookupKeyForUpdate(
+      transaction::Methods*, std::string_view,
+      std::pair<LocalDocumentId, RevisionId>&) const = 0;
+
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
+  virtual Result readFromSnapshot(transaction::Methods* trx,
+                                  LocalDocumentId const& token,
+                                  IndexIterator::DocumentCallback const& cb,
+                                  ReadOwnWrites readOwnWrites,
+                                  StorageSnapshot const& snapshot) const {
+    TRI_ASSERT(false);
+    return {TRI_ERROR_NOT_IMPLEMENTED};
+  }
+
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
@@ -191,37 +212,27 @@ class PhysicalCollection {
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
-                            ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
-
-  /**
-   * @brief Perform document insert, may generate a '_key' value
-   * If (options.returnNew == false && !options.silent) result might
-   * just contain an object with the '_key' field
-   */
-  virtual Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                        velocypack::Slice newDocument,
+  virtual Result insert(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId newDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,
                         RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
-  virtual Result replace(transaction::Methods& trx,
-                         LocalDocumentId newDocumentId,
-                         RevisionId previousRevisionId,
-                         velocypack::Slice previousDocument,
-                         RevisionId newRevisionId,
-                         velocypack::Slice newDocument,
-                         OperationOptions const& options) = 0;
+  virtual Result replace(
+      transaction::Methods& trx, IndexesSnapshot const& indexesSnapshot,
+      LocalDocumentId newDocumentId, RevisionId previousRevisionId,
+      velocypack::Slice previousDocument, RevisionId newRevisionId,
+      velocypack::Slice newDocument, OperationOptions const& options) = 0;
 
   virtual Result remove(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId previousDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,
@@ -240,11 +251,23 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
  protected:
-  PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
+  explicit PhysicalCollection(LogicalCollection& collection);
+
+  // callback that is called directly before the index is dropped.
+  // the write-lock on all indexes is still held. not called during
+  // reocvery!
+  virtual Result duringDropIndex(std::shared_ptr<Index> idx);
+
+  // callback that is called directly after the index has been dropped.
+  // no locks are held anymore.
+  virtual Result afterDropIndex(std::shared_ptr<Index> idx);
+
+  // callback that is called while adding a new index. called under
+  // indexes write-lock
+  virtual void duringAddIndex(std::shared_ptr<Index> idx);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(bool details,
-                               arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;
 
   LogicalCollection& _logicalCollection;
 

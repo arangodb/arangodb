@@ -28,7 +28,6 @@
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "Aql/Projections.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/HashedStringRef.h>
 
@@ -49,7 +48,6 @@ class Slice;
 
 namespace aql {
 struct AqlValue;
-class Projections;
 class QueryContext;
 class TraversalStats;
 }  // namespace aql
@@ -74,7 +72,7 @@ class RefactoredTraverserCache {
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap,
       arangodb::aql::Projections const& vertexProjections,
-      arangodb::aql::Projections const& edgeProjections);
+      arangodb::aql::Projections const& edgeProjections, bool produceVertices);
 
   ~RefactoredTraverserCache();
 
@@ -186,6 +184,9 @@ class RefactoredTraverserCache {
   std::unordered_map<std::string, std::vector<std::string>> const&
       _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
+
+  /// @brief whether or not to produce vertices
+  bool const _produceVertices;
 
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal

@@ -54,6 +54,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -779,7 +780,7 @@ void extractScorers(IResearchViewNode const& viewNode, DedupSearchFuncs& dedup,
               TRI_ERROR_BAD_PARAMETER,
               "Inaccesible non-ArangoSearch view variable '%s' is used in "
               "search function '%s'",
-              v->name.c_str(), funcName.c_str());
+              v->name.c_str(), funcName.data());
         }
       }
 
@@ -963,14 +964,11 @@ void lateDocumentMaterializationArangoSearchRule(
         TRI_ASSERT(ast);
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         TRI_ASSERT(localDocIdTmp);
-        auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        TRI_ASSERT(localColPtrTmp);
-        viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
+        viewNode.setLateMaterialized(*localDocIdTmp);
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeMultiNode>(
-                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp,
-                var));
+                plan.get(), plan->nextId(), *localDocIdTmp, var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
@@ -993,9 +991,9 @@ void handleConstrainedSortInView(Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  irs::Finally addPlan = [opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
-  });
+  };
 
   // cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
@@ -1033,9 +1031,9 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  irs::Finally addPlan = [opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
-  });
+  };
 
   // cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
@@ -1066,9 +1064,17 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node &&
-               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+
+    if (viewNode.isBuilding()) {
+      query.warnings().registerWarning(
+          TRI_ERROR_ARANGO_INCOMPLETE_READ,
+          absl::StrCat(
+              "ArangoSearch view '", viewNode.view()->name(),
+              "' building is in progress. Results can be incomplete."));
+    }
 
     if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away sort that follows the EnumerateView
@@ -1105,7 +1111,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
-          func.var->name.c_str(), funcName.c_str());
+          func.var->name.c_str(), funcName.data());
     }
   }
 }

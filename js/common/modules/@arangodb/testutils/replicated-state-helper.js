@@ -99,7 +99,7 @@ const replicatedStateDeleteTarget = function (database, logId) {
 
 const getLocalStatus = function (serverId, database, logId) {
   let url = LH.getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/replicated-state/${logId}/local-status`);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
   LH.checkRequestResult(res);
   return res.json.result;
 };
@@ -166,7 +166,7 @@ const getReplicatedStateLeaderTarget = function (database, logId) {
 const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
   const url = LH.getServerUrl(_.sample(LH.coordinators));
   const res = request.post(
-    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+    `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
   LH.checkRequestResult(res);
   const {json: {result}} = res;

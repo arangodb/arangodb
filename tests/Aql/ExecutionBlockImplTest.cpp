@@ -1570,7 +1570,7 @@ class ExecutionBlockImplExecuteIntegrationTest
 
     for (size_t i = 0; i < offset; ++i) {
       // The first have been skipped
-      expectedIt++;
+      ++expectedIt;
     }
     size_t limit = (std::min)(call.getLimit(),
                               static_cast<size_t>(expected.length()) - offset);
@@ -1584,7 +1584,7 @@ class ExecutionBlockImplExecuteIntegrationTest
             << "Expected: " << expectedIt.value().toJson()
             << " got: " << got.toJson() << " in row " << i << " and register "
             << testReg.value();
-        expectedIt++;
+        ++expectedIt;
       }
     } else {
       EXPECT_EQ(limit, 0);
@@ -2084,7 +2084,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
         EXPECT_EQ(state, ExecutionState::HASMORE);
       }
 
-      it++;
+      ++it;
     }
   }
 }  // namespace aql

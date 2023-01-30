@@ -36,7 +36,6 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
-#include "Basics/VelocyPackStringLiteral.h"
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
@@ -46,6 +45,7 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Inspection/ValidateInspector.h"
 #include "velocypack/Builder.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include "Logger/LogMacros.h"
 
@@ -96,6 +96,12 @@ TEST_F(VPackInspectionTest, formatter) {
   EXPECT_EQ(pretty,
             "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
             "true,\n  \"s\" : \"cheese\"\n}");
+}
+
+TEST_F(VPackInspectionTest, formatter_prints_serialization_error) {
+  MyStringEnum val = static_cast<MyStringEnum>(42);
+  auto def = fmt::format("{}", val);
+  ASSERT_EQ(def, R"({"error":"Unknown enum value 42"})");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {

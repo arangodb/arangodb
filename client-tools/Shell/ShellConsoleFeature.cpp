@@ -43,6 +43,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
@@ -112,46 +113,46 @@ ShellConsoleFeature::ShellConsoleFeature(Server& server)
 
 void ShellConsoleFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--quiet", "silent startup",
+  options->addOption("--quiet", "Silent startup.",
                      new BooleanParameter(&_quiet));
 
   options->addSection("console", "console");
 
   options->addOption(
-      "--console.colors", "enable color support",
+      "--console.colors", "Enable color support.",
       new BooleanParameter(&_colors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--console.auto-complete", "enable auto completion",
+  options->addOption("--console.auto-complete", "Enable auto-completion.",
                      new BooleanParameter(&_autoComplete));
 
-  options->addOption("--console.pretty-print", "enable pretty printing",
+  options->addOption("--console.pretty-print", "Enable pretty-printing.",
                      new BooleanParameter(&_prettyPrint));
 
   options->addOption("--console.audit-file",
-                     "audit log file to save commands and results",
+                     "The audit log file to save commands and results to.",
                      new StringParameter(&_auditFile));
 
   options
       ->addOption("--console.history",
-                  "whether or not to load and persist command-line history",
+                  "Whether to load and persist command-line history.",
                   new BooleanParameter(&_useHistory))
       .setIntroducedIn(30405);
 
-  options->addOption("--console.pager", "enable paging",
+  options->addOption("--console.pager", "Enable paging.",
                      new BooleanParameter(&_pager));
 
   options->addOption(
-      "--console.pager-command", "pager command",
+      "--console.pager-command", "The pager command.",
       new StringParameter(&_pagerCommand),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--console.prompt",
-      "prompt used in REPL. prompt components are: '%t': current time as "
-      "timestamp, '%p': duration of last command in seconds, '%d': name of "
-      "current database, '%e': current endpoint, '%E': current endpoint "
-      "without protocol, '%u': current user",
+      "The prompt used in REPL (placeholders: %t = the current time as "
+      "timestamp, %p = the duration of last command in seconds, %d = the name "
+      "of the current database, %e = the current endpoint, %E = the current "
+      "endpoint without the protocol, %u = the current user",
       new StringParameter(&_prompt));
 }
 

@@ -29,16 +29,27 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+
 class Index;
 class LogicalCollection;
 
+namespace application_features {
+
+class ApplicationServer;
+
+}  // namespace application_features
 namespace velocypack {
+
 class Builder;
 class Slice;
+
 }  // namespace velocypack
+namespace helpers {
+
+IndexId extractId(velocypack::Slice slice) noexcept;
+std::string_view extractName(velocypack::Slice slice) noexcept;
+
+}  // namespace helpers
 
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
@@ -99,11 +110,12 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string> supportedIndexes() const;
+  virtual std::vector<std::string_view> supportedIndexes() const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
-  virtual std::unordered_map<std::string, std::string> indexAliases() const;
+  virtual std::vector<std::pair<std::string_view, std::string_view>>
+  indexAliases() const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

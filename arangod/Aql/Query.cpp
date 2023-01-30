@@ -36,7 +36,6 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -77,10 +76,6 @@
 #include <velocypack/Sink.h>
 
 #include <optional>
-
-#ifndef USE_PLAN_CACHE
-#undef USE_PLAN_CACHE
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -187,6 +182,10 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::~Query() {
+  if (_planSliceCopy != nullptr) {
+    _resourceMonitor.decreaseMemoryUsage(_planSliceCopy->size());
+  }
+
   // In the most derived class needs to explicitly call 'destroy()'
   // because otherwise we have potential data races on the vptr
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -336,7 +335,19 @@ void Query::prepareQuery(SerializationFormat format) {
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
       plan->toVelocyPack(b, _ast.get(), flags);
+
+      try {
+        _resourceMonitor.increaseMemoryUsage(_planSliceCopy->size());
+      } catch (...) {
+        // must clear _planSliceCopy here so that the destructor of
+        // Query doesn't subtract the memory used by _planSliceCopy
+        // without us having it tracked properly here.
+        _planSliceCopy.reset();
+        throw;
+      }
     }
+
+    enterState(QueryExecutionState::ValueType::PHYSICAL_INSTANTIATION);
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
@@ -471,7 +482,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     }
 
     bool useQueryCache = canUseQueryCache();
-
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
@@ -617,7 +627,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
         // will set warnings, stats, profile and cleanup plan and engine
         auto state = finalize(*queryResult.extra);
-        if (state == ExecutionState::DONE && _cacheEntry != nullptr) {
+        bool isCachingAllowed = !_transactionContext->isStreaming() ||
+                                _trx->state()->isReadOnlyTransaction();
+        if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
+            isCachingAllowed) {
           _cacheEntry->_stats = queryResult.extra;
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
@@ -860,7 +873,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ss->waitForAsyncWakeup();
       state = finalize(*queryResult.extra);
     }
-    if (_cacheEntry != nullptr) {
+    bool isCachingAllowed = !_transactionContext->isTransactionJS() ||
+                            _trx->state()->isReadOnlyTransaction();
+
+    if (_cacheEntry != nullptr && isCachingAllowed) {
       _cacheEntry->_stats = queryResult.extra;
       QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
     }
@@ -1030,30 +1046,31 @@ QueryResult Query::explain() {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
+    VPackOptions options;
+    options.checkAttributeUniqueness = false;
+    options.buildUnindexedArrays = true;
+    result.data = std::make_shared<VPackBuilder>(&options);
+
     if (_queryOptions.allPlans) {
-      result.data = std::make_shared<VPackBuilder>();
-      {
-        VPackArrayBuilder guard(result.data.get());
+      VPackArrayBuilder guard(result.data.get());
 
-        auto const& plans = opt.getPlans();
-        for (auto& it : plans) {
-          auto& pln = it.first;
-          TRI_ASSERT(pln != nullptr);
+      auto const& plans = opt.getPlans();
+      for (auto& it : plans) {
+        auto& pln = it.first;
+        TRI_ASSERT(pln != nullptr);
 
-          preparePlanForSerialization(pln);
-          pln->toVelocyPack(*result.data.get(), parser.ast(), flags);
-        }
+        preparePlanForSerialization(pln);
+        pln->toVelocyPack(*result.data, parser.ast(), flags);
       }
       // cacheability not available here
       result.cached = false;
     } else {
-      // Now plan and all derived plans belong to the optimizer
       std::unique_ptr<ExecutionPlan> bestPlan =
           opt.stealBest();  // Now we own the best one again
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      result.data = bestPlan->toVelocyPack(parser.ast(), flags);
+      bestPlan->toVelocyPack(*result.data, parser.ast(), flags);
 
       // cacheability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
@@ -1313,12 +1330,24 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
   auto bp = bindParameters();
-  if (bp != nullptr && !bp->slice().isNone()) {
+  if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
+    // append prefix, e.g. "bind parameters: "
     out.append(prefix);
-    bp->slice().toJson(out);
-    if (out.size() > maxLength) {
-      out.resize(maxLength - 3);
-      out.append("...");
+    size_t const initialLength = out.size();
+
+    // dump at most maxLength chars of bind parameters into our output string
+    velocypack::SizeConstrainedStringSink sink(&out, maxLength + initialLength);
+    velocypack::Dumper dumper(&sink);
+    dumper.dump(bp->slice());
+
+    if (sink.overflowed()) {
+      // truncate value with "..."
+      TRI_ASSERT(initialLength + maxLength >= 3);
+      out.resize(initialLength + maxLength - 3);
+      out.append("... (", 5);
+      basics::StringUtils::itoa(
+          sink.unconstrainedLength() - initialLength - maxLength, out);
+      out.append(")", 1);
     }
   }
 }
@@ -1380,7 +1409,11 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  if (_queryString.size() < 8 || _queryOptions.silent) {
+  bool isCachingAllowed = !(_transactionContext->isStreaming() ||
+                            _transactionContext->isTransactionJS()) ||
+                          _transactionContext->isReadOnlyTransaction();
+
+  if (!isCachingAllowed || _queryString.size() < 8 || _queryOptions.silent) {
     return false;
   }
 
@@ -1472,6 +1505,7 @@ velocypack::Options const& Query::vpackOptions() const {
 
 transaction::Methods& Query::trxForOptimization() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   return *_trx;
 }
 

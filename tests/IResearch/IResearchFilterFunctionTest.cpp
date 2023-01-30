@@ -729,8 +729,8 @@ TEST_F(IResearchFilterFunctionTest, Boost) {
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleStringIdentity("foo");
     termFilter.boost(1.5);
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("abc")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("abc")));
 
     assertFilterSuccess(
         vocbase(),
@@ -749,8 +749,8 @@ TEST_F(IResearchFilterFunctionTest, Boost) {
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleStringIdentity("foo");
     termFilter.boost(6.0f);  // 1.5*4 or 1.5*2*2
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("abc")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("abc")));
 
     assertFilterSuccess(
         vocbase(),
@@ -798,8 +798,8 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleString("foo", "test_analyzer");
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -813,8 +813,8 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleStringIdentity("foo");
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -832,8 +832,8 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleString("foo", "test_analyzer");
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -888,8 +888,8 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     minMatch.min_match_count(2);
     auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
     *termFilter.mutable_field() = mangleStringIdentity("foobar");
-    irs::assign(termFilter.mutable_options()->term,
-                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    termFilter.mutable_options()->term.assign(
+        irs::ViewCast<irs::byte_type>(std::string_view("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -910,20 +910,20 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobar");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bar")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobaz");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("baz")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobad");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bad")));
     }
 
     assertFilterSuccess(
@@ -945,21 +945,21 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobar");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bar")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobaz");
       termFilter.boost(1.5f);
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("baz")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobad");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bad")));
     }
 
     assertFilterSuccess(
@@ -996,21 +996,21 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobar");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bar")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobaz");
       termFilter.boost(1.5f);
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("baz")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobad");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bad")));
     }
 
     assertFilterSuccess(
@@ -1034,37 +1034,37 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobar");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bar")));
     }
     {
       auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobaz");
       termFilter.boost(1.5f);
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("baz")));
     }
     auto& subMinMatch = minMatch.add<irs::Or>().add<irs::Or>();
     subMinMatch.min_match_count(2);
     {
       auto& termFilter = subMinMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobar");
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bar")));
     }
     {
       auto& rangeFilter = subMinMatch.add<irs::Or>().add<irs::by_range>();
       *rangeFilter.mutable_field() = mangleStringIdentity("foobaz");
       rangeFilter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-      irs::assign(rangeFilter.mutable_options()->range.min,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+      rangeFilter.mutable_options()->range.min.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("baz")));
     }
     {
       auto& termFilter = subMinMatch.add<irs::Or>().add<irs::by_term>();
       *termFilter.mutable_field() = mangleStringIdentity("foobad");
       termFilter.boost(2.7f);
-      irs::assign(termFilter.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+      termFilter.mutable_options()->term.assign(
+          irs::ViewCast<irs::byte_type>(std::string_view("bad")));
     }
 
     assertFilterSuccess(
@@ -2168,7 +2168,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleStringIdentity("name");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+        irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
     // implicit (by default)
     assertFilterSuccess(
@@ -2257,15 +2257,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2363,15 +2363,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phraseAccumulated.mutable_field() = mangleString("name", "test_analyzer");
     auto* optsAccumulated = phraseAccumulated.mutable_options();
     optsAccumulated->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     optsAccumulated->push_back<irs::by_term_options>(7).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     optsAccumulated->push_back<irs::by_term_options>(3).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     optsAccumulated->push_back<irs::by_term_options>(4).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     optsAccumulated->push_back<irs::by_term_options>(5).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
@@ -2439,15 +2439,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2563,15 +2563,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("[42]", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2607,15 +2607,15 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2821,25 +2821,25 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2949,27 +2949,27 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        irs::ViewCast<irs::byte_type>(std::string_view("0"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2990,25 +2990,25 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("obj.name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(5).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3141,25 +3141,25 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     phrase.boost(3.0f);
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(5).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3201,25 +3201,25 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     *phrase.mutable_field() = mangleString("obj[3].name[1]", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(5).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3352,25 +3352,25 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("[5].obj.name[100]", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(5).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3503,41 +3503,41 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("obj.properties.id.name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(3).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
     opts->push_back<irs::by_term_options>(2).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+        irs::ViewCast<irs::byte_type>(std::string_view("f"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+        irs::ViewCast<irs::byte_type>(std::string_view("x"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+        irs::ViewCast<irs::byte_type>(std::string_view("j"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+        irs::ViewCast<irs::byte_type>(std::string_view("m"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+        irs::ViewCast<irs::byte_type>(std::string_view("p"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+        irs::ViewCast<irs::byte_type>(std::string_view("s"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3850,41 +3850,41 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("obj.properties.id.name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(3).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
     opts->push_back<irs::by_term_options>(2).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+        irs::ViewCast<irs::byte_type>(std::string_view("f"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+        irs::ViewCast<irs::byte_type>(std::string_view("x"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+        irs::ViewCast<irs::byte_type>(std::string_view("j"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+        irs::ViewCast<irs::byte_type>(std::string_view("m"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+        irs::ViewCast<irs::byte_type>(std::string_view("p"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+        irs::ViewCast<irs::byte_type>(std::string_view("s"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(
@@ -4046,41 +4046,41 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("obj.properties.id.name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+        irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     opts->push_back<irs::by_term_options>(3).term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+        irs::ViewCast<irs::byte_type>(std::string_view("b"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+        irs::ViewCast<irs::byte_type>(std::string_view("f"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+        irs::ViewCast<irs::byte_type>(std::string_view("x"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+        irs::ViewCast<irs::byte_type>(std::string_view("j"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+        irs::ViewCast<irs::byte_type>(std::string_view("m"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+        irs::ViewCast<irs::byte_type>(std::string_view("p"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+        irs::ViewCast<irs::byte_type>(std::string_view("s"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(
@@ -4131,67 +4131,67 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         mangleString("obj.properties.id.name", "test_analyzer");
     auto* opts = phrase.mutable_options();
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+        irs::ViewCast<irs::byte_type>(std::string_view("q"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+        irs::ViewCast<irs::byte_type>(std::string_view("i"));
     {
       auto& part = opts->push_back<irs::by_prefix_options>();
-      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+      part.term = irs::ViewCast<irs::byte_type>(std::string_view("c"));
       part.scored_terms_limit =
           arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+        irs::ViewCast<irs::byte_type>(std::string_view("k"));
     {
       auto& part = opts->push_back<irs::by_wildcard_options>(3);
-      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+      part.term = irs::ViewCast<irs::byte_type>(std::string_view("b"));
       part.scored_terms_limit =
           arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+        irs::ViewCast<irs::byte_type>(std::string_view("r"));
     {
       auto& part = opts->push_back<irs::by_range_options>();
-      part.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+      part.range.min = irs::ViewCast<irs::byte_type>(std::string_view("n"));
       part.range.min_type = irs::BoundType::EXCLUSIVE;
-      part.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+      part.range.max = irs::ViewCast<irs::byte_type>(std::string_view("p"));
       part.range.max_type = irs::BoundType::EXCLUSIVE;
       part.scored_terms_limit =
           arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+        irs::ViewCast<irs::byte_type>(std::string_view("w"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+        irs::ViewCast<irs::byte_type>(std::string_view("n"));
     {
       auto& part = opts->push_back<irs::by_edit_distance_filter_options>();
       part.max_distance = 1;
       part.with_transpositions = true;
       part.provider = &arangodb::iresearch::getParametricDescription;
-      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+      part.term = irs::ViewCast<irs::byte_type>(std::string_view("p"));
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+        irs::ViewCast<irs::byte_type>(std::string_view("o"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+        irs::ViewCast<irs::byte_type>(std::string_view("x"));
     {
       auto& part = opts->push_back<irs::by_terms_options>();
-      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("g")));
-      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("j")));
+      part.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("g")));
+      part.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("j")));
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+        irs::ViewCast<irs::byte_type>(std::string_view("u"));
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+        irs::ViewCast<irs::byte_type>(std::string_view("m"));
     {
       auto& part = opts->push_back<irs::by_terms_options>();
-      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("b")));
-      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("p")));
+      part.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("b")));
+      part.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("p")));
     }
     opts->push_back<irs::by_term_options>().term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+        irs::ViewCast<irs::byte_type>(std::string_view("s"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(
@@ -5443,7 +5443,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5465,14 +5465,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix0 = orFilter.add<irs::by_prefix>();
     *prefix0.mutable_field() = mangleStringIdentity("name");
     auto* opt0 = prefix0.mutable_options();
-    opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt0->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt0->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
     *prefix1.mutable_field() = mangleStringIdentity("name");
     auto* opt1 = prefix1.mutable_options();
-    opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
+    opt1->term = irs::ViewCast<irs::byte_type>(std::string_view("def"));
     opt1->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5504,7 +5504,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5591,7 +5591,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name[1]");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5616,7 +5616,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("obj.properties.name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5654,7 +5654,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5687,7 +5687,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleString("obj[400].properties[3].name", "test_analyzer");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5727,7 +5727,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5771,7 +5771,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix0.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt0 = prefix0.mutable_options();
-    opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt0->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt0->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5779,7 +5779,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix1.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt1 = prefix1.mutable_options();
-    opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
+    opt1->term = irs::ViewCast<irs::byte_type>(std::string_view("def"));
     opt1->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5888,7 +5888,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(
@@ -5909,7 +5909,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5931,7 +5931,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(vocbase(),
@@ -5950,7 +5950,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
@@ -5971,7 +5971,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -5993,7 +5993,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 100;
 
     assertFilterSuccess(vocbase(),
@@ -6013,7 +6013,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     prefix.boost(3.1f);
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
@@ -6037,7 +6037,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     orFilter.boost(3.1f);
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 100;
 
     assertFilterSuccess(vocbase(),
@@ -6065,7 +6065,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
@@ -6107,7 +6107,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
@@ -6150,7 +6150,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() =
         mangleString("obj[400].properties[3].name", "test_analyzer");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
@@ -6225,7 +6225,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(vocbase(),
@@ -6250,7 +6250,7 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& prefix = orFilter.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -6397,7 +6397,7 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     auto& wildcard = expected.add<irs::by_wildcard>();
     *wildcard.mutable_field() = mangleStringIdentity("name");
     auto* opt = wildcard.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("foo"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -6421,7 +6421,7 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     auto& wildcard = expected.add<irs::by_wildcard>();
     *wildcard.mutable_field() = mangleString("name.foo", "test_analyzer");
     auto* opt = wildcard.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("foo%"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -6458,7 +6458,7 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     *wildcard.mutable_field() = mangleString("name[4]", "test_analyzer");
     wildcard.boost(0.5f);
     auto* opt = wildcard.mutable_options();
-    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("_foo%"));
+    opt->term = irs::ViewCast<irs::byte_type>(std::string_view("_foo%"));
     opt->scored_terms_limit =
         arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
@@ -6552,7 +6552,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 1;
     opts->with_transpositions = true;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("foo"));
     opts->max_terms =
         arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
@@ -6574,7 +6574,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 1;
     opts->with_transpositions = false;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("foo"));
     opts->max_terms = 42;
 
     assertFilterSuccess(vocbase(),
@@ -6595,8 +6595,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 1;
     opts->with_transpositions = false;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("o"));
+    opts->prefix = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
     opts->max_terms = 42;
 
     assertFilterSuccess(vocbase(),
@@ -6617,8 +6617,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 1;
     opts->with_transpositions = false;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref::EMPTY);
-    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ViewCast<irs::byte_type>(irs::kEmptyStringView<char>);
+    opts->prefix = irs::ViewCast<irs::byte_type>(std::string_view("foo"));
     opts->max_terms = 42;
 
     assertFilterSuccess(vocbase(),
@@ -6639,8 +6639,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 0;
     opts->with_transpositions = true;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref::EMPTY);
-    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term = irs::ViewCast<irs::byte_type>(irs::kEmptyStringView<char>);
+    opts->prefix = irs::ViewCast<irs::byte_type>(std::string_view("foo"));
     opts->max_terms = 42;
 
     assertFilterSuccess(vocbase(),
@@ -6661,7 +6661,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 0;
     opts->with_transpositions = true;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("fooo"));
     opts->max_terms =
         arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
@@ -6714,7 +6714,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->with_transpositions = false;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("fooo"));
     opts->max_terms =
         arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
@@ -6761,7 +6761,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
     opts->with_transpositions = false;
-    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
+    opts->term = irs::ViewCast<irs::byte_type>(std::string_view("fooo"));
     opts->max_terms = 0;
 
     ExpressionContextMock ctx;
@@ -6986,9 +6986,9 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     auto& range = expected.add<irs::by_range>();
     *range.mutable_field() = mangleStringIdentity("name");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("a"));
     opts->range.min_type = irs::BoundType::EXCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("z"));
     opts->range.max_type = irs::BoundType::EXCLUSIVE;
 
     assertFilterSuccess(
@@ -7010,9 +7010,9 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     range.boost(1.5);
     *range.mutable_field() = mangleStringIdentity("name");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("a"));
     opts->range.min_type = irs::BoundType::INCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("z"));
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -7035,9 +7035,9 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     range.boost(1.5);
     *range.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("a"));
     opts->range.min_type = irs::BoundType::EXCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("z"));
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -7070,9 +7070,9 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     auto& range = expected.add<irs::by_range>();
     *range.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     opts->range.min_type = irs::BoundType::INCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("bce"));
+    opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("bce"));
     opts->range.max_type = irs::BoundType::EXCLUSIVE;
 
     assertFilterSuccess(
@@ -7129,10 +7129,10 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     *range.mutable_field() = mangleBool("a.b.c.e.f");
     auto* opts = range.mutable_options();
     opts->range.min =
-        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+        irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true());
     opts->range.min_type = irs::BoundType::INCLUSIVE;
     opts->range.max =
-        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+        irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true());
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -7164,10 +7164,10 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     *range.mutable_field() = mangleNull("a.b.c.e.f");
     auto* opts = range.mutable_options();
     opts->range.min =
-        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+        irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     opts->range.min_type = irs::BoundType::INCLUSIVE;
     opts->range.max =
-        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+        irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -7361,7 +7361,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
     irs::bstring ngram;
-    irs::assign(ngram, irs::string_ref("foo"));
+    ngram.assign(irs::ViewCast<irs::byte_type>(std::string_view("foo")));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
@@ -7384,7 +7384,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
     irs::bstring ngram;
-    irs::assign(ngram, irs::string_ref("foo"));
+    ngram.assign(irs::ViewCast<irs::byte_type>(std::string_view("foo")));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(vocbase(),
@@ -7406,7 +7406,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
     irs::bstring ngram;
-    irs::assign(ngram, irs::string_ref("foo"));
+    ngram.assign(irs::ViewCast<irs::byte_type>(std::string_view("foo")));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(vocbase(),
@@ -7427,7 +7427,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
     irs::bstring ngram;
-    irs::assign(ngram, irs::string_ref("foo"));
+    ngram.assign(irs::ViewCast<irs::byte_type>(std::string_view("foo")));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
@@ -7452,7 +7452,7 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
     irs::bstring ngram;
-    irs::assign(ngram, irs::string_ref("foo"));
+    ngram.assign(irs::ViewCast<irs::byte_type>(std::string_view("foo")));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(vocbase(),

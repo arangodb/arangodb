@@ -25,7 +25,6 @@
 #pragma once
 
 #include <locale>
-#include <unordered_set>
 
 #include "IResearchDataStoreMeta.h"
 #include "IResearchViewSort.h"
@@ -35,6 +34,7 @@
 
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -60,6 +60,10 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
   struct Mask : public IResearchDataStoreMeta::Mask {
     bool _primarySort;
     bool _storedValues;
+#ifdef USE_ENTERPRISE
+    bool _sortCache;
+    bool _pkCache;
+#endif
     bool _primarySortCompression;
     explicit Mask(bool mask = false) noexcept;
   };
@@ -67,6 +71,10 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _primarySortCompression{};
+#ifdef USE_ENTERPRISE
+  bool _sortCache{false};
+  bool _pkCache{false};
+#endif
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -146,7 +154,7 @@ struct IResearchViewMetaState {
 
   // collection links added to this view via IResearchLink
   // creation (may contain no-longer valid cids)
-  std::unordered_set<DataSourceId> _collections;
+  containers::FlatHashSet<DataSourceId> _collections;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

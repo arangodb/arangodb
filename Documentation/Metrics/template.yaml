@@ -1,5 +1,9 @@
 name: arangodb_metric
-introducedIn: "3.8.0"
+introducedIn: "3.10.2" # The version the feature is added to the current branch's version.
+# For example, if a metric is added to v3.9.6, v3.10.2, and devel, then introducedIn
+# should be set to "3.9.6" in the 3.9 branch, "3.10.2" in the 3.10 branch, and
+# also "3.10.2" in devel, implying that the metric is available in all versions
+# after v3.10.2 (v3.10.3, v3.10.4, etc. as well as 3.11.0 and later).
 help: |
   Put the help string here, encoding with a period.
 unit: number

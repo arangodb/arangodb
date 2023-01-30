@@ -108,8 +108,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()));
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)
@@ -190,7 +189,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
     EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
-  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true).ok());
   EXPECT_TRUE(view->drop().ok());
   EXPECT_TRUE(collection->deleted());
   EXPECT_TRUE(view->deleted());

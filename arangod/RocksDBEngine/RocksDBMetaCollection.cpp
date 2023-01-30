@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -69,8 +70,8 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             VPackSlice const& info)
-    : PhysicalCollection(collection, info),
+                                             velocypack::Slice info)
+    : PhysicalCollection(collection),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -86,10 +87,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       .engine<RocksDBEngine>()
       .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
-}
-
-std::string const& RocksDBMetaCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
 }
 
 void RocksDBMetaCollection::deferDropCollection(

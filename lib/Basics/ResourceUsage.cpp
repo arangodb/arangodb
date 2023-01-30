@@ -240,3 +240,9 @@ void ResourceUsageScope::decrease(std::uint64_t value) noexcept {
     _value -= value;
   }
 }
+
+std::uint64_t ResourceUsageScope::trackedAndSteal() noexcept {
+  std::uint64_t value = _value;
+  _value = 0;
+  return value;
+}

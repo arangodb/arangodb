@@ -50,6 +50,13 @@ class RocksDBMethods {
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, rocksdb::PinnableSlice*,
                               ReadOwnWrites) = 0;
+
+  virtual rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
+                                          rocksdb::Slice const&,
+                                          rocksdb::PinnableSlice*,
+                                          ReadOwnWrites,
+                                          rocksdb::Snapshot const*) = 0;
+
   virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                        rocksdb::Slice const&,
                                        rocksdb::PinnableSlice*) = 0;

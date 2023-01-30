@@ -44,6 +44,7 @@
 #pragma warning(pop)
 #endif
 
+#include <deque>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -87,8 +88,7 @@ struct PrototypeCore {
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
-  template<typename EntryIterator>
-  void update(std::unique_ptr<EntryIterator> ptr);
+  void update(LogIndex lastIndexToApply);
 
   auto getSnapshot() -> std::unordered_map<std::string, std::string>;
   void applySnapshot(
@@ -106,6 +106,7 @@ struct PrototypeCore {
 
   auto getReadState() -> StorageType;
   void applyToOngoingState(LogIndex, PrototypeLogEntry const&);
+  void resetOngoingStates();
 
   [[nodiscard]] auto getLastPersistedIndex() const noexcept -> LogIndex const&;
   [[nodiscard]] auto getLogId() const noexcept -> GlobalLogIdentifier const&;
@@ -135,25 +136,6 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
     applyToLocalStore(logEntry);
   }
   _lastAppliedIndex = std::move(lastAppliedIndex);
-}
-
-/*
- * Advances through the deque.
- */
-template<typename EntryIterator>
-void PrototypeCore::update(std::unique_ptr<EntryIterator> ptr) {
-  // Meta-entries are never seen by the state machine, but still increase the
-  // log index, creating gaps between ongoing states. Hence,
-  // lastIndexToApply could be greater than the last index of the current
-  // ongoing state, but smaller than that of the next ongoing state, in which
-  // case we prefer to keep the current one. We have to look ahead in the
-  // deque to make sure this stays correct.
-  auto lastIndexToApply = ptr->range().to.saturatedDecrement();
-  while (_ongoingStates.size() > 1 &&
-         _ongoingStates[1].first <= lastIndexToApply) {
-    _ongoingStates.pop_front();
-  }
-  _lastAppliedIndex = lastIndexToApply;
 }
 
 }  // namespace arangodb::replication2::replicated_state::prototype

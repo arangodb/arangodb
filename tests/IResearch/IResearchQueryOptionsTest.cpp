@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"
@@ -38,7 +40,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -97,7 +98,7 @@ class QueryOptions : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -155,7 +156,7 @@ class QueryOptions : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -282,7 +283,7 @@ class QueryOptions : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -324,7 +325,7 @@ class QueryOptions : public QueryTest {
           arangodb::velocypack::Parser::fromJson(
               "{ \"collectionName\" : \"collection_1\" }")));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -369,7 +370,7 @@ class QueryOptions : public QueryTest {
           arangodb::velocypack::Parser::fromJson(
               "{ \"collections\" : [ \"collection_1\" ] }")));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -414,7 +415,7 @@ class QueryOptions : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[1]}};
 
@@ -479,7 +480,7 @@ class QueryOptions : public QueryTest {
           _vocbase, query,
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[1]}};
 
@@ -523,7 +524,7 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       std::map<
-          irs::string_ref,
+          std::string_view,
           std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>>
           expectedDocs{{"A", {_insertedDocs[0], _insertedDocs[1]}}};
 
@@ -615,7 +616,7 @@ class QueryOptions : public QueryTest {
       }
 
       std::map<
-          irs::string_ref,
+          std::string_view,
           std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>>
           expectedDocs{{"A", {_insertedDocs[0], _insertedDocs[1]}}};
 
@@ -665,7 +666,7 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       std::map<
-          irs::string_ref,
+          std::string_view,
           std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>>
           expectedDocs{{"A", {_insertedDocs[0], _insertedDocs[1]}}};
 
@@ -938,7 +939,7 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
           arangodb::velocypack::Parser::fromJson("{ \"doSync\" : true }")));
 
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 

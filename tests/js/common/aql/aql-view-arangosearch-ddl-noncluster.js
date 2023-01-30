@@ -24,19 +24,20 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var analyzers = require("@arangodb/analyzers");
-var ERRORS = require("@arangodb").errors;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const analyzers = require("@arangodb/analyzers");
+const ERRORS = require("@arangodb").errors;
+const internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchFeatureDDLTestSuite () {
+function IResearchFeatureDDLTestSuite() {
   return {
-    setUpAll : function () {
-     },
+    setUpAll: function () {
+    },
 
     tearDownAll : function () {
       db._useDatabase("_system");
@@ -48,14 +49,17 @@ function IResearchFeatureDDLTestSuite () {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db._dropDatabase("TestDB");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
 
-    testStressAddRemoveView : function() {
+    testStressAddRemoveView: function () {
       db._dropView("TestView");
       for (let i = 0; i < 100; ++i) {
         db._createView("TestView", "arangosearch", {});
@@ -65,14 +69,36 @@ function IResearchFeatureDDLTestSuite () {
       }
     },
 
-    testStressAddRemoveViewWithDirectLinks : function() {
+    testViewIsBuilding: function () {
+      internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
+    },
+
+    testStressAddRemoveViewWithDirectLinks: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{ includeAllFields:true}}});
+        db.TestCollection0.save({name: i.toString()});
+        db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 1);
@@ -1019,10 +1045,11 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1038,10 +1065,11 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1059,10 +1087,11 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(2, figures.numLiveDocs);
+        assertEqual(2, figures.numPrimaryDocs);
         assertEqual(6, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1082,10 +1111,11 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(1, figures.numLiveDocs);
+        assertEqual(2, figures.numPrimaryDocs);
         assertEqual(7, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1104,10 +1134,11 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }

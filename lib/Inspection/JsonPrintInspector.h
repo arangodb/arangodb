@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <ostream>
 #include <string>
 #include <tuple>
@@ -230,7 +231,7 @@ struct JsonPrintInspector
 
   void decrementIndentationLevel() {
     if (_format == JsonPrintFormat::kPretty) {
-      TRI_ASSERT(_indentation.size() >= IndentationPerLevel);
+      assert(_indentation.size() >= IndentationPerLevel);
       for (unsigned i = 0; i < IndentationPerLevel; ++i) {
         _indentation.pop_back();
       }

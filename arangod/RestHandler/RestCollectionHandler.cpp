@@ -290,13 +290,33 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto shardsMap = coll->shardIds();
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
+
       if (_request->parsedValue("details", false)) {
         // with details
-        coll->shardMapToVelocyPack(_builder);
+        VPackObjectBuilder arr(&_builder, "shards", true);
+        for (ShardID const& shard : *shards) {
+          std::vector<ServerID> servers;
+          ci.getShardServers(shard, servers);
+
+          if (servers.empty()) {
+            continue;
+          }
+
+          VPackArrayBuilder arr2(&_builder, shard);
+
+          for (auto const& server : servers) {
+            arr2->add(VPackValue(server));
+          }
+        }
       } else {
-        // without details
-        coll->shardIDsToVelocyPack(_builder);
+        // no details
+        VPackArrayBuilder arr(&_builder, "shards", true);
+
+        for (ShardID const& shard : *shards) {
+          arr->add(VPackValue(shard));
+        }
       }
     }
     return standardResponse();
@@ -420,8 +440,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
-    if (flush &&
-        TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
+    if (flush && !coll->deleted()) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
                                                                      false);
     }
@@ -658,7 +677,7 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
+    res = methods::Collections::drop(*coll, allowDropSystem);
   }
 
   if (res.fail()) {
@@ -726,7 +745,12 @@ RestCollectionHandler::collectionRepresentationAsync(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  _builder.add("status", VPackValue(coll->status()));
+  // only here for API-compatibility...
+  if (coll->deleted()) {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  } else {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

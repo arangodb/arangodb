@@ -33,6 +33,7 @@
 #include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
+#include <string_view>
 
 #include <fuerte/helper.h>
 
@@ -101,10 +102,10 @@ std::string extractEndpointFromUrl(std::string const& location) {
   std::string specification;
   size_t delim = std::string::npos;
 
-  if (location.compare(0, 7, "http://", 7) == 0) {
+  if (location.starts_with("http://")) {
     specification = "http+tcp://" + location.substr(7);
     delim = specification.find_first_of('/', 12);
-  } else if (location.compare(0, 8, "https://", 8) == 0) {
+  } else if (location.starts_with("https://")) {
     specification = "http+ssl://" + location.substr(8);
     delim = specification.find_first_of('/', 13);
   }
@@ -128,14 +129,14 @@ void redirectOrError(AsyncAgencyCommManager& man, std::string const& endpoint,
   }
 }
 
-auto agencyAsyncWait(RequestMeta const& meta, clock::duration d)
-    -> futures::Future<futures::Unit> {
+auto agencyAsyncWait(std::string_view name, RequestMeta const& meta,
+                     clock::duration d) -> futures::Future<futures::Unit> {
   if (d == clock::duration::zero()) {
     return futures::makeFuture();
   }
 
   if (!meta.skipScheduler) {
-    return SchedulerFeature::SCHEDULER->delay(d);
+    return SchedulerFeature::SCHEDULER->delay(name, d);
   }
 
   std::this_thread::sleep_for(d);
@@ -175,7 +176,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       << "ms"
       << " timeout: " << meta.timeout.count() << "s";
 
-  auto future = agencyAsyncWait(meta, waitTime);
+  auto future = agencyAsyncWait("agency-async-inquiry", meta, waitTime);
   return std::move(future).thenValue([meta = std::move(meta), &man,
                                       body = std::move(body)](auto) mutable {
     // build inquire request
@@ -287,7 +288,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
       << " timeout: " << meta.timeout.count() << "s";
 
   // after a possible small delay (if required)
-  return agencyAsyncWait(meta, waitTime)
+  return agencyAsyncWait("agency-async-send", meta, waitTime)
       .thenValue([meta = std::move(meta), &man,
                   body = std::move(body)](auto) mutable {
         // acquire the current endpoint
@@ -430,6 +431,20 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 }  // namespace
 
 namespace arangodb {
+
+futures::Future<consensus::index_t> AsyncAgencyComm::getCurrentCommitIndex()
+    const {
+  auto future = sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config",
+                                 120s, RequestType::READ, {});
+  return std::move(future).thenValue([](AsyncAgencyCommResult&& response) {
+    if (auto result = response.asResult(); result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    auto slice = response.slice();
+    return slice.get("commitIndex").extract<consensus::index_t>();
+  });
+}
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url,

@@ -66,6 +66,7 @@ QueryOptions::QueryOptions()
       verbosePlans(false),
       explainInternals(true),
       stream(false),
+      retriable(false),
       silent(false),
       failOnWarning(
           QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
@@ -120,12 +121,15 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
+    if (allowMemoryLimitOverride) {
+      memoryLimit = v;
+    } else if (v > 0 && v < memoryLimit) {
       // only allow increasing the memory limit if the respective startup option
-      // is set. and if it is set, only allow decreasing the memory limit
+      // is set. and if it is not set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }
+
   value = slice.get("maxNumberOfPlans");
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
@@ -197,6 +201,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
+  }
+  if (value = slice.get("allowRetry"); value.isBool()) {
+    retriable = value.isTrue();
   }
   if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
@@ -289,6 +296,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
+  builder.add("allowRetry", VPackValue(retriable));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));

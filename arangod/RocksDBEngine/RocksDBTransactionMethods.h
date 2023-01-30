@@ -45,9 +45,9 @@ struct ReadOptions : public rocksdb::ReadOptions {
 
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState const* state)
+  explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
       : _state(state) {}
-  virtual ~RocksDBTransactionMethods() = default;
+  ~RocksDBTransactionMethods() override = default;
 
   virtual Result beginTransaction() = 0;
 
@@ -85,6 +85,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual uint64_t numOperations() const noexcept = 0;
 
+  virtual uint64_t numPrimitiveOperations() const noexcept = 0;
+
   virtual void prepareOperation(DataSourceId cid, RevisionId rid,
                                 TRI_voc_document_operation_e operationType) = 0;
 
@@ -113,7 +115,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 #endif
 
  protected:
-  RocksDBTransactionState const* _state;
+  RocksDBTransactionState* _state;
 };
 
 }  // namespace arangodb

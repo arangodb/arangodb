@@ -55,7 +55,8 @@ function optimizerRuleInvertedIndexTestSuite() {
                        name: 'InvertedIndexSorted',
                        fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'}],
+                                {name:'custom_field', analyzer:'text_en'},
+                                {name:'trackListField', trackListPositions:true}],
                         primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
@@ -63,11 +64,13 @@ function optimizerRuleInvertedIndexTestSuite() {
           data.push({count:i,
                      norm_field: 'fOx',
                      searchField:i,
+                     trackListField:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
                      geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
         } else {
           data.push({count:i,
+                     norm_field: 'sOx',
                      norm_field2: 'BOX',
                      data_field:'value' + i % 100,
                      custom_field: i,
@@ -219,7 +222,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedSortedWrongOrder: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", forceIndexHint: true}
           FILTER d.data_field == 'value1'
           SORT d.count ASC
           RETURN d`;
@@ -421,7 +424,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyEQ: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted",
+          forceIndexHint:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY == d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -460,7 +464,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyNE_Fcall: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", forceIndexHint: true}
           FILTER NOEVAL([NOEVAL('value1'), 'value2']) ANY != d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -498,7 +502,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testDisjunctionOptimized: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", forceIndexHint: true}
           FILTER d.norm_field == 'fox' OR d.norm_field2 == 'box'
           RETURN d`;
       const res = AQL_EXPLAIN(query.query, query.bindVars);
@@ -508,6 +512,101 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs, executeRes.length);
     },
+    testIndexHintedTrackListPositionsFieldIgnored: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.trackListField == 1
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+    },
+    testNonDeterministicInFieldIgnored: function () {
+      const query = aql`
+        LET foo = NOOPT([1,2,3])
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.invalid_field IN foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.invalid_field IN foo 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayComparisonFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER foo ANY IN d.invalid_field 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testUnknownFieldInSubLoopIgnored: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'rox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.invalid == foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testUnknownFieldInSubLoopPhraseIgnored: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'rox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER PHRASE(d.invalid, foo, 'text_en')
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      // intentionally do not run the query here as PHRASE is not yet
+      // supported as filter function
+    },
+    testKnownFieldInSubLoop: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'sox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", forceIndexHint: true}
+          FILTER d.norm_field == foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertEqual(docs, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testKnownFieldPhraseInSubLoop: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'sox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", forceIndexHint: true}
+          FILTER PHRASE(d.norm_field, foo, 'text_en')
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertEqual(docs, db._query(query.query, query.bindVars).toArray().length);
+    }
   };
 }
 

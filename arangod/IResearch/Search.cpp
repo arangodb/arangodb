@@ -45,6 +45,8 @@
 #include "Indexes/Index.h"
 #include "IResearch/Search.h"
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedClusterIndex.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Transaction/Methods.h"
@@ -53,10 +55,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
-
-#ifdef USE_PLAN_CACHE
-#include "Aql/PlanCache.h"
-#endif
 
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
@@ -92,11 +90,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
   }
   return Weight{
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
-}
-
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
 }
 
 }  // namespace fst
@@ -422,8 +415,9 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     auto r =
         storage_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
-      auto name = nameSlice.copyString();  // TODO stringView()
-      events::CreateView(vocbase.name(), name, r.errorNumber());
+      auto name = nameSlice.stringView();
+      // TODO(MBkkt) remove std::string when update events::*
+      events::CreateView(vocbase.name(), std::string{name}, r.errorNumber());
       return r;
     }
     view = impl;
@@ -480,7 +474,8 @@ Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition)
         void const* key = static_cast<LogicalView*>(lock.get());
         auto* snapshot = getViewSnapshot(trx, key);
         if (snapshot == nullptr) {
-          makeViewSnapshot(trx, key, false, lock->name(), lock->getLinks());
+          makeViewSnapshot(trx, key, false, lock->name(),
+                           lock->getLinks(nullptr));
         }
       }
     };
@@ -503,14 +498,19 @@ bool Search::apply(transaction::Methods& trx) {
   return trx.addStatusChangeCallback(&_trxCallback);  // add snapshot
 }
 
-ViewSnapshot::Links Search::getLinks() const {
+ViewSnapshot::Links Search::getLinks(
+    containers::FlatHashSet<DataSourceId> const* sources) const {
   ViewSnapshot::Links indexes;
   std::shared_lock lock{_mutex};
   indexes.reserve(_indexes.size());
-  for (auto const& [_, handles] : _indexes) {
-    for (auto const& handle : handles) {
-      if (auto index = handle->lock(); index) {
-        indexes.push_back(std::move(index));
+  for (auto const& [cid, handles] : _indexes) {
+    // FIXME: remove sources from this function as soon as ViewSnapshotView
+    // would be available again.
+    if (!sources || sources->contains(cid)) {
+      for (auto const& handle : handles) {
+        if (auto dataStore = handle->lock(); dataStore) {
+          indexes.push_back(std::move(dataStore));
+        }
       }
     }
   }
@@ -548,9 +548,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     r = cluster_helper::properties(*this, true /*means under lock*/);
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
-#ifdef USE_PLAN_CACHE
-    aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
     aql::QueryCache::instance()->invalidate(&vocbase());
     r = storage_helper::properties(*this, true /*means under lock*/);
   }
@@ -574,8 +571,8 @@ bool Search::visitCollections(CollectionVisitor const& visitor) const {
     LogicalView::Indexes indexes;
     indexes.reserve(handles.size());
     for (auto& handle : handles) {
-      if (auto index = handle->lock(); index) {
-        indexes.push_back(index->id());
+      if (auto dataStore = handle->lock(); dataStore) {
+        indexes.push_back(dataStore->index().id());
       }
     }
     if (!visitor(cid, &indexes)) {
@@ -609,12 +606,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
 
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
-        if (auto inverted = handle->lock(); inverted) {
-          auto* index = dynamic_cast<Index*>(inverted.get());
-          if (!index) {
-            TRI_ASSERT(false);
-            continue;
-          }
+        if (auto dataStore = handle->lock(); dataStore) {
           auto collection = resolver.getCollection(cid);
           if (!collection) {
             continue;
@@ -628,11 +620,12 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
                                  collection->name(), "'")};
           }
 
+          auto& index = dataStore->index();
           if (ctx == Serialization::Properties ||
               ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
             build.add("collection", velocypack::Value{collection->name()});
-            build.add("index", velocypack::Value{index->name()});
+            build.add("index", velocypack::Value{index.name()});
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
             if (ServerState::instance()->isSingleServer()) {
@@ -640,8 +633,8 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             } else {
               build.add("collection", velocypack::Value{collection->name()});
             }
-            absl::AlphaNum indexId{index->id().id()};
-            build.add("index", velocypack::Value{indexId.Piece()});
+            build.add("index", velocypack::Value{
+                                   absl::AlphaNum{index.id().id()}.Piece()});
           }
           build.close();
         }
@@ -654,7 +647,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     return {
         e.code(),
         absl::StrCat("caught exception while generating json for search view '",
-                     name(), "': ", e.what())};
+                     name(), "': ", e.message())};
   } catch (std::exception const& e) {
     return {
         TRI_ERROR_INTERNAL,
@@ -697,7 +690,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     auto value = *it;
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+      return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
     }
     auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {
@@ -733,14 +726,24 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
     }
     auto index = getIndex(*collection, indexSlice.stringView());
-    // TODO Remove dynamic_cast
-    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
-    if (!inverted) {
+    if (!index || index->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
       if (!isUserRequest) {
         continue;
       }
       return {TRI_ERROR_BAD_PARAMETER, "Cannot find index"};
     }
+    // TODO(MBkkt) Can be simplified
+    //  if IResearchInvertedIndex will has Index base
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
+#else
+    auto* inverted =
+        ServerState::instance()->isCoordinator()
+            ? static_cast<IResearchInvertedIndex*>(
+                  basics::downCast<IResearchInvertedClusterIndex>(index.get()))
+            : static_cast<IResearchInvertedIndex*>(
+                  basics::downCast<IResearchRocksDBInvertedIndex>(index.get()));
+#endif
     auto& indexes = _indexes[cid];
     if (operation != "del") {
       indexes.emplace_back(inverted->self());
@@ -760,9 +763,9 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     bool first = true;
     for (auto const& [_, handles] : _indexes) {
       for (auto const& handle : handles) {
-        if (auto index = handle->lock(); index) {
+        if (auto dataStore = handle->lock(); dataStore) {
           auto const& inverted =
-              basics::downCast<IResearchInvertedIndex>(*index.get());
+              basics::downCast<IResearchInvertedIndex>(*dataStore.get());
           auto const& indexMeta = inverted.meta();
           if (first) {
             init(indexMeta);
@@ -770,11 +773,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
           } else {
             auto error = next(indexMeta);
             if (!error.empty()) {
-              // TODO Remove dynamic_cast
-              auto const& arangodbIndex = dynamic_cast<Index const&>(inverted);
+              auto& index = inverted.index();
               absl::StrAppend(&error, ". Collection name '",
-                              arangodbIndex.collection().name(),
-                              "', index name '", arangodbIndex.name(), "'.");
+                              index.collection().name(), "', index name '",
+                              index.name(), "'.");
               return {TRI_ERROR_BAD_PARAMETER, std::move(error)};
             }
           }
@@ -801,9 +803,9 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     }
     bool first = true;
     for (auto const& handle : handles) {
-      if (auto index = handle->lock(); index) {
+      if (auto dataStore = handle->lock(); dataStore) {
         auto const& inverted =
-            basics::downCast<IResearchInvertedIndex>(*index.get());
+            basics::downCast<IResearchInvertedIndex>(*dataStore.get());
         auto const& indexMeta = inverted.meta();
         if (first) {
           add(merged, indexMeta);
@@ -814,7 +816,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                   absl::StrCat(
                       "You cannot add to view indexes to the same collection,"
                       " if them index the same fields. Error for: ",
-                      error, inverted.collection().name(), "'")};
+                      error, inverted.index().collection().name(), "'")};
         } else {
           add(merged, indexMeta);
         }

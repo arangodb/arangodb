@@ -358,7 +358,6 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 }
 
 void Thread::markAsStopped() noexcept {
-  // TODO - marked as stopped before accessing finishedCondition?
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {

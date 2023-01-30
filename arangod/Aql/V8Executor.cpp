@@ -22,16 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Executor.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/AstNode.h"
-#include "Aql/Functions.h"
-#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -41,10 +33,8 @@ using namespace arangodb::aql;
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
-                               v8::Handle<v8::Value>& result,
-                               arangodb::basics::StringBuffer* const buffer,
-                               bool duringCompile) {
+void V8Executor::handleV8Error(v8::TryCatch& tryCatch,
+                               v8::Handle<v8::Value>& result) {
   ISOLATE;
   auto context = TRI_IGETC;
   bool failed = false;
@@ -104,13 +94,6 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       // exception is no ArangoError
       std::string details(TRI_ObjectToString(isolate, tryCatch.Exception()));
 
-      if (buffer) {
-        // std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC("98afd", ERR, arangodb::Logger::FIXME)
-            << details << " "
-            << Logger::CHARS(buffer->c_str(), buffer->length());
-        details += "\nSee log for more details";
-      }
       if (*stacktrace && stacktrace.length() > 0) {
         details += "\nstacktrace of offending AQL function: ";
         details += *stacktrace;
@@ -128,15 +111,6 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
 
   if (failed) {
     std::string msg("unknown error in scripting");
-    if (duringCompile) {
-      msg += " (during compilation)";
-    }
-    if (buffer) {
-      // std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC("477ee", ERR, arangodb::Logger::FIXME)
-          << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
-      msg += " See log for details";
-    }
     // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }

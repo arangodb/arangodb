@@ -37,7 +37,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <typeindex>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -127,9 +126,7 @@ class IResearchFeature final : public ArangodFeature {
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template<typename Engine,
-           typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>,
-                                     int> = 0>
+  template<typename Engine>
   IndexTypeFactory& factory();
 
   bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
@@ -139,8 +136,20 @@ class IResearchFeature final : public ArangodFeature {
 
   bool failQueriesOnOutOfSync() const noexcept;
 
+#ifdef USE_ENTERPRISE
+  bool trackColumnsCacheUsage(int64_t diff) noexcept;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  int64_t columnsCacheUsage() const noexcept;
+
+  void setCacheUsageLimit(uint64_t limit) noexcept {
+    _columnsCacheLimit = limit;
+  }
+#endif
+#endif
+
  private:
   void registerRecoveryHelper();
+  void registerIndexFactory();
 
   struct State {
     std::mutex mtx;
@@ -168,10 +177,17 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
-  std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
+
+  std::shared_ptr<IndexTypeFactory> _clusterFactory;
+  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // number of links/indexes currently out of sync
   metrics::Gauge<uint64_t>& _outOfSyncLinks;
+
+#ifdef USE_ENTERPRISE
+  metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
+  uint64_t _columnsCacheLimit{0};
+#endif
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

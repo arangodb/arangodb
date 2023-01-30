@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual} = jsunity.jsUnity.assertions;
 const internal = require("internal");
 const errors = internal.errors;
 const db = require("@arangodb").db;
@@ -59,6 +60,52 @@ function subquerySplicingCrashRegressionSuite() {
   };
 }
 
+// Regression test for https://github.com/arangodb/arangodb/issues/16451
+function subquerySplicingLimitDroppingOuterRowsSuite() {
+  return {
+    testNestedSubqueryInnerLimitDroppingOuterRows: function () {
+      // In the noted bug, the second SQS node (which starts the sqInner subquery)
+      // got confused when called to write its third batch, misinterpreting the
+      // already saturated limit to also drop remaining rows of the outermost query.
+      // This lead to a result of size 666.
+      const query = `
+        FOR i IN 1..1000
+        LET sqOuter = (
+            LET sqInner = (RETURN null)
+            LIMIT 1
+          RETURN null)
+        RETURN null`;
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const res = q.toArray();
+      assertEqual(1000, res.length);
+    },
+
+    testSubqueryEnd: function () {
+      // This brings the SubqueryEnd node in a similar situation as the previous
+      // test does the SubqueryStart. It's not a regression test (at the point of
+      // writing, it already worked correctly), but just for completeness' sake.
+
+      const query = `
+        FOR i IN 1..1000
+          LET sq2 = (
+            FOR k IN 1..3
+              LET sq1 = (
+                LET sq0 = (RETURN null)
+                LIMIT 1
+                RETURN null
+              )
+            RETURN null
+          )
+        RETURN null`;
+
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const res = q.toArray();
+      assertEqual(1000, res.length);
+    },
+  };
+}
+
 jsunity.run(subquerySplicingCrashRegressionSuite);
+jsunity.run(subquerySplicingLimitDroppingOuterRowsSuite);
 
 return jsunity.done();
