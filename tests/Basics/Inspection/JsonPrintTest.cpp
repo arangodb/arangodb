@@ -1091,4 +1091,45 @@ TEST(JsonPrint, format_output) {
   }
 }
 
+TEST(JsonPrint, format_output_with_unquoted_fields) {
+  Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
+
+  {
+    auto expected = R"(Dummy - {
+  i: 42,
+  d: 123.456,
+  b: true,
+  s: "foobar"
+})";
+    auto actual = fmt::format("Dummy - {:pu}", inspection::json(f));
+    EXPECT_EQ(expected, actual);
+
+    actual = fmt::format(
+        "Dummy - {}",
+        inspection::json(f, inspection::JsonPrintFormat::kPretty, false));
+    EXPECT_EQ(expected, actual);
+  }
+
+  {
+    auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
+    auto actual = fmt::format(
+        "Dummy - {}",
+        inspection::json(f, inspection::JsonPrintFormat::kCompact, false));
+    EXPECT_EQ(expected, actual);
+    actual = fmt::format("Dummy - {:cu}", inspection::json(f));
+    EXPECT_EQ(expected, actual);
+  }
+
+  {
+    auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
+    auto actual = fmt::format("Dummy - {:mu}", inspection::json(f));
+    EXPECT_EQ(expected, actual);
+
+    actual = fmt::format(
+        "Dummy - {}",
+        inspection::json(f, inspection::JsonPrintFormat::kMinimal, false));
+    EXPECT_EQ(expected, actual);
+  }
+}
+
 }  // namespace

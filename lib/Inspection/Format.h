@@ -96,12 +96,15 @@ template<class T>
 struct JsonPrintable {
   T const& value;
   JsonPrintFormat format;
+  bool quoteFieldNames;
 };
 
 template<class T>
-auto json(T const& value, JsonPrintFormat format = JsonPrintFormat::kCompact) {
+auto json(T const& value, JsonPrintFormat format = JsonPrintFormat::kCompact,
+          bool quoteFieldNames = true) {
   static_assert(detail::IsInspectable<T, JsonPrintInspector<>>());
-  return JsonPrintable<T>{.value = value, .format = format};
+  return JsonPrintable<T>{
+      .value = value, .format = format, .quoteFieldNames = quoteFieldNames};
 }
 
 }  // namespace arangodb::inspection
@@ -126,6 +129,11 @@ struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
         it++;
       }
     }
+    if (it != end && *it == 'u') {
+      _quoteFieldNames = false;
+      ++it;
+    }
+
     if (it != end && *it != '}') throw fmt::format_error("invalid format");
     return it;
   }
@@ -137,7 +145,8 @@ struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
     auto format = _format.value_or(v.format);
 
     auto buffer = fmt::basic_memory_buffer<Char>();
-    format_value(buffer, v.value, ctx.locale(), format);
+    format_value(buffer, v.value, ctx.locale(), format,
+                 _quoteFieldNames && v.quoteFieldNames);
     return formatter<basic_string_view<Char>, Char>::format(
         {buffer.data(), buffer.size()}, ctx);
   }
@@ -145,13 +154,15 @@ struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
  private:
   static void format_value(detail::buffer<Char>& buf, const T& value,
                            detail::locale_ref loc,
-                           arangodb::inspection::JsonPrintFormat format) {
+                           arangodb::inspection::JsonPrintFormat format,
+                           bool quoteFieldNames) {
     auto&& format_buf = detail::formatbuf<std::basic_streambuf<Char>>(buf);
     auto&& output = std::basic_ostream<Char>(&format_buf);
 #if !defined(FMT_STATIC_THOUSANDS_SEPARATOR)
     if (loc) output.imbue(loc.get<std::locale>());
 #endif
-    arangodb::inspection::JsonPrintInspector<> insp(output, format);
+    arangodb::inspection::JsonPrintInspector<> insp(output, format,
+                                                    quoteFieldNames);
     auto res = insp.apply(value);
     assert(res.ok());  // TODO - print error if failed?
     output.exceptions(std::ios_base::failbit | std::ios_base::badbit);
@@ -159,6 +170,7 @@ struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
 
   // format: 'm' - Minimal, 'c' - Compact, 'p' - Pretty.
   std::optional<arangodb::inspection::JsonPrintFormat> _format;
+  bool _quoteFieldNames = true;
 };
 
 namespace std {

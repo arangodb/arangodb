@@ -45,8 +45,8 @@ struct JsonPrintInspector
   static constexpr unsigned IndentationPerLevel = 2;
 
  public:
-  JsonPrintInspector(std::ostream& stream,
-                     JsonPrintFormat format) requires(!Base::hasContext)
+  JsonPrintInspector(std::ostream& stream, JsonPrintFormat format,
+                     bool quoteFieldNames = true) requires(!Base::hasContext)
       : Base(),
         _stream(stream),
         _indentation(),
@@ -54,11 +54,20 @@ struct JsonPrintInspector
                    : format == JsonPrintFormat::kCompact ? " "
                                                          : ""),
         _separator(format == JsonPrintFormat::kMinimal ? "" : " "),
-        _format(format) {}
+        _format(format),
+        _quoteFieldNames(quoteFieldNames) {}
 
-  JsonPrintInspector(std::ostream& stream, std::string indentation,
-                     Context const& context)
-      : Base(context), _stream(stream), _indentation(std::move(indentation)) {}
+  JsonPrintInspector(std::ostream& stream, JsonPrintFormat format,
+                     bool quoteFieldNames, Context const& context)
+      : Base(context),
+        _stream(stream),
+        _indentation(),
+        _linebreak(format == JsonPrintFormat::kPretty    ? "\n"
+                   : format == JsonPrintFormat::kCompact ? " "
+                                                         : ""),
+        _separator(format == JsonPrintFormat::kMinimal ? "" : " "),
+        _format(format),
+        _quoteFieldNames(quoteFieldNames) {}
 
   template<class T>
   [[nodiscard]] Status apply(T const& x) {
@@ -124,7 +133,8 @@ struct JsonPrintInspector
     } else {
       _stream << ',';
     }
-    _stream << _linebreak << _indentation << '"' << name << "\":" << _separator;
+    _stream << _linebreak << _indentation << (_quoteFieldNames ? "\"" : "")
+            << name << (_quoteFieldNames ? "\":" : ":") << _separator;
     return {};
   }
 
@@ -157,6 +167,10 @@ struct JsonPrintInspector
   };
 
  private:
+  JsonPrintInspector(std::ostream& stream, std::string indentation,
+                     Context const& context)
+      : Base(context), _stream(stream), _indentation(std::move(indentation)) {}
+
   template<class>
   friend struct detail::EmbeddedFields;
   template<class, class...>
@@ -244,5 +258,6 @@ struct JsonPrintInspector
   std::string_view _separator;
   JsonPrintFormat _format;
   bool _firstField = false;
+  bool _quoteFieldNames = true;
 };
 }  // namespace arangodb::inspection
