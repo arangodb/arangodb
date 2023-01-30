@@ -31,8 +31,7 @@ namespace arangodb::pregel::actor {
 
 struct ActorBase {
   virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender,
-                       std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
+  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
   virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;

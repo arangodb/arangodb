@@ -81,7 +81,7 @@ struct Runtime
   auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
 
   template<typename ActorConfig>
-  auto getActorStateByID(ActorID id)
+  auto getActorStateByID(ActorID id) const
       -> std::optional<typename ActorConfig::State> {
     auto actorBase = actors.find(id);
     if (actorBase.has_value()) {
@@ -94,7 +94,7 @@ struct Runtime
     return std::nullopt;
   }
 
-  auto getSerializedActorByID(ActorID id)
+  auto getSerializedActorByID(ActorID id) const
       -> std::optional<velocypack::SharedSlice> {
     auto actor = actors.find(id);
     if (actor.has_value()) {
@@ -167,10 +167,11 @@ struct Runtime
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
                        ActorMessage const& message) -> void {
     auto actor = actors.find(receiver.id);
+    auto payload = MessagePayload<ActorMessage>(std::move(message));
     if (actor.has_value()) {
       actor->get()->process(
           sender,
-          std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
+          payload);
     } else {
       dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
     }

@@ -79,9 +79,9 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor->state, (TrivialState{.state = "", .called = 0}));
 
-  auto message = std::make_unique<MessagePayload<TrivialMessages>>(
+  auto message = MessagePayload<TrivialMessages>(
       TrivialMessage{"Hello"});
-  actor->process(ActorPID{.server = "A", .id = {5}}, std::move(message));
+  actor->process(ActorPID{.server = "A", .id = {5}}, message);
   ASSERT_EQ(*actor->state, (TrivialState{.state = "Hello", .called = 1}));
 }
 

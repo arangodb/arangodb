@@ -32,16 +32,6 @@
 #include "ActorPID.h"
 #include "MPSCQueue.h"
 
-namespace {
-// helper type for the visitor
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
-
 namespace arangodb::pregel::actor {
 
 struct MessagePayloadBase {
@@ -104,11 +94,11 @@ template<typename... Args0, typename... Args1>
 struct concatenator<std::variant<Args0...>, std::variant<Args1...>> {
   std::variant<Args0..., Args1...> item;
   concatenator(std::variant<Args0...> a) {
-    std::visit(overloaded{[this](auto&& arg) { this->item = std::move(arg); }},
+    std::visit([this](auto&& arg) { this->item = std::move(arg); },
                std::move(a));
   }
   concatenator(std::variant<Args1...> b) {
-    std::visit(overloaded{[this](auto&& arg) { this->item = std::move(arg); }},
+    std::visit([this](auto&& arg) { this->item = std::move(arg); },
                std::move(b));
   }
 };

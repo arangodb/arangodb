@@ -43,11 +43,9 @@ struct ActorList {
   ActorList(ActorMap map) : actors{std::move(map)} {}
   ActorList() = default;
 
-  auto find(ActorID id) -> std::optional<std::shared_ptr<ActorBase>> {
+  auto find(ActorID id) const -> std::optional<std::shared_ptr<ActorBase>> {
     return actors.doUnderLock(
-        [id](ActorMap& map)
-            -> std::optional<
-                std::reference_wrapper<std::shared_ptr<ActorBase>>> {
+        [id](ActorMap const& map) -> std::optional<std::shared_ptr<ActorBase>> {
           auto a = map.find(id);
           if (a == std::end(map)) {
             return std::nullopt;
@@ -63,10 +61,7 @@ struct ActorList {
   }
 
   auto remove(ActorID id) -> void {
-    auto actor = find(id);
-    if (actor.has_value()) {
-      actors.doUnderLock([id](ActorMap& map) { map.erase(id); });
-    }
+    actors.doUnderLock([id](ActorMap& map) { map.erase(id); });
   }
 
   auto removeIf(

@@ -25,7 +25,6 @@
 
 #include <Inspection/VPackWithErrorT.h>
 #include <memory>
-#include <iostream>
 #include <string_view>
 #include <type_traits>
 
@@ -66,7 +65,7 @@ concept IsInspectable = requires(typename A::Message message,
   {fmt::format("{}", message)};
   {fmt::format("{}", state)};
 };
-};  // namespace
+}  // namespace
 template<typename Runtime, typename A>
 concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
     IncludesName<A> && HandlerInheritsFromBaseHandler<Runtime, A> &&
@@ -84,20 +83,18 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
         std::size_t batchSize)
       : pid(pid),
         runtime(runtime),
-        state(std::move(initialState)),
-        batchSize(batchSize) {}
+        batchSize(batchSize),
+        state(std::move(initialState)) {}
 
   ~Actor() = default;
 
   auto typeName() -> std::string_view override { return Config::typeName(); };
 
-  void process(ActorPID sender,
-               std::unique_ptr<MessagePayloadBase> msg) override {
-    if (auto* m =
-            dynamic_cast<MessagePayload<typename Config::Message>*>(msg.get());
+  void process(ActorPID sender, MessagePayloadBase& msg) override {
+    if (auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(&msg);
         m != nullptr) {
       push(sender, std::move(m->payload));
-    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(msg.get());
+    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(&msg);
                n != nullptr) {
       push(sender, std::move(n->payload));
     } else {
@@ -107,7 +104,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     }
   }
 
-  void process(ActorPID sender, velocypack::SharedSlice msg) override {
+  void process(ActorPID sender, velocypack::SharedSlice const msg) override {
     if (auto m =
             inspection::deserializeWithErrorT<typename Config::Message>(msg);
         m.ok()) {
@@ -141,6 +138,10 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     return res.get();
   }
 
+  template<typename R, typename C, typename Inspector>
+  requires Actorable<R, C>
+  friend auto inspect(Inspector& f, Actor<R, C>& x);
+
  private:
   void push(ActorPID sender, typename Config::Message&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
@@ -164,7 +165,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   }
 
   void work() {
-    if (finished.load() == true) {
+    if (finished.load()) {
       return;
     }
     auto i = batchSize;
@@ -174,15 +175,15 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
           typename Config::template Handler<Runtime>{
               {pid, msg->sender, std::move(state), runtime}},
           msg->payload->item);
-      i--;
-      if (i == 0) {
-        // push more work to scheduler if queue is still not empty
-        if (not inbox.empty()) {
-          kick();
-          return;
-        }
+      if (--i == 0) {
         break;
       }
+    }
+
+    // push more work to scheduler if queue is still not empty
+    if (not inbox.empty()) {
+      kick();
+      return;
     }
 
     idle.store(true);
@@ -215,20 +216,21 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
     // only push work to scheduler if actor is idle (meaning no work is waiting
     // on the scheduler and no work is currently processed in work())
-    auto isIdle = idle.load();
-    if (isIdle and idle.compare_exchange_strong(isIdle, false)) {
+    auto isIdle = true;
+    if (idle.load() and idle.compare_exchange_strong(isIdle, false)) {
       kick();
     }
   }
 
- public:
   ActorPID pid;
   std::atomic<bool> idle{true};
-  std::atomic<bool> finished;
+  std::atomic<bool> finished{false};
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
-  std::unique_ptr<typename Config::State> state;
   std::size_t batchSize{16};
+
+ public:
+  std::unique_ptr<typename Config::State> state;
 };
 
 // TODO make queue inspectable

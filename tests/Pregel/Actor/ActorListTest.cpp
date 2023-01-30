@@ -32,8 +32,7 @@ struct ActorBaseMock : ActorBase {
   ActorBaseMock(std::string type) : type{std::move(type)} {};
   ActorBaseMock() = default;
   ~ActorBaseMock() = default;
-  auto process(ActorPID sender, std::unique_ptr<MessagePayloadBase> payload)
-      -> void override{};
+  auto process(ActorPID sender, MessagePayloadBase& msg) -> void override{};
   auto process(ActorPID sender, arangodb::velocypack::SharedSlice msg)
       -> void override{};
   auto typeName() -> std::string_view override { return type; };
@@ -89,6 +88,14 @@ TEST(ActorListTest, removes_actor_by_id_from_list) {
 
   list.remove(ActorID{1});
   ASSERT_EQ(list.size(), 0);
+}
+
+TEST(ActorListTest, ignores_removal_of_non_existing_actor) {
+  auto list = ActorList({{{ActorID{1}, std::make_shared<ActorBaseMock>()}}});
+  ASSERT_EQ(list.size(), 1);
+
+  list.remove(ActorID{2});
+  ASSERT_EQ(list.size(), 1);
 }
 
 TEST(ActorListTest, removes_actor_in_use_without_destroying_it) {

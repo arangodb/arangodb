@@ -42,11 +42,6 @@ using namespace arangodb::pregel::actor::test;
 struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
-// struct NonTrivialScheduler {
-//   NonTrivialScheduler() {}
-//   auto operator()(auto fn) { threads.emplace(fn); }
-//   ThreadGuard threads;
-// };
 
 struct EmptyExternalDispatcher {
   auto operator()(ActorPID sender, ActorPID receiver,
