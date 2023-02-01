@@ -166,6 +166,17 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
   }
 
  private:
+  template<class>
+  friend struct detail::EmbeddedFields;
+  template<class, class...>
+  friend struct detail::EmbeddedFieldsImpl;
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
+
+  using EmbeddedParam = std::monostate;
+
   template<class T, class... Args>
   auto processEmbeddedFields(T&, Args&&... args) {
     return this->applyFields(std::forward<Args>(args)...);

@@ -125,19 +125,8 @@ struct VPackSaveInspector
   };
 
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
-  template<class, class>
-  friend struct detail::EmbeddedFieldInspector;
-
   template<class, class>
   friend struct SaveInspectorBase;
-
-  using EmbeddedParam = std::monostate;
 
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] auto processTuple(T const& data) {
