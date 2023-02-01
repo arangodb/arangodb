@@ -237,18 +237,15 @@ struct JsonPrintInspector
 
   void incrementIndentationLevel() {
     if (_format == JsonPrintFormat::kPretty) {
-      for (unsigned i = 0; i < IndentationPerLevel; ++i) {
-        _indentation.push_back(' ');
-      }
+      _indentation.append(IndentationPerLevel, ' ');
     }
   }
 
   void decrementIndentationLevel() {
     if (_format == JsonPrintFormat::kPretty) {
-      assert(_indentation.size() >= IndentationPerLevel);
-      for (unsigned i = 0; i < IndentationPerLevel; ++i) {
-        _indentation.pop_back();
-      }
+      assert(_indentation.size() >= IndentationPerLevel &&
+             _indentation.size() % IndentationPerLevel == 0);
+      _indentation.resize(_indentation.size() - IndentationPerLevel);
     }
   }
 
