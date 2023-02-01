@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -111,6 +112,19 @@ struct NodeLoadInspectorImpl
     static_assert(AllowUnsafeTypes);
     v = _node->slice();
     return {};
+  }
+
+  [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
+    if constexpr (AllowUnsafeTypes) {
+      v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
+      return {};
+    } else {
+      auto slice = _node->slice();
+      velocypack::Buffer<std::uint8_t> buffer(slice.byteSize());
+      buffer.append(slice.start(), slice.byteSize());
+      v = velocypack::SharedSlice(std::move(buffer));
+      return {};
+    }
   }
 
   [[nodiscard]] Status value(bool& v) {
