@@ -416,8 +416,8 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   template<class T>
   Status processList(T& list) {
     std::size_t idx = 0;
-    return this->self().doProcessList([&](ValueType value) -> Status {
-      auto ff = make(value);
+    return this->self().doProcessList([&](auto value) -> Status {
+      auto ff = this->self().make(value);
       typename T::value_type val;
       if (auto res = process(ff, val); not res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
@@ -431,8 +431,8 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   template<class T, size_t N>
   [[nodiscard]] Status processArray(T (&data)[N]) {
     std::size_t index = 0;
-    return this->self().doProcessList([&](ValueType value) -> Status {
-      auto ff = make(value);
+    return this->self().doProcessList([&](auto value) -> Status {
+      auto ff = this->self().make(value);
       if (auto res = process(ff, data[index]); not res.ok()) {
         return {std::move(res), std::to_string(index), Status::ArrayTag{}};
       }

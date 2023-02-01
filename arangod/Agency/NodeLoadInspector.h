@@ -23,58 +23,45 @@
 
 #pragma once
 
-#include <functional>
-#include <limits>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include <variant>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
-#include <velocypack/ValueType.h>
 
 #include "Inspection/LoadInspectorBase.h"
-#include "Inspection/Status.h"
-#include "Inspection/detail/traits.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Agency/Node.h"
 
 namespace arangodb::inspection {
 
 template<bool AllowUnsafeTypes, class Context = NoContext>
-struct VPackLoadInspectorImpl
-    : LoadInspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes, Context>,
-                        velocypack::Slice, Context> {
+struct NodeLoadInspectorImpl
+    : LoadInspectorBase<NodeLoadInspectorImpl<AllowUnsafeTypes, Context>,
+                        consensus::Node const*, Context> {
  protected:
   using Base =
-      LoadInspectorBase<VPackLoadInspectorImpl, velocypack::Slice, Context>;
+      LoadInspectorBase<NodeLoadInspectorImpl, consensus::Node const*, Context>;
 
  public:
-  explicit VPackLoadInspectorImpl(
-      velocypack::Builder& builder,
+  explicit NodeLoadInspectorImpl(
+      consensus::Node const* node,
       ParseOptions options = {}) requires(!Base::hasContext)
-      : VPackLoadInspectorImpl(builder.slice(), options) {}
+      : Base(options), _node(node) {}
 
-  explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
-                                  ParseOptions options, Context const& context)
-      : VPackLoadInspectorImpl(builder.slice(), options, context) {}
-
-  explicit VPackLoadInspectorImpl(
-      velocypack::Slice slice, ParseOptions options) requires(!Base::hasContext)
-      : Base(options), _slice(slice) {}
-
-  explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options,
-                                  Context const& context)
-      : Base(options, context), _slice(slice) {}
+  explicit NodeLoadInspectorImpl(consensus::Node const* node,
+                                 ParseOptions options, Context const& context)
+      : Base(options, context), _node(node) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
   [[nodiscard]] Status value(T& v) {
     try {
-      v = _slice.getNumber<T>();
+      v = _node->slice().getNumber<T>();
       return {};
     } catch (velocypack::Exception& e) {
       return {e.what()};
@@ -83,7 +70,7 @@ struct VPackLoadInspectorImpl
 
   [[nodiscard]] Status value(double& v) {
     try {
-      v = _slice.getNumber<double>();
+      v = _node->slice().getNumber<double>();
       return {};
     } catch (velocypack::Exception& e) {
       return {e.what()};
@@ -91,28 +78,28 @@ struct VPackLoadInspectorImpl
   }
 
   [[nodiscard]] Status value(std::string& v) {
-    if (!_slice.isString()) {
-      return {"Expecting type String"};
+    if (auto value = _node->getString(); value) {
+      v = std::move(*value);
+      return {};
     }
-    v = _slice.copyString();
-    return {};
+    return {"Expecting type String"};
   }
 
   [[nodiscard]] Status value(std::string_view& v) {
     static_assert(AllowUnsafeTypes);
-    if (!_slice.isString()) {
+    if (!_node->isString()) {
       return {"Expecting type String"};
     }
-    v = _slice.stringView();
+    v = *_node->getStringView();
     return {};
   }
 
   [[nodiscard]] Status value(velocypack::HashedStringRef& v) {
     static_assert(AllowUnsafeTypes);
-    if (!_slice.isString()) {
+    if (!_node->isString()) {
       return {"Expecting type String"};
     }
-    auto s = _slice.stringView();
+    auto s = *_node->getStringView();
     if (s.size() > std::numeric_limits<uint32_t>::max()) {
       return {"String value too long to store In HashedStringRef"};
     }
@@ -122,25 +109,20 @@ struct VPackLoadInspectorImpl
 
   [[nodiscard]] Status::Success value(velocypack::Slice& v) {
     static_assert(AllowUnsafeTypes);
-    v = _slice;
-    return {};
-  }
-
-  [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    v = VPackBuilder{_slice}.sharedSlice();
+    v = _node->slice();
     return {};
   }
 
   [[nodiscard]] Status value(bool& v) {
-    if (!_slice.isBool()) {
-      return {"Expecting type Bool"};
+    if (auto value = _node->getBool(); value) {
+      v = std::move(*value);
+      return {};
     }
-    v = _slice.isTrue();
-    return {};
+    return {"Expecting type Bool"};
   }
 
   [[nodiscard]] Status beginObject() {
-    if (!_slice.isObject()) {
+    if (!_node->isObject()) {
       return {"Expecting type Object"};
     }
     return {};
@@ -149,21 +131,19 @@ struct VPackLoadInspectorImpl
   [[nodiscard]] Status::Success endObject() { return {}; }
 
   [[nodiscard]] Status beginArray() {
-    if (!_slice.isArray()) {
+    if (!_node->isArray()) {
       return {"Expecting type Array"};
     }
     return {};
   }
 
-  [[nodiscard]] Status::Success beginField(std::string_view name) { return {}; }
-
-  [[nodiscard]] Status::Success endField() { return {}; }
-
   [[nodiscard]] Status::Success endArray() { return {}; }
 
-  bool isNull() const noexcept { return _slice.isNull(); }
+  bool isNull() const noexcept {
+    return _node == nullptr || _node->slice().isNull();
+  }
 
-  velocypack::Slice slice() noexcept { return _slice; }
+  consensus::Node const* node() const noexcept { return _node; }
 
  private:
   template<class>
@@ -178,14 +158,28 @@ struct VPackLoadInspectorImpl
   template<class, class, class>
   friend struct LoadInspectorBase;
 
-  auto getTypeTag() const noexcept { return _slice.type(); }
+  auto make(velocypack::Slice data) {
+    if constexpr (Base::hasContext) {
+      return VPackLoadInspectorImpl<AllowUnsafeTypes, Context>(
+          data, this->options(), this->getContext());
+    } else {
+      return VPackLoadInspectorImpl<AllowUnsafeTypes>(data, this->options());
+    }
+  }
+
+  auto getTypeTag() const noexcept {
+    assert(_node->type() == consensus::LEAF);
+    return _node->slice().type();
+  }
 
   template<class Func>
   auto doProcessObject(Func&& func)
-      -> decltype(func(std::string_view(), velocypack::Slice())) {
-    assert(_slice.isObject());
-    for (auto [k, v] : VPackObjectIterator(slice())) {
-      if (auto res = func(k.stringView(), v); not res.ok()) {
+      -> decltype(func(std::string_view(),
+                       std::declval<consensus::Node const*>())) {
+    assert(_node);
+    assert(_node->isObject());
+    for (auto& [k, v] : _node->children()) {
+      if (auto res = func(k, v.get()); not res.ok()) {
         return res;
       }
     }
@@ -194,8 +188,8 @@ struct VPackLoadInspectorImpl
 
   template<class Func>
   Status doProcessList(Func&& func) {
-    assert(_slice.isArray());
-    for (auto&& s : VPackArrayIterator(slice())) {
+    assert(_node->isArray());
+    for (auto&& s : VPackArrayIterator(*_node->getArray())) {
       if (auto res = func(s); not res.ok()) {
         return res;
       }
@@ -205,49 +199,50 @@ struct VPackLoadInspectorImpl
 
   template<class... Ts>
   auto parseVariantInformation(
-      std::string_view& type, velocypack::Slice& data,
+      std::string_view& type, consensus::Node const*& data,
       typename Base::template UnqualifiedVariant<Ts...>& variant) -> Status {
-    if (_slice.length() > 1) {
-      return {"Unqualified variant data has too many fields"};
-    }
-    VPackObjectIterator it(_slice);
-    if (!it.valid()) {
+    auto& children = _node->children();
+    if (children.empty()) {
       return {"Missing unqualified variant data"};
     }
-    auto [t, v] = *it;
-    assert(type.isString());
-    type = t.stringView();
-    data = v;
+    if (children.size() > 1) {
+      return {"Unqualified variant data has too many fields"};
+    }
+    auto& [t, v] = *children.begin();
+    type = t;
+    data = v.get();
     return {};
   }
 
   template<class... Ts>
   auto parseVariantInformation(
-      std::string_view& type, velocypack::Slice& data,
+      std::string_view& type, consensus::Node const*& data,
       typename Base::template QualifiedVariant<Ts...>& variant) -> Status {
     if (auto res = loadTypeField(variant.typeField, type); !res.ok()) {
       return res;
     }
 
-    data = slice()[variant.valueField];
-    if (data.isNone()) {
+    auto node = _node->get(variant.valueField);
+    if (not node.has_value()) {
       return {"Variant value field \"" + std::string(variant.valueField) +
               "\" is missing"};
     }
+    data = &node->get();
     return {};
   }
 
   Status loadTypeField(std::string_view fieldName, std::string_view& result) {
-    auto v = slice()[fieldName];
-    if (!v.isString()) {
-      if (v.isNone()) {
-        return {"Variant type field \"" + std::string(fieldName) +
-                "\" is missing"};
-      }
+    auto v = _node->get(fieldName);
+    if (not v.has_value()) {
+      return {"Variant type field \"" + std::string(fieldName) +
+              "\" is missing"};
+    }
+    auto val = v->get().getStringView();
+    if (not val.has_value()) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" must be a string"};
     }
-    result = v.stringView();
+    result = *val;
     return {};
   }
 
@@ -271,8 +266,8 @@ struct VPackLoadInspectorImpl
     } else if constexpr (std::is_floating_point_v<T>) {
       return type == ValueType::Double || isInt(type);
     } else if constexpr (detail::IsTuple<T>::value) {
-      return type == ValueType::Array &&
-             detail::TupleSize<T>::value == _slice.length();
+      return type == ValueType::Array && _node->isArray() &&
+             detail::TupleSize<T>::value == _node->slice().length();
     } else if constexpr (detail::IsListLike<T>::value) {
       return type == ValueType::Array;
     } else if constexpr (detail::IsMapLike<T>::value) {
@@ -283,8 +278,10 @@ struct VPackLoadInspectorImpl
 
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] Status processTuple(T& data) {
+    auto slice = _node->getArray();
+    assert(slice != nullptr);
     if constexpr (Idx < End) {
-      auto ff = this->make(_slice[Idx]);
+      auto ff = make(slice->operator[](Idx));
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
         return {std::move(res), std::to_string(Idx), Status::ArrayTag{}};
       }
@@ -295,19 +292,20 @@ struct VPackLoadInspectorImpl
   }
 
   Status checkArrayLength(std::size_t arrayLength) {
-    assert(_slice.isArray());
-    if (_slice.length() != arrayLength) {
+    auto slice = _node->getArray();
+    assert(slice != nullptr);
+    if (slice->length() != arrayLength) {
       return {"Expected array of length " + std::to_string(arrayLength)};
     }
     return {};
   }
 
-  velocypack::Slice _slice;
+  consensus::Node const* _node;
 };
 
 template<class Context = NoContext>
-using VPackLoadInspector = VPackLoadInspectorImpl<false, Context>;
+using NodeLoadInspector = NodeLoadInspectorImpl<false, Context>;
 template<class Context = NoContext>
-using VPackUnsafeLoadInspector = VPackLoadInspectorImpl<true, Context>;
+using NodeUnsafeLoadInspector = NodeLoadInspectorImpl<true, Context>;
 
 }  // namespace arangodb::inspection
