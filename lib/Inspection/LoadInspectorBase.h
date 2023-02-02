@@ -160,7 +160,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     });
 
     auto result = parseFields(fields, std::forward<Args>(args)...);
-    if (result.ok() and not _options.ignoreUnknownFields) {
+    if (result.ok() && !_options.ignoreUnknownFields) {
       for (auto& [k, v] : fields) {
         if (!v.second) {
           return {"Found unexpected attribute '" + std::string(k) + "'"};
@@ -232,7 +232,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
       std::string_view type;
       ValueType data{};
       auto res = this->self().parseVariantInformation(type, data, variant);
-      if (not res.ok()) {
+      if (!res.ok()) {
         return res;
       }
       auto parser = [this, data](auto& v) {
@@ -419,7 +419,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
       typename T::value_type val;
-      if (auto res = process(ff, val); not res.ok()) {
+      if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }
       list.push_back(std::move(val));
@@ -433,7 +433,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     std::size_t index = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
-      if (auto res = process(ff, data[index]); not res.ok()) {
+      if (auto res = process(ff, data[index]); !res.ok()) {
         return {std::move(res), std::to_string(index), Status::ArrayTag{}};
       }
       ++index;

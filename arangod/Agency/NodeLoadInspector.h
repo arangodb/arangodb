@@ -193,7 +193,7 @@ struct NodeLoadInspectorImpl
     assert(_node);
     assert(_node->isObject());
     for (auto& [k, v] : _node->children()) {
-      if (auto res = func(k, v.get()); not res.ok()) {
+      if (auto res = func(k, v.get()); !res.ok()) {
         return res;
       }
     }
@@ -204,7 +204,7 @@ struct NodeLoadInspectorImpl
   Status doProcessList(Func&& func) {
     assert(_node->isArray());
     for (auto&& s : VPackArrayIterator(*_node->getArray())) {
-      if (auto res = func(s); not res.ok()) {
+      if (auto res = func(s); !res.ok()) {
         return res;
       }
     }
@@ -237,7 +237,7 @@ struct NodeLoadInspectorImpl
     }
 
     auto node = _node->get(variant.valueField);
-    if (not node.has_value()) {
+    if (!node.has_value()) {
       return {"Variant value field \"" + std::string(variant.valueField) +
               "\" is missing"};
     }
@@ -247,12 +247,12 @@ struct NodeLoadInspectorImpl
 
   Status loadTypeField(std::string_view fieldName, std::string_view& result) {
     auto v = _node->get(fieldName);
-    if (not v.has_value()) {
+    if (!v.has_value()) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" is missing"};
     }
     auto val = v->get().getStringView();
-    if (not val.has_value()) {
+    if (!val.has_value()) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" must be a string"};
     }
