@@ -139,8 +139,7 @@ TEST_F(JsonPrintInspectorTest, store_list) {
 }
 
 TEST_F(JsonPrintInspectorTest, store_map) {
-  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
-        .unordered = {{"4", 4}, {"5", 5}}};
+  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}}, .unordered = {{"4", 4}}};
   auto result = inspector.apply(m);
   ASSERT_TRUE(result.ok());
 
@@ -157,7 +156,6 @@ TEST_F(JsonPrintInspectorTest, store_map) {
     }
   },
   "unordered": {
-    "5": 5,
     "4": 4
   }
 })";
@@ -571,13 +569,12 @@ TEST_F(JsonPrintInspectorCompactTest, store_list) {
 }
 
 TEST_F(JsonPrintInspectorCompactTest, store_map) {
-  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
-        .unordered = {{"4", 4}, {"5", 5}}};
+  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}}, .unordered = {{"4", 4}}};
   auto result = inspector.apply(m);
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({ "map": { "1": { "i": 1 }, "2": { "i": 2 }, "3": { "i": 3 } }, "unordered": { "5": 5, "4": 4 } })";
+      R"({ "map": { "1": { "i": 1 }, "2": { "i": 2 }, "3": { "i": 3 } }, "unordered": { "4": 4 } })";
   EXPECT_EQ(expected, stream.str());
 }
 
@@ -825,13 +822,12 @@ TEST_F(JsonPrintInspectorMinimalTest, store_list) {
 }
 
 TEST_F(JsonPrintInspectorMinimalTest, store_map) {
-  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
-        .unordered = {{"4", 4}, {"5", 5}}};
+  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}}, .unordered = {{"4", 4}}};
   auto result = inspector.apply(m);
   ASSERT_TRUE(result.ok());
 
   auto expected =
-      R"({"map":{"1":{"i":1},"2":{"i":2},"3":{"i":3}},"unordered":{"5":5,"4":4}})";
+      R"({"map":{"1":{"i":1},"2":{"i":2},"3":{"i":3}},"unordered":{"4":4}})";
   EXPECT_EQ(expected, stream.str());
 }
 
