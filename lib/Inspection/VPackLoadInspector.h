@@ -215,7 +215,7 @@ struct VPackLoadInspectorImpl
       return {"Missing unqualified variant data"};
     }
     auto [t, v] = *it;
-    assert(type.isString());
+    assert(t.isString());
     type = t.stringView();
     data = v;
     return {};

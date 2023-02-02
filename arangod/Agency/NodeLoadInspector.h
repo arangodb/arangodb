@@ -182,8 +182,11 @@ struct NodeLoadInspectorImpl
   }
 
   auto getTypeTag() const noexcept {
-    assert(_node->type() == consensus::LEAF);
-    return _node->slice().type();
+    if (_node->type() == consensus::LEAF) {
+      return _node->slice().type();
+    } else {
+      return velocypack::ValueType::Object;
+    }
   }
 
   template<class Func>
@@ -293,7 +296,7 @@ struct NodeLoadInspectorImpl
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] Status processTuple(T& data) {
     auto slice = _node->getArray();
-    assert(slice != nullptr);
+    assert(slice.has_value());
     if constexpr (Idx < End) {
       auto ff = make(slice->operator[](Idx));
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
@@ -307,7 +310,7 @@ struct NodeLoadInspectorImpl
 
   Status checkArrayLength(std::size_t arrayLength) {
     auto slice = _node->getArray();
-    assert(slice != nullptr);
+    assert(slice.has_value());
     if (slice->length() != arrayLength) {
       return {"Expected array of length " + std::to_string(arrayLength)};
     }

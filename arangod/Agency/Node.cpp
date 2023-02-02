@@ -1119,14 +1119,14 @@ std::vector<std::string> Node::exists(
 }
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
-  return exists(Store::split(rel));
+  return exists(split(rel));
 }
 
 bool Node::has(std::vector<std::string> const& rel) const {
   return exists(rel).size() == rel.size();
 }
 
-bool Node::has(std::string const& rel) const { return has(Store::split(rel)); }
+bool Node::has(std::string const& rel) const { return has(split(rel)); }
 
 std::optional<int64_t> Node::getInt() const noexcept {
   if (type() == NODE || !slice().isNumber<int64_t>()) {
