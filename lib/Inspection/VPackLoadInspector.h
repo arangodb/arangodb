@@ -161,6 +161,10 @@ struct VPackLoadInspectorImpl
     return {};
   }
 
+  [[nodiscard]] Status::Success beginField(std::string_view name) { return {}; }
+
+  [[nodiscard]] Status::Success endField() { return {}; }
+
   [[nodiscard]] Status::Success endArray() { return {}; }
 
   template<class T>
