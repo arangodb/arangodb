@@ -38,7 +38,45 @@ struct SharedLock {
 };
 
 // TODO - perhaps use a custom LockGuard type
-using SharedLockGuard = std::unique_lock<SharedLock>;
+struct SharedLockGuard {
+  SharedLockGuard() = default;
+
+  SharedLockGuard(SharedLockGuard const&) = delete;
+  SharedLockGuard& operator=(SharedLockGuard const&) = delete;
+
+  SharedLockGuard(SharedLockGuard&& r) noexcept : _lock(r._lock) {
+    r._lock = nullptr;
+  }
+
+  SharedLockGuard& operator=(SharedLockGuard&& r) noexcept {
+    if (&r != this) {
+      _lock = r._lock;
+      r._lock = nullptr;
+    }
+    return *this;
+  }
+
+  bool isLocked() const noexcept { return _lock != nullptr; }
+
+  void unlock() noexcept {
+    assert(_lock != nullptr);
+    _lock->unlock();
+    _lock = nullptr;
+  }
+
+  ~SharedLockGuard() {
+    if (_lock) {
+      _lock->unlock();
+    }
+  }
+
+ private:
+  template<class>
+  friend struct FutureSharedLock;
+
+  explicit SharedLockGuard(SharedLock* lock) : _lock(lock) {}
+  SharedLock* _lock = nullptr;
+};
 
 template<class Scheduler>
 struct FutureSharedLock {
@@ -55,7 +93,7 @@ struct FutureSharedLock {
     auto* pred = _tail.exchange(node);
     if (pred == nullptr) {
       node->state.store(State::kSharedActiveLeader);
-      return {SharedLockGuard(*node, std::adopt_lock)};
+      return {SharedLockGuard(node)};
     }
 
     auto predState = pred->state.load();
@@ -71,7 +109,7 @@ struct FutureSharedLock {
         predState == State::kSharedFinished) {
       node->state.store(State::kSharedActiveFollower);
       pred->next.store(node);
-      return {SharedLockGuard(*node, std::adopt_lock)};
+      return {SharedLockGuard(node)};
     }
     assert(predState == State::kExclusive ||
            predState == State::kSharedBlocked);
@@ -84,7 +122,7 @@ struct FutureSharedLock {
     auto* node = new Node(*this, ExclusiveTag{});
     auto* pred = _tail.exchange(node);
     if (pred == nullptr) {
-      return {SharedLockGuard(*node, std::adopt_lock)};
+      return {SharedLockGuard(node)};
     }
     pred->next.store(node);
     return node->promise.getFuture();
@@ -194,9 +232,8 @@ struct FutureSharedLock {
 
   void scheduleNode(Node* node) {
     assert(node != nullptr);
-    _scheduler.queue([node]() {
-      node->promise.setValue(SharedLockGuard(*node, std::adopt_lock));
-    });
+    _scheduler.queue(
+        [node]() { node->promise.setValue(SharedLockGuard(node)); });
   }
 
   struct ExclusiveTag {};
