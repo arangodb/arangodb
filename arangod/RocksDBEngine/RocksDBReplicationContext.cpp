@@ -259,15 +259,12 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   if (_snapshot == nullptr) {
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
-    auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
-    if (!_patchCount.empty() && _patchCount == cname &&
-        rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+    if (!_patchCount.empty() && _patchCount == cname) {
+      auto lockGuard = rcoll->lockExclusive(to);
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
       documentCountAdjustmentTicket =
           rcoll->meta().documentCountAdjustmentTicket();
-    } else {
-      lockGuard.cancel();
     }
     numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();

@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -72,6 +73,8 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
+      _scheduler(SchedulerFeature::SCHEDULER),
+      _exclusiveLock(_scheduler),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -119,22 +122,16 @@ uint64_t RocksDBMetaCollection::numberDocuments(
 }
 
 /// @brief write locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
-}
-
-/// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  _exclusiveLock.unlockWrite();
+futures::SharedLockGuard RocksDBMetaCollection::lockExclusive(double timeout) {
+  // TODO - add support for lock timeout
+  return _exclusiveLock.asyncLockExclusive().get();
 }
 
 /// @brief read locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
-  return doLock(timeout, AccessMode::Type::READ);
+futures::SharedLockGuard RocksDBMetaCollection::lockShared(double timeout) {
+  // TODO - add support for lock timeout
+  return _exclusiveLock.asyncLockShared().get();
 }
-
-/// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
@@ -168,12 +165,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
-    auto res = lockWrite(transaction::Options::defaultLockTimeout);
-    if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    auto lockGuard = lockExclusive(transaction::Options::defaultLockTimeout);
 
     // place a blocker. will be removed by blockerGuard automatically
     blocker.placeBlocker();
@@ -846,14 +838,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
   }
 
   return basics::catchToResult([this]() -> Result {
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = lockWrite(/*timeout*/ 180.0);
-    if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    auto lockGuard = lockExclusive(/*timeout*/ 180.0);
 
     // we now have the exclusive lock on the collection!
 
@@ -914,7 +901,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
 
     // unlock the collection again
-    lockGuard.fire();
+    lockGuard.unlock();
 
     TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
       std::this_thread::sleep_for(
@@ -1606,6 +1593,9 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
 /// @brief lock a collection, with a timeout
 ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
+  // TODO - remove
+  return TRI_ERROR_NO_ERROR;
+#if 0
   uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
 
@@ -1663,6 +1653,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       }
     }
   }
+#endif
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(

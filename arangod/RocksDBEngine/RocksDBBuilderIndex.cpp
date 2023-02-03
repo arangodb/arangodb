@@ -703,19 +703,15 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
 }  // namespace
 
 bool RocksDBBuilderIndex::Locker::lock() {
-  if (!_locked) {
-    if (_collection->lockWrite() != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
-    _locked = true;
+  if (!_lock.isLocked()) {
+    _lock = _collection->lockExclusive();
   }
   return true;
 }
 
 void RocksDBBuilderIndex::Locker::unlock() {
-  if (_locked) {
-    _collection->unlockWrite();
-    _locked = false;
+  if (_lock.isLocked()) {
+    _lock.unlock();
   }
 }
 

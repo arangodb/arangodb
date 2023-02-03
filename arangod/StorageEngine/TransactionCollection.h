@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "Basics/Common.h"
+#include "Futures/FutureSharedLock.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
@@ -86,6 +87,7 @@ class TransactionCollection {
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
   AccessMode::Type _lockType;                      // actual held lock type
+  futures::SharedLockGuard _lock;
 
  private:
   // perform lock, sets _lockType

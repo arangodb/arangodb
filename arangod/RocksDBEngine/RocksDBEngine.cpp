@@ -1847,10 +1847,12 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
-  auto resLock = rcoll->lockWrite();  // technically not necessary
-  if (resLock != TRI_ERROR_NO_ERROR) {
-    return resLock;
-  }
+  // TODO - why do we lock here? were is the unlock?
+  //        do we actually need to unlock?
+  // auto resLock = rcoll->lockWrite();  // technically not necessary if
+  // (resLock != TRI_ERROR_NO_ERROR) {
+  //   return resLock;
+  // }
 
   rocksdb::DB* db = _db->GetRootDB();
 

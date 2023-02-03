@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
+#include "Futures/FutureSharedLock.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
@@ -349,11 +350,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
-    res = physical->lockWrite(timeout);
+    _lock = physical->lockExclusive(timeout);
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
-    res = physical->lockRead(timeout);
+    _lock = physical->lockShared(timeout);
   }
 
   if (res.ok()) {
@@ -427,16 +428,8 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 
   LOG_TRX("372c0", TRACE, _transaction)
       << "write-unlocking collection " << _cid.id();
-  if (AccessMode::isExclusive(type)) {
-    // exclusive locking means we'll be releasing the collection's RW lock in
-    // write mode
-    physical->unlockWrite();
-  } else {
-    // write locking means we'll be releasing the collection's RW lock in read
-    // mode
-    physical->unlockRead();
-  }
 
+  _lock.unlock();
   _lockType = AccessMode::Type::NONE;
 
   return {};

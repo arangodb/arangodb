@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -56,7 +57,11 @@ bool TransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  return _lockType > AccessMode::Type::NONE;
+  auto res = _lockType > AccessMode::Type::NONE;
+  TRI_ASSERT(res == _lock.isLocked() ||
+             // read access does not require lock
+             (_lockType == AccessMode::Type::READ && !_lock.isLocked()));
+  return res;
 }
 
 Result TransactionCollection::updateUsage(AccessMode::Type accessType) {

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Futures/FutureSharedLock.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -141,15 +142,14 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   Result fillIndexForeground();
 
   struct Locker {
-    explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
-    ~Locker() { unlock(); }
+    explicit Locker(RocksDBCollection* c) : _collection(c) {}
     bool lock();
     void unlock();
-    bool isLocked() const { return _locked; }
+    bool isLocked() const { return _lock.isLocked(); }
 
    private:
     RocksDBCollection* const _collection;
-    bool _locked;
+    futures::SharedLockGuard _lock;
   };
 
   /// @brief fill the index, assume already locked exclusively

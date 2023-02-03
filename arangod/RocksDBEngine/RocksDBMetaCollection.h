@@ -27,13 +27,16 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
+#include "Futures/FutureSharedLock.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
+#include "Scheduler/Scheduler.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <functional>
+#include <utility>
 
 namespace arangodb {
 class RevisionReplicationIterator;
@@ -55,10 +58,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
 
-  ErrorCode lockWrite(double timeout = 0.0);
-  void unlockWrite() noexcept;
-  ErrorCode lockRead(double timeout = 0.0);
-  void unlockRead();
+  futures::SharedLockGuard lockExclusive(double timeout = 0.0);
+  futures::SharedLockGuard lockShared(double timeout = 0.0);
 
   /// recalculate counts for collection in case of failure, blocks other writes
   /// for a short period
@@ -168,7 +169,19 @@ class RocksDBMetaCollection : public PhysicalCollection {
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
-  mutable basics::ReadWriteLock _exclusiveLock;
+  // mutable basics::ReadWriteLock _exclusiveLock;
+
+  struct MyScheduler {
+    explicit MyScheduler(Scheduler* scheduler) : scheduler(scheduler) {}
+    template<class Fn>
+    void queue(Fn&& fn) {
+      scheduler->queue(RequestLane::CLIENT_SLOW, std::forward<Fn>(fn));
+    }
+    Scheduler* scheduler;
+  };
+  MyScheduler _scheduler;
+  futures::FutureSharedLock<MyScheduler> _exclusiveLock;
+
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 
