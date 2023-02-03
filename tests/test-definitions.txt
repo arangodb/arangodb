@@ -75,7 +75,7 @@ replication2_client size=small cluster
 replication2_server size=small cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
-resilience_failover priority=750 size=small cluster size=small -- --dumpAgencyOnError true
+resilience_failover priority=750 size=small buckets=2 cluster size=small -- --dumpAgencyOnError true
 resilience_move priority=600 size=small buckets=2 cluster -- --dumpAgencyOnError true
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
