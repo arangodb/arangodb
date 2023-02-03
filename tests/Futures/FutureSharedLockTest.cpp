@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <random>
+#include <unordered_map>
 #include <boost/lockfree/queue.hpp>
 
 namespace {
