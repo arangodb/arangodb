@@ -1,6 +1,14 @@
 v3.10.3 (2023-01-23)
 --------------------
 
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+  creating a database and then restarting the cluster with the startup option
+  `--cluster.force-one-shard` set to true, when the formerly created database
+  has more than one shard, but the flag is set to true, this could lead to 
+  arangosearch's analyzers to use optimizations that should not be used if not 
+  in a single shard mode. For this not to happen, the verification of the 
+  parameter being true as a condition to run optimizations was removed. 
+
 * Log information about follower state/apply progress in supervision job that
   organizes failover in active failover mode.
 
