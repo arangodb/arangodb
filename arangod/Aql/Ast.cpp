@@ -57,6 +57,7 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -1884,7 +1885,17 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
       _functionsMayAccessDocuments = true;
     }
   } else {
-    // user-defined function
+    // user-defined function (UDF)
+    if (!_query.vocbase()
+             .server()
+             .getFeature<V8DealerFeature>()
+             .allowJavaScriptUdfs()) {
+      // usage of user-defined functions is disallowed
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "usage of AQL user-defined functions "
+                                     "(UDFs) is disallowed via configuration");
+    }
+
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name
     char* fname = _resources.registerString(normalized);

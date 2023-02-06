@@ -748,8 +748,7 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option&& option) {
   checkIfSealed();
-  std::map<std::string, Section>::iterator sectionIt =
-      addSection(option.section, "");
+  auto sectionIt = addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
     if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
@@ -760,7 +759,11 @@ void ProgramOptions::addOption(Option&& option) {
   }
 
   Section& section = (*sectionIt).second;
-  section.options.try_emplace(option.name, std::move(option));
+  if (!section.options.try_emplace(option.name, std::move(option)).second) {
+    throw std::logic_error(
+        std::string("duplicate option definition for option ") +
+        option.displayName());
+  }
 }
 
 // modernize an option name
