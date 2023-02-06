@@ -195,6 +195,8 @@ struct LeaderStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedLeaderState<S>>;
@@ -212,6 +214,7 @@ struct LeaderStateManager
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
     std::shared_ptr<StreamImpl> _stream;
+    bool _recoveryCompleted{false};
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -236,6 +239,8 @@ struct FollowerStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedFollowerState<S>>;
@@ -283,6 +288,8 @@ struct UnconfiguredStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
  private:
   LoggerContext const _loggerContext;
@@ -327,6 +334,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   auto resign() && -> std::unique_ptr<CoreType>;
 
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus override;
   [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of

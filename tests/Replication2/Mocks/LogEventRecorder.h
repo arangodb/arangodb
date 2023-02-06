@@ -65,6 +65,10 @@ struct LogEventRecorderHandle : replicated_log::IReplicatedStateHandle {
       -> std::optional<replicated_state::StateStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
   [[nodiscard]] auto getFollower() const -> std::shared_ptr<
       replicated_state::IReplicatedFollowerStateBase> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

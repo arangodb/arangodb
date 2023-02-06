@@ -569,27 +569,26 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
-  return _guardedLeaderData.doUnderLock(
-      [term = _currentTerm](GuardedLeaderData const& leaderData) {
-        if (leaderData._didResign) {
-          throw ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-        }
-        auto commitFailReason = std::optional<CommitFailReason>{};
-        if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
-          commitFailReason = leaderData._lastCommitFailReason;
-        }
-        return QuickLogStatus{
-            .role = ParticipantRole::kLeader,
-            .term = term,
-            .local = leaderData.getLocalStatistics(),
-            .leadershipEstablished = leaderData._leadershipEstablished,
-            .snapshotAvailable = true,
-            .commitFailReason = commitFailReason,
-            .activeParticipantsConfig = leaderData.activeParticipantsConfig,
-            .committedParticipantsConfig =
-                leaderData.committedParticipantsConfig};
-      });
+  auto stateStatus = _stateHandle->getQuickStatus();
+  auto guard = _guardedLeaderData.getLockedGuard();
+  if (guard->_didResign) {
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+  }
+  auto commitFailReason = std::optional<CommitFailReason>{};
+  if (guard->calculateCommitLag() > std::chrono::seconds{20}) {
+    commitFailReason = guard->_lastCommitFailReason;
+  }
+  return QuickLogStatus{
+      .role = ParticipantRole::kLeader,
+      .localState = stateStatus,
+      .term = _currentTerm,
+      .local = guard->getLocalStatistics(),
+      .leadershipEstablished = guard->_leadershipEstablished,
+      .snapshotAvailable = true,
+      .commitFailReason = commitFailReason,
+      .activeParticipantsConfig = guard->activeParticipantsConfig,
+      .committedParticipantsConfig = guard->committedParticipantsConfig};
 }
 
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
@@ -734,6 +733,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     // leadership is established if commitIndex is non-zero
     ADB_PROD_ASSERT(newIndex > LogIndex{0});
     _leadershipEstablished = true;
+    LOG_CTX("f1136", DEBUG, _self._logContext) << "leadership established";
     _self._stateHandle->leadershipEstablished(
         std::make_unique<MethodsImpl>(_self));
   }

@@ -281,3 +281,20 @@ auto AppendEntriesErrorReasonTypeStringTransformer::fromSerialized(
   }
   return {};
 }
+
+auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
+    -> std::string_view {
+  switch (status) {
+    case LocalStateMachineStatus::kUnconfigured:
+      return kStringUnconfigured;
+    case LocalStateMachineStatus::kRecovery:
+      return kStringRecovery;
+    case LocalStateMachineStatus::kOperational:
+      return kStringOperational;
+  }
+  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+      << "Unhandled replicated state status: "
+      << static_cast<std::underlying_type_t<decltype(status)>>(status);
+  TRI_ASSERT(false);
+  return "(unknown status code)";
+}

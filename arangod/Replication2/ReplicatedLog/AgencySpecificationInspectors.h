@@ -88,6 +88,7 @@ template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
                             f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("state", x.state),
                             f.field("snapshotAvailable", x.snapshotAvailable));
 }
 

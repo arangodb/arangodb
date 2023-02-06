@@ -678,6 +678,7 @@ TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
       .setPlanParticipant("C", defaultFlags);
   log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.allSnapshotsTrue().allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
