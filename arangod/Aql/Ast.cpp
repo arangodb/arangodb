@@ -1886,7 +1886,8 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     }
   } else {
     // user-defined function (UDF)
-    if (!_query.vocbase()
+    if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
+        !_query.vocbase()
              .server()
              .getFeature<V8DealerFeature>()
              .allowJavaScriptUdfs()) {
@@ -1901,6 +1902,9 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     char* fname = _resources.registerString(normalized);
     node->setStringValue(fname, normalized.size());
 
+    // a JavaScript user-defined function can potentially read documents
+    // via JavaScript document or AQL APIs. we don't know for sure, so we
+    // need to assume the worst case here.
     _functionsMayAccessDocuments = true;
   }
 
