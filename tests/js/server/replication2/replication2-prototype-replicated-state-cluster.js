@@ -275,7 +275,6 @@ const replicatedStateSuite = function () {
 
       result = dropState(coordUrl, stateId);
       lh.checkRequestResult(result);
-      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };

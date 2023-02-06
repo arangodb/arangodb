@@ -54,8 +54,9 @@ const syncShardsWithLogs = function(dbn) {
   let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
   let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
   for (const [colId, colInfo] of Object.entries(collections)) {
+    const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, colId);
     for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardId.slice(1);
+      const logId = shardsToLogs[shardId];
       if (logId in logs) {
         helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
       }
@@ -91,6 +92,8 @@ function transactionReplication2Recovery() {
   let shards = null;
   let shardId = null;
   let logId = null;
+  let logs = null;
+  let shardsToLogs = null;
 
   const { setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd } =
     replicatedLogsHelper.testHelperFunctions(dbn, { replicationVersion: "2" });
@@ -101,8 +104,10 @@ function transactionReplication2Recovery() {
     setUp: setUpAnd(() => {
       c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3 });
       shards = c.shards();
+      shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
       shardId = shards[0];
-      logId = shardId.slice(1);
+      logId = shardsToLogs[shardId];
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -153,7 +158,7 @@ function transactionReplication2Recovery() {
         dbn, logId, newTerm, followers));
 
       // Check if the universal abort command appears in the log during the current term.
-      let logContents = replicatedLogsHelper.dumpShardLog(shardId);
+      let logContents = replicatedLogsHelper.dumpLogHead(logId);
       let abortAllEntryFound = _.some(logContents, entry => {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
@@ -168,7 +173,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: 'test3', value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum,
           `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
@@ -197,7 +202,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "foo" });
         trx.commit();
       } catch (err) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
@@ -225,7 +230,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "bar" });
         trx.commit();
       } catch (err) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
@@ -308,7 +313,7 @@ function transactionReplication2Recovery() {
       try {
         tc.insert({_key: "test3", value: 3});
       } catch (err) {
-        const logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        const logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       } finally {
@@ -359,8 +364,8 @@ function transactionReplication2Recovery() {
       request.put({url: coordinatorEndpoint + url, timeout: 3});
 
       let leaderServer = replicatedLogsHelper.getServerUrl(leader);
-      replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
-        "test1", false));
+      replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", false)();
 
       // Resume enough participants to reach write concern.
       for (let cnt = 0; cnt < WC - 1; ++cnt) {

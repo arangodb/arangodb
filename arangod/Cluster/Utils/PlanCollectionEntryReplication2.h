@@ -57,8 +57,10 @@ struct PlanCollectionEntryReplication2 {
   [[nodiscard]] PlanShardToServerMapping getShardMapping() const;
 
   [[nodiscard]] replication2::agency::LogTarget getReplicatedLogForTarget(
-      ShardID const& shard, ResponsibleServerList const& servers,
-      std::string_view databaseName) const;
+      replication2::LogId const& logId, ResponsibleServerList const& servers,
+      std::string_view databaseName, ShardID const& shardId) const;
+
+  [[nodiscard]] std::size_t indexOfShardId(ShardID const& shard) const;
 
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();

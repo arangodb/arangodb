@@ -571,8 +571,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters =
-      document::DocumentCoreParameters{info.collectionID, databaseName};
+  auto parameters = document::DocumentCoreParameters{info.collectionID,
+                                                     databaseName, shardId};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -3015,7 +3015,33 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   if (!collections.empty() &&
       collections.front()->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> replicatedStates;
+    std::set<CollectionID> collectionIds;
+
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    VPackBuilder groupsBuilder;
+    std::ignore =
+        agencyCache.get(groupsBuilder, "Target/CollectionGroups/" + name);
+    auto groupsSlice = groupsBuilder.slice();
+    for (auto const& group : VPackObjectIterator(groupsSlice)) {
+      auto collectionGroup =
+          velocypack::deserialize<replication2::agency::CollectionGroup>(
+              group.value);
+      for (auto const& shardSheaf : collectionGroup.shardSheaves) {
+        replicatedStates.emplace_back(shardSheaf.replicatedLog);
+      }
+      for (auto const& [colId, _] : collectionGroup.collections) {
+        collectionIds.emplace(colId);
+      }
+    }
+
     for (auto const& collection : collections) {
+      if (collectionIds.contains(std::to_string(collection->id().id()))) {
+        // Skip collections that are part of a CollectionGroup
+        continue;
+      }
+
+      // The following code is there to support collection which are not part of
+      // any collection group, soon to be removed
       auto shardIds = collection->shardIds();
       replicatedStates.reserve(replicatedStates.size() + shardIds->size());
       std::transform(
@@ -3024,7 +3050,6 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
             return LogicalCollection::shardIdToStateId(shardPair.first);
           });
     }
-    collections.clear();
     replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
   }
 
@@ -3930,7 +3955,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] =
       agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-          "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
+          "Plan/Collections/" + dbName + "/" + collectionID)});
 
   velocypack::Slice databaseSlice =
       acb->slice()[0].get(std::initializer_list<std::string_view>{
@@ -4008,9 +4033,42 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
   if (coll->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> stateIds;
-    for (auto pair : VPackObjectIterator(shardsSlice)) {
-      auto shardId = pair.key.copyString();
-      stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
+    velocypack::Slice groupIdSlice = collectionSlice.get("groupId");
+    if (groupIdSlice.isNone()) {
+      // Legacy code to support system collections
+      for (auto pair : VPackObjectIterator(shardsSlice)) {
+        auto shardId = pair.key.copyString();
+        stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
+      }
+    } else {
+      auto groupId =
+          velocypack::deserialize<replication2::agency::CollectionGroupId>(
+              groupIdSlice);
+
+      velocypack::Slice shardsR2Slice = collectionSlice.get("shardsR2");
+      TRI_ASSERT(shardsR2Slice.isArray());
+
+      auto [groupsBuilder, _] = agencyCache.read(std::vector<std::string>{
+          AgencyCommHelper::path("Target/CollectionGroups/" + dbName + "/" +
+                                 std::to_string(groupId.id()))});
+
+      velocypack::Slice groupsSlice =
+          groupsBuilder->slice()[0].get(std::initializer_list<std::string_view>{
+              AgencyCommHelper::path(), "Target", "CollectionGroups", dbName,
+              std::to_string(groupId.id())});
+
+      auto collectionGroup =
+          velocypack::deserialize<replication2::agency::CollectionGroup>(
+              groupsSlice);
+
+      TRI_ASSERT(shardsR2Slice.length() == collectionGroup.shardSheaves.size());
+      std::size_t shardSheafIdx = 0;
+      for (auto const& shard : VPackArrayIterator(shardsR2Slice)) {
+        auto shardId = shard.copyString();
+        stateIds.emplace_back(
+            collectionGroup.shardSheaves[shardSheafIdx].replicatedLog);
+        ++shardSheafIdx;
+      }
     }
     replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
   }

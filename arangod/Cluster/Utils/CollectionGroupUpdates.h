@@ -42,7 +42,8 @@ struct CollectionGroupUpdates {
   std::vector<AddCollectionToGroup> additionsToGroup;
 
   agency::CollectionGroupId addNewGroup(
-      UserInputCollectionProperties const& collection);
+      UserInputCollectionProperties const& collection,
+      std::function<uint64_t()> const& generateId);
 
   void addToNewGroup(agency::CollectionGroupId const& groupId,
                      arangodb::DataSourceId cid);
