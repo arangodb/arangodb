@@ -58,7 +58,7 @@ const testPaths = {
 
 function startParameterTest(options, testpath, suiteName) {
   let count = 0;
-  let results = { shutdown: true };
+  let results = {shutdown: true};
   let filtered = {};
   const tests = tu.scanTestPaths(testpath, options);
   global.testOptions = options;
@@ -88,7 +88,7 @@ function startParameterTest(options, testpath, suiteName) {
           print(paramsFirstRun);
         }
         instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
-	global.instanceInfoGlobal = instanceInfo;
+        global.instanceInfoGlobal = instanceInfo;
         pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);
         try {
           print(BLUE + '================================================================================' + RESET);
@@ -110,15 +110,14 @@ function startParameterTest(options, testpath, suiteName) {
           return;
         }
         if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
-          instanceInfo.arangods.forEach(function(arangod) {
+          instanceInfo.arangods.forEach(function (arangod) {
             arangod.pid = null;
           });
           if (options.extremeVerbosity) {
             print(paramsSecondRun);
           }
           pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
-        }
-        else {
+        } else {
           results[testFile] = {
             status: false,
             message: "failed to stop instance",
@@ -134,12 +133,11 @@ function startParameterTest(options, testpath, suiteName) {
       shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
 
       results['shutdown'] = results['shutdown'] && shutdownStatus;
-      
+
       if (!results[testFile].status || !shutdownStatus) {
         print("Not cleaning up " + instanceInfo.rootDir);
         results.status = false;
-      }
-      else {
+      } else {
         pu.cleanupLastDirectory(options);
       }
     } else {
@@ -206,5 +204,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  for (var attrname in functionsDocumentation) {
+    fnDocs[attrname] = functionsDocumentation[attrname];
+  }
 };
