@@ -30,16 +30,16 @@
 const jsunity = require('jsunity');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const fs = require('fs');
+const db = require('@arangodb').db;
 
 const {
   BaseTestConfig,
   connectToLeader,
   connectToFollower,
-  setFailurePoint,
   clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
-  const cn = 'UnitTestsReplication';
-  
+const cn = 'UnitTestsReplication';
+
 function ReplicationIncrementalMalarkeyNewFormat() {
   'use strict';
 
