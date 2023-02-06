@@ -1339,4 +1339,4 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     },
 
   };
-}
+};
