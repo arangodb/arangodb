@@ -35,7 +35,6 @@ let { getEndpointById,
       getEndpointsByType,
       debugCanUseFailAt,
       debugSetFailAt,
-      debugRemoveFailAt,
       debugClearFailAt,
       getChecksum,
       getMetric

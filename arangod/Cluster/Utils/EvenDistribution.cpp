@@ -74,6 +74,11 @@ Result EvenDistribution::planShardsOnServers(
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
 
+  // Shuffle the servers, such that we don't always start with the same one
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(availableServers.begin(), availableServers.end(), g);
+
   _shardToServerMapping.clear();
 
   // Example: Servers: A B C D E F G H I (9)
