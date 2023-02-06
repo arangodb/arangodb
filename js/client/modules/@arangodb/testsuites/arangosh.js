@@ -67,6 +67,7 @@ const testPaths = {
 function arangosh (options) {
   let ret = { failed: 0 };
   [
+    'testArangoshExitVersion',
     'testArangoshExitCodeConnectAny',
     'testArangoshExitCodeConnectAnyIp6',
     'testArangoshExitCodeNoConnect',
@@ -185,6 +186,13 @@ function arangosh (options) {
     tmpMgr.destructor(ret[section]['status'] && options.cleanup);
   }
 
+  runTest('testArangoshExitVersion',
+          'Starting arangosh printing the version:',
+          '',
+          0,
+          {'version': true});
+  print();
+  
   runTest('testArangoshExitCodeConnectAny',
           'Starting arangosh with failing connect:',
           'db._databases();',
