@@ -177,7 +177,12 @@ set(ARANGODB_TESTS_SOURCES
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
-  Basics/InspectionTest.cpp
+  Basics/Inspection/InspectionTest.cpp
+  Basics/Inspection/JsonPrintTest.cpp
+  Basics/Inspection/ValidateTest.cpp
+  Basics/Inspection/ValidateTest.cpp
+  Basics/Inspection/VPackLoadTest.cpp
+  Basics/Inspection/VPackSaveTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
