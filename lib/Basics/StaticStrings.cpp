@@ -356,6 +356,7 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeight("weight");
 std::string const StaticStrings::GraphQueryWeights("weights");
 std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");

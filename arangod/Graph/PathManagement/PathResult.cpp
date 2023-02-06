@@ -88,7 +88,7 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
-    arangodb::velocypack::Builder& builder) -> void {
+    arangodb::velocypack::Builder& builder, bool addWeight) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
@@ -115,6 +115,11 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
       _targetProvider.addEdgeToBuilder(_edges[i], builder);
     }
+  }
+
+  if (addWeight) {
+    // Adds amount of edges per path
+    { builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size())); }
   }
 }
 

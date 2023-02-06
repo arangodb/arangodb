@@ -48,7 +48,8 @@ class PathResult {
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool addWeight = false) -> void;
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 

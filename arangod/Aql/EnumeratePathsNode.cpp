@@ -483,6 +483,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               targetInput, registerInfos);
         case arangodb::graph::PathType::Type::KShortestPaths:
           if (!opts->useWeight()) {
+            enumeratorOptions.setMinDepth(0);
+            enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
             return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
                                            Provider,
                                            SingleServerBaseProviderOptions>(
