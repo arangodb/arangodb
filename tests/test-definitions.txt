@@ -85,7 +85,7 @@ recovery_cluster priority=2000 size=small cluster buckets=8
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 size=small cluster buckets=5 -- --dumpAgencyOnError true
+shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
 # Common Tests
