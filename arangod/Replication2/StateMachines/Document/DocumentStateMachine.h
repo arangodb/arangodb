@@ -73,11 +73,13 @@ struct DocumentState {
 struct DocumentCoreParameters {
   std::string collectionId;
   std::string databaseName;
+  std::string shardId;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
     return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("databaseName", p.databaseName));
+                              f.field("databaseName", p.databaseName),
+                              f.field("shardId", p.shardId));
   }
 
   [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
@@ -94,8 +96,8 @@ struct DocumentFactory {
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
 
-  auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
-      -> std::unique_ptr<DocumentCore>;
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier,
+                     DocumentCoreParameters) -> std::unique_ptr<DocumentCore>;
 
   auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 

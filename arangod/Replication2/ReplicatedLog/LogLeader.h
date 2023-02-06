@@ -95,12 +95,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<LogCore> logCore,
+      std::unique_ptr<LogCore>&& logCore,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IReplicatedStateHandle>,
+      std::shared_ptr<IReplicatedStateHandle> stateHandle,
       std::shared_ptr<IAbstractFollowerFactory> followerFactory)
       -> std::shared_ptr<LogLeader>;
 
@@ -221,8 +221,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   struct LocalFollower final : AbstractFollower {
     // The LocalFollower assumes that the last entry of log core matches
     // lastIndex.
+    // The LogCore parameter will (and must) stay untouched in case of an
+    // exception.
     LocalFollower(LogLeader& self, LoggerContext logContext,
-                  std::unique_ptr<LogCore> logCore, TermIndexPair lastIndex);
+                  std::unique_ptr<LogCore>&& logCore, TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;

@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/Properties/InspectContexts.h"
 
@@ -42,6 +43,9 @@ struct ClusteringConstantProperties {
   std::optional<std::string> shardingStrategy =
       std::nullopt;  // defaultShardingStrategy
   inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
+  inspection::NonNullOptional<std::vector<std::string>> shardsR2{std::nullopt};
+  inspection::NonNullOptional<replication2::agency::CollectionGroupId> groupId{
+      std::nullopt};
 
   bool operator==(ClusteringConstantProperties const& other) const = default;
 
@@ -71,15 +75,27 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
     }
   });
 
-  return f.object(props).fields(
-      f.field(StaticStrings::NumberOfShards, props.numberOfShards)
-          .invariant(UtilityInvariants::isGreaterZeroIfPresent),
-      std::move(distShardsLikeField),
-      f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
-          .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
-      f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep())
-
-  );
+  if constexpr (std::is_same_v<typename Inspector::Context,
+                               InspectAgencyContext>) {
+    return f.object(props).fields(
+        f.field(StaticStrings::NumberOfShards, props.numberOfShards)
+            .invariant(UtilityInvariants::isGreaterZeroIfPresent),
+        std::move(distShardsLikeField),
+        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
+            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
+        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
+        f.field("shardsR2", props.shardsR2).fallback(f.keep()),
+        f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()));
+  } else {
+    // If the user specifies the shards list and groupId, we reject it.
+    return f.object(props).fields(
+        f.field(StaticStrings::NumberOfShards, props.numberOfShards)
+            .invariant(UtilityInvariants::isGreaterZeroIfPresent),
+        std::move(distShardsLikeField),
+        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
+            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
+        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()));
+  }
 }
 
 }  // namespace arangodb

@@ -29,6 +29,8 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateAgencyHandler;
@@ -36,12 +38,15 @@ struct IDocumentStateShardHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      DocumentCoreParameters coreParameters,
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
 
   LoggerContext const loggerContext;
 
+  auto getVocbase() -> TRI_vocbase_t&;
+  auto getVocbase() const -> TRI_vocbase_t const&;
   auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
   auto getCollectionId() -> std::string const&;
@@ -49,6 +54,7 @@ struct DocumentCore {
   void drop();
 
  private:
+  TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
   ShardID _shardId;

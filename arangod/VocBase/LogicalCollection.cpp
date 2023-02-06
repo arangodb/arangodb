@@ -1238,11 +1238,18 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   return replication2::LogId::fromString(stateId);
 }
 
+void LogicalCollection::setDocumentStateId(replication2::LogId id) {
+  _replicatedStateId = id;
+}
+
 auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;
-  auto maybeState = vocbase().getReplicatedStateById(shardIdToStateId(name()));
+
+  TRI_ASSERT(_replicatedStateId.has_value());
+  auto maybeState =
+      vocbase().getReplicatedStateById(_replicatedStateId.value());
   // Note that while we assert this for now, I am not sure that we can rely on
   // it. I don't know of any mechanism (I also haven't checked thoroughly) that
   // would prevent the state of a collection being deleted while this function

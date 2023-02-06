@@ -3509,7 +3509,10 @@ void Supervision::checkUndoLeaderChangeActions() {
       return true;
     } else {
       if (isReplication2(*database)) {
-        auto stateId = LogicalCollection::shardIdToStateId(shard);
+        auto stateId =
+            Job::getReplicatedStateId(*_snapshot, database.value(),
+                                      collection.value(), shard)
+                .value_or(LogicalCollection::shardIdToStateId(shard));
         auto target = Job::readStateTarget(snapshot(), *database, stateId);
         if (!target.has_value() || !target->participants.contains(*server)) {
           return true;
