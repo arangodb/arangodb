@@ -603,3 +603,56 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   EXPECT_FALSE(result.failed) << *result.failed;
   // std::cout << result.stats << std::endl;
 }
+
+TEST_F(ReplicatedLogSupervisionSimulationTest,
+       check_log_replace_leader_snapshot) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+  log.setPlanLeader("A");
+  log.establishLeadership();
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.allSnapshotsTrue();
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState = makeAgencyState(log.get(), std::move(health));
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, ReplaceSpecificLogServerActor{"A", "D"},
+      DBServerActor{"A"}, DBServerActor{"B"},
+      DBServerActor{"C"}, DBServerActor{"D"}};
+
+  auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+      MC_ALWAYS(mcpreds::leaderHasSnapshot()),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("A"))};
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
+  //
+  // using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
+  //                                          AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}

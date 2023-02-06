@@ -230,6 +230,12 @@ struct LogCurrentSupervision {
                            TargetLeaderExcluded const& s2) noexcept
         -> bool = default;
   };
+  struct TargetLeaderSnapshotMissing {
+    static constexpr std::string_view code = "TargetLeaderSnapshotMissing";
+    friend auto operator==(TargetLeaderSnapshotMissing const& s,
+                           TargetLeaderSnapshotMissing const& s2) noexcept
+        -> bool = default;
+  };
   struct TargetLeaderFailed {
     static constexpr std::string_view code = "TargetLeaderFailed";
     friend auto operator==(TargetLeaderFailed const& s,
@@ -295,11 +301,11 @@ struct LogCurrentSupervision {
 
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
-                   TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, LeaderElectionImpossible,
-                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
-                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
-                   CurrentNotAvailable>;
+                   TargetLeaderSnapshotMissing, TargetLeaderFailed,
+                   TargetNotEnoughParticipants, WaitingForConfigCommitted,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 
