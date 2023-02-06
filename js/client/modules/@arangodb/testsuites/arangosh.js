@@ -190,7 +190,7 @@ function arangosh (options) {
           'Starting arangosh printing the version:',
           '',
           0,
-          {'version': true});
+          {'version': 'true'});
   print();
   
   runTest('testArangoshExitCodeConnectAny',
