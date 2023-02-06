@@ -24,7 +24,7 @@ INTERESTING_SOCKETS = [
 
 def get_socket_count():
     """ get the number of sockets lingering destruction """
-    # pylint: disable=too-many-nested-blocks
+    # pylint: disable=too-many-nested-blocks disable=too-many-branches
     counter = 0
     if IS_MAC:
         # Mac would need root for all sockets, so we just look
@@ -41,6 +41,10 @@ def get_socket_count():
                     except psutil.NoSuchProcess:
                         pass
         except ProcessLookupError:
+            pass
+        except psutil.ZombieProcess:
+            pass
+        except psutil.NoSuchProcess:
             pass
     else:
         for socket in psutil.net_connections(kind='inet'):

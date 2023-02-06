@@ -31,8 +31,6 @@ def default_line_result(wait, line, params):
     Keep the line, filter it for leading #,
     if verbose print the line. else print progress.
     """
-    sys.stdout.write(line)
-    print(line)
     # pylint: disable=pointless-statement
     if params['verbose'] and wait > 0 and line is None:
         progress("sj" + str(wait))
