@@ -1720,7 +1720,7 @@ void ClusterInfo::loadPlan() {
         CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroup>();
+          auto spec = std::make_shared<replication2::agency::CollectionGroupPlanSpecification>();
           velocypack::deserialize(groupSlice, *spec);
           groups.emplace(spec->id, std::move(spec));
         }
@@ -4047,8 +4047,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       velocypack::Slice shardsR2Slice = collectionSlice.get("shardsR2");
       TRI_ASSERT(shardsR2Slice.isArray());
 
+      // TODO: Needs to be moved to Target as soon as supervision is completed
       auto [groupsBuilder, _] = agencyCache.read(std::vector<std::string>{
-          AgencyCommHelper::path("Target/CollectionGroups/" + dbName + "/" +
+          AgencyCommHelper::path("Plan/CollectionGroups/" + dbName + "/" +
                                  std::to_string(groupId.id()))});
 
       velocypack::Slice groupsSlice =

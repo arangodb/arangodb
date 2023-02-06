@@ -60,7 +60,8 @@ inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
 }
 
 inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
-  return paths::target()->collectionGroups()->database(
+  // TODO: As soon as supervision is implemented, this write needs to go to TARGET
+  return paths::plan()->collectionGroups()->database(
       std::string{databaseName});
 }
 
