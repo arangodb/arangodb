@@ -145,6 +145,10 @@ class Node final {
   /// @brief Child nodes
   typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
+  /// @brief Split strings by forward slashes, omitting empty strings,
+  /// and ignoring multiple subsequent forward slashes
+  static std::vector<std::string> split(std::string_view str);
+
   /// @brief Construct with name
   explicit Node(std::string const& name);
 
@@ -278,6 +282,12 @@ class Node final {
   /// @brief Is string
   bool isString() const;
 
+  /// @brief Is array
+  bool isArray() const;
+
+  /// @brief Is object
+  bool isObject() const;
+
   /**
    * @brief Set expiry for this node
    * @param Time point of expiry
@@ -334,14 +344,17 @@ class Node final {
   //  unit tests updated.
   //
   /// @brief Get node specified by path string
-  Node& getOrCreate(std::string const& path);
+  Node& getOrCreate(std::string_view path);
 
   /// @brief Get node specified by path string
   std::optional<std::reference_wrapper<Node const>> get(
-      std::string const& path) const;
+      std::string_view path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::optional<std::string> getString() const;
+
+  /// @brief Get string value (throws if type NODE or if conversion fails)
+  std::optional<std::string_view> getStringView() const;
 
   /// @brief Get array value
   std::optional<Slice> getArray() const;
