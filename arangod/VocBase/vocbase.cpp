@@ -176,8 +176,6 @@ struct arangodb::VocBaseLogManager {
 
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
-    // TODO handle exceptions, maybe terminate the process if this fails.
-    //      also make sure that leftovers are cleaned up during startup!
     LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
     StorageEngine& engine =
         _server.getFeature<EngineSelectorFeature>().engine();
@@ -203,7 +201,6 @@ struct arangodb::VocBaseLogManager {
         // Invalidate the snapshot in persistent storage.
         metadata->snapshot.updateStatus(
             replication2::replicated_state::SnapshotStatus::kInvalidated);
-        // TODO check return value
         // TODO make sure other methods working on the state, probably meaning
         //      configuration updates, handle an invalidated snapshot correctly.
         if (auto res = storage->updateMetadata(*metadata); res.fail()) {
@@ -283,6 +280,12 @@ struct arangodb::VocBaseLogManager {
         [&](GuardedData& data)
             -> ResultT<std::shared_ptr<
                 replication2::replicated_state::ReplicatedStateBase>> {
+          if (_vocbase.isDropped()) {
+            // Note that this check must happen under the _guardedData mutex, so
+            // there's no race between a create call, and resignAll, which
+            // happens after markAsDropped().
+            return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          }
           auto state = data.buildReplicatedState(
               id, type, parameter, feature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _server,
