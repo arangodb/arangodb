@@ -63,7 +63,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(ast, ast->createNode(p)));
+    DocumentProducingNode::setFilter(
+        std::make_unique<Expression>(ast, ast->createNode(p)));
   }
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count",
