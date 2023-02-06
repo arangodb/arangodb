@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Value.h>
 #include <memory>
 
@@ -271,6 +272,49 @@ TEST_F(NodeLoadInspectorTest, load_tuples) {
   EXPECT_EQ(expected.array1[0], t.array1[0]);
   EXPECT_EQ(expected.array1[1], t.array1[1]);
   EXPECT_EQ(expected.array2, t.array2);
+}
+
+TEST_F(NodeLoadInspectorTest, load_slice) {
+  {
+    consensus::Node parent{""};
+    auto& node = addChild(parent, "dummy");
+    assign(addChild(node, "i"), 42);
+    assign(addChild(node, "b"), true);
+    assign(addChild(node, "s"), "foobar");
+    NodeLoadInspector inspector{&parent};
+
+    velocypack::SharedSlice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(slice.isObject());
+    slice = slice["dummy"];
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(42, slice["i"].getInt());
+    EXPECT_EQ(true, slice["b"].getBoolean());
+    EXPECT_EQ("foobar", slice["s"].stringView());
+  }
+
+  {
+    consensus::Node node{""};
+    assign(node, VPackValue("foobar"));
+    NodeLoadInspector inspector{&node};
+
+    velocypack::SharedSlice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
+
+  {
+    consensus::Node node{""};
+    assign(node, VPackValue("foobar"));
+    inspection::NodeUnsafeLoadInspector<> inspector{&node};
+
+    velocypack::Slice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
 }
 
 TEST_F(NodeLoadInspectorTest, load_optional) {

@@ -108,20 +108,31 @@ struct NodeLoadInspectorImpl
     return {};
   }
 
-  [[nodiscard]] Status::Success value(velocypack::Slice& v) {
+  [[nodiscard]] Status value(velocypack::Slice& v) {
     static_assert(AllowUnsafeTypes);
+    if (_node->type() != consensus::LEAF) {
+      return {"Cannot parse non-leaf node as Slice."};
+    }
     v = _node->slice();
     return {};
   }
 
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    if constexpr (AllowUnsafeTypes) {
-      v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
-      return {};
+    if (_node->type() == consensus::LEAF) {
+      if constexpr (AllowUnsafeTypes) {
+        v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
+        return {};
+      } else {
+        auto slice = _node->slice();
+        velocypack::Buffer<std::uint8_t> buffer(slice.byteSize());
+        buffer.append(slice.start(), slice.byteSize());
+        v = velocypack::SharedSlice(std::move(buffer));
+        return {};
+      }
     } else {
-      auto slice = _node->slice();
-      velocypack::Buffer<std::uint8_t> buffer(slice.byteSize());
-      buffer.append(slice.start(), slice.byteSize());
+      velocypack::Buffer<uint8_t> buffer;
+      velocypack::Builder builder(buffer);
+      _node->toBuilder(builder);
       v = velocypack::SharedSlice(std::move(buffer));
       return {};
     }
