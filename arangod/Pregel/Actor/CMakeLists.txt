@@ -1,3 +1,3 @@
 add_library(arango_actor INTERFACE)
 target_include_directories(arango_actor INTERFACE include/)
-target_link_libraries(arango_actor INTERFACE velocypack fmt)
+target_link_libraries(arango_actor INTERFACE arango_crashhandler velocypack fmt)

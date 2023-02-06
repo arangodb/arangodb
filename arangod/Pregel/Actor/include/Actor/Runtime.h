@@ -29,6 +29,9 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "CrashHandler/CrashHandler.h"
+#include "Assertions/ProdAssert.h"
+#include "Inspection/VPackWithErrorT.h"
 
 #include "Actor/Actor.h"
 #include "Actor/ActorList.h"
@@ -113,12 +116,8 @@ struct Runtime
     } else {
       auto error = ActorError{ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
-      if (payload.ok()) {
-        dispatch(receiver, sender, payload.get());
-      } else {
-        fmt::print("Error serializing ActorNotFound");
-        std::abort();
-      }
+      ADB_PROD_ASSERT(payload.ok());
+      dispatch(receiver, sender, payload.get());
     }
   }
 
@@ -169,9 +168,7 @@ struct Runtime
     auto actor = actors.find(receiver.id);
     auto payload = MessagePayload<ActorMessage>(std::move(message));
     if (actor.has_value()) {
-      actor->get()->process(
-          sender,
-          payload);
+      actor->get()->process(sender, payload);
     } else {
       dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
     }
@@ -181,12 +178,8 @@ struct Runtime
   auto dispatchExternally(ActorPID sender, ActorPID receiver,
                           ActorMessage const& message) -> void {
     auto payload = inspection::serializeWithErrorT(message);
-    if (payload.ok()) {
-      (*externalDispatcher)(sender, receiver, payload.get());
-    } else {
-      fmt::print("Error serializing message");
-      std::abort();
-    }
+    ADB_PROD_ASSERT(payload.ok());
+    (*externalDispatcher)(sender, receiver, payload.get());
   }
 };
 template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,

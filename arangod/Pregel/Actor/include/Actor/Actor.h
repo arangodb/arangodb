@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <Inspection/VPackWithErrorT.h>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -116,12 +115,8 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
       auto error =
           ActorError{UnknownMessage{.sender = sender, .receiver = pid}};
       auto payload = inspection::serializeWithErrorT(error);
-      if (payload.ok()) {
-        runtime->dispatch(pid, sender, payload.get());
-      } else {
-        fmt::print("Error serializing UnknownMessage");
-        std::abort();
-      }
+      ADB_PROD_ASSERT(payload.ok());
+      runtime->dispatch(pid, sender, payload.get());
     }
   }
 
@@ -132,9 +127,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   auto serialize() -> velocypack::SharedSlice override {
     auto res = inspection::serializeWithErrorT(*this);
-    if (not res.ok()) {
-      std::abort();
-    }
+    ADB_PROD_ASSERT(res.ok());
     return res.get();
   }
 
