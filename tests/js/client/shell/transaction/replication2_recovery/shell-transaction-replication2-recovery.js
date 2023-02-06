@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -37,12 +36,14 @@ const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const internal = require('internal');
+const print = internal.print;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const request = require('@arangodb/request');
+const console = require('console');
 
 /**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
@@ -95,8 +96,17 @@ function transactionReplication2Recovery() {
   let logs = null;
   let shardsToLogs = null;
 
-  const { setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd } =
-    replicatedLogsHelper.testHelperFunctions(dbn, { replicationVersion: "2" });
+  const {
+    setUpAll,
+    tearDownAll,
+    stopServerWait,
+    stopServersWait,
+    continueServerWait,
+    continueServersWait,
+    setUpAnd,
+    tearDownAnd,
+  } =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: '2'});
 
   return {
     setUpAll,
@@ -351,9 +361,7 @@ function transactionReplication2Recovery() {
       });
 
       // Stop all servers except for the leader.
-      for (const serverId of allOtherServers) {
-        stopServerWait(serverId);
-      }
+      stopServersWait(allOtherServers);
 
       let tc = trx.collection(c.name());
       tc.insert({_key: 'test1', value: 1});
@@ -368,9 +376,7 @@ function transactionReplication2Recovery() {
         "test1", false)();
 
       // Resume enough participants to reach write concern.
-      for (let cnt = 0; cnt < WC - 1; ++cnt) {
-        continueServerWait(followers[cnt]);
-      }
+      continueServersWait(followers.slice(0, WC - 1));
 
       // Expect the transaction to be committed
       replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
