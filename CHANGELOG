@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
 * Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
   CVE-2020-36604 in joi.
 
