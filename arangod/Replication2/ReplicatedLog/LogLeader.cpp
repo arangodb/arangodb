@@ -320,7 +320,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -401,37 +401,47 @@ auto replicated_log::LogLeader::construct(
       std::move(logMetrics), std::move(options), std::move(id), term,
       lastIndex.index + 1u, log, std::move(stateHandle), followerFactory,
       scheduler);
+
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(methods), lastIndex);
 
-  TRI_ASSERT(participantsConfig != nullptr);
-  {
-    auto leaderDataGuard = leader->acquireMutex();
+  try {
+    TRI_ASSERT(participantsConfig != nullptr);
+    {
+      auto leaderDataGuard = leader->acquireMutex();
 
-    leaderDataGuard->_follower =
-        instantiateFollowers(commonLogContext, followerFactory, localFollower,
-                             lastIndex, participantsConfig);
-    leaderDataGuard->activeParticipantsConfig = participantsConfig;
-    leader->_localFollower = std::move(localFollower);
-    TRI_ASSERT(leaderDataGuard->_follower.size() >=
-               config.effectiveWriteConcern)
-        << "actual followers: " << leaderDataGuard->_follower.size()
-        << " effectiveWriteConcern: " << config.effectiveWriteConcern;
-    TRI_ASSERT(leaderDataGuard->_follower.size() ==
-               leaderDataGuard->activeParticipantsConfig->participants.size());
-    TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
-                           leaderDataGuard->_follower.end(),
-                           [&](auto const& it) {
-                             return leaderDataGuard->activeParticipantsConfig
-                                 ->participants.contains(it.first);
-                           }));
+      leaderDataGuard->_follower =
+          instantiateFollowers(commonLogContext, followerFactory, localFollower,
+                               lastIndex, participantsConfig);
+      leaderDataGuard->activeParticipantsConfig = participantsConfig;
+      leader->_localFollower = std::move(localFollower);
+      TRI_ASSERT(leaderDataGuard->_follower.size() >=
+                 config.effectiveWriteConcern)
+          << "actual followers: " << leaderDataGuard->_follower.size()
+          << " effectiveWriteConcern: " << config.effectiveWriteConcern;
+      TRI_ASSERT(
+          leaderDataGuard->_follower.size() ==
+          leaderDataGuard->activeParticipantsConfig->participants.size());
+      TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
+                             leaderDataGuard->_follower.end(),
+                             [&](auto const& it) {
+                               return leaderDataGuard->activeParticipantsConfig
+                                   ->participants.contains(it.first);
+                             }));
+    }
+
+    leader->establishLeadership(std::move(participantsConfig));
+    leader->triggerAsyncReplication();
+    return leader;
+  } catch (...) {
+    // In case of an exception, the `logCore` parameter *must* stay unchanged.
+    ADB_PROD_ASSERT(methods == nullptr);
+    methods = std::move(*localFollower).resign();
+    ADB_PROD_ASSERT(methods != nullptr);
+    throw;
   }
-
-  leader->establishLeadership(std::move(participantsConfig));
-  leader->triggerAsyncReplication();
-  return leader;
 }
 
 auto replicated_log::LogLeader::acquireMutex() -> LogLeader::Guard {
@@ -1234,8 +1244,8 @@ auto replicated_log::LogLeader::copyInMemoryLog() const
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(
     replicated_log::LogLeader& self, LoggerContext logContext,
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
-    [[maybe_unused]] TermIndexPair lastIndex)
+    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    [[maybe_unused]] TermIndexPair lastIndex) try
     : _leader(self),
       _logContext(std::move(logContext)),
       _guardedMethods(std::move(methods)) {
@@ -1245,6 +1255,9 @@ replicated_log::LogLeader::LocalFollower::LocalFollower(
   //      existing log.
   // TODO in maintainer mode only, read here the last entry from logCore, and
   //      assert that lastIndex matches that entry.
+} catch (...) {
+  // The `logCore` must not be lost in case of an exception.
+  ADB_PROD_ASSERT(methods != nullptr);
 }
 
 auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept

@@ -90,17 +90,20 @@ struct ParticipantsConfigBuilder {
  private:
   agency::ParticipantsConfig result;
 };
+
 }  // namespace arangodb::replication2::test
 
 namespace {
 struct ParticipantsFactoryMock : IParticipantsFactory {
   MOCK_METHOD(std::shared_ptr<ILogFollower>, constructFollower,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
+                   methods,
                FollowerTermInfo info, ParticipantContext context),
               (override));
 
   MOCK_METHOD(std::shared_ptr<ILogLeader>, constructLeader,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
+                   methods,
                LeaderTermInfo info, ParticipantContext context),
               (override));
 };

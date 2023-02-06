@@ -58,8 +58,9 @@ const syncShardsWithLogs = function(dbn) {
   let logs = lhttp.listLogs(coordinator, dbn).result;
   let collections = lh.readAgencyValueAt(`Plan/Collections/${dbn}`);
   for (const [colId, colInfo] of Object.entries(collections)) {
+    const shardsToLogs = lh.getShardsToLogsMapping(database, colId);
     for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardId.slice(1);
+      const logId = shardsToLogs[shardId];
       if (logId in logs) {
         helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
       }
@@ -84,7 +85,7 @@ const syncShardsWithLogs = function(dbn) {
 /**
  * Checks if a given key exists (or not) on all servers.
  */
-const checkFollowersValue = function (servers, shardId, key, value, isReplication2) {
+const checkFollowersValue = function (servers, shardId, logId, key, value, isReplication2) {
   let localValues = {};
   for (const [serverId, endpoint] of Object.entries(servers)) {
     if (value === null) {
@@ -99,7 +100,7 @@ const checkFollowersValue = function (servers, shardId, key, value, isReplicatio
 
   let replication2Log = '';
   if (isReplication2) {
-    replication2Log = `Log entries: ${JSON.stringify(lh.dumpShardLog(shardId))}`;
+    replication2Log = `Log entries: ${JSON.stringify(lh.dumpLogHead(logId))}`;
   }
   let extraErrorMessage = `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`;
 
@@ -198,6 +199,7 @@ const getArrayElements = function(logs, opType, name) {
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let collection = null;
   let shards = null;
+  let shardsToLogs = null;
   let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
@@ -209,7 +211,8 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       shards = collection.shards();
-      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -219,11 +222,14 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     }),
 
     testCreateReplicatedStateForEachShard: function() {
-      let colPlan = lh.readAgencyValueAt(`Plan/Collections/${database}/${collection._id}`);
-      let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
+      const colPlan = lh.readAgencyValueAt(`Plan/Collections/${database}/${collection._id}`);
+      const colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
       for (const shard of collection.shards()) {
-        let {target, plan, current} = lh.readReplicatedLogAgency(database, lh.shardIdToLogId(shard));
+        const logId = shardsToLogs[shard];
+        assertFalse(logId === undefined, `No log found for shard ${shard}`);
+
+        let {target, plan, current} = lh.readReplicatedLogAgency(database, logId);
         let shardPlan = colPlan.shards[shard];
         let shardCurrent = colCurrent[shard];
 
@@ -244,7 +250,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       db._drop(collectionName);
       collection = null;
       for (const shard of shards) {
-        let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
+        let {plan} = lh.readReplicatedLogAgency(database, shardsToLogs[shard]);
         assertEqual(plan, undefined);
       }
     },
@@ -392,6 +398,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
   let shards = null;
   let shardId = null;
   let logs = null;
+  let shardsToLogs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
     lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -404,7 +411,8 @@ const replicatedStateIntermediateCommitsSuite = function() {
       collection = db._create(collectionName, props);
       shards = collection.shards();
       shardId = shards[0];
-      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -437,7 +445,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
       }
 
       // Wait for the last key to be applied on all servers
-      checkFollowersValue(servers, shardId, `test2000`, 2000, true);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `test2000`, 2000, true);
       // Check that all keys are applied on all servers
       for (let server of Object.values(servers)) {
         let bulk = sh.getBulkDocuments(server, database, shardId, keys);
@@ -470,7 +478,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
       }
 
       // Wait for the last key to be applied on all servers
-      checkFollowersValue(servers, shardId, `test999`, 999, true);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `test999`, 999, true);
 
       // Check that first batch of keys is applied on all servers
       for (let server of Object.values(servers)) {
@@ -494,6 +502,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
   const servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
   let collection = null;
   let shardId = null;
+  let shards = null;
+  let shardsToLogs = null;
+  let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
     lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -503,7 +514,10 @@ const replicatedStateFollowerSuite = function (dbParams) {
     tearDownAll,
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
-      shardId = collection.shards()[0];
+      shards = collection.shards();
+      shardId = shards[0];
+      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -514,16 +528,16 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
     testFollowersSingleDocument: function(testName) {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       handle = collection.update(handle, {value: `${testName}-baz`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, isReplication2);
 
       handle = collection.replace(handle, {_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       collection.remove(handle);
-      checkFollowersValue(servers, shardId, `${testName}-foo`, null, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
     },
 
     testFollowersMultiDocuments: function(testName) {
@@ -531,23 +545,23 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
       let handles = collection.insert(documents);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       let updates = documents.map(doc => {return {value: doc.value + 100};});
       handles = collection.update(handles, updates);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value + 100, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
       }
 
       handles = collection.replace(handles, documents);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       collection.remove(handles);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, null, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
       }
     },
 
@@ -556,30 +570,30 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('${testName}-foo', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value + 100} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value + 100, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc._key + "bar", isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc._key + "bar", isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, null, isReplication2);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
       }
     },
 
     testFollowersTruncate: function(testName) {
       collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
-      checkFollowersValue(servers, shardId, `${testName}-foo`, null, isReplication2);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
     }
   };
 };
@@ -611,11 +625,18 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
     testDropDatabase: function() {
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       let shards = collection.shards();
+      let shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
       db._useDatabase("_system");
+      for (const shard of shards) {
+        let logId = shardsToLogs[shard];
+        let {plan} = lh.readReplicatedLogAgency(database, logId);
+        assertFalse(plan === undefined, `Expected plan entry for shard ${logId}`);
+      }
       db._dropDatabase(database);
       for (const shard of shards) {
-        let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
-        assertEqual(plan, undefined, `Expected nothing in plan for shard ${shard}, got ${JSON.stringify(plan)}`);
+        let logId = shardsToLogs[shard];
+        let {plan} = lh.readReplicatedLogAgency(database, logId);
+        assertEqual(plan, undefined, `Expected nothing in plan for replicated log ${logId}, got ${JSON.stringify(plan)}`);
       }
     },
   };
@@ -631,6 +652,8 @@ const replicatedStateRecoverySuite = function () {
   let shards = null;
   let shardId = null;
   let logId = null;
+  let logs = null;
+  let shardsToLogs = null;
 
   const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
     lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -641,8 +664,10 @@ const replicatedStateRecoverySuite = function () {
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
       shards = collection.shards();
+      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
       shardId = shards[0];
-      logId = shardId.slice(1);
+      logId = shardsToLogs[shardId];
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -652,12 +677,13 @@ const replicatedStateRecoverySuite = function () {
     }),
 
     testRecoveryFromFailover: function (testName) {
+      //require('internal').print(db._collections().map(c => c.name()));
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       assertTrue(participants !== undefined);
       let servers = Object.assign({}, ...participants.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, true);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, true);
 
       // We unset the leader here so that once the old leader node is resumed we
       // do not move leadership back to that node.
@@ -674,7 +700,7 @@ const replicatedStateRecoverySuite = function () {
       syncShardsWithLogs(database);
 
       // Check if the universal abort command appears in the log during the current term.
-      let logContents = lh.dumpShardLog(shardId);
+      let logContents = lh.dumpLogHead(logId);
       let abortAllEntryFound = _.some(logContents, entry => {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
@@ -686,13 +712,13 @@ const replicatedStateRecoverySuite = function () {
       // Try a new transaction.
       servers = Object.assign({}, ...followers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       collection.update(handle, {value: `${testName}-baz`});
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
 
       // Try an AQL query.
       let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-${i}`, value: i};});
       db._query(`FOR i in 0..3 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value, true);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
       }
 
       // Resume the dead server.
@@ -701,9 +727,9 @@ const replicatedStateRecoverySuite = function () {
 
       // Expect to find all values on the awakened server.
       servers = {[leader]: lh.getServerUrl(leader)};
-      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
+      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value, true);
+        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
       }
     },
   };
@@ -713,8 +739,9 @@ const replicatedStateRecoverySuite = function () {
  * This test suite checks that replication2 leaves no side effects when creating a replication1 DB.
  */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
+  const dbNameR1 = "replication1TestDatabase";
   const {setUpAll, tearDownAll, setUp, tearDown} =
-    lh.testHelperFunctions(database, {replicationVersion: "1"});
+    lh.testHelperFunctions(dbNameR1, {replicationVersion: "1"});
 
   return {
     setUpAll,
@@ -723,11 +750,9 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     tearDown,
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
-      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
-      for (const shard of collection.shards()) {
-        let {target} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
-        assertEqual(target, undefined, `Expected nothing in target for shard ${shard}, got ${JSON.stringify(target)}`);
-      }
+      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${"replication1TestDatabase"}`);
+      assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
   };
 };
@@ -742,6 +767,8 @@ const replicatedStateSnapshotTransferSuite = function () {
   let shardId = null;
   let logId = null;
   let log = null;
+  let shardsToLogs = null;
+  let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -752,8 +779,10 @@ const replicatedStateSnapshotTransferSuite = function () {
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
       shards = collection.shards();
+      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
       shardId = shards[0];
-      logId = shardId.slice(1);
+      logId = shardsToLogs[shardId];
       log = db._replicatedLog(logId);
     }),
     tearDown: tearDownAnd(() => {

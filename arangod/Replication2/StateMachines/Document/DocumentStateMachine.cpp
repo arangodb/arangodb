@@ -59,7 +59,8 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
       std::move(core), _handlersFactory, _transactionManager);
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
+auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
+                                    GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
   LoggerContext logContext =
@@ -69,7 +70,7 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
           .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), _handlersFactory,
+      vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));
 }
 

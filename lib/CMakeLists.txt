@@ -78,6 +78,7 @@ add_library(arango_lightweight STATIC
         Basics/memory.cpp
         Basics/process-utils.cpp
         Basics/signals.cpp
+        Basics/SourceLocation.cpp
         Basics/system-functions.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
@@ -179,7 +180,6 @@ add_library(arango STATIC
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/SourceLocation.cpp
   Basics/StringBufferAdvanced.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp

@@ -464,7 +464,7 @@ struct arangodb::VocBaseLogManager {
           type, vocbase.name(), id, log, logContext);
 
       auto const& stateParams = maybeMetadata->specification.parameters;
-      auto&& stateHandle = state->createStateHandle(stateParams);
+      auto&& stateHandle = state->createStateHandle(vocbase, stateParams);
 
       stateAndLog.connection = log->connect(std::move(stateHandle));
 
@@ -1944,6 +1944,15 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
   _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
+                             CreateDatabaseInfo&& info)
+    : _server(info.server()),
+      _info(std::move(info)),
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
+      _deadlockDetector(false) {}
+#endif
+
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
   // do a final cleanup of collections
@@ -1966,6 +1975,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
       .clear();  // clear map before deallocating TRI_vocbase_t members
   _dataSourceByUuid
       .clear();  // clear map before deallocating TRI_vocbase_t members
+
+  TRI_ASSERT(_logManager->_guardedData.getLockedGuard()->statesAndLogs.empty());
 }
 
 std::string TRI_vocbase_t::path() const {

@@ -31,7 +31,8 @@ template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup& x) {
   return f.object(x).fields(f.field(StaticStrings::Id, x.id),
                             f.field("collections", x.collections),
-                            f.field("attributes", x.attributes));
+                            f.field("attributes", x.attributes),
+                            f.field("shardSheaves", x.shardSheaves));
 }
 
 template<class Inspector>

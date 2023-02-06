@@ -20,11 +20,18 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+// Must be included early to avoid
+//   "explicit specialization of 'std::char_traits<unsigned char>' after
+//   instantiation"
+// errors.
+#include "../3rdParty/iresearch/core/utils/string.hpp"
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Inspection/VPack.h"
 #include "Mocks/Death_Test.h"
+#include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
@@ -77,6 +84,9 @@ struct DocumentStateMachineTest : testing::Test {
           std::make_shared<testing::NiceMock<MockDocumentStateHandlersFactory>>(
               collectionReaderFactoryMock);
   MockTransactionManager transactionManagerMock;
+  tests::mocks::MockServer mockServer = tests::mocks::MockServer();
+  MockVocbase vocbaseMock =
+      MockVocbase(mockServer.server(), "documentStateMachineTestDb", 2);
 
   void addEntry(std::vector<DocumentLogEntry>& entries, OperationType op,
                 TransactionId trxId) {
@@ -143,14 +153,13 @@ struct DocumentStateMachineTest : testing::Test {
         });
 
     ON_CALL(*handlersFactoryMock, createTransactionHandler)
-        .WillByDefault([&](GlobalLogIdentifier gid) {
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier gid) {
           return std::make_unique<DocumentStateTransactionHandler>(
-              std::move(gid), std::make_unique<MockDatabaseGuard>(),
-              handlersFactoryMock);
+              std::move(gid), nullptr, handlersFactoryMock);
         });
 
     ON_CALL(*handlersFactoryMock, createSnapshotHandler)
-        .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           return std::make_unique<DocumentStateSnapshotHandler>(
               handlersFactoryMock->makeUniqueCollectionReaderFactory());
         });
@@ -181,7 +190,8 @@ struct DocumentStateMachineTest : testing::Test {
   const std::string dbName = "testDB";
   const GlobalLogIdentifier globalId{dbName, logId};
   const ShardID shardId = "s1";
-  const document::DocumentCoreParameters coreParams{collectionId, dbName};
+  const document::DocumentCoreParameters coreParams{collectionId, dbName,
+                                                    shardId};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
 };
@@ -198,7 +208,7 @@ TEST_F(DocumentStateMachineTest,
       .Times(1);
   EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .Times(1);
-  auto core = factory.constructCore(globalId, coreParams);
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
 
   Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -212,7 +222,7 @@ TEST_F(DocumentStateMachineTest, shard_is_dropped_during_cleanup) {
   using namespace testing;
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto core = factory.constructCore(globalId, coreParams);
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
       .Times(1);
   auto cleanupHandler = factory.constructCleanupHandler();
@@ -421,8 +431,7 @@ TEST_F(
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -442,8 +451,7 @@ TEST_F(DocumentStateMachineTest, test_transactionHandler_removeTransaction) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -459,8 +467,7 @@ TEST_F(DocumentStateMachineTest,
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -478,8 +485,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_commit) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
                               velocypack::SharedSlice(), TransactionId{6}};
@@ -512,8 +518,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_abort) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   // Start a new transaction and then abort it.
   auto doc = DocumentLogEntry{"s1234", OperationType::kRemove,
@@ -539,8 +544,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
-      GlobalLogIdentifier{"testDb", LogId{1}},
-      std::make_unique<MockDatabaseGuard>(), handlersFactoryMock);
+      GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
                               velocypack::SharedSlice(), TransactionId{6}};
 
@@ -594,15 +598,16 @@ TEST_F(
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
 
   // 1 truncate, 2 inserts and 3 commits
   EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(6);
@@ -633,15 +638,16 @@ TEST_F(DocumentStateMachineTest, follower_acquire_snapshot_truncation_fails) {
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
 
   ON_CALL(*transactionHandlerMock, applyEntry(_))
       .WillByDefault(Return(TRI_ERROR_WAS_ERLAUBE));
@@ -656,7 +662,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
 
   std::atomic<bool> acquireSnapshotCalled = false;
 
@@ -696,7 +703,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -725,15 +733,16 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -756,8 +765,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
@@ -766,7 +775,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -782,15 +792,16 @@ TEST_F(DocumentStateMachineTest,
 
   auto transactionHandlerMock =
       handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
             transactionHandlerMock);
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -814,7 +825,8 @@ TEST_F(DocumentStateMachineTest,
 
   // First abort then commit
   follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
   entries.clear();
@@ -839,7 +851,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
 
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -868,7 +881,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -891,16 +905,16 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
   using namespace testing;
 
   auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
-  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
             snapshotHandler);
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto leader = std::make_shared<DocumentLeaderStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock,
-      transactionManagerMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock, transactionManagerMock);
 
   EXPECT_CALL(*snapshotHandler, create(shardId)).Times(1);
   auto snapshotStartRes =
@@ -935,8 +949,8 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
   using namespace testing;
 
   auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
-  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+  ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
         return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
             snapshotHandler);
       });
@@ -949,8 +963,8 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto leader = std::make_shared<DocumentLeaderStateWrapper>(
-      factory.constructCore(globalId, coreParams), handlersFactoryMock,
-      transactionManagerMock);
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock, transactionManagerMock);
 
   EXPECT_TRUE(leader->snapshotStart(SnapshotParams::Start{LogIndex{1}}).fail());
   EXPECT_TRUE(leader->snapshotNext(SnapshotParams::Next{SnapshotId{1}}).fail());
@@ -966,7 +980,7 @@ TEST_F(DocumentStateMachineTest,
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  auto core = factory.constructCore(globalId, coreParams);
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
   leaderState->setStream(stream);
@@ -1023,7 +1037,7 @@ TEST_F(DocumentStateMachineTest,
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  auto core = factory.constructCore(globalId, coreParams);
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<MockProducerStream>();
 
@@ -1056,7 +1070,7 @@ TEST_F(DocumentStateMachineTest,
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  auto core = factory.constructCore(globalId, coreParams);
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
   leaderState->setStream(stream);

@@ -125,6 +125,13 @@ struct TRI_vocbase_t {
   TRI_vocbase_t(arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  explicit TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info);
+#endif
+
  private:
   // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;

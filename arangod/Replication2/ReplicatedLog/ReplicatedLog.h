@@ -118,12 +118,16 @@ struct ParticipantContext {
 
 struct IParticipantsFactory {
   virtual ~IParticipantsFactory() = default;
+  // Exception guarantee: either constructFollower succeeds to create an
+  // `ILogFollower`, or `logCore` stays untouched.
   virtual auto constructFollower(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
       FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> = 0;
+  // Exception guarantee: either constructLeader succeeds to create an
+  // `ILogLeader`, or `logCore` stays untouched.
   virtual auto constructLeader(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
       LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> = 0;
 };
@@ -269,11 +273,12 @@ struct DefaultParticipantsFactory : IParticipantsFactory {
       std::shared_ptr<IAbstractFollowerFactory> followerFactory,
       std::shared_ptr<IScheduler> scheduler);
   auto constructFollower(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
       FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> override;
-  auto constructLeader(std::unique_ptr<replicated_state::IStorageEngineMethods>,
-                       LeaderTermInfo info, ParticipantContext context)
+  auto constructLeader(
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
+      LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> override;
 
   std::shared_ptr<IAbstractFollowerFactory> followerFactory;

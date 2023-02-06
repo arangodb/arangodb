@@ -494,10 +494,6 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
           // working.
           return std::nullopt;
         }
-        case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND): {
-          // TODO this is a temporary fix, see CINFRA-588
-          return std::nullopt;
-        }
       }
     }
 
@@ -916,9 +912,10 @@ ReplicatedState<S>::~ReplicatedState() {
 
 template<typename S>
 auto ReplicatedState<S>::buildCore(
+    TRI_vocbase_t& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
   if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-    return factory->constructCore(gid);
+    return factory->constructCore(vocbase, gid);
   } else {
     if (!coreParameter.has_value()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -933,7 +930,7 @@ auto ReplicatedState<S>::buildCore(
     info.stateId = gid.id;
     info.specification.type = S::NAME;
     info.specification.parameters = *coreParameter;
-    return factory->constructCore(gid, std::move(params));
+    return factory->constructCore(vocbase, gid, std::move(params));
   }
 }
 
@@ -959,10 +956,11 @@ void ReplicatedState<S>::drop(
 
 template<typename S>
 auto ReplicatedState<S>::createStateHandle(
+    TRI_vocbase_t& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter)
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
-  auto core = buildCore(coreParameter);
+  auto core = buildCore(vocbase, coreParameter);
   ADB_PROD_ASSERT(not manager.has_value());
   manager.emplace(loggerContext, metrics, std::move(core), factory);
 

@@ -32,10 +32,12 @@
 using namespace arangodb::replication2::replicated_state::document;
 
 DocumentCore::DocumentCore(
-    GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    DocumentCoreParameters coreParameters,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
     LoggerContext loggerContext)
     : loggerContext(std::move(loggerContext)),
+      _vocbase(vocbase),
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
       _agencyHandler(handlersFactory->createAgencyHandler(_gid)),
@@ -43,7 +45,7 @@ DocumentCore::DocumentCore(
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
 
-  _shardId = fmt::format("s{}", _gid.id);
+  _shardId = _params.shardId;
   auto shardResult = _shardHandler->createLocalShard(
       _shardId, _params.collectionId, collectionProperties);
   TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state "
@@ -77,4 +79,10 @@ void DocumentCore::drop() {
         << _gid << ": " << result;
     FATAL_ERROR_EXIT();
   }
+}
+
+auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
+
+auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
+  return _vocbase;
 }
