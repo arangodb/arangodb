@@ -1,3 +1,11 @@
+v3.10.4 (XXXX-XX-XX)
+--------------------
+
+* Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries with geo index which do not use
+  GEO_DISTANCE.
+
+
 v3.10.3 (2023-01-23)
 --------------------
 

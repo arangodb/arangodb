@@ -77,7 +77,7 @@ struct Index {
   Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
 
   /// @brief Parse AQL condition into query parameters
-  /// Public to allow usage by legacy geo indexes
+  /// Public to allow usage by legacy geo indexes.
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params, bool legacy);
