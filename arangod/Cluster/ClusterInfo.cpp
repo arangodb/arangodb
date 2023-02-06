@@ -3654,16 +3654,6 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
           AgencyCommHelper::path(), "Plan", "Collections", databaseName,
           collectionID});
 
-  VPackBuilder collectionWithoutOldSchema;
-  collectionWithoutOldSchema.openObject();
-  for (auto pair : VPackObjectIterator(collection)) {
-    if (!pair.key.isEqualString(StaticStrings::Schema)) {
-      collectionWithoutOldSchema.add(pair.key);
-      collectionWithoutOldSchema.add(pair.value);
-    }
-  }
-  collectionWithoutOldSchema.close();
-
   if (!collection.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -3689,8 +3679,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
-  VPackBuilder builder = VPackCollection::merge(
-      collectionWithoutOldSchema.slice(), temp.slice(), true);
+  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
+
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyValueOperationType::SET, builder.slice());
