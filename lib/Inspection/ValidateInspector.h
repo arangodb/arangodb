@@ -117,7 +117,7 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
   Status objectInvariant(T& object, Invariant&& func, Status result) {
     if (result.ok()) {
       result =
-          Base::template checkInvariant<detail::ObjectInvariantFailedError>(
+          Base::template doCheckInvariant<detail::ObjectInvariantFailedError>(
               std::forward<Invariant>(func), object);
     }
     return result;
@@ -177,7 +177,7 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
 
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
-    return Base::template checkInvariant<detail::FieldInvariantFailedError>(
+    return Base::template doCheckInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }
 

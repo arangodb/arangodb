@@ -36,9 +36,9 @@ using namespace arangodb::pregel::algos;
 static std::string const spUpperPathBound = "bound";
 
 struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
-  PregelID _target;
+  VertexID _target;
 
-  explicit SPComputation(PregelID const& target) : _target(target) {}
+  explicit SPComputation(VertexID const& target) : _target(target) {}
   void compute(MessageIterator<int64_t> const& messages) override {
     int64_t current = vertexData();
     for (const int64_t* msg : messages) {
@@ -119,7 +119,7 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
-  PregelID target = _config->documentIdToPregel(_target);
+  VertexID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
 
