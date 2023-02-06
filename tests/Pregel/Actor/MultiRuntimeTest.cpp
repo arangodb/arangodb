@@ -30,6 +30,7 @@
 
 #include "Actors/TrivialActor.h"
 #include "Actors/PingPongActors.h"
+#include "ThreadPoolScheduler.h"
 
 using namespace arangodb;
 
@@ -37,6 +38,8 @@ using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
 
 struct MockScheduler {
+  auto start(size_t number_of_threads) -> void{};
+  auto stop() -> void{};
   auto operator()(auto fn) { fn(); }
 };
 
@@ -65,35 +68,50 @@ struct MockExternalDispatcher {
   std::unordered_map<ServerID, std::shared_ptr<Runtime>>& runtimes;
 };
 
-struct MockRuntime
-    : Runtime<MockScheduler, MockExternalDispatcher<MockRuntime>> {
-  using Runtime<MockScheduler, MockExternalDispatcher<MockRuntime>>::Runtime;
-};
+template<typename T>
+class ActorMultiRuntimeTest : public testing::Test {
+ public:
+  ActorMultiRuntimeTest() : scheduler{std::make_shared<T>()} {
+    scheduler->start(number_of_threads);
+  }
+  struct MockRuntime : Runtime<T, MockExternalDispatcher<MockRuntime>> {
+    using Runtime<T, MockExternalDispatcher<MockRuntime>>::Runtime;
+  };
 
-TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+  std::shared_ptr<T> scheduler;
+  size_t number_of_threads = 5;
+};
+using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
+TYPED_TEST_SUITE(ActorMultiRuntimeTest, SchedulerTypes);
+
+TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
+  std::unordered_map<ServerID,
+                     std::shared_ptr<typename TestFixture::MockRuntime>>
+      runtimes;
+  auto dispatcher = std::make_shared<
+      MockExternalDispatcher<typename TestFixture::MockRuntime>>(runtimes);
 
   // Sending Runtime
   auto sending_server = ServerID{"A"};
-  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
-                                       sending_server, "RuntimeTest-sending",
-                                       scheduler, dispatcher));
-  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(
+      sending_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
+  auto sending_actor_id =
+      runtimes[sending_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto sending_actor =
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
-  runtimes.emplace(
-      receiving_server,
-      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
-                                    scheduler, dispatcher));
-  auto receiving_actor_id = runtimes[receiving_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(receiving_server,
+                   std::make_shared<typename TestFixture::MockRuntime>(
+                       receiving_server, "RuntimeTest-receiving",
+                       this->scheduler, dispatcher));
+  auto receiving_actor_id =
+      runtimes[receiving_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto receiving_actor =
       ActorPID{.server = receiving_server, .id = receiving_actor_id};
 
@@ -102,15 +120,16 @@ TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
       sending_actor, receiving_actor,
       TrivialActor::Message{TrivialMessage("baz")});
 
+  this->scheduler->stop();
   // sending actor state did not change
   auto sending_actor_state =
-      runtimes[sending_server]->getActorStateByID<TrivialActor>(
+      runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id);
   ASSERT_EQ(sending_actor_state,
             (TrivialActor::State{.state = "foo", .called = 1}));
   // receiving actor state changed
   auto receiving_actor_state =
-      runtimes[receiving_server]->getActorStateByID<TrivialActor>(
+      runtimes[receiving_server]->template getActorStateByID<TrivialActor>(
           receiving_actor_id);
   ASSERT_EQ(receiving_actor_state,
             (TrivialActor::State{.state = "foobaz", .called = 2}));
@@ -129,31 +148,36 @@ auto inspect(Inspector& f, SomeMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<SomeMessage>("someMessage"));
 }
-TEST(ActorMultiRuntimeTest,
-     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+TYPED_TEST(
+    ActorMultiRuntimeTest,
+    actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
+  std::unordered_map<ServerID,
+                     std::shared_ptr<typename TestFixture::MockRuntime>>
+      runtimes;
+  auto dispatcher = std::make_shared<
+      MockExternalDispatcher<typename TestFixture::MockRuntime>>(runtimes);
 
   // Sending Runtime
   auto sending_server = ServerID{"A"};
-  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
-                                       sending_server, "RuntimeTest-sending",
-                                       scheduler, dispatcher));
-  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(
+      sending_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
+  auto sending_actor_id =
+      runtimes[sending_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto sending_actor =
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
-  runtimes.emplace(
-      receiving_server,
-      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
-                                    scheduler, dispatcher));
-  auto receiving_actor_id = runtimes[receiving_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(receiving_server,
+                   std::make_shared<typename TestFixture::MockRuntime>(
+                       receiving_server, "RuntimeTest-receiving",
+                       this->scheduler, dispatcher));
+  auto receiving_actor_id =
+      runtimes[receiving_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto receiving_actor =
       ActorPID{.server = receiving_server, .id = receiving_actor_id};
 
@@ -161,16 +185,17 @@ TEST(ActorMultiRuntimeTest,
   runtimes[sending_server]->dispatch(sending_actor, receiving_actor,
                                      SomeMessages{SomeMessage{}});
 
+  this->scheduler->stop();
   // receiving actor state was called once
   auto receiving_actor_state =
-      runtimes[receiving_server]->getActorStateByID<TrivialActor>(
+      runtimes[receiving_server]->template getActorStateByID<TrivialActor>(
           receiving_actor_id);
   ASSERT_EQ(receiving_actor_state,
             (TrivialActor::State{.state = "foo", .called = 1}));
   // sending actor received an unknown message error after it sent wrong
   // message type
   auto sending_actor_state =
-      runtimes[sending_server]->getActorStateByID<TrivialActor>(
+      runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id);
   ASSERT_EQ(
       sending_actor_state,
@@ -179,30 +204,33 @@ TEST(ActorMultiRuntimeTest,
           .called = 2}));
 }
 
-TEST(
+TYPED_TEST(
     ActorMultiRuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+  std::unordered_map<ServerID,
+                     std::shared_ptr<typename TestFixture::MockRuntime>>
+      runtimes;
+  auto dispatcher = std::make_shared<
+      MockExternalDispatcher<typename TestFixture::MockRuntime>>(runtimes);
 
   // Sending Runtime
   auto sending_server = ServerID{"A"};
-  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
-                                       sending_server, "RuntimeTest-sending",
-                                       scheduler, dispatcher));
-  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(
+      sending_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
+  auto sending_actor_id =
+      runtimes[sending_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto sending_actor =
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
-  runtimes.emplace(
-      receiving_server,
-      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
-                                    scheduler, dispatcher));
+  runtimes.emplace(receiving_server,
+                   std::make_shared<typename TestFixture::MockRuntime>(
+                       receiving_server, "RuntimeTest-receiving",
+                       this->scheduler, dispatcher));
 
   // send
   auto unknown_actor = ActorPID{.server = receiving_server, .id = {999}};
@@ -210,31 +238,35 @@ TEST(
       sending_actor, unknown_actor,
       TrivialActor::Message{TrivialMessage("baz")});
 
-  // sending actor received an actor not known message error after it messaged
-  // to non-existing actor on other runtime
+  this->scheduler->stop();
+  // sending actor received an actor-not-known message error
+  // after it messaged to non-existing actor on other runtime
   ASSERT_EQ(
-      runtimes[sending_server]->getActorStateByID<TrivialActor>(
+      runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id),
       (TrivialActor::State{
           .state = fmt::format("receiving actor {} not found", unknown_actor),
           .called = 2}));
 }
 
-TEST(
+TYPED_TEST(
     ActorMultiRuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_server) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+  std::unordered_map<ServerID,
+                     std::shared_ptr<typename TestFixture::MockRuntime>>
+      runtimes;
+  auto dispatcher = std::make_shared<
+      MockExternalDispatcher<typename TestFixture::MockRuntime>>(runtimes);
 
   // Sending Runtime
   auto sending_server = ServerID{"A"};
-  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
-                                       sending_server, "RuntimeTest-sending",
-                                       scheduler, dispatcher));
-  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
+  runtimes.emplace(
+      sending_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
+  auto sending_actor_id =
+      runtimes[sending_server]->template spawn<TrivialActor>(
+          TrivialState{.state = "foo"}, TrivialStart{});
   auto sending_actor =
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
@@ -244,48 +276,55 @@ TEST(
       sending_actor, ActorPID{.server = unknown_server, .id = {999}},
       TrivialActor::Message{TrivialMessage("baz")});
 
-  // sending actor received a server not known message error after it messaged
-  // to non-existing server
+  this->scheduler->stop();
+  // sending actor received a server-not-known message error
+  // after it messaged to non-existing server
   ASSERT_EQ(
-      runtimes[sending_server]->getActorStateByID<TrivialActor>(
+      runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id),
       (TrivialActor::State{
           .state = fmt::format("receiving server {} not found", unknown_server),
           .called = 2}));
 }
 
-TEST(ActorMultiRuntimeTest, ping_pong_game) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
+TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
+  std::unordered_map<ServerID,
+                     std::shared_ptr<typename TestFixture::MockRuntime>>
+      runtimes;
 
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+  auto dispatcher = std::make_shared<
+      MockExternalDispatcher<typename TestFixture::MockRuntime>>(runtimes);
 
   // Pong Runtime
   auto pong_server = ServerID{"A"};
-  runtimes.emplace(pong_server,
-                   std::make_shared<MockRuntime>(pong_server, "RuntimeTest-A",
-                                                 scheduler, dispatcher));
-  auto pong_actor = runtimes[pong_server]->spawn<pong_actor::Actor>(
+  runtimes.emplace(
+      pong_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          pong_server, "RuntimeTest-A", this->scheduler, dispatcher));
+  auto pong_actor = runtimes[pong_server]->template spawn<pong_actor::Actor>(
       pong_actor::PongState{}, pong_actor::Start{});
 
   // Ping Runtime
   auto ping_server = ServerID{"B"};
-  runtimes.emplace(ping_server,
-                   std::make_shared<MockRuntime>(ping_server, "RuntimeTest-B",
-                                                 scheduler, dispatcher));
-  auto ping_actor = runtimes[ping_server]->spawn<ping_actor::Actor>(
+  runtimes.emplace(
+      ping_server,
+      std::make_shared<typename TestFixture::MockRuntime>(
+          ping_server, "RuntimeTest-B", this->scheduler, dispatcher));
+  auto ping_actor = runtimes[ping_server]->template spawn<ping_actor::Actor>(
       ping_actor::PingState{},
       ping_actor::Start{.pongActor =
                             ActorPID{.server = pong_server, .id = pong_actor}});
 
+  this->scheduler->stop();
   // pong actor was called twice
   auto pong_actor_state =
-      runtimes[pong_server]->getActorStateByID<pong_actor::Actor>(pong_actor);
+      runtimes[pong_server]->template getActorStateByID<pong_actor::Actor>(
+          pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::PongState{.called = 2}));
   // ping actor received message from pong
   auto ping_actor_state =
-      runtimes[ping_server]->getActorStateByID<ping_actor::Actor>(ping_actor);
+      runtimes[ping_server]->template getActorStateByID<ping_actor::Actor>(
+          ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::PingState{.called = 2, .message = "hello world"}));
 }
