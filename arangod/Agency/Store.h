@@ -163,7 +163,9 @@ class Store {
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
-  static std::vector<std::string> split(std::string_view str);
+  static std::vector<std::string> split(std::string_view str) {
+    return Node::split(str);
+  }
 
   using AgencyTriggerCallback =
       std::function<void(std::string_view path, VPackSlice trx)>;
