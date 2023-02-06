@@ -1,6 +1,13 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--javascript.user-defined-functions`. 
+  This option controls whether JavaScript user-defined functions (UDFs) can
+  be used in AQL queries. The option defaults to `true`. The option can be
+  set to `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
 * Activate RDB_CoveringIterator and use it for some geo index queries.
   This speeds up and simplifies geo queries with geo index which do not use
   GEO_DISTANCE.
