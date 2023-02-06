@@ -61,7 +61,7 @@ function startParameterTest(options, testpath, suiteName) {
   let results = { shutdown: true };
   let filtered = {};
   const tests = tu.scanTestPaths(testpath, options);
-
+  global.testOptions = options;
   tests.forEach(function (testFile, i) {
     count += 1;
     if (tu.filterTestcaseByOptions(testFile, options, filtered)) {
@@ -88,7 +88,8 @@ function startParameterTest(options, testpath, suiteName) {
           print(paramsFirstRun);
         }
         instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
-        pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
+	global.instanceInfoGlobal = instanceInfo;
+        pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);
         try {
           print(BLUE + '================================================================================' + RESET);
           print(CYAN + 'Running Setup of: ' + testFile + RESET);
@@ -127,6 +128,7 @@ function startParameterTest(options, testpath, suiteName) {
       } else {
         instanceInfo = pu.startInstance(options.protocol, options, paramsSecondRun, suiteName, rootDir); // one start
       }
+      global.instanceInfoGlobal = instanceInfo;
 
       results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
       shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
