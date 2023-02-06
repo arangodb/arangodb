@@ -32,7 +32,7 @@
 
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;
 
@@ -100,6 +100,9 @@ class WorkerConfig {
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
   }
+  [[nodiscard]] ShardID globalShardID(PregelShard shard) const {
+    return _globalShardIDs.at(shard.value);
+  }
 
   // convenvience access without guaranteed order, same values as in
   // vertexCollectionShards
@@ -133,7 +136,7 @@ class WorkerConfig {
       ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
-  PregelID documentIdToPregel(std::string const& documentID) const;
+  VertexID documentIdToPregel(std::string const& documentID) const;
 
  private:
   ExecutionNumber _executionNumber{};
