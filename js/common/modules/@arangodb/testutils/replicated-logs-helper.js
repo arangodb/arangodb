@@ -473,7 +473,7 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   const stopServersWait = function (serverIds) {
     serverIds.forEach(stopServer);
     serverIds.forEach(serverId => waitFor(lpreds.serverFailed(serverId)));
-  }
+  };
 
   const continueServer = function (serverId) {
     if (stoppedServers[serverId] === undefined) {
