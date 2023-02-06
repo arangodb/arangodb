@@ -44,6 +44,10 @@ namespace replication2 {
 struct LogIndex;
 class LogId;
 
+namespace replicated_state::document {
+struct SnapshotParams;
+}
+
 /**
  * Abstraction used by the RestHandler to access the DocumentState.
  */
@@ -53,9 +57,9 @@ struct DocumentStateMethods {
   [[nodiscard]] static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<DocumentStateMethods>;
 
-  [[nodiscard]] virtual auto getSnapshot(LogId logId,
-                                         LogIndex waitForIndex) const
-      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+  [[nodiscard]] virtual auto processSnapshotRequest(
+      LogId logId, replicated_state::document::SnapshotParams params) const
+      -> ResultT<velocypack::SharedSlice> = 0;
 };
 }  // namespace replication2
 }  // namespace arangodb

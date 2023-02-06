@@ -25,11 +25,12 @@
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/StringUtils.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include "utils/index_utils.hpp"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -49,18 +50,17 @@ IResearchDataStoreMeta::ConsolidationPolicy createConsolidationPolicy(
 
 template<>
 IResearchDataStoreMeta::ConsolidationPolicy
-createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
+createConsolidationPolicy<irs::index_utils::ConsolidateBytesAccum>(
     VPackSlice slice, std::string& errorField) {
-  irs::index_utils::consolidate_bytes_accum options;
+  irs::index_utils::ConsolidateBytesAccum options;
   velocypack::Builder properties;
 
   {
     // optional float
     constexpr std::string_view kFieldName = "threshold";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
       if (!field.isNumber<float>()) {
         errorField = kFieldName;
 
@@ -82,24 +82,22 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
   properties.add("threshold", velocypack::Value(options.threshold));
   properties.close();
 
-  return {irs::index_utils::consolidation_policy(options),
-          std::move(properties)};
+  return {irs::index_utils::MakePolicy(options), std::move(properties)};
 }
 
 template<>
 IResearchDataStoreMeta::ConsolidationPolicy
-createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
     VPackSlice slice, std::string& errorField) {
-  irs::index_utils::consolidate_tier options;
+  irs::index_utils::ConsolidateTier options;
   VPackBuilder properties;
 
   {
     // optional size_t
     constexpr std::string_view kFieldName = "segmentsBytesFloor";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
       if (!field.isNumber<size_t>()) {
         errorField = kFieldName;
 
@@ -114,9 +112,8 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
     // optional size_t
     constexpr std::string_view kFieldName = "segmentsBytesMax";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
       if (!field.isNumber<size_t>()) {
         errorField = kFieldName;
 
@@ -131,9 +128,8 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
     // optional size_t
     constexpr std::string_view kFieldName = "segmentsMax";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
       if (!field.isNumber<size_t>()) {
         errorField = kFieldName;
 
@@ -148,9 +144,8 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
     // optional size_t
     constexpr std::string_view kFieldName = "segmentsMin";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
       if (!field.isNumber<size_t>()) {
         errorField = kFieldName;
 
@@ -165,16 +160,15 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
     // optional double
     constexpr std::string_view kFieldName = "minScore";
 
-    if (slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
-
-      if (!field.isNumber<double_t>()) {
+    auto field = slice.get(kFieldName);
+    if (!field.isNone()) {
+      if (!field.isNumber<double>()) {
         errorField = kFieldName;
 
         return {};
       }
 
-      options.min_score = field.getNumber<double_t>();
+      options.min_score = field.getNumber<double>();
     }
   }
 
@@ -187,8 +181,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
   properties.add("minScore", VPackValue(options.min_score));
   properties.close();
 
-  return {irs::index_utils::consolidation_policy(options),
-          std::move(properties)};
+  return {irs::index_utils::MakePolicy(options), std::move(properties)};
 }
 
 }  // namespace
@@ -216,7 +209,7 @@ IResearchDataStoreMeta::IResearchDataStoreMeta()
 
   // cppcheck-suppress useInitializationList
   _consolidationPolicy =
-      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+      createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
           velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
           errorField);
   assert(_consolidationPolicy.policy());  // ensure above syntax is correct
@@ -346,16 +339,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional uint32_t
     constexpr std::string_view kFieldName{StaticStrings::VersionField};
 
-    mask->_version = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_version = !field.isNone();
 
     if (!mask->_version) {
       _version = defaults._version;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_version, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -365,16 +356,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional size_t
     constexpr std::string_view kFieldName{StaticStrings::CleanupIntervalStep};
 
-    mask->_cleanupIntervalStep = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_cleanupIntervalStep = !field.isNone();
 
     if (!mask->_cleanupIntervalStep) {
       _cleanupIntervalStep = defaults._cleanupIntervalStep;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_cleanupIntervalStep, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -384,16 +373,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional size_t
     constexpr std::string_view kFieldName{StaticStrings::CommitIntervalMsec};
 
-    mask->_commitIntervalMsec = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_commitIntervalMsec = !field.isNone();
 
     if (!mask->_commitIntervalMsec) {
       _commitIntervalMsec = defaults._commitIntervalMsec;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_commitIntervalMsec, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -404,16 +391,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     constexpr std::string_view kFieldName{
         StaticStrings::ConsolidationIntervalMsec};
 
-    mask->_consolidationIntervalMsec = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_consolidationIntervalMsec = !field.isNone();
 
     if (!mask->_consolidationIntervalMsec) {
       _consolidationIntervalMsec = defaults._consolidationIntervalMsec;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_consolidationIntervalMsec, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -424,51 +409,39 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     constexpr std::string_view kFieldName{StaticStrings::ConsolidationPolicy};
     std::string errorSubField;
 
-    mask->_consolidationPolicy = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_consolidationPolicy = !field.isNone();
 
     if (!mask->_consolidationPolicy) {
       _consolidationPolicy = defaults._consolidationPolicy;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isObject()) {
         errorField = kFieldName;
-
         return false;
       }
 
       // required string enum
       constexpr std::string_view kTypeFieldName("type");
 
-      if (!field.hasKey(kTypeFieldName)) {
-        errorField =
-            std::string{kFieldName} + "." + std::string{kTypeFieldName};
-
-        return false;
-      }
-
       auto typeField = field.get(kTypeFieldName);
 
       if (!typeField.isString()) {
-        errorField =
-            std::string{kFieldName} + "." + std::string{kTypeFieldName};
-
+        errorField = absl::StrCat(kFieldName, ".", kTypeFieldName);
         return false;
       }
 
       auto const type = typeField.stringView();
 
       if (kPolicyBytesAccum == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-            irs::index_utils::consolidate_bytes_accum>(field, errorSubField);
+        _consolidationPolicy =
+            createConsolidationPolicy<irs::index_utils::ConsolidateBytesAccum>(
+                field, errorSubField);
       } else if (kPolicyTier == type) {
         _consolidationPolicy =
-            createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+            createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
                 field, errorSubField);
       } else {
-        errorField =
-            std::string{kFieldName} + "." + std::string{kTypeFieldName};
-
+        errorField = absl::StrCat(kFieldName, ".", kTypeFieldName);
         return false;
       }
 
@@ -476,9 +449,8 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
         if (errorSubField.empty()) {
           errorField = kFieldName;
         } else {
-          errorField = std::string{kFieldName} + "." + errorSubField;
+          errorField = absl::StrCat(kFieldName, ".", errorSubField);
         }
-
         return false;
       }
     }
@@ -488,16 +460,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional size_t
     constexpr std::string_view kFieldName(StaticStrings::WritebufferActive);
 
-    mask->_writebufferActive = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_writebufferActive = !field.isNone();
 
     if (!mask->_writebufferActive) {
       _writebufferActive = defaults._writebufferActive;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_writebufferActive, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -507,16 +477,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional size_t
     constexpr std::string_view kFieldName(StaticStrings::WritebufferIdle);
 
-    mask->_writebufferIdle = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_writebufferIdle = !field.isNone();
 
     if (!mask->_writebufferIdle) {
       _writebufferIdle = defaults._writebufferIdle;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_writebufferIdle, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }
@@ -526,16 +494,14 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
     // optional size_t
     constexpr std::string_view kFieldName(StaticStrings::WritebufferSizeMax);
 
-    mask->_writebufferSizeMax = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_writebufferSizeMax = !field.isNone();
 
     if (!mask->_writebufferSizeMax) {
       _writebufferSizeMax = defaults._writebufferSizeMax;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!getNumber(_writebufferSizeMax, field)) {
         errorField = kFieldName;
-
         return false;
       }
     }

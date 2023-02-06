@@ -51,7 +51,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/error.h"
@@ -276,11 +275,6 @@ void VelocyPackHelper::initialize() {
                  .copyString() == StaticStrings::FromString);
   TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase))
                  .copyString() == StaticStrings::ToString);
-}
-
-/// @brief turn off assembler optimizations in vpack
-void VelocyPackHelper::disableAssemblerFunctions() {
-  arangodb::velocypack::disableAssemblerFunctions();
 }
 
 /// @brief return the (global) attribute translator instance

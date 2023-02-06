@@ -10,8 +10,6 @@ ARANGODB="/usr/sbin/arangod"
 . /usr/share/debconf/confmodule
 . /usr/share/arangodb3/arangodb-helper
 
-export GLIBCXX_FORCE_NEW=1
-
 current=/var/tmp/arangod
 ( mkdir -p $current && chown -R arangodb:arangodb $current ) || ar_err "failed to create $current"
 

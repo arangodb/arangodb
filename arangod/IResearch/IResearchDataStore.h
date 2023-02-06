@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -63,24 +64,23 @@ using LinkLock = AsyncLinkHandle::Value;
 struct IResearchTrxState final : public TransactionState::Cookie {
   // prevent data-store deallocation (lock @ AsyncSelf)
   LinkLock _linkLock;  // should be first field to destroy last
-  irs::index_writer::documents_context _ctx;
+  irs::IndexWriter::Transaction _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
   bool _wasCommit = false;
 
-  IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
+  IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer) noexcept
+      : _linkLock{std::move(linkLock)}, _ctx{writer.GetBatch()} {}
 
   ~IResearchTrxState() final {
     if (!_wasCommit) {
       _removals.clear();
-      _ctx.reset();
+      _ctx.Reset();
     }
     TRI_ASSERT(_removals.empty());
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value,
-              bool nested) {
-    _ctx.remove(_removals.emplace(engine, value, nested));
+  void remove(LocalDocumentId value, bool nested) {
+    _ctx.Remove(_removals.emplace(value, nested));
   }
 };
 
@@ -97,36 +97,49 @@ class IResearchDataStore {
   /// @brief a snapshot representation of the data-store
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
-  // TODO Refactor irs::directory_reader ctor, now it doesn't have move
+  struct DataSnapshot {
+    DataSnapshot(irs::DirectoryReader&& index,
+                 std::shared_ptr<StorageSnapshot> db)
+        : _reader(std::move(index)), _snapshot(std::move(db)) {
+      TRI_ASSERT(_reader);
+      // for now we require that each index has its own snapshot
+      TRI_ASSERT(_snapshot);
+    }
+    irs::DirectoryReader _reader;
+    std::shared_ptr<StorageSnapshot> _snapshot;
+  };
+
+  using DataSnapshotPtr = std::shared_ptr<DataSnapshot>;
+
   class Snapshot {
    public:
     Snapshot(Snapshot const&) = delete;
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(LinkLock&& lock, irs::directory_reader&& reader) noexcept
-        : _lock{std::move(lock)}, _reader{std::move(reader)} {}
+    Snapshot(LinkLock&& lock, DataSnapshotPtr&& snapshot) noexcept
+        : _lock{std::move(lock)}, _snapshot{std::move(snapshot)} {}
     Snapshot(Snapshot&& rhs) noexcept
-        : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {}
+        : _lock{std::move(rhs._lock)}, _snapshot{std::move(rhs._snapshot)} {}
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
-        _reader = std::move(rhs._reader);
+        _snapshot = std::move(rhs._snapshot);
       }
       return *this;
     }
 
     [[nodiscard]] auto const& getDirectoryReader() const noexcept {
-      return _reader;
+      return _snapshot->_reader;
     }
 
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
-    irs::directory_reader _reader;
+    DataSnapshotPtr _snapshot;
   };
 
-  IResearchDataStore(IndexId iid, LogicalCollection& collection);
+  explicit IResearchDataStore(ArangodServer& server);
 
   virtual ~IResearchDataStore();
 
@@ -142,26 +155,22 @@ class IResearchDataStore {
   ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-  static irs::directory_reader reader(LinkLock const& linkLock);
+  static DataSnapshotPtr reader(LinkLock const& linkLock);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the identifier for this link/index
-  //////////////////////////////////////////////////////////////////////////////
-  IndexId id() const noexcept { return _id; }
+  [[nodiscard]] virtual Index& index() noexcept = 0;
+  [[nodiscard]] virtual Index const& index() const noexcept = 0;
+  [[nodiscard]] StorageEngine* engine() const noexcept { return _engine; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the associated collection
-  /// @note arangodb::Index override
-  //////////////////////////////////////////////////////////////////////////////
-  LogicalCollection& collection() const noexcept { return _collection; }
-  StorageEngine* engine() const noexcept { return _engine; }
+  // valid for a link to be dropped from an ArangoSearch view
+  static constexpr bool canBeDropped() noexcept { return true; }
 
-  static bool hasSelectivityEstimate();  // arangodb::Index override
+  // selectivity can only be determined per query
+  // since multiple fields are indexed
+  static constexpr bool hasSelectivityEstimate() noexcept { return false; }
 
   bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx);  // arangodb::Index override
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief give derived class chance to fine-tune iresearch storage
@@ -191,7 +200,7 @@ class IResearchDataStore {
     return _dataStore._recoveryTickHigh;
   }
 
-  bool exists(Snapshot const& snapshot, LocalDocumentId documentId, bool nested,
+  bool exists(Snapshot const& snapshot, LocalDocumentId documentId,
               uint64_t const* recoveryTick) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +233,7 @@ class IResearchDataStore {
   struct Stats {
     uint64_t numDocs{};
     uint64_t numLiveDocs{};
+    uint64_t numPrimaryDocs{};
     uint64_t numSegments{};
     uint64_t numFiles{};
     uint64_t indexSize{};
@@ -294,8 +304,7 @@ class IResearchDataStore {
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
-    irs::directory_reader _reader;
-    irs::index_writer::ptr _writer;
+    irs::IndexWriter::ptr _writer;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
@@ -305,10 +314,22 @@ class IResearchDataStore {
 
     void resetDataStore() noexcept {
       // reset all underlying readers to release file handles
-      _reader.reset();
+      storeSnapshot(nullptr);
       _writer.reset();
       _directory.reset();
     }
+
+    [[nodiscard]] DataSnapshotPtr loadSnapshot() const noexcept {
+      return std::atomic_load_explicit(&_snapshot, std::memory_order_acquire);
+    }
+
+    void storeSnapshot(DataSnapshotPtr snapshot) noexcept {
+      std::atomic_store_explicit(&_snapshot, std::move(snapshot),
+                                 std::memory_order_release);
+    }
+
+   private:
+    DataSnapshotPtr _snapshot;
   };
 
   struct UnsafeOpResult {
@@ -327,9 +348,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(
-      bool wait, irs::index_writer::progress_report_callback const& progress,
-      CommitResult& code);
+  UnsafeOpResult commitUnsafe(bool wait,
+                              irs::ProgressReportCallback const& progress,
+                              CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -337,7 +358,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult consolidateUnsafe(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::merge_writer::flush_progress_t const& progress,
+      irs::MergeWriter::FlushProgress const& progress,
       bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -351,9 +372,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(
-      bool wait, irs::index_writer::progress_report_callback const& progress,
-      CommitResult& code);
+  Result commitUnsafeImpl(bool wait,
+                          irs::ProgressReportCallback const& progress,
+                          CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -361,7 +382,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafeImpl(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::merge_writer::flush_progress_t const& progress,
+      irs::MergeWriter::FlushProgress const& progress,
       bool& emptyConsolidation);
 
   void initAsyncSelf();
@@ -372,9 +393,9 @@ class IResearchDataStore {
   Result initDataStore(
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
-      std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+      std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
       irs::type_info::type_id primarySortCompression,
-      irs::index_reader_options const& readerOptions);
+      irs::IndexReaderOptions const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -398,8 +419,8 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result deleteDataStore() noexcept;
 
- public:  // TODO(MBkkt) public only for tests, make protected
-  // These methods only for tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get numbers of failed commit cleanup consolidation
   ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +430,7 @@ class IResearchDataStore {
   /// @brief get average time of commit cleanuo consolidation
   ////////////////////////////////////////////////////////////////////////////////
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
-
+#endif
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
@@ -428,6 +449,13 @@ class IResearchDataStore {
 
   void initClusterMetrics() const;
 
+  // Return index writer options given the specified arguments.
+  irs::IndexWriterOptions getWriterOptions(
+      irs::IndexReaderOptions const& options, uint32_t version, bool sorted,
+      bool nested,
+      std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
+      irs::type_info::type_id primarySortCompression);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
@@ -440,7 +468,7 @@ class IResearchDataStore {
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
-  virtual irs::comparer const* getComparator() const noexcept = 0;
+  virtual irs::Comparer const* getComparator() const noexcept = 0;
 
   StorageEngine* _engine{nullptr};
 
@@ -451,9 +479,6 @@ class IResearchDataStore {
   // 'this' for the lifetime of the link (for use with asynchronous calls)
   AsyncLinkPtr _asyncSelf;
 
-  // the linked collection
-  LogicalCollection& _collection;
-
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
@@ -462,7 +487,6 @@ class IResearchDataStore {
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;
   bool _hasNestedFields{false};
 
   // protected by _commitMutex

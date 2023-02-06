@@ -28,6 +28,7 @@
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -47,11 +48,11 @@ using namespace arangodb::options;
 namespace {
 // replace tcp:// with http://, and ssl:// with https://
 std::string fixEndpointProto(std::string const& endpoint) {
-  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
-    return "http://" + endpoint.substr(6);      // strlen("tcp://")
+  if (endpoint.starts_with("tcp://")) {
+    return "http://" + endpoint.substr(6);  // strlen("tcp://")
   }
-  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
-    return "https://" + endpoint.substr(6);     // strlen("ssl://")
+  if (endpoint.starts_with("ssl://")) {
+    return "https://" + endpoint.substr(6);  // strlen("ssl://")
   }
   return endpoint;
 }
@@ -306,7 +307,7 @@ bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
 
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
   if (!ServerState::instance()->isClusterRole() &&
@@ -343,7 +344,7 @@ void ReplicationFeature::disableReplicationApplier() {
 
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (!ServerState::instance()->isClusterRole() &&
       vocbase->replicationApplier() != nullptr) {

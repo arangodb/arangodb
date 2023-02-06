@@ -30,6 +30,7 @@
 #include <string>
 
 #include "Basics/Result.h"
+#include "Basics/RebootId.h"
 
 namespace arangodb {
 
@@ -40,58 +41,6 @@ typedef std::string ViewID;           // ID of a view
 typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
-
-class RebootId {
- public:
-  explicit constexpr RebootId() noexcept = delete;
-  explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
-  [[nodiscard]] uint64_t value() const noexcept { return _value; }
-
-  [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
-
-  [[nodiscard]] bool operator==(RebootId other) const noexcept {
-    return value() == other.value();
-  }
-  [[nodiscard]] bool operator!=(RebootId other) const noexcept {
-    return value() != other.value();
-  }
-  [[nodiscard]] bool operator<(RebootId other) const noexcept {
-    return value() < other.value();
-  }
-  [[nodiscard]] bool operator>(RebootId other) const noexcept {
-    return value() > other.value();
-  }
-  [[nodiscard]] bool operator<=(RebootId other) const noexcept {
-    return value() <= other.value();
-  }
-  [[nodiscard]] bool operator>=(RebootId other) const noexcept {
-    return value() >= other.value();
-  }
-
-  [[nodiscard]] static constexpr RebootId max() noexcept {
-    return RebootId{std::numeric_limits<decltype(_value)>::max()};
-  }
-
-  std::ostream& print(std::ostream& o) const;
-
- private:
-  uint64_t _value{};
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, RebootId& x) {
-  if constexpr (Inspector::isLoading) {
-    auto v = uint64_t{0};
-    auto res = f.apply(v);
-    if (res.ok()) {
-      x = RebootId{v};
-    }
-    return res;
-  } else {
-    auto v = x.value();
-    return f.apply(v);
-  }
-}
 
 namespace velocypack {
 class Builder;
@@ -184,15 +133,6 @@ struct QueryAnalyzerRevisions {
   AnalyzersRevision::Revision systemDbRevision{AnalyzersRevision::MIN};
 };
 
-std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o,
                          arangodb::QueryAnalyzerRevisions const& r);
-
-template<>
-struct velocypack::Extractor<arangodb::RebootId> {
-  static auto extract(velocypack::Slice slice) -> RebootId {
-    return RebootId{slice.getNumericValue<std::size_t>()};
-  }
-};
-
 }  // namespace arangodb

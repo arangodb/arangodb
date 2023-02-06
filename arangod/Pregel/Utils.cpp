@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -44,13 +45,8 @@ std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
 std::string const Utils::finishedWorkerFinalizationPath =
     "finishedFinalization";
-std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
-std::string const Utils::startRecoveryPath = "startRecovery";
-std::string const Utils::continueRecoveryPath = "continueRecovery";
-std::string const Utils::finishedRecoveryPath = "finishedRecovery";
-std::string const Utils::finalizeRecoveryPath = "finalizeRecovery";
 std::string const Utils::storeCheckpointPath = "storeCheckpoint";
 std::string const Utils::aqlResultsPath = "aqlResult";
 
@@ -64,10 +60,8 @@ std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
-std::string const Utils::asyncModeKey = "asyncMode";
 std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
-std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::phaseFirstStepKey = "phase-first-step";
@@ -77,13 +71,11 @@ std::string const Utils::shardIdKey = "shrdId";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::payloadKey = "payload";
-std::string const Utils::recoveryMethodKey = "rmethod";
 std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";
 std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
-std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::maxNumIterations = "maxNumIterations";
 std::string const Utils::threshold = "threshold";
 std::string const Utils::maxGSS = "maxGSS";

@@ -24,6 +24,7 @@
 #include "RocksDBTrxBaseMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -32,6 +33,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -72,12 +74,15 @@ Result RocksDBTrxBaseMethods::beginTransaction() {
 
   createTransaction();
   TRI_ASSERT(_rocksTransaction != nullptr);
-  _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  // we at least are at this point
-  TRI_ASSERT(_db || _readOptions.snapshot);
-  _lastWrittenOperationTick = _readOptions.snapshot
-                                  ? _readOptions.snapshot->GetSequenceNumber()
-                                  : _db->GetLatestSequenceNumber();
+  TRI_ASSERT(_rocksTransaction->GetSnapshot() == nullptr);
+
+  if (!_state->options().delaySnapshot) {
+    // In some cases we delay acquiring the snapshot so we can lock the key(s)
+    // _before_ we acquire the snapshot to prevent write-write conflicts. In all
+    // other cases we acquire the snapshot right now to be consistent with the
+    // old behavior (at least for now).
+    ensureSnapshot();
+  }
   return {};
 }
 
@@ -106,7 +111,17 @@ TRI_voc_tick_t RocksDBTrxBaseMethods::lastOperationTick() const noexcept {
 /// @brief acquire a database snapshot if we do not yet have one.
 /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
 /// already had a snapshot)
-bool RocksDBTrxBaseMethods::ensureSnapshot() { return false; }
+bool RocksDBTrxBaseMethods::ensureSnapshot() {
+  if (_rocksTransaction->GetSnapshot() == nullptr) {
+    _rocksTransaction->SetSnapshot();
+    _readOptions.snapshot = _rocksTransaction->GetSnapshot();
+    TRI_ASSERT(_readOptions.snapshot != nullptr);
+    // we at least are at this point
+    _lastWrittenOperationTick = _readOptions.snapshot->GetSequenceNumber();
+    return true;
+  }
+  return false;
+}
 
 rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber()
     const noexcept {
@@ -158,7 +173,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
   if (readOwnWrites == ReadOwnWrites::yes) {
     return _rocksTransaction->Get(ro, cf, key, val);
   } else {
@@ -172,7 +187,7 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
   return _rocksTransaction->GetForUpdate(ro, cf, key, val);
 }
 
@@ -267,7 +282,6 @@ void RocksDBTrxBaseMethods::cleanupTransaction() {
 void RocksDBTrxBaseMethods::createTransaction() {
   // start rocks transaction
   rocksdb::TransactionOptions trxOpts;
-  trxOpts.set_snapshot = true;
 
   if (_state->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX)) {
     // write operations for the same keys on followers should normally be
@@ -278,6 +292,13 @@ void RocksDBTrxBaseMethods::createTransaction() {
     // waiting for the contented striped mutex, increase it to a higher
     // value on followers that makes this situation unlikely.
     trxOpts.lock_timeout = 3000;
+  } else if (_state->options().delaySnapshot) {
+    // for single operations we delay acquiring the snapshot so we can lock
+    // the key _before_ we acquire the snapshot to prevent write-write
+    // conflicts. in this case we obviously also want to use a higher lock
+    // timeout
+    // TODO - make this configurable
+    trxOpts.lock_timeout = 1000;
   } else {
     // when trying to lock the same keys, we want to return quickly and not
     // spend the default 1000ms before giving up
@@ -316,8 +337,7 @@ Result RocksDBTrxBaseMethods::doCommit() {
 Result RocksDBTrxBaseMethods::doCommitImpl() {
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
-               (_rocksTransaction->GetNumKeys() == 0 &&
-                _rocksTransaction->GetNumPuts() == 0 &&
+               (_rocksTransaction->GetNumPuts() == 0 &&
                 _rocksTransaction->GetNumDeletes() == 0));
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -449,4 +469,15 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
     }
   }
   return {};
+}
+
+rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
+    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
+    rocksdb::Snapshot const* snapshot) {
+  auto oldSnapshot = _readOptions.snapshot;
+  auto restoreSnapshot = absl::Cleanup{
+      [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
+  _readOptions.snapshot = snapshot;
+  return Get(family, slice, pinnable, rw);
 }

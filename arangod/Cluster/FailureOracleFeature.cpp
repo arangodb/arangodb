@@ -32,6 +32,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FailureOracle.h"
+#include "Logger/LogMacros.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -126,6 +127,7 @@ void FailureOracleImpl::stop() {
         << ex.what();
   }
 
+  std::unique_lock writeLock(_mutex);
   _flushJob->cancel();
 }
 
@@ -194,8 +196,13 @@ void FailureOracleImpl::scheduleFlush() noexcept {
     return;
   }
 
+  if (scheduler->server().isStopping()) {
+    return;
+  }
+
+  std::unique_lock writeLock(_mutex);
   _flushJob = scheduler->queueDelayed(
-      RequestLane::AGENCY_CLUSTER, 50s,
+      "failure-oracle", RequestLane::AGENCY_CLUSTER, 50s,
       [weak = weak_from_this()](bool canceled) {
         auto self = weak.lock();
         if (self && !canceled && self->_isRunning.load()) {

@@ -31,16 +31,17 @@ using namespace arangodb::aql;
 
 /// @brief names of query phases / states
 static std::string const StateNames[] = {
-    "initializing",         // INITIALIZATION
-    "parsing",              // PARSING
-    "optimizing ast",       // AST_OPTIMIZATION
-    "loading collections",  // LOADING_COLLECTIONS
-    "instantiating plan",   // PLAN_INSTANTIATION
-    "optimizing plan",      // PLAN_OPTIMIZATION
-    "executing",            // EXECUTION
-    "finalizing",           // FINALIZATION
-    "finished",             // FINISHED
-    "killed",               // KILLED
+    "initializing",             // INITIALIZATION
+    "parsing",                  // PARSING
+    "optimizing ast",           // AST_OPTIMIZATION
+    "loading collections",      // LOADING_COLLECTIONS
+    "instantiating plan",       // PLAN_INSTANTIATION
+    "optimizing plan",          // PLAN_OPTIMIZATION
+    "instantiating executors",  // PHYSICAL_INSTANTIATION
+    "executing",                // EXECUTION
+    "finalizing",               // FINALIZATION
+    "finished",                 // FINISHED
+    "killed",                   // KILLED
 
     "invalid"  // INVALID
 };

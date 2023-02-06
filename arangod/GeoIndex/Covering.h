@@ -23,17 +23,18 @@
 
 #pragma once
 
+#include <deque>
+#include <vector>
+
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
 
-#include <deque>
-#include <vector>
-
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb::geo_index {
 
@@ -111,7 +112,7 @@ class CoveringUtils {
   GeoDocumentsQueue _buffer;
 
   // deduplication filter
-  std::unordered_set<uint64_t> _seenDocs;
+  containers::FlatHashSet<uint64_t> _seenDocs;
 
   /// Coverer instance to use
   S2RegionCoverer _coverer;

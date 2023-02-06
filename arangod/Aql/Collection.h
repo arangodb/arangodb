@@ -56,17 +56,17 @@ struct Collection {
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType,
              Hint hint);
 
-  TRI_vocbase_t* vocbase() const;
+  TRI_vocbase_t* vocbase() const noexcept;
 
   /// @brief upgrade the access type to exclusive
-  void setExclusiveAccess();
+  void setExclusiveAccess() noexcept;
 
-  AccessMode::Type accessType() const;
-  void accessType(AccessMode::Type type);
+  AccessMode::Type accessType() const noexcept;
+  void accessType(AccessMode::Type type) noexcept;
 
-  bool isReadWrite() const;
+  bool isReadWrite() const noexcept;
 
-  void isReadWrite(bool isReadWrite);
+  void isReadWrite(bool isReadWrite) noexcept;
 
   /// @brief get the collection id
   DataSourceId id() const;
@@ -179,7 +179,7 @@ struct Collection {
 
   bool _isReadWrite;
 
-  /// @brief a constant mapping for shards => ServerName as they ware planned
+  /// @brief a constant mapping for shards => ServerName as they were planned
   /// at the beginning. This way we can distribute data to servers without
   /// asking the Agency periodically, or even suffer from failover scenarios.
   mutable std::unordered_map<ShardID, ServerID> _shardToServerMapping;

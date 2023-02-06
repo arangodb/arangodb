@@ -159,7 +159,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief return the collection from a transaction
   [[nodiscard]] TransactionCollection* collection(
-      std::string const& name, AccessMode::Type accessType) const;
+      std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
@@ -216,6 +216,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
+
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
+  [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;

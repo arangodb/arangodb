@@ -39,9 +39,9 @@
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomFeature.h"
@@ -61,7 +61,9 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 #include <regex>
 
 extern "C" {
@@ -1334,6 +1336,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("common/bootstrap/scaffolding.js");
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
   files.push_back("common/bootstrap/errors.js");            // deps: internal
+  files.push_back("common/bootstrap/exitcodes.js");         // deps: internal
   files.push_back("client/bootstrap/modules/internal.js");  // deps: internal
   files.push_back("common/bootstrap/modules/vm.js");        // deps: internal
   files.push_back("common/bootstrap/modules/console.js");   // deps: internal

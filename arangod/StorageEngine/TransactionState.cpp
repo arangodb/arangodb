@@ -98,7 +98,7 @@ TransactionCollection* TransactionState::collection(
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(
-    std::string const& name, AccessMode::Type accessType) const {
+    std::string_view name, AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 

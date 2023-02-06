@@ -148,7 +148,7 @@ function activeFailover (options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
   testFns['resilience_move_view'] = resilienceMoveView;

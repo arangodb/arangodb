@@ -33,7 +33,6 @@
 #include <string_view>
 #include <type_traits>
 #include <typeindex>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -339,38 +338,41 @@ class ApplicationServer {
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 };
-
+/**
 // ApplicationServerT is intended to provide statically checked access to
 // application features. Whenever you need to create an application server
 // consider the following usage pattern:
 //
 // Declare a list of all features in header file:
-//
-// namespace arangodb {
-// class Feature1;
-// class Feature2;
-// using namespace arangodb::application_features;
-// using ServerFeatures = basics::TypeList<Feature1, Feature2>;
-// using Server = ApplicationServerT<ServerFeatures>;
-// using ServerFeature = ApplicationFeatureT<ServerFeatures>;
-// }
-//
+
+namespace arangodb {
+class Feature1;
+class Feature2;
+using namespace arangodb::application_features;
+using ServerFeaturesList = basics::TypeList<Feature1, Feature2>;
+// struct ServerFeatures is needed to make stacktrace, compile error messages,
+// etc more readable.
+struct ServerFeatures : ServerFeaturesList {};
+using Server = ApplicationServerT<ServerFeatures>;
+using ServerFeature = ApplicationFeatureT<ServerFeatures>;
+}
+
 // Note that the order of features in basics::TypeList<Feature1, Feature2> is
 // significant and defines creation order, i.e. Feature1 is constructed before
 // Feature2.
 //
 // To instantiate server and its features consider the following snippet:
-//
-// Server server;
-// server.addFeatures(Visitor{
-//   []<typename T>(Server& server, TypeTag<T>) {
-//     return std::make_unique<T>(server);
-//   },
-//   [](Server& server, TypeTag<Feature2>) {
-//     // Feature constructor requires extra argument
-//     return std::make_unique<Feature2>(server, "arg");
-//   }});
 
+Server server;
+server.addFeatures(Visitor{
+  []<typename T>(Server& server, TypeTag<T>) {
+    return std::make_unique<T>(server);
+  },
+  [](Server& server, TypeTag<Feature2>) {
+    // Feature constructor requires extra argument
+    return std::make_unique<Feature2>(server, "arg");
+  }});
+*/
 template<typename Features>
 class ApplicationServerT : public ApplicationServer {
  public:

@@ -54,6 +54,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -963,14 +964,11 @@ void lateDocumentMaterializationArangoSearchRule(
         TRI_ASSERT(ast);
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         TRI_ASSERT(localDocIdTmp);
-        auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        TRI_ASSERT(localColPtrTmp);
-        viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
+        viewNode.setLateMaterialized(*localDocIdTmp);
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeMultiNode>(
-                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp,
-                var));
+                plan.get(), plan->nextId(), *localDocIdTmp, var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
@@ -1066,9 +1064,17 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node &&
-               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+
+    if (viewNode.isBuilding()) {
+      query.warnings().registerWarning(
+          TRI_ERROR_ARANGO_INCOMPLETE_READ,
+          absl::StrCat(
+              "ArangoSearch view '", viewNode.view()->name(),
+              "' building is in progress. Results can be incomplete."));
+    }
 
     if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away sort that follows the EnumerateView

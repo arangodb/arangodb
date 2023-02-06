@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_state_acquire_snapshot_errors_total
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Number of errors during an acquire snapshot operation.
 unit: number

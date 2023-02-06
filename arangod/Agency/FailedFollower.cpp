@@ -28,21 +28,21 @@
 #include "Agency/JobContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 
-FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId,
-                               std::string const& creator,
-                               std::string const& database,
-                               std::string const& collection,
-                               std::string const& shard,
-                               std::string const& from)
+FailedFollower::FailedFollower(
+    Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+    std::string const& creator, std::string const& database,
+    std::string const& collection, std::string const& shard,
+    std::string const& from, std::string const& notBefore)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from) {}
+      _from(from),
+      _notBefore(stringToTimepoint(notBefore)) {}
 
 FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
                                JOB_STATUS status, std::string const& jobId)
@@ -62,6 +62,11 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+
+  if (tmp_notBefore) {
+    _notBefore = stringToTimepoint(tmp_notBefore.value());
+  }
 
   if (tmp_database && tmp_collection && tmp_from && tmp_shard && tmp_creator &&
       tmp_created) {
@@ -88,7 +93,7 @@ void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
   LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
-      << "Create failedFollower for " + _shard + " from " + _from;
+      << "Create failedFollower for " << _shard << " from " << _from;
 
   _created = system_clock::now();
 
@@ -112,6 +117,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+    _jb->add("notBefore", VPackValue(timepointToString(_notBefore)));
   }
 
   if (envelope == nullptr) {
@@ -158,7 +164,7 @@ bool FailedFollower::start(bool& aborts) {
   bool found = false;
   if (planned.isArray()) {
     for (VPackSlice s : VPackArrayIterator(planned)) {
-      if (s.isString() && _from == s.copyString()) {
+      if (s.isString() && _from == s.stringView()) {
         found = true;
         break;
       }
@@ -173,6 +179,18 @@ bool FailedFollower::start(bool& aborts) {
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
+
+  // Check if configured delay has passed since the creation of the job:
+  auto now = std::chrono::system_clock::now();
+  if (now < _notBefore) {
+    LOG_TOPIC("1de2d", DEBUG, Logger::SUPERVISION)
+        << "shard " << _shard
+        << " needs FailedFollower but configured FailedFollowerDelay has not "
+           "yet passed, delaying job "
+        << _jobId;
+    return false;
+  }
+
   auto failoverCands =
       Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
@@ -180,7 +198,7 @@ bool FailedFollower::start(bool& aborts) {
     if (s.isString()) {
       std::string id = s.copyString();
       if (failoverCands.find(id) == failoverCands.end()) {
-        excludes.push_back(s.copyString());
+        excludes.push_back(std::move(id));
       }
     }
   }
@@ -202,7 +220,8 @@ bool FailedFollower::start(bool& aborts) {
   }
 
   LOG_TOPIC("80b9d", INFO, Logger::SUPERVISION)
-      << "Start failedFollower for " + _shard + " from " + _from + " to " + _to;
+      << "Start failedFollower for " << _shard << " from " << _from << " to "
+      << _to;
 
   // Copy todo to pending
   Builder todo;
@@ -214,8 +233,8 @@ bool FailedFollower::start(bool& aborts) {
         jobIdNode->get().toBuilder(todo);
       } else {
         LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -256,7 +275,7 @@ bool FailedFollower::start(bool& aborts) {
                   VPackValue(timepointToString(system_clock::now())));
           job.add("toServer", VPackValue(_to));  // toServer
           for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-            job.add(obj.key.copyString(), obj.value);
+            job.add(obj.key.stringView(), obj.value);
           }
         }
         addRemoveJobFromSomewhere(job, "ToDo", _jobId);
@@ -276,7 +295,7 @@ bool FailedFollower::start(bool& aborts) {
         job.add(VPackValue(healthPrefix + _from + "/Status"));
         {
           VPackObjectBuilder stillExists(&job);
-          job.add("old", VPackValue("FAILED"));
+          job.add("old", VPackValue(Supervision::HEALTH_STATUS_FAILED));
         }
         // Plan still as we see it:
         addPreconditionUnchanged(job, planPath, planned);
@@ -299,7 +318,7 @@ bool FailedFollower::start(bool& aborts) {
         // shard not blocked
         addPreconditionShardNotBlocked(job, _shard);
         // toServer in good condition
-        addPreconditionServerHealth(job, _to, "GOOD");
+        addPreconditionServerHealth(job, _to, Supervision::HEALTH_STATUS_GOOD);
       }
     }
   }
@@ -341,13 +360,15 @@ bool FailedFollower::start(bool& aborts) {
 
   auto slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _from, "Status"}));
-  if (slice.isString() && slice.copyString() != "FAILED") {
+  if (slice.isString() &&
+      slice.stringView() != Supervision::HEALTH_STATUS_FAILED) {
     finish("", _shard, false, "Server " + _from + " no longer failing.");
   }
 
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-  if (!slice.isString() || slice.copyString() != "GOOD") {
+  if (!slice.isString() ||
+      slice.stringView() != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("4785b", INFO, Logger::SUPERVISION)
         << "Destination server " << _to << " is no longer in good condition";
   }
@@ -365,7 +386,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("ad849", INFO, Logger::SUPERVISION)
         << "Destination " << _to << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   slice = result.get(std::vector<std::string>(
@@ -373,7 +394,7 @@ bool FailedFollower::start(bool& aborts) {
   if (!slice.isNone()) {
     LOG_TOPIC("57da4", INFO, Logger::SUPERVISION)
         << "Shard " << _shard << " is now blocked by job "
-        << slice.copyString();
+        << slice.stringView();
   }
 
   return false;

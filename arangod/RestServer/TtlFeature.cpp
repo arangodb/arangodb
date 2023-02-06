@@ -160,9 +160,9 @@ class TtlThread final : public ServerThread<ArangodServer> {
         _ttlFeature(ttlFeature),
         _working(false) {}
 
-  ~TtlThread() { shutdown(); }
+  ~TtlThread() final { shutdown(); }
 
-  void beginShutdown() override {
+  void beginShutdown() final {
     Thread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
@@ -184,8 +184,8 @@ class TtlThread final : public ServerThread<ArangodServer> {
         std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
   }
 
- protected:
-  void run() override {
+ private:
+  void run() final {
     TtlProperties properties = _ttlFeature.properties();
     setNextStart(properties.frequency);
 
@@ -197,26 +197,21 @@ class TtlThread final : public ServerThread<ArangodServer> {
         << properties.maxCollectionRemoves;
 
     while (true) {
-      auto now = std::chrono::steady_clock::now();
-
-      while (now < _nextStart) {
+      while (true) {
         if (isStopping()) {
           // server shutdown
           return;
         }
+        CONDITION_LOCKER(guard, _condition);
+        auto now = std::chrono::steady_clock::now();
+        if (now >= _nextStart) {
+          break;
+        }
 
         // wait for our start...
-        CONDITION_LOCKER(guard, _condition);
-
         guard.wait(std::chrono::microseconds(
             std::chrono::duration_cast<std::chrono::microseconds>(_nextStart -
                                                                   now)));
-        now = std::chrono::steady_clock::now();
-      }
-
-      if (isStopping()) {
-        // server shutdown
-        return;
       }
 
       // properties may have changed... update them
@@ -240,7 +235,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
     }
   }
 
- private:
   /// @brief whether or not the background thread shall continue working
   bool isActive() const {
     return _ttlFeature.isActive() && !isStopping() && !ServerState::readOnly();
@@ -271,14 +265,11 @@ class TtlThread final : public ServerThread<ArangodServer> {
         return;
       }
 
-      TRI_vocbase_t* vocbase = db.useDatabase(name);
+      auto vocbase = db.useDatabase(name);
 
       if (vocbase == nullptr) {
         continue;
       }
-
-      // make sure we decrease the reference counter later
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       LOG_TOPIC("ec905", TRACE, Logger::TTL)
           << "TTL thread going to process database '" << vocbase->name() << "'";
@@ -408,7 +399,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
     }
   }
 
- private:
   TtlFeature& _ttlFeature;
 
   arangodb::basics::ConditionVariable _condition;

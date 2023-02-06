@@ -35,6 +35,7 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -267,11 +268,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vocbase = df.useDatabase(dbColPair.first);
+    auto vocbase = df.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
     return static_cast<RocksDBCollection*>(
         vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
@@ -283,11 +283,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vb = df.useDatabase(std::get<0>(triple));
+    auto vb = df.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vb->release(); });
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 
@@ -658,8 +657,14 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     auto latestSequenceNumber = db->GetLatestSequenceNumber();
 
     if (engine.dbExisted()) {
+      size_t filesActive = 0;
       size_t filesInArchive = 0;
       try {
+        // number of active log files
+        std::string active = db->GetOptions().wal_dir;
+        filesActive = TRI_FilesDirectory(active.c_str()).size();
+
+        // number of log files in the archive
         std::string archive = basics::FileUtils::buildFilename(
             db->GetOptions().wal_dir, "archive");
         filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
@@ -673,6 +678,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
              "number "
           << recoveryStartSequence
           << ", latest sequence number: " << latestSequenceNumber
+          << ", active log files: " << filesActive
           << ", files in archive: " << filesInArchive;
     }
 

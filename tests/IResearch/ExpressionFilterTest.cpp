@@ -94,7 +94,7 @@ struct custom_sort : public irs::sort {
      public:
       field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
+      virtual void collect(const irs::SubReader& segment,
                            const irs::term_reader& field) override {
         if (sort_.field_collector_collect) {
           sort_.field_collector_collect(segment, field);
@@ -115,7 +115,7 @@ struct custom_sort : public irs::sort {
      public:
       term_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
+      virtual void collect(const irs::SubReader& segment,
                            const irs::term_reader& field,
                            const irs::attribute_provider& term_attrs) override {
         if (sort_.term_collector_collect) {
@@ -134,7 +134,7 @@ struct custom_sort : public irs::sort {
     };
 
     struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
+      scorer(const custom_sort& sort, const irs::SubReader& segment_reader,
              const irs::term_reader& term_reader, const irs::byte_type* stats,
              const irs::attribute_provider& document_attrs)
           : document_attrs_(document_attrs),
@@ -145,7 +145,7 @@ struct custom_sort : public irs::sort {
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* stats_;
-      const irs::sub_reader& segment_reader_;
+      const irs::SubReader& segment_reader_;
       const custom_sort& sort_;
       const irs::term_reader& term_reader_;
     };
@@ -155,7 +155,7 @@ struct custom_sort : public irs::sort {
     prepared(const custom_sort& sort) : sort_(sort) {}
 
     virtual void collect(irs::byte_type* filter_attrs,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       if (sort_.collector_finish) {
@@ -177,7 +177,7 @@ struct custom_sort : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const& segment_reader,
+        irs::SubReader const& segment_reader,
         irs::term_reader const& term_reader,
         irs::byte_type const* filter_node_attrs,
         irs::attribute_provider const& document_attrs,
@@ -219,16 +219,16 @@ struct custom_sort : public irs::sort {
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&)>
+  std::function<void(const irs::SubReader&, const irs::term_reader&)>
       field_collector_collect;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&,
+  std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
       term_collector_collect;
-  std::function<void(irs::byte_type*, const irs::index_reader&)>
+  std::function<void(irs::byte_type*, const irs::IndexReader&)>
       collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
   std::function<irs::ScoreFunction(
-      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+      const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
       const irs::attribute_provider&, irs::score_t)>
       prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
@@ -278,8 +278,7 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(
-        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -409,24 +408,23 @@ TEST_F(IResearchExpressionFilterTest, test) {
     } storedField;
 
     auto writer =
-        irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+        irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
     ASSERT_TRUE(writer);
 
     for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
 
-      auto ctx = writer->documents();
-      auto doc = ctx.insert();
-      EXPECT_TRUE(doc.insert<irs::Action::STORE>(storedField));
+      auto ctx = writer->GetBatch();
+      auto doc = ctx.Insert();
+      EXPECT_TRUE(doc.Insert<irs::Action::STORE>(storedField));
       EXPECT_TRUE(doc);
     }
 
-    writer->commit();
+    writer->Commit();
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
 
   // create view
   {
@@ -443,7 +441,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // open reader
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1U, reader->size());
   auto& segment = (*reader)[0];
@@ -1167,17 +1165,17 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto& sort = static_cast<custom_sort&>(*order.front());
 
     sort.field_collector_collect = [&field_collector_collect_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++field_collector_collect_count;
     };
     sort.collector_finish = [&collector_finish_count](
                                 irs::byte_type*,
-                                const irs::index_reader&) -> void {
+                                const irs::IndexReader&) -> void {
       ++collector_finish_count;
     };
     sort.term_collector_collect = [&term_collector_collect_count](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::attribute_provider&) -> void {
       ++term_collector_collect_count;

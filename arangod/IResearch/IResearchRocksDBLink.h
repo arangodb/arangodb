@@ -24,35 +24,35 @@
 
 #pragma once
 
-#include "IResearchLink.h"
-
+#include "IResearch/IResearchLink.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
-}
+struct IndexTypeFactory;
 
-namespace arangodb {
 namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
                        uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
-    IResearchLink::afterTruncate(tick, trx);
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final {
+    IResearchDataStore::afterTruncate(tick, trx);
   }
 
-  bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
+  bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
 
-  Result drop() override /*noexcept*/ { return IResearchLink::drop(); }
+  Result drop() final /*noexcept*/ { return IResearchLink::drop(); }
 
-  bool hasSelectivityEstimate() const override {
-    return IResearchLink::hasSelectivityEstimate();
+  bool hasSelectivityEstimate() const final {
+    return IResearchDataStore::hasSelectivityEstimate();
   }
 
   Result insertInRecovery(transaction::Methods& trx,
@@ -73,31 +73,32 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
-                bool /*performChecks*/) override {
+                bool /*performChecks*/) final {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
                                                          meta(), nullptr);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice) override {
+                LocalDocumentId const& documentId, VPackSlice,
+                OperationOptions const& /*options*/) final {
     return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
                                       nullptr);
   }
 
-  bool isSorted() const override { return IResearchLink::isSorted(); }
+  bool isSorted() const final { return IResearchLink::isSorted(); }
 
-  bool isHidden() const override { return IResearchLink::isHidden(); }
+  bool isHidden() const final { return IResearchLink::isHidden(); }
 
-  bool needsReversal() const override { return true; }
+  bool needsReversal() const final { return true; }
 
-  void load() override { IResearchLink::load(); }
+  void load() final {}
 
-  bool matchesDefinition(VPackSlice const& slice) const override {
+  bool matchesDefinition(VPackSlice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const override {
+  size_t memory() const final {
     // FIXME return in memory size
     return stats().indexSize;
   }
@@ -108,19 +109,18 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const override;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type_t<Index::Serialize> flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  IndexType type() const override { return IResearchLink::type(); }
+  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
 
-  char const* typeName() const override { return IResearchLink::typeName(); }
+  char const* typeName() const final { return oldtypeName(); }
 
-  void unload() override {
+  void unload() final {
     auto res = IResearchLink::unload();
 
     if (!res.ok()) {
@@ -139,15 +139,15 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
    public:
     bool equal(VPackSlice lhs, VPackSlice rhs,
-               std::string const& dbname) const override;
+               std::string const& dbname) const final;
 
     std::shared_ptr<Index> instantiate(
         LogicalCollection& collection, VPackSlice definition, IndexId id,
-        bool /*isClusterConstructor*/) const override;
+        bool /*isClusterConstructor*/) const final;
 
     virtual Result normalize(VPackBuilder& normalized, VPackSlice definition,
                              bool isCreation,
-                             TRI_vocbase_t const& vocbase) const override;
+                             TRI_vocbase_t const& vocbase) const final;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);

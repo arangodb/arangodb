@@ -69,16 +69,6 @@ class BlocksWithClients {
  public:
   virtual ~BlocksWithClients() = default;
 
-  /// @brief getSomeForShard
-  /// @deprecated
-  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
-
-  /// @brief skipSomeForShard
-  /// @deprecated
-  virtual std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
-
   /**
    * @brief Execute for client.
    *  Like execute, but bound to the dataset, that needs to be send to the given
@@ -156,16 +146,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    */
   auto fetchMore(AqlCallStack stack) -> ExecutionState;
 
-  /// @brief getSomeForShard
-  /// @deprecated
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
-
-  /// @brief skipSomeForShard
-  /// @deprecated
-  std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) override;
-
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
@@ -174,9 +154,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief _shardIdMap: map from shardIds to clientNrs
   /// @deprecated
   std::unordered_map<std::string, size_t> _shardIdMap;
-
-  /// @brief _nrClients: total number of clients
-  size_t _nrClients;
 
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;

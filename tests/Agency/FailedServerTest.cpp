@@ -148,6 +148,8 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
         EXPECT_EQ(job.get("server").copyString(), SHARD_LEADER);
         EXPECT_EQ(typeName(job.get("jobId")), "string");
         EXPECT_EQ(typeName(job.get("timeCreated")), "string");
+        EXPECT_EQ(typeName(job.get("notBefore")), "string");
+        EXPECT_TRUE(job.get("failedLeaderAddsFollower").isTrue());
 
         return fakeWriteResult;
       });
@@ -156,14 +158,54 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   auto& agent = mockAgent.get();
   auto builder = agency.toBuilder();
   FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
-               SHARD_LEADER)
+               SHARD_LEADER, "2022-01-01T00:00:00Z", true)
+      .create();
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(FailedServerTest,
+       creating_a_job_should_create_a_job_in_todo_failed_leader_no_followers) {
+  Mock<AgentInterface> mockAgent;
+
+  std::string jobId = "1";
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto expectedJobKey = PREFIX + toDoPrefix + jobId;
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(q[0][0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0].get(expectedJobKey)), "object");
+
+        auto job = q[0][0].get(expectedJobKey);
+        EXPECT_EQ(typeName(job.get("creator")), "string");
+        EXPECT_EQ(typeName(job.get("type")), "string");
+        EXPECT_EQ(job.get("type").copyString(), "failedServer");
+        EXPECT_EQ(typeName(job.get("server")), "string");
+        EXPECT_EQ(job.get("server").copyString(), SHARD_LEADER);
+        EXPECT_EQ(typeName(job.get("jobId")), "string");
+        EXPECT_EQ(typeName(job.get("timeCreated")), "string");
+        EXPECT_EQ(typeName(job.get("notBefore")), "string");
+        EXPECT_TRUE(job.get("failedLeaderAddsFollower").isFalse());
+
+        return fakeWriteResult;
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  auto builder = agency.toBuilder();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
+               SHARD_LEADER, "2022-01-01T00:00:00Z", false)
       .create();
   Verify(Method(mockAgent, write));
 }
 
 TEST_F(
     FailedServerTest,
-    the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_good) {
+    the_state_is_still_bad_and_failedservers_is_still_in_snapshot_violate_good) {
   TestStructureType createTestStructure = [&](Slice const& s,
                                               std::string const& path) {
     std::unique_ptr<Builder> builder;
@@ -239,7 +281,7 @@ TEST_F(
 
 TEST_F(
     FailedServerTest,
-    the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_failed) {
+    the_state_is_still_bad_and_failedservers_is_still_in_snapshot_violate_failed) {
   TestStructureType createTestStructure = [&](Slice const& s,
                                               std::string const& path) {
     std::unique_ptr<Builder> builder;
@@ -312,7 +354,7 @@ TEST_F(
 }
 
 TEST_F(FailedServerTest,
-       the_state_is_still_bad_and_faileservers_is_still_in_snapshot) {
+       the_state_is_still_bad_and_failedservers_is_still_in_snapshot) {
   TestStructureType createTestStructure = [&](Slice const& s,
                                               std::string const& path) {
     std::unique_ptr<Builder> builder;
@@ -379,7 +421,7 @@ TEST_F(FailedServerTest,
 }
 
 TEST_F(FailedServerTest,
-       the_state_is_still_bad_and_faileservers_is_still_in_snapshot_2) {
+       the_state_is_still_bad_and_failedservers_is_still_in_snapshot_2) {
   TestStructureType createTestStructure = [&](Slice const& s,
                                               std::string const& path) {
     std::unique_ptr<Builder> builder;
@@ -400,15 +442,16 @@ TEST_F(FailedServerTest,
       if (path == "/arango/Target/ToDo") {
         char const* todo =
             R"=({"creator":"unittest","jobId":"1","server":"leader",
-               "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer"})=";
+               "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer",
+               "failedLeaderAddsFollower":true})=";
         builder->add(jobId, createBuilder(todo).slice());
       }
     } else {
       if (path == "/arango/Supervision/Health/leader/Status") {
-        builder->add("/arango/Supervision/Health/leader/Status",
-                     VPackValue("FAILED"));
+        builder->add(VPackValue("FAILED"));
+      } else {
+        builder->add(s);
       }
-      builder->add(s);
     }
 
     return builder;
@@ -425,8 +468,7 @@ TEST_F(FailedServerTest,
         EXPECT_EQ(typeName(q), "array");
         EXPECT_EQ(q.length(), 1);
         EXPECT_EQ(typeName(q[0]), "array");
-        // we always simply override! no preconditions...
-        EXPECT_EQ(q[0].length(), 1);
+        EXPECT_EQ(q[0].length(), 2);  // with precondition
         EXPECT_EQ(typeName(q[0][0]), "object");
 
         auto writes = q[0][0];
@@ -436,7 +478,8 @@ TEST_F(FailedServerTest,
         EXPECT_TRUE(
             writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
             "delete");
-        EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
+        auto job = writes.get("/arango/Target/Pending/1");
+        EXPECT_EQ(typeName(job), "object");
         return fakeWriteResult;
       });
 
@@ -445,6 +488,233 @@ TEST_F(FailedServerTest,
   auto& agent = mockAgent.get();
   FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
+
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(FailedServerTest, a_failed_server_test_starts_and_is_moved_to_pending) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder;
+    builder = std::make_unique<Builder>();
+
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+      if (path == "/arango/Target/ToDo") {
+        char const* todo =
+            R"=({"creator":"unittest","jobId":"1","server":"leader",
+               "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer",
+               "failedLeaderAddsFollower":true})=";
+        builder->add(jobId, createBuilder(todo).slice());
+      }
+    } else {
+      if (path == "/arango/Supervision/Health/leader/Status") {
+        builder->add(VPackValue("FAILED"));
+      } else if (path == "/arango/Supervision/Health/follower1/Status") {
+        builder->add(VPackValue("GOOD"));
+      } else {
+        builder->add(s);
+      }
+    }
+
+    return builder;
+  };
+
+  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(), 2);  // with precondition
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
+        velocypack::Slice writes = q[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                    "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        auto job = writes.get("/arango/Target/Pending/1");
+        EXPECT_EQ(typeName(job), "object");
+        EXPECT_TRUE(job.get("failedLeaderAddsFollower").isTrue());
+        auto newJob = writes.get("/arango/Target/ToDo/1-0");
+        EXPECT_EQ(typeName(newJob), "object");
+        auto type = newJob.get("type");
+        EXPECT_EQ(typeName(type), "string");
+        EXPECT_EQ(type.copyString(), std::string("failedLeader"));
+        EXPECT_TRUE(newJob.get("addsFollower").isTrue());
+        return fakeWriteResult;
+      });
+
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
+
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(FailedServerTest,
+       a_failed_server_test_starts_and_is_moved_to_pending_no_followers) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder;
+    builder = std::make_unique<Builder>();
+
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+      if (path == "/arango/Target/ToDo") {
+        char const* todo =
+            R"=({"creator":"unittest","jobId":"1","server":"leader",
+               "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer",
+               "failedLeaderAddsFollower":false})=";
+        builder->add(jobId, createBuilder(todo).slice());
+      }
+    } else {
+      if (path == "/arango/Supervision/Health/leader/Status") {
+        builder->add(VPackValue("FAILED"));
+      } else if (path == "/arango/Supervision/Health/follower1/Status") {
+        builder->add(VPackValue("GOOD"));
+      } else {
+        builder->add(s);
+      }
+    }
+
+    return builder;
+  };
+
+  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(), 2);  // with precondition
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
+        velocypack::Slice writes = q[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                    "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        auto job = writes.get("/arango/Target/Pending/1");
+        EXPECT_EQ(typeName(job), "object");
+        EXPECT_TRUE(job.get("failedLeaderAddsFollower").isFalse());
+        auto newJob = writes.get("/arango/Target/ToDo/1-0");
+        EXPECT_EQ(typeName(newJob), "object");
+        auto type = newJob.get("type");
+        EXPECT_EQ(typeName(type), "string");
+        EXPECT_EQ(type.copyString(), std::string("failedLeader"));
+        EXPECT_TRUE(newJob.get("addsFollower").isFalse());
+        return fakeWriteResult;
+      });
+
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
+
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(FailedServerTest, a_failed_server_job_is_finished) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder;
+    builder = std::make_unique<Builder>();
+
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+      if (path == "/arango/Target/Pending") {
+        char const* pending =
+            R"=({"creator":"unittest","jobId":"1","server":"leader",
+               "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer",
+               "timeStarted":"2017-04-10T11:40:10Z",
+               "failedLeaderAddsFollower":true})=";
+        builder->add(jobId, createBuilder(pending).slice());
+      }
+    } else {
+      if (path == "/arango/Supervision/Health/leader/Status") {
+        builder->add(VPackValue("FAILED"));
+      } else if (path == "/arango/Supervision/Health/follower1/Status") {
+        builder->add(VPackValue("GOOD"));
+      } else {
+        builder->add(s);
+      }
+    }
+
+    return builder;
+  };
+
+  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(), 1);  // with precondition
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        velocypack::Slice writes = q[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
+        EXPECT_TRUE(
+            typeName(writes.get("/arango/Target/Pending/1").get("op")) ==
+            "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/Pending/1").get("op").copyString() ==
+            "delete");
+        auto job = writes.get("/arango/Target/Finished/1");
+        EXPECT_EQ(typeName(job), "object");
+        EXPECT_TRUE(job.get("failedLeaderAddsFollower").isTrue());
+        return fakeWriteResult;
+      });
+
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId)
+      .status();
 
   Verify(Method(mockAgent, write));
 }

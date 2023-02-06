@@ -42,6 +42,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::graph;
 

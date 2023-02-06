@@ -6,6 +6,7 @@
 
 cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -465,7 +466,6 @@ endif()
 ################################################################################
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DARANGODB_BITS=${BITS}")
 
 ################################################################################
 ## COMPILER FEATURES
@@ -685,6 +685,8 @@ option(USE_MAINTAINER_MODE
 )
 
 if (USE_MAINTAINER_MODE)
+  add_definitions("-DIRESEARCH_DEBUG")
+
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
@@ -922,7 +924,7 @@ else () # NOT MSVC
   if (CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor -Wno-error=maybe-uninitialized")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
@@ -1136,18 +1138,9 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
-add_subdirectory(3rdParty)
-link_libraries(
-  absl::flat_hash_set
-  absl::flat_hash_map
-  absl::node_hash_set
-  absl::node_hash_map
-  absl::synchronization
-  absl::strings
-)
-
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
@@ -1365,3 +1358,5 @@ else ()
   add_custom_target(arangodb
     DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()
+
+add_subdirectory(utils/gdb-pretty-printers/immer/test)

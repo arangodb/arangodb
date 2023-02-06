@@ -43,6 +43,7 @@
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -89,10 +90,7 @@
 #include <random>
 #include <vector>
 
-#include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/Common.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Metrics/Types.h"
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -800,7 +798,8 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 namespace arangodb {
 
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
-                             VPackSlice value, VPackBuilder& builder) {
+                             velocypack::Slice value,
+                             velocypack::Builder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -1586,6 +1585,15 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
                (options.mergeObjects ? "true" : "false"))
         .param(StaticStrings::SkipDocumentValidation,
                (options.validate ? "false" : "true"));
+
+    if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+      // this attribute can have 3 values: default, true and false. only
+      // expose it when it is not set to "default"
+      reqOpts.param(StaticStrings::RefillIndexCachesString,
+                    (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                        ? "true"
+                        : "false");
+    }
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
@@ -1724,7 +1732,16 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
       .param(StaticStrings::IgnoreRevsString,
              (options.ignoreRevs ? "true" : "false"));
 
-  const bool isManaged =
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
+
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
@@ -2555,6 +2572,15 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       .param(StaticStrings::IsRestoreString,
              (options.isRestore ? "true" : "false"));
 
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
+
   fuerte::RestVerb restVerb;
   if (isPatch) {
     restVerb = fuerte::RestVerb::Patch;
@@ -2716,12 +2742,9 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flush Wal on all DBservers
-////////////////////////////////////////////////////////////////////////////////
-
-::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                                   bool flushColumnFamilies) {
+/// @brief flush WAL on all DBservers
+Result flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
+                              bool flushColumnFamilies) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2749,17 +2772,66 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      return network::fuerteToArangoErrorCode(r);
-    }
-    if (r.statusCode() != fuerte::StatusOK) {
-      auto code = network::errorCodeFromBody(r.slice());
-      if (code != TRI_ERROR_NO_ERROR) {
-        return code;
-      }
+    if (r.fail() || r.statusCode() != fuerte::StatusOK) {
+      return r.combinedResult();
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
+}
+
+// recalculate counts on all DB servers
+Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
+                                       std::string_view dbname,
+                                       std::string_view collname) {
+  // Set a few variables needed for our work:
+  NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  std::string const baseUrl = "/_api/collection/";
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
+  network::Headers headers;
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(600.0);
+
+  // now we notify all leader and follower shards
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
+                        "/recalculateCount";
+      auto f = network::sendRequestRetry(pool, "server:" + serverId,
+                                         fuerte::RestVerb::Put, std::move(uri),
+                                         body, options, headers);
+      futures.emplace_back(std::move(f));
+    }
+  }
+
+  auto responses = futures::collectAll(futures).get();
+  for (auto const& r : responses) {
+    Result res = r.get().combinedResult();
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  return {};
 }
 
 /// @brief compact the database on all DB servers
@@ -2963,7 +3035,6 @@ ClusterMethods::persistCollectionsInAgency(
           StaticStrings::DataSourceGuid,   "count",
           StaticStrings::DataSourcePlanId, StaticStrings::Version,
           StaticStrings::ObjectId};
-      col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(
           ignoreKeys, LogicalDataSource::Serialization::List);
 
@@ -3230,24 +3301,49 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   match.clear();
 
   // Local copy of my servers
-  std::unordered_set<std::string> localCopy;
+  // Note that we use a `std::set` here for the following reasons:
+  //  - this function is supposed to return a canonical result, which
+  //    does not depend on the order of the input in `planServers` or
+  //    `dbServers`, therefore we use a sorted set here and a sorted
+  //    map as the result.
+  //  - Performance does not matter at all, this method is called for
+  //    hotbackup download and hotbackup restore, both methods are
+  //    using considerable amounts of time. The server lists are usually
+  //    quite small (3 or 5 or a few dozen at most).
+  // So please do not "optimize" this.
+  std::set<std::string> localCopy;
   std::copy(dbServers.begin(), dbServers.end(),
             std::inserter(localCopy, localCopy.end()));
+  // dbServers should be a list of pairwise different servers, this
+  // is usually ensured since it is a vector manufactured from the keys
+  // of a map:
+  TRI_ASSERT(localCopy.size() == dbServers.size());
 
-  // Skip all direct matching names in pair and remove them from localCopy
-  std::unordered_set<std::string>::iterator it;
+  // Skip all direct matching names in pair and remove them from localCopy.
+  // If later a server does not occur it means that no translation has to
+  // happen for it.
   for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
-    if ((it = localCopy.find(plannedStr)) != localCopy.end()) {
+    auto it = localCopy.find(plannedStr);
+    if (it != localCopy.end()) {
       localCopy.erase(it);
     } else {
       match.try_emplace(plannedStr, std::string());
     }
   }
-  // match all remaining
+  // At this stage, we know the following:
+  //  - initially, dbServers had at least as many servers as planServers
+  //  - initially, localCopy was a perfect copy of dbServers
+  //  - now, for every element of planServers, which is not contained in
+  //    localCopy, we put an element in match, each element of planServers,
+  //    which is in localCopy, is removed from localCopy and no entry is
+  //    added to match.
+  // Therefore, localCopy has at least as many entries as match and we can
+  // just blindly run the iterator:
+  TRI_ASSERT(match.size() <= localCopy.size());
   auto it2 = localCopy.begin();
-  for (auto& m : match) {
-    m.second = *it2++;
+  for (auto& m : match) {  // alphabetical order!
+    m.second = *it2++;     // alphabetical order, too!
   }
 
   LOG_TOPIC("a201e", DEBUG, Logger::BACKUP) << "DB server matches: " << match;

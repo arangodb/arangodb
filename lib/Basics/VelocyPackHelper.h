@@ -47,6 +47,7 @@
 #include "Basics/voc-errors.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Inspection/VPack.h"
 
 namespace arangodb {
 class LoggerStream;
@@ -95,7 +96,6 @@ class VelocyPackHelper {
  public:
   /// @brief static initializer for all VPack values
   static void initialize();
-  static void disableAssemblerFunctions();
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
 
@@ -454,11 +454,21 @@ constexpr bool HasToVelocyPack_v = HasToVelocyPack<T>::value;
 ///   }
 /// constraint (or HasToVelocyPack an equivalent concept), but AppleClang
 /// doesn't like C++20.
-template<typename T, std::enable_if_t<HasToVelocyPack_v<T>, bool> = true>
-auto toJson(T thing) -> std::string {
-  auto builder = velocypack::Builder();
-  thing.toVelocyPack(builder);
-  return builder.toJson();
+template<typename T>
+std::string toJson(T const& thing) {
+  if constexpr (HasToVelocyPack_v<T>) {
+    auto builder = velocypack::Builder();
+    thing.toVelocyPack(builder);
+    return builder.toJson();
+  } else {
+    static_assert(
+        inspection::detail::IsInspectable<T,
+                                          inspection::VPackSaveInspector<>>(),
+        "No toVelocyPack or inspectable");
+    velocypack::Builder builder;
+    velocypack::serialize(builder, thing);
+    return builder.toJson();
+  }
 }
 }  // namespace velocypackhelper
 

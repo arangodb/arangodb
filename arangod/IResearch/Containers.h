@@ -177,12 +177,11 @@ class AsyncValue {
 template<typename T>
 class UniqueHeapInstance {
  public:
-  template<typename... Args,
-           typename = typename std::enable_if<!std::is_same<
-               typelist<UniqueHeapInstance>,
-               typelist<typename std::decay<Args>::type...>>::value>::
-               type  // prevent matching of copy/move constructor
-           >
+  template<
+      typename... Args,
+      // prevent matching of copy/move constructor
+      typename = std::enable_if_t<!std::is_same_v<
+          typelist<UniqueHeapInstance>, typelist<std::decay_t<Args&&>...>>>>
   explicit UniqueHeapInstance(Args&&... args)
       : _instance(std::make_unique<T>(std::forward<Args>(args)...)) {}
 
@@ -246,18 +245,17 @@ class UniqueHeapInstance {
 template<typename CharType, typename V>
 struct UnorderedRefKeyMapBase {
  public:
-  typedef std::unordered_map<irs::hashed_basic_string_view<CharType>,
-                             std::pair<std::basic_string<CharType>, V>>
-      MapType;
+  using MapType = std::unordered_map<irs::hashed_basic_string_view<CharType>,
+                                     std::pair<std::basic_string<CharType>, V>>;
 
-  typedef typename MapType::key_type KeyType;
-  typedef V value_type;
-  typedef std::hash<typename MapType::key_type::base_t> KeyHasher;
+  using KeyType = typename MapType::key_type;
+  using value_type = V;
+  using KeyHasher = std::hash<typename MapType::key_type::base_t>;
 
   struct KeyGenerator {
     KeyType operator()(KeyType const& key,
                        typename MapType::mapped_type const& value) const {
-      return KeyType(key.hash(), value.first);
+      return KeyType(value.first, key.hash());
     }
   };
 };
@@ -274,11 +272,11 @@ class UnorderedRefKeyMap
       private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
       private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
  public:
-  typedef UnorderedRefKeyMapBase<CharType, V> MyBase;
-  typedef typename MyBase::MapType MapType;
-  typedef typename MyBase::KeyType KeyType;
-  typedef typename MyBase::KeyGenerator KeyGenerator;
-  typedef typename MyBase::KeyHasher KeyHasher;
+  using MyBase = UnorderedRefKeyMapBase<CharType, V>;
+  using MapType = typename MyBase::MapType;
+  using KeyType = typename MyBase::KeyType;
+  using KeyGenerator = typename MyBase::KeyGenerator;
+  using KeyHasher = typename MyBase::KeyHasher;
 
   class ConstIterator {
    public:
@@ -398,7 +396,7 @@ class UnorderedRefKeyMap
   }
 
   V& operator[](typename KeyType::base_t const& key) {
-    return (*this)[irs::make_hashed_ref(key, keyHasher())];
+    return (*this)[irs::hashed_basic_string_view{key, keyHasher()}];
   }
 
   Iterator begin() noexcept { return Iterator(_map.begin()); }
@@ -423,7 +421,7 @@ class UnorderedRefKeyMap
   template<typename... Args>
   std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
                                     Args&&... args) {
-    return emplace(irs::make_hashed_ref(key, keyHasher()),
+    return emplace(irs::hashed_basic_string_view{key, keyHasher()},
                    std::forward<Args>(args)...);
   }
 
@@ -437,7 +435,7 @@ class UnorderedRefKeyMap
   }
 
   Iterator find(typename KeyType::base_t const& key) noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   ConstIterator find(KeyType const& key) const noexcept {
@@ -445,7 +443,7 @@ class UnorderedRefKeyMap
   }
 
   ConstIterator find(typename KeyType::base_t const& key) const noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V* findPtr(KeyType const& key) noexcept {
@@ -455,7 +453,7 @@ class UnorderedRefKeyMap
   }
 
   V* findPtr(typename KeyType::base_t const& key) noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V const* findPtr(KeyType const& key) const noexcept {
@@ -465,7 +463,7 @@ class UnorderedRefKeyMap
   }
 
   V const* findPtr(typename KeyType::base_t const& key) const noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   size_t size() const noexcept { return _map.size(); }

@@ -78,7 +78,9 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
-
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -565,21 +567,16 @@ void V8DealerFeature::start() {
       guard.unlock();  // avoid lock order inversion in buildContext
 
       // use vocbase here and hand ownership to context
-      TRI_vocbase_t* vocbase =
-          databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+      auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
       TRI_ASSERT(vocbase != nullptr);
 
-      V8Context* context;
-      try {
-        context = buildContext(vocbase, nextId());
-        TRI_ASSERT(context != nullptr);
-      } catch (...) {
-        vocbase->release();
-      }
+      auto context = buildContext(vocbase.get(), nextId());
+      TRI_ASSERT(context != nullptr);
+      vocbase.release();
 
       guard.lock();
       // push_back will not fail as we reserved enough memory before
-      _contexts.push_back(context);
+      _contexts.push_back(context.release());
       ++_contextsCreated;
     }
 
@@ -751,45 +748,32 @@ void V8DealerFeature::copyInstallationFiles() {
       basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
-V8Context* V8DealerFeature::addContext() {
+std::unique_ptr<V8Context> V8DealerFeature::addContext() {
   if (server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // use vocbase here and hand ownership to context
-  TRI_vocbase_t* vocbase =
-      databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+  auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(vocbase != nullptr);
 
-  try {
-    // vocbase will be released when the context is garbage collected
-    V8Context* context = buildContext(vocbase, nextId());
-    TRI_ASSERT(context != nullptr);
+  // vocbase will be released when the context is garbage collected
+  auto context = buildContext(vocbase.get(), nextId());
+  TRI_ASSERT(context != nullptr);
 
-    try {
-      auto& sysDbFeature =
-          server().getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature.use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
+  TRI_ASSERT(database != nullptr);
 
-      TRI_ASSERT(database != nullptr);
+  // no other thread can use the context when we are here, as the
+  // context has not been added to the global list of contexts yet
+  loadJavaScriptFileInContext(database.get(), "server/initialize.js",
+                              context.get(), nullptr);
 
-      // no other thread can use the context when we are here, as the
-      // context has not been added to the global list of contexts yet
-      loadJavaScriptFileInContext(database.get(), "server/initialize.js",
-                                  context, nullptr);
-
-      ++_contextsCreated;
-
-      return context;
-    } catch (...) {
-      delete context;
-      throw;
-    }
-  } catch (...) {
-    vocbase->release();
-    throw;
-  }
+  ++_contextsCreated;
+  vocbase.release();
+  return context;
 }
 
 void V8DealerFeature::unprepare() {
@@ -861,7 +845,7 @@ void V8DealerFeature::collectGarbage() {
         if (context == nullptr && !_dirtyContexts.empty()) {
           context = _dirtyContexts.back();
           _dirtyContexts.pop_back();
-          if (context->invocationsSinceLastGc() < 50 &&
+          if (context->_invocationsSinceLastGc < 50 &&
               !context->_hasActiveExternals) {
             // don't collect this one yet. it doesn't have externals, so there
             // is no urge for garbage collection
@@ -895,7 +879,7 @@ void V8DealerFeature::collectGarbage() {
             << "collecting V8 garbage in context #" << context->id()
             << ", invocations total: " << context->invocations()
             << ", invocations since last gc: "
-            << context->invocationsSinceLastGc()
+            << context->_invocationsSinceLastGc
             << ", hasActive: " << context->_hasActiveExternals
             << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
@@ -1156,7 +1140,7 @@ V8Context* V8DealerFeature::enterContext(
         try {
           LOG_TOPIC("973d7", DEBUG, Logger::V8)
               << "creating additional V8 context";
-          context = addContext();
+          context = addContext().release();
         } catch (...) {
           guard.lock();
 
@@ -1246,9 +1230,9 @@ V8Context* V8DealerFeature::enterContext(
     TRI_ASSERT(!_idleContexts.empty());
 
     context = _idleContexts.back();
+    TRI_ASSERT(context != nullptr);
     LOG_TOPIC("bbe93", TRACE, arangodb::Logger::V8)
         << "found unused V8 context #" << context->id();
-    TRI_ASSERT(context != nullptr);
 
     _idleContexts.pop_back();
 
@@ -1258,9 +1242,7 @@ V8Context* V8DealerFeature::enterContext(
     context->setDescription(securityContext.typeName(), TRI_microtime());
   }
 
-  TRI_ASSERT(context != nullptr);
   context->lockAndEnter();
-  context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
   ++_contextsEntered;
@@ -1332,7 +1314,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
     // if the execution was canceled, we need to cleanup
     if (canceled) {
-      context->handleCancelationCleanup();
+      context->handleCancellationCleanup();
     }
 
     // run global context methods
@@ -1384,7 +1366,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
             << "V8 context #" << context->id()
             << " has reached GC timeout threshold and will be scheduled for GC";
       }
-    } else if (context->invocationsSinceLastGc() >= _gcInterval) {
+    } else if (context->_invocationsSinceLastGc >= _gcInterval) {
       LOG_TOPIC("c6441", TRACE, arangodb::Logger::V8)
           << "V8 context #" << context->id()
           << " has reached maximum number of requests and will "
@@ -1539,7 +1521,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_idleContexts[i]->invocationsSinceLastGc() < 50 &&
+    if (_idleContexts[i]->_invocationsSinceLastGc < 50 &&
         !_idleContexts[i]->_hasActiveExternals) {
       continue;
     }
@@ -1582,7 +1564,8 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   return context;
 }
 
-V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
+std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
+                                                         size_t id) {
   double const start = TRI_microtime();
 
   V8PlatformFeature& v8platform = server().getFeature<V8PlatformFeature>();
@@ -1704,7 +1687,6 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
       JavaScriptSecurityContext old(v8g->_securityContext);
       v8g->_securityContext =
           JavaScriptSecurityContext::createInternalContext();
-
       {
         TRI_InitV8VocBridge(isolate, localContext, queryRegistry, *vocbase, id);
         TRI_InitV8Queries(isolate, localContext);
@@ -1745,7 +1727,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
   // add context creation time to global metrics
   _contextsCreationTime += static_cast<uint64_t>(1000 * (now - start));
 
-  return context.release();
+  return context;
 }
 
 V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {

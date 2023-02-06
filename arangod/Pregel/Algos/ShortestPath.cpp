@@ -24,10 +24,10 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -58,7 +58,6 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       if (this->pregelId() == _target) {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
-        enterNextGlobalSuperstep();
         LOG_TOPIC("0267f", DEBUG, Logger::PREGEL) << "Found target " << current;
         return;
       }

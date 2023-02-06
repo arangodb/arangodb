@@ -33,7 +33,7 @@
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 
 namespace arangodb {
@@ -54,12 +54,6 @@ class MasterContext;
 
 struct IAlgorithm {
   virtual ~IAlgorithm() = default;
-
-  // virtual bool isFixpointAlgorithm() const {return false;}
-
-  [[nodiscard]] virtual bool supportsAsyncMode() const { return false; }
-
-  [[nodiscard]] virtual bool supportsCompensation() const { return false; }
 
   [[nodiscard]] virtual IAggregator* aggregator(std::string const& name) const {
     return nullptr;

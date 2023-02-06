@@ -1735,7 +1735,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     return root.begin();
   };
   auto checkAtLeast = [](irs::Or& actual, irs::score_t boost) {
-    SCOPED_TRACE(testing::Message("Actual:") << iresearch::to_string(actual));
+    SCOPED_TRACE(testing::Message("Actual:") << irs::to_string(actual));
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
@@ -1780,8 +1780,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -1835,7 +1834,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
 
@@ -1914,8 +1913,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -1982,7 +1980,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -2060,8 +2058,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2128,7 +2125,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -2205,8 +2202,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2273,7 +2269,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -3774,8 +3770,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       SCOPED_TRACE(testing::Message("Query: ") << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -3842,7 +3837,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -3918,8 +3913,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -3986,7 +3980,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -4062,8 +4056,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       SCOPED_TRACE(testing::Message("Query:") << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                            testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -4130,7 +4123,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .trx = &trx,
             .ast = ast,
             .ctx = &exprCtx,
-            .index = &irs::sub_reader::empty(),
+            .index = &irs::SubReader::empty(),
             .ref = ref,
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{

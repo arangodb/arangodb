@@ -37,8 +37,13 @@ using namespace arangodb::consensus;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
-                           std::string const& server)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+                           std::string const& server,
+                           std::string const& notBefore,
+                           bool failedLeaderAddsFollower)
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+      _server(server),
+      _notBefore(notBefore),
+      _failedLeaderAddsFollower(failedLeaderAddsFollower) {}
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
@@ -47,6 +52,15 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+  if (tmp_notBefore) {
+    _notBefore = tmp_notBefore.value();
+  }
+  auto tmp_failedLeaderAddsFollower =
+      _snapshot.hasAsBool(path + "failedLeaderAddsFollower");
+  if (tmp_failedLeaderAddsFollower) {
+    _failedLeaderAddsFollower = tmp_failedLeaderAddsFollower.value();
+  }
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
@@ -69,7 +83,7 @@ bool FailedServer::start(bool& aborts) {
 
   // Fail job, if Health back to not FAILED
   auto status = _snapshot.hasAsString(healthPrefix + _server + "/Status");
-  if (status && status.value() != "FAILED") {
+  if (status && status.value() != Supervision::HEALTH_STATUS_FAILED) {
     std::stringstream reason;
     reason << "Server " << _server
            << " is no longer failed. Not starting FailedServer job";
@@ -136,8 +150,8 @@ bool FailedServer::start(bool& aborts) {
         toDoJob.value().get().toBuilder(todo);
       } else {
         LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -216,14 +230,14 @@ bool FailedServer::start(bool& aborts) {
                     FailedLeader(_snapshot, _agent,
                                  _jobId + "-" + std::to_string(sub++), _jobId,
                                  database.first, collptr.first, shard.first,
-                                 _server)
+                                 _server, _failedLeaderAddsFollower)
                         .create(transactions);
                   } else {
                     if (!isSatellite) {
                       FailedFollower(_snapshot, _agent,
                                      _jobId + "-" + std::to_string(sub++),
                                      _jobId, database.first, collptr.first,
-                                     shard.first, _server)
+                                     shard.first, _server, _notBefore)
                           .create(transactions);
                     } else {
                       LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION)
@@ -263,7 +277,8 @@ bool FailedServer::start(bool& aborts) {
       // Check that toServer not blocked
       addPreconditionServerNotBlocked(*transactions, _server);
       // Status should still be FAILED
-      addPreconditionServerHealth(*transactions, _server, "FAILED");
+      addPreconditionServerHealth(*transactions, _server,
+                                  Supervision::HEALTH_STATUS_FAILED);
     }  // <--------- Preconditions
   }
 
@@ -278,14 +293,14 @@ bool FailedServer::start(bool& aborts) {
   }
 
   LOG_TOPIC("a3459", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting FailedServer " + _jobId;
+      << "Precondition failed for starting FailedServer " << _jobId;
 
   return false;
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("352fa", DEBUG, Logger::SUPERVISION)
-      << "Todo: Handle failover for db server " + _server;
+      << "Todo: Handle failover for db server " << _server;
 
   using namespace std::chrono;
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -312,6 +327,11 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
         _jb->add("creator", VPackValue(_creator));
         _jb->add("timeCreated",
                  VPackValue(timepointToString(system_clock::now())));
+        if (!_notBefore.empty()) {
+          _jb->add("notBefore", VPackValue(_notBefore));
+        }
+        _jb->add("failedLeaderAddsFollower",
+                 VPackValue(_failedLeaderAddsFollower));
       }
       // FailedServers entry []
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
@@ -322,7 +342,8 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     {
       VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      addPreconditionServerHealth(*_jb, _server, "BAD");
+      addPreconditionServerHealth(*_jb, _server,
+                                  Supervision::HEALTH_STATUS_BAD);
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       {
@@ -343,7 +364,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
       LOG_TOPIC("70ce1", INFO, Logger::SUPERVISION)
-          << "Failed to insert job " + _jobId;
+          << "Failed to insert job " << _jobId;
       return false;
     }
   }

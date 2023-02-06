@@ -29,9 +29,10 @@
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -44,7 +45,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
                      std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader, bool remainsFollower)
+                     std::string const& to, bool isLeader, bool remainsFollower,
+                     bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
@@ -54,23 +56,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _isLeader(
           isLeader),  // will be initialized properly when information known
       _remainsFollower(remainsFollower),
-      _toServerIsFollower(false) {}
-
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
-                     std::string const& jobId, std::string const& creator,
-                     std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
-      _database(database),
-      _collection(collection),
-      _shard(shard),
-      _from(id(from)),
-      _to(id(to)),
-      _isLeader(
-          isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader),
-      _toServerIsFollower(false) {}
+      _toServerIsFollower(false),
+      _tryUndo(tryUndo) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -87,6 +74,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
   auto tmp_targetVersion = _snapshot.hasAsUInt(path + EXPECTED_TARGET_VERSION);
+  auto tmp_tryUndo = _snapshot.hasAsBool(path + "tryUndo");
 
   if (tmp_database && tmp_collection && tmp_from && tmp_to && tmp_shard &&
       tmp_creator && tmp_isLeader) {
@@ -107,6 +95,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     if (tmp_targetVersion) {
       _expectedTargetVersion = *tmp_targetVersion;
     }
+    if (tmp_tryUndo) {
+      _tryUndo = tmp_tryUndo.value();
+    }
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
@@ -117,6 +108,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     err << "shard = " << tmp_shard.has_value() << " ";
     err << "creator = " << tmp_creator.has_value() << " ";
     err << "isLeader = " << tmp_isLeader.has_value() << " ";
+    err << "tryUndo = " << tmp_tryUndo.has_value() << " ";
     LOG_TOPIC("cfbc3", ERR, Logger::SUPERVISION) << err.str();
     moveShardFinish(false, false, err.str());
     _status = FAILED;
@@ -129,7 +121,7 @@ void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("02579", DEBUG, Logger::SUPERVISION)
-      << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
+      << "Todo: Move shard " << _shard << " from " << _from << " to " << _to;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -177,6 +169,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("tryUndo", VPackValue(_tryUndo));
     if (!_parentJobId.empty()) {
       _jb->add(PARENT_JOB_ID, VPackValue(_parentJobId));
     }
@@ -200,7 +193,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("cb317", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -302,8 +295,8 @@ bool MoveShard::start(bool&) {
 
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
-  if (health != "GOOD") {
-    if (health == "BAD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
+    if (health == Supervision::HEALTH_STATUS_BAD) {
       LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
           << "server " << _to << " is currently " << health
           << ", not starting MoveShard job " << _jobId;
@@ -463,8 +456,8 @@ bool MoveShard::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("2482a", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -475,6 +468,30 @@ bool MoveShard::start(bool&) {
         // set, then the current job is stored under ToDo.
         LOG_TOPIC("34af0", WARN, Logger::SUPERVISION) << e.what();
         return false;
+      }
+    }
+  }
+
+  // We do not want to honour `_tryUndo` if this is not a leader swap,
+  // i.e. !_isLeader
+  if (_tryUndo && !_toServerIsFollower) {
+    // Unfortunately, we have to rewrite the `todo` velocypack now,
+    // we keep everything, but we unset _tryUndo:
+    _tryUndo = false;
+    Builder todo2;
+    TRI_ASSERT(todo.slice().isArray() && todo.slice()[0].isObject());
+    todo2.add(todo.slice());
+    todo.clear();  // Builder does not have a swap!
+    {
+      VPackArrayBuilder guard0(&todo);
+      VPackObjectBuilder guard(&todo);
+      for (auto p : VPackObjectIterator(todo2.slice()[0])) {
+        std::string_view key = p.key.stringView();
+        if (key != "tryUndo") {
+          todo.add(key, p.value);
+        } else {
+          todo.add("tryUndo", VPackValue(false));
+        }
       }
     }
   }
@@ -562,7 +579,8 @@ bool MoveShard::start(bool&) {
       addPreconditionShardNotBlocked(pending, _shard);
       addMoveShardToServerCanLock(pending);
       addMoveShardFromServerCanLock(pending);
-      addPreconditionServerHealth(pending, _to, "GOOD");
+      addPreconditionServerHealth(pending, _to,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }  // precondition done
@@ -574,12 +592,13 @@ bool MoveShard::start(bool&) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("45120", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return true;
   }
 
   LOG_TOPIC("0a925", DEBUG, Logger::SUPERVISION)
-      << "Start precondition failed for MoveShard job " + _jobId;
+      << "Start precondition failed for MoveShard job " << _jobId;
   return false;
 }
 
@@ -594,13 +613,10 @@ bool MoveShard::startReplication2() {
   // - if leader move shard, set leader, otherwise if _from is leader, clear
   // Preconditions:
   //  - target version is as expected
-  using TargetType = replication2::replicated_state::agency::Target;
+  using namespace replication2;
   auto stateId = LogicalCollection::shardIdToStateId(_shard);
-  auto targetPath =
-      "/Target/ReplicatedStates/" + _database + "/" + to_string(stateId);
-  auto& targetNode = _snapshot.get(targetPath).value().get();
-  auto target =
-      velocypack::deserialize<TargetType>(targetNode.toBuilder().slice());
+  auto targetPath = targetRepStatePrefix + _database + "/" + to_string(stateId);
+  auto target = readStateTarget(_snapshot, _database, stateId).value();
 
   bool const containsTo = target.participants.contains(_to);
   bool const containsFrom = target.participants.contains(_from);
@@ -621,7 +637,7 @@ bool MoveShard::startReplication2() {
     }
 
     target.participants.erase(_from);
-    target.participants.emplace(_to, TargetType::Participant{});
+    target.participants.emplace(_to, ParticipantFlags{});
   }
 
   auto oldTargetVersion = target.version;
@@ -661,7 +677,7 @@ bool MoveShard::startReplication2() {
       addPreconditionShardNotBlocked(trx, _shard);
       addMoveShardToServerCanLock(trx);
       addMoveShardFromServerCanLock(trx);
-      addPreconditionServerHealth(trx, _to, "GOOD");
+      addPreconditionServerHealth(trx, _to, Supervision::HEALTH_STATUS_GOOD);
 
       {
         VPackObjectBuilder ob(&trx, targetPath + "/version");
@@ -679,12 +695,13 @@ bool MoveShard::startReplication2() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("4512d", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return true;
   }
 
   LOG_TOPIC("0a92d", DEBUG, Logger::SUPERVISION)
-      << "Start precondition failed for MoveShard job " + _jobId;
+      << "Start precondition failed for MoveShard job " << _jobId;
   return false;
 }
 
@@ -717,10 +734,16 @@ JOB_STATUS MoveShard::status() {
 
 std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
-  // arango/Current/ReplicatedState/<database>/<replicated-state-id>/supervision/version
+  // arango/Current/ReplicatedLogs/<database>/<replicated-state-id>/supervision/targetVersion
   auto stateId = LogicalCollection::shardIdToStateId(_shard);
-  return _snapshot.hasAsUInt("Current/ReplicatedStates/" + _database + "/" +
-                             to_string(stateId) + "/supervision/version");
+  using namespace cluster::paths;
+  auto path = aliases::current()
+                  ->replicatedLogs()
+                  ->database(_database)
+                  ->log(stateId)
+                  ->supervision()
+                  ->targetVersion();
+  return _snapshot.hasAsUInt(path->str(SkipComponents{1}));
 }
 
 JOB_STATUS MoveShard::pendingReplication2() {
@@ -743,10 +766,13 @@ JOB_STATUS MoveShard::pendingReplication2() {
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       addMoveShardToServerUnLock(trx);
       addMoveShardFromServerUnLock(trx);
-      addPutJobIntoSomewhere(
-          trx, "Finished",
-          _snapshot.hasAsBuilder(pendingPrefix + _jobId).value().slice(), "");
+      Builder job;
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addReleaseShard(trx, _shard);
+      if (_tryUndo) {
+        addUndoMoveShard(trx, job);
+      }
     }
     {
       VPackObjectBuilder b(&trx);
@@ -761,12 +787,13 @@ JOB_STATUS MoveShard::pendingReplication2() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return FINISHED;
   }
 
   LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
-      << "Precondition failed for MoveShard job " + _jobId;
+      << "Precondition failed for MoveShard job " << _jobId;
   return PENDING;
 }
 
@@ -1087,6 +1114,10 @@ JOB_STATUS MoveShard::pendingLeader() {
         addMoveShardFromServerUnLock(trx);
         addMoveShardToServerCanUnLock(pre);
         addMoveShardFromServerCanUnLock(pre);
+
+        if (_tryUndo) {
+          addUndoMoveShard(trx, job);
+        }
       }
       // Add precondition to transaction:
       trx.add(pre.slice());
@@ -1103,12 +1134,13 @@ JOB_STATUS MoveShard::pendingLeader() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("ffc21", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
   LOG_TOPIC("52feb", DEBUG, Logger::SUPERVISION)
-      << "Precondition failed for MoveShard job " + _jobId;
+      << "Precondition failed for MoveShard job " << _jobId;
   return PENDING;
 }
 
@@ -1477,4 +1509,39 @@ bool MoveShard::moveShardFinish(bool unlock, bool success,
   }
 
   return finish("", "", success, msg, std::move(payload));
+}
+
+void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
+  // If we are here, we have `_isLeader` set to `true`. We also know
+  // that this was a leader swap with an in sync follower, so we can
+  // assume that.
+  std::string path = returnLeadershipPrefix + _shard;
+  // Briefly check that the place in Target is still empty:
+  if (_snapshot.has(path)) {
+    // This should not happen, since we have a lock on the `_toServer`.
+    LOG_TOPIC("abbcc", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since there was already one.";
+    return;
+  }
+  std::string now(timepointToString(std::chrono::system_clock::now()));
+  std::string deadline(timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::minutes(20)));
+  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
+      curServersKnown, _from, "/", StaticStrings::RebootId));
+  if (!rebootId) {
+    // This should not happen, since we should have a rebootId for this.
+    LOG_TOPIC("abbcd", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since there was no rebootId for server " << _from;
+    return;
+  }
+  ops.add(VPackValue(path));
+  {
+    VPackObjectBuilder guard(&ops);
+    ops.add("timeStamp", VPackValue(now));
+    ops.add("removeIfNotStartedBy", VPackValue(deadline));
+    ops.add("rebootId", VPackValue(rebootId.value()));
+    ops.add("moveShard", job.slice());
+  }
 }

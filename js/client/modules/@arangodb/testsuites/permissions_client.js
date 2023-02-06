@@ -114,10 +114,10 @@ class permissionsRunner extends tu.runInArangoshRunner {
 function permissions(options) {
   return new permissionsRunner(options, "permissions").run();
 }
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['permissions'] = permissions;
-  defaultFns.push('permissions');
+
   opts['skipShebang'] = false;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

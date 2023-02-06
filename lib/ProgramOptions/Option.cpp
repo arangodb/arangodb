@@ -25,6 +25,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 #include "ProgramOptions/Parameters.h"
 
 #include <velocypack/Builder.h>
@@ -65,8 +66,13 @@ Option::Option(std::string const& value, std::string const& description,
 #endif
 }
 
-void Option::toVelocyPack(VPackBuilder& builder, bool detailed) const {
+void Option::toVelocyPack(velocypack::Builder& builder, bool detailed) const {
   parameter->toVelocyPack(builder, detailed);
+}
+
+bool Option::hasFlag(Flags flag) const {
+  return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
+         static_cast<std::underlying_type<Flags>::type>(flag);
 }
 
 // format a version string
@@ -98,6 +104,43 @@ std::string Option::toVersionString(
   return result;
 }
 
+// provide a detailed explanation of an option
+Option& Option::setLongDescription(std::string_view longDesc) noexcept {
+  longDescription = longDesc;
+  return *this;
+}
+
+// specifies in which version the option was introduced. version numbers
+// should be specified such as 30402 (version 3.4.2)
+// a version number of 0 means "unknown"
+Option& Option::setIntroducedIn(uint32_t version) {
+  introducedInVersions.push_back(version);
+  return *this;
+}
+
+// specifies in which version the option was deprecated. version numbers
+// should be specified such as 30402 (version 3.4.2)
+// a version number of 0 means "unknown"
+Option& Option::setDeprecatedIn(uint32_t version) {
+  deprecatedInVersions.push_back(version);
+  return *this;
+}
+
+// returns whether or not a long description was set
+bool Option::hasLongDescription() const noexcept {
+  return !longDescription.empty();
+}
+
+// returns whether or not we know in which version(s) an option was added
+bool Option::hasIntroducedIn() const noexcept {
+  return !introducedInVersions.empty();
+}
+
+// returns whether or not we know in which version(s) an option was added
+bool Option::hasDeprecatedIn() const noexcept {
+  return !deprecatedInVersions.empty();
+}
+
 // returns the version in which the option was introduced as a proper
 // version string - if the version is unknown this will return "-"
 std::string Option::introducedInString() const {
@@ -108,6 +151,17 @@ std::string Option::introducedInString() const {
 // version string - if the version is unknown this will return "-"
 std::string Option::deprecatedInString() const {
   return toVersionString(deprecatedInVersions);
+}
+
+// get display name for the option
+std::string Option::displayName() const { return "--" + fullName(); }
+
+// get full name for the option
+std::string Option::fullName() const {
+  if (section.empty()) {
+    return name;
+  }
+  return section + '.' + name;
 }
 
 // print help for an option
@@ -149,6 +203,10 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
     }
   }
+}
+
+std::string Option::nameWithType() const {
+  return displayName() + " " + parameter->typeDescription();
 }
 
 // determine the width of an option help string

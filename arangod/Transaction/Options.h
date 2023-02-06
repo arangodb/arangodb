@@ -106,6 +106,12 @@ struct Options {
   ///
   /// This option is only relevant for replication 2.0
   bool requiresReplication = true;
+
+  /// @brief If set to true, the transaction is started without acquiring a
+  /// snapshot. The snapshot can be acquired at a later point by calling
+  /// `ensureSnapshot`. This allows us to lock the used keys before the
+  /// snapshot is acquired in order to avoid write-write conflict.
+  bool delaySnapshot = false;
 };
 
 struct AllowImplicitCollectionsSwitcher {

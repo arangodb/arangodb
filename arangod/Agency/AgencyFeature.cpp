@@ -36,6 +36,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
@@ -67,7 +68,10 @@ AgencyFeature::AgencyFeature(Server& server)
       _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
-      _supervisionOkThreshold(5.0) {
+      _supervisionOkThreshold(5.0),
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0),
+      _failedLeaderAddsFollower(true) {
   setOptional(true);
   startsAfter<application_features::FoxxFeaturePhase>();
 }
@@ -167,6 +171,39 @@ regular cluster, which needs to handle only a part of the overall load.)");
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
+
+  options
+      ->addOption("--agency.supervision-delay-add-follower",
+                  "The delay in supervision, before an AddFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayAddFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
+
+  options
+      ->addOption("--agency.supervision-delay-failed-follower",
+                  "The delay in supervision, before a FailedFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayFailedFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
+
+  options
+      ->addOption("--agency.supervision-failed-leader-adds-follower",
+                  "Flag indicating whether or not the FailedLeader job adds a "
+                  "new follower.",
+                  new BooleanParameter(&_failedLeaderAddsFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30907)
+      .setIntroducedIn(31002);
 
   options->addOption("--agency.compaction-step-size",
                      "The step size between state machine compactions.",
@@ -367,12 +404,13 @@ void AgencyFeature::prepare() {
 
   _agent = std::make_unique<consensus::Agent>(
       server(),
-      consensus::config_t(_recoveryId, _size, _minElectionTimeout,
-                          _maxElectionTimeout, endpoint, _agencyEndpoints,
-                          _supervision, _supervisionTouched, _waitForSync,
-                          _supervisionFrequency, _compactionStepSize,
-                          _compactionKeepSize, _supervisionGracePeriod,
-                          _supervisionOkThreshold, _maxAppendSize));
+      consensus::config_t(
+          _recoveryId, _size, _minElectionTimeout, _maxElectionTimeout,
+          endpoint, _agencyEndpoints, _supervision, _supervisionTouched,
+          _waitForSync, _supervisionFrequency, _compactionStepSize,
+          _compactionKeepSize, _supervisionGracePeriod, _supervisionOkThreshold,
+          _supervisionDelayAddFollower, _supervisionDelayFailedFollower,
+          _failedLeaderAddsFollower, _maxAppendSize));
 }
 
 void AgencyFeature::start() {

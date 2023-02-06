@@ -21,91 +21,90 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <set>
-using std::multiset;
-using std::set;
-
-#include <vector>
-using std::vector;
-
-#include "S2MultiPolyline.h"
+#include "Geo/S2/S2MultiPolyline.h"
+#include "Basics/Exceptions.h"
 
 #include <s2/s2cap.h>
-#include <s2/s2cell.h>
 #include <s2/s2latlng.h>
+#include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
-#include <s2/s2polyline.h>
-#include <s2/util/coding/coder.h>
 
-S2MultiPolyline::S2MultiPolyline() : lines_() {}
+namespace arangodb::geo {
 
-S2MultiPolyline::S2MultiPolyline(vector<S2Polyline>&& lines)
-    : lines_(std::move(lines)) {}
-
-void S2MultiPolyline::Init(std::vector<S2Polyline>&& lines) {
-  lines_.clear();
-  lines_ = std::move(lines);
-}
-
-S2MultiPolyline::S2MultiPolyline(S2MultiPolyline const* src) {
-  assert(false);
-  /*lines_.resize(src->lines_.size());
-  std::copy(src->lines_.begin(), src->lines_.end(), lines_.begin());*/
-}
-
-S2MultiPolyline* S2MultiPolyline::Clone() const {
-  return new S2MultiPolyline(this);
-}
-
-S2LatLngRect S2MultiPolyline::GetRectBound() const {
-  S2LatLngRectBounder bounder;
-  for (size_t k = 0; k < lines_.size(); k++) {
-    S2Polyline const& line = lines_[k];
-    for (int i = 0; i < line.num_vertices(); ++i) {
-      bounder.AddPoint(line.vertex(i));
-    }
+S2Point S2MultiPolyline::GetCentroid() const noexcept {
+  // TODO(MBkkt) probably same issues as in S2Points
+  auto c = S2LatLng::FromDegrees(0.0, 0.0);
+  double totalWeight = 0.0;
+  for (auto const& line : _impl) {
+    totalWeight += line.GetLength().radians();
   }
-  return bounder.GetBound();
+  for (auto const& line : _impl) {
+    auto const weight = line.GetLength().radians() / totalWeight;
+    c = c + weight * S2LatLng{line.GetCentroid()};
+  }
+  TRI_ASSERT(c.is_valid());
+  return c.ToPoint();
+}
+
+S2Region* S2MultiPolyline::Clone() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 S2Cap S2MultiPolyline::GetCapBound() const {
   return GetRectBound().GetCapBound();
 }
 
+S2LatLngRect S2MultiPolyline::GetRectBound() const {
+  S2LatLngRectBounder bounder;
+  for (auto const& polyline : _impl) {
+    for (auto const& point : polyline.vertices_span()) {
+      bounder.AddPoint(point);
+    }
+  }
+  return bounder.GetBound();
+}
+
+bool S2MultiPolyline::Contains(S2Cell const& /*cell*/) const { return false; }
+
 bool S2MultiPolyline::MayIntersect(S2Cell const& cell) const {
-  for (size_t k = 0; k < lines_.size(); k++) {
-    S2Polyline const& line = lines_[k];
-    if (line.MayIntersect(cell)) {
+  for (auto const& polyline : _impl) {
+    if (polyline.MayIntersect(cell)) {
       return true;
     }
   }
   return false;
 }
 
-/*
-void S2MultiPolyline::Encode(Encoder* const encoder) const {
-  encoder->Ensure(10);  // sufficient
-  encoder->put8(kCurrentEncodingVersionNumber);
-  encoder->put32(lines_.size());
-  for (size_t k = 0; k < lines_.size(); k++) {
-    S2Polyline const& line = lines_[k];
-    line.Encode(encoder);
+bool S2MultiPolyline::Contains(S2Point const& /*p*/) const {
+  // S2Polylines doesn't have a Contains(S2Point) method, because "containment"
+  // is not numerically well-defined except at the polyline vertices.
+  return false;
+}
+
+void S2MultiPolyline::Encode(Encoder* const encoder,
+                             s2coding::CodingHint hint) const {
+  encoder->Ensure(sizeof(uint64_t));
+  encoder->put64(_impl.size());
+  for (auto const& polyline : _impl) {
+    if (hint == s2coding::CodingHint::FAST) {
+      polyline.EncodeUncompressed(encoder);
+    } else {
+      polyline.EncodeMostCompact(encoder);
+    }
   }
-  assert(encoder->avail() >= 0);
 }
 
 bool S2MultiPolyline::Decode(Decoder* const decoder) {
-  unsigned char version = decoder->get8();
-  if (version > kCurrentEncodingVersionNumber) return false;
-
-  lines_.clear();
-  lines_.resize(decoder->get32());
-  for (size_t k = 0; k < lines_.size(); k++) {
-    S2Polyline& line = lines_[k];
-    if (!line.Decode(decoder)) {
+  if (decoder->avail() < sizeof(uint64_t)) {
+    return false;
+  }
+  _impl.resize(static_cast<size_t>(decoder->get64()));
+  for (auto& polyline : _impl) {
+    if (!polyline.Decode(decoder)) {
       return false;
     }
   }
-  return decoder->avail() >= 0;
+  return true;
 }
-*/
+
+}  // namespace arangodb::geo

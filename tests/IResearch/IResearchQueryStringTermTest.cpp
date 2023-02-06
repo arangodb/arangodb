@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"
@@ -36,7 +38,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -285,7 +286,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -308,7 +309,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -332,7 +333,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -356,7 +357,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -374,7 +375,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -393,7 +394,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -660,7 +661,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1083,7 +1084,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1351,7 +1352,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1369,7 +1370,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1387,7 +1388,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1446,7 +1447,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1506,7 +1507,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1524,7 +1525,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1542,7 +1543,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1657,7 +1658,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1675,7 +1676,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1693,7 +1694,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1808,7 +1809,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1826,7 +1827,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1844,7 +1845,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1963,7 +1964,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1982,7 +1983,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2001,7 +2002,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2140,7 +2141,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2159,7 +2160,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2178,7 +2179,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2315,7 +2316,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2334,7 +2335,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2353,7 +2354,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2490,7 +2491,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2509,7 +2510,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2528,7 +2529,7 @@ class QueryStringTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -2820,13 +2821,13 @@ class QueryStringTermView : public QueryStringTerm {
       "links": {
         "collection_1": {
           "includeAllFields": true,
-          "version": %u },
+          "version": $0 },
         "collection_2": {
-          "version": %u,
+          "version": $1,
           "includeAllFields": true }
     }})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
           static_cast<uint32_t>(linkVersion()));
 

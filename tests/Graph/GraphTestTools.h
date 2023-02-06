@@ -42,7 +42,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Metrics/MetricsFeature.h"
@@ -100,8 +99,7 @@ struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
 
   MockGraphDatabase(ArangodServer& server, std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                createInfo(server, name, 1)) {}
+      : vocbase(createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {}
 

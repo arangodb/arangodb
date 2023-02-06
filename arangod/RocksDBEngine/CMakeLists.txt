@@ -14,6 +14,8 @@ add_library(arango_rocksdb STATIC
   RocksDBGeoIndex.cpp
   RocksDBIncrementalSync.cpp
   RocksDBIndex.cpp
+  RocksDBIndexCacheRefillFeature.cpp
+  RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
@@ -29,6 +31,7 @@ add_library(arango_rocksdb STATIC
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp
+  RocksDBReplicationContextGuard.cpp
   RocksDBReplicationIterator.cpp
   RocksDBReplicationManager.cpp
   RocksDBReplicationTailing.cpp
@@ -79,7 +82,7 @@ if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
-	target_link_libraries(arango_rocksdb
+  target_link_libraries(arango_rocksdb
     arango_rclone)
 endif()
 
@@ -118,9 +121,6 @@ endif()
 target_include_directories(arango_rocksdb PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_rocksdb PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_subdirectory(Listeners)
 add_subdirectory(Methods)

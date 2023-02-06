@@ -347,6 +347,8 @@ void Query::prepareQuery(SerializationFormat format) {
       }
     }
 
+    enterState(QueryExecutionState::ValueType::PHYSICAL_INSTANTIATION);
+
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
     ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
@@ -1503,6 +1505,7 @@ velocypack::Options const& Query::vpackOptions() const {
 
 transaction::Methods& Query::trxForOptimization() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   return *_trx;
 }
 

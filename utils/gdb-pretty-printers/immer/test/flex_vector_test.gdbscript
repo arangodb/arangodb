@@ -1,0 +1,37 @@
+# We're expecting to run into a breakpoint on `raise(SIGTRAP)` in main.
+run
+select-frame function main
+
+set $i = 0
+set $n = n
+set $success = true
+
+while $i < $n
+    # We run into a breakpoint once per testee
+    continue
+    select-frame function run_test
+
+    # get pretty-printed string
+    set $testee = $_as_string(testee)
+    # get expected string
+    set $expected = expected.c_str()
+
+    if !$_streq($testee, $expected)
+        printf "Mismatching testee [%d]:\n", $i
+        p $testee
+        p $expected
+        set $success = false
+    # Uncomment for debugging:
+    #else
+    #    printf "Matching testee %d:\n", $i
+    #    p $testee
+    #    p $expected
+    end
+    set $i = $i + 1
+end
+
+if $success
+    quit 0
+else
+    quit 1
+end

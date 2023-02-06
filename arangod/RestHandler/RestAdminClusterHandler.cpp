@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
@@ -399,8 +400,8 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::retryTryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   if (++ctx->tries < 60) {
-    return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
-        [this, ctx = std::move(ctx)](auto) mutable {
+    return SchedulerFeature::SCHEDULER->delay("remove-server", 1s)
+        .thenValue([this, ctx = std::move(ctx)](auto) mutable {
           return tryDeleteServer(std::move(ctx));
         });
   } else {
@@ -664,6 +665,7 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
     auto fromServer = slice.get("fromServer");
     auto toServer = slice.get("toServer");
     auto remainsFollower = slice.get("remainsFollower");
+    auto tryUndo = slice.get("tryUndo");
 
     bool valid = collection.isString() && shard.isString() &&
                  fromServer.isString() && toServer.isString();
@@ -674,7 +676,8 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
       return std::make_unique<MoveShardContext>(
           std::move(databaseStr), collection.copyString(), shard.copyString(),
           fromServer.copyString(), toServer.copyString(), std::string{},
-          remainsFollower.isNone() || remainsFollower.isTrue());
+          remainsFollower.isNone() || remainsFollower.isTrue(),
+          tryUndo.isTrue());
     }
   }
 
@@ -752,7 +755,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
     return futures::makeFuture();
   }
 
-  if (collection.hasKey("distributeShardsLike")) {
+  if (collection.hasKey(StaticStrings::DistributeShardsLike)) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "MoveShard only allowed for collections which have "
                   "distributeShardsLike unset.");
@@ -769,9 +772,9 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
 
   bool fromFound = false;
   bool isLeader = false;
-  for (VPackArrayIterator i(shard); i != i.end(); i++) {
-    if (i.value().isEqualString(ctx->fromServer)) {
-      isLeader = i.isFirst();
+  for (velocypack::ArrayIterator it(shard); it.valid(); it.next()) {
+    if (it.value().isEqualString(ctx->fromServer)) {
+      isLeader = it.index() == 0;
       fromFound = true;
     }
   }
@@ -805,6 +808,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
                    builder.add("remainsFollower",
                                isLeader ? VPackValue(ctx->remainsFollower)
                                         : VPackValue(false));
+                   builder.add("tryUndo", VPackValue(ctx->tryUndo));
                    builder.add("creator",
                                VPackValue(ServerState::instance()->getId()));
                    builder.add("timeCreated",
@@ -1178,7 +1182,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
     VPackSlice server = body.get("server");
     if (server.isString()) {
       std::string serverId = resolveServerNameID(server.copyString());
-      return handleCreateSingleServerJob(job, serverId);
+      return handleCreateSingleServerJob(job, serverId, body);
     }
   }
 
@@ -1188,7 +1192,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
 }
 
 RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
-    std::string const& job, std::string const& serverId) {
+    std::string const& job, std::string const& serverId, VPackSlice body) {
   std::string jobId = std::to_string(
       server().getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto jobToDoPath =
@@ -1201,6 +1205,11 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
     builder.add("server", VPackValue(serverId));
     builder.add("jobId", VPackValue(jobId));
     builder.add("creator", VPackValue(ServerState::instance()->getId()));
+    if (job == "resignLeadership") {
+      if (body.isObject() && body.hasKey("undoMoves")) {
+        builder.add("undoMoves", VPackValue(body.get("undoMoves").isTrue()));
+      }
+    }
     builder.add(
         "timeCreated",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -1476,7 +1485,7 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
     clock::time_point startTime) {
-  return SchedulerFeature::SCHEDULER->delay(1s)
+  return SchedulerFeature::SCHEDULER->delay("wait-for-supervision", 1s)
       .thenValue([](auto) {
         return AsyncAgencyComm().getValues(arangodb::cluster::paths::root()
                                                ->arango()

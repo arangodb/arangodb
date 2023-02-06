@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryOptions.h"

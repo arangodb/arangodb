@@ -44,7 +44,6 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 let functionsDocumentation = {
-  'all': 'run all tests (marked with [x])',
   'find': 'searches all testcases, and eventually filters them by `--test`, ' +
     'will dump testcases associated to testsuites.',
   'auto': 'uses find; if the testsuite for the testcase is located, ' +
@@ -165,8 +164,9 @@ let optionsDocumentation = [
 
 const isSan = (
   global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true');
-
+  global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
+  internal.coverage
+);
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -204,7 +204,7 @@ const optionsDefaults = {
   'rr': false,
   'exceptionFilter': null,
   'exceptionCount': 1,
-  'sanitizer': false,
+  'sanitizer': isSan,
   'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
@@ -273,15 +273,7 @@ function printUsage () {
         oneFunctionDocumentation = '';
       }
 
-      let checkAll;
-
-      if (allTests.indexOf(i) !== -1) {
-        checkAll = '[x]';
-      } else {
-        checkAll = '   ';
-      }
-
-      print('    ' + checkAll + ' ' + i + ' ' + oneFunctionDocumentation);
+      print(`     ${i} ${oneFunctionDocumentation}`);
     }
   }
 
@@ -434,7 +426,6 @@ function loadTestSuites () {
   for (let j = 0; j < testSuites.length; j++) {
     try {
       require('@arangodb/testsuites/' + testSuites[j]).setup(testFuncs,
-                                                             allTests,
                                                              optionsDefaults,
                                                              functionsDocumentation,
                                                              optionsDocumentation,
@@ -444,7 +435,7 @@ function loadTestSuites () {
       throw x;
     }
   }
-  testFuncs['all'] = allTests;
+  allTests = Object.keys(testFuncs);
   testFuncs['find'] = findTest;
   testFuncs['auto'] = autoTest;
 }

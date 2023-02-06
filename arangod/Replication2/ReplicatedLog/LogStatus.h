@@ -48,6 +48,7 @@ struct QuickLogStatus {
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
   bool leadershipEstablished{false};
+  bool snapshotAvailable{false};
   std::optional<CommitFailReason> commitFailReason{};
 
   // The following make sense only for a leader.
@@ -86,6 +87,7 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
       f.field("term", x.term), f.field("local", x.local),
       f.field("leadershipEstablished", x.leadershipEstablished),
+      f.field("snapshotAvailable", x.snapshotAvailable),
       f.field("commitFailReason", x.commitFailReason),
       f.field("activeParticipantsConfig", activeParticipantsConfig),
       f.field("committedParticipantsConfig", committedParticipantsConfig));
@@ -100,7 +102,7 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  TermIndexPair nextPrevLogIndex;
+  LogIndex nextPrevLogIndex;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept
@@ -123,6 +125,38 @@ auto inspect(Inspector& f, FollowerStatistics& x) {
       f.field("state", x.internalState));
 }
 
+struct CompactionStatus {
+  using clock = std::chrono::system_clock;
+
+  struct Compaction {
+    clock::time_point time;
+    LogRange range;
+
+    friend auto operator==(Compaction const& left,
+                           Compaction const& right) noexcept -> bool = default;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, Compaction& x) {
+      return f.object(x).fields(
+          f.field("time", x.time)
+              .transformWith(inspection::TimeStampTransformer{}),
+          f.field("range", x.range));
+    }
+  };
+
+  std::optional<Compaction> lastCompaction;
+  std::optional<CompactionStopReason> stop;
+
+  friend auto operator==(CompactionStatus const& left,
+                         CompactionStatus const& right) noexcept
+      -> bool = default;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionStatus& x) {
+    return f.object(x).fields(f.field("lastCompaction", x.lastCompaction),
+                              f.field("stop", x.stop));
+  }
+};
+
 struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
@@ -132,6 +166,7 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
+  CompactionStatus compactionStatus;
   agency::ParticipantsConfig activeParticipantsConfig;
   std::optional<agency::ParticipantsConfig> committedParticipantsConfig;
 
@@ -151,6 +186,7 @@ auto inspect(Inspector& f, LeaderStatus& x) {
           .transformWith(inspection::DurationTransformer<
                          std::chrono::duration<double, std::milli>>{}),
       f.field("lastCommitStatus", x.lastCommitStatus),
+      f.field("compactionStatus", x.compactionStatus),
       f.field("activeParticipantsConfig", x.activeParticipantsConfig),
       f.field("committedParticipantsConfig", x.committedParticipantsConfig));
 }
@@ -160,6 +196,8 @@ struct FollowerStatus {
   std::optional<ParticipantId> leader;
   LogTerm term;
   LogIndex lowestIndexToKeep;
+  CompactionStatus compactionStatus;
+  bool snapshotAvailable{false};
 };
 
 template<class Inspector>
@@ -167,8 +205,10 @@ auto inspect(Inspector& f, FollowerStatus& x) {
   auto role = StaticStrings::Follower;
   return f.object(x).fields(f.field("role", role), f.field("local", x.local),
                             f.field("term", x.term),
+                            f.field("compactionStatus", x.compactionStatus),
                             f.field("lowestIndexToKeep", x.lowestIndexToKeep),
-                            f.field("leader", x.leader));
+                            f.field("leader", x.leader),
+                            f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 struct UnconfiguredStatus {};

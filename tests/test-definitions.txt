@@ -33,12 +33,21 @@ permissions priority=500 single
 recovery priority=2000 buckets=4 parallelity=5 single
 version single
 
-shell_api priority=500 single suffix=http -- $EncryptionAtRest
-shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+shell_v8 priority=500 single -- $EncryptionAtRest
+shell_server_v8 priority=500 single -- $EncryptionAtRest
+
+shell_api priority=500 single -- $EncryptionAtRest
+
+shell_api_multi priority=500 single suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+
 # Shell client tests Single Server; distribute evenly
-shell_client priority=250 parallelity=2 single suffix=http -- $EncryptionAtRest
-shell_client priority=1500 parallelity=2 single suffix=http2 -- --http2 true
-shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
+shell_client priority=250 parallelity=2 single -- $EncryptionAtRest
+shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
+shell_client_multi priority=1500 parallelity=2 single suffix=http
+shell_client_multi priority=2500 parallelity=2 single suffix=vst -- --vst true
+
+
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
@@ -74,14 +83,14 @@ load_balancing priority=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
 
 replication2_client cluster
-replication2_server cluster -- --dumpAgencyOnError true
+replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 cluster -- --dumpAgencyOnError true
-resilience_failover priority=750 cluster -- --dumpAgencyOnError true
+resilience_failover priority=1200 cluster -- --dumpAgencyOnError true
 resilience_move priority=600 cluster -- --dumpAgencyOnError true
 resilience_sharddist cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 cluster buckets=8 -- --test search
+recovery_cluster priority=2000 cluster buckets=8
 
 # different number of buckets in cluster
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
@@ -99,7 +108,7 @@ hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=6 cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 -- --dumpAgencyOnError true
 server_secrets priority=500 -- --dumpAgencyOnError true
 
@@ -145,7 +154,7 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+chaos !windows full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true

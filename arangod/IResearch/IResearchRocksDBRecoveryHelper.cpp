@@ -62,6 +62,9 @@
 #include "VocBase/vocbase.h"
 #include "Basics/DownCast.h"
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/str_split.h>
+
 namespace arangodb::transaction {
 class Context;
 }
@@ -91,17 +94,18 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
       break;
     }
 
-    auto parts = basics::StringUtils::split(item, '/');
-    TRI_ASSERT(parts.size() == 2);
+    std::pair<std::string_view, std::string_view> parts =
+        absl::StrSplit(item, '/');
     // look for collection part
-    auto it = _skipRecoveryItems.find(parts[0]);
+    auto it = _skipRecoveryItems.find(parts.first);
     if (it == _skipRecoveryItems.end()) {
       // collection not found, insert new set into map with the index id/name
       _skipRecoveryItems.emplace(
-          parts[0], containers::FlatHashSet<std::string>{parts[1]});
+          parts.first,
+          containers::FlatHashSet<std::string>{std::string{parts.second}});
     } else {
       // collection found. append index/name to existing set
-      it->second.emplace(parts[1]);
+      it->second.emplace(parts.second);
     }
   }
 }
@@ -168,8 +172,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       auto snapshotCookie = _cookies.lazy_emplace(
           link.first.get(),
           [&](auto const& ctor) { ctor(link.first.get(), impl.snapshot()); });
-      if (impl.exists(snapshotCookie->second, docId, impl.meta().hasNested(),
-                      &tick)) {
+      if (impl.exists(snapshotCookie->second, docId, &tick)) {
         _skipExisted.emplace(link.first->id());
       } else {
         mustReplay = true;
@@ -360,8 +363,9 @@ bool IResearchRocksDBRecoveryHelper::lookupLinks(
     if (!mustFail && !_skipRecoveryItems.empty()) {
       if (auto it = _skipRecoveryItems.find(coll.name());
           it != _skipRecoveryItems.end()) {
-        mustFail = it->second.contains(index->name()) ||
-                   it->second.contains(std::to_string(index->id().id()));
+        mustFail =
+            it->second.contains(index->name()) ||
+            it->second.contains(absl::AlphaNum{index->id().id()}.Piece());
       }
     }
     result.emplace_back(std::make_pair(std::move(index), mustFail));
