@@ -3301,24 +3301,49 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   match.clear();
 
   // Local copy of my servers
-  std::unordered_set<std::string> localCopy;
+  // Note that we use a `std::set` here for the following reasons:
+  //  - this function is supposed to return a canonical result, which
+  //    does not depend on the order of the input in `planServers` or
+  //    `dbServers`, therefore we use a sorted set here and a sorted
+  //    map as the result.
+  //  - Performance does not matter at all, this method is called for
+  //    hotbackup download and hotbackup restore, both methods are
+  //    using considerable amounts of time. The server lists are usually
+  //    quite small (3 or 5 or a few dozen at most).
+  // So please do not "optimize" this.
+  std::set<std::string> localCopy;
   std::copy(dbServers.begin(), dbServers.end(),
             std::inserter(localCopy, localCopy.end()));
+  // dbServers should be a list of pairwise different servers, this
+  // is usually ensured since it is a vector manufactured from the keys
+  // of a map:
+  TRI_ASSERT(localCopy.size() == dbServers.size());
 
-  // Skip all direct matching names in pair and remove them from localCopy
-  std::unordered_set<std::string>::iterator it;
+  // Skip all direct matching names in pair and remove them from localCopy.
+  // If later a server does not occur it means that no translation has to
+  // happen for it.
   for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
-    if ((it = localCopy.find(plannedStr)) != localCopy.end()) {
+    auto it = localCopy.find(plannedStr);
+    if (it != localCopy.end()) {
       localCopy.erase(it);
     } else {
       match.try_emplace(plannedStr, std::string());
     }
   }
-  // match all remaining
+  // At this stage, we know the following:
+  //  - initially, dbServers had at least as many servers as planServers
+  //  - initially, localCopy was a perfect copy of dbServers
+  //  - now, for every element of planServers, which is not contained in
+  //    localCopy, we put an element in match, each element of planServers,
+  //    which is in localCopy, is removed from localCopy and no entry is
+  //    added to match.
+  // Therefore, localCopy has at least as many entries as match and we can
+  // just blindly run the iterator:
+  TRI_ASSERT(match.size() <= localCopy.size());
   auto it2 = localCopy.begin();
-  for (auto& m : match) {
-    m.second = *it2++;
+  for (auto& m : match) {  // alphabetical order!
+    m.second = *it2++;     // alphabetical order, too!
   }
 
   LOG_TOPIC("a201e", DEBUG, Logger::BACKUP) << "DB server matches: " << match;
