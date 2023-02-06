@@ -5,6 +5,10 @@ devel
   in active failover mode. Previously the supervision maintenance mode could
   only be enabled/disabled by making a call to the active failover leader.
 
+* Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries with geo index which do not use
+  GEO_DISTANCE.
+
 * Fix bug in hotbackup download/restore to make sure no data is mixed up
   between servers. This fixes a bug introduced in 3.10.
 
