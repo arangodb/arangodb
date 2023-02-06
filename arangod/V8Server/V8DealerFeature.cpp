@@ -338,7 +338,7 @@ or teardown commands for execution on the server.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31004);
 
   options
       ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
