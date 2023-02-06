@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "VocBase/Properties/UtilityInvariants.h"
 
 namespace arangodb::replication2::agency {
 
@@ -52,8 +53,7 @@ template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup& x) {
   return f.object(x).fields(f.field(StaticStrings::Id, x.id),
                             f.field("collections", x.collections),
-                            f.field("attributes", x.attributes),
-                            f.field("shardSheaves", x.shardSheaves));
+                            f.field("attributes", x.attributes));
 }
 
 template<class Inspector>
