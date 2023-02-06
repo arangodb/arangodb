@@ -494,8 +494,10 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     if (!coords.empty() &&
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
-        (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-         vocbase.isOneShard())) {
+        vocbase.isOneShard()) {
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
