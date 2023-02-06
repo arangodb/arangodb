@@ -2,7 +2,7 @@
 
 A minimal matching utility.
 
-[![Build Status](https://secure.travis-ci.org/isaacs/minimatch.svg)](http://travis-ci.org/isaacs/minimatch)
+[![Build Status](https://travis-ci.org/isaacs/minimatch.svg?branch=master)](http://travis-ci.org/isaacs/minimatch)
 
 
 This is the matching library used internally by npm.
@@ -171,6 +171,27 @@ Suppress the behavior of treating a leading `!` character as negation.
 Returns from negate expressions the same as if they were not negated.
 (Ie, true on a hit, false on a miss.)
 
+### partial
+
+Compare a partial path to a pattern.  As long as the parts of the path that
+are present are not contradicted by the pattern, it will be treated as a
+match.  This is useful in applications where you're walking through a
+folder structure, and don't yet have the full path, but want to ensure that
+you do not walk down paths that can never be a match.
+
+For example,
+
+```js
+minimatch('/a/b', '/a/*/c/d', { partial: true })  // true, might be /a/b/c/d
+minimatch('/a/b', '/**/d', { partial: true })     // true, might be /a/b/.../d
+minimatch('/x/y/z', '/a/**/z', { partial: true }) // false, because x !== a
+```
+
+### allowWindowsEscape
+
+Windows path separator `\` is by default converted to `/`, which
+prohibits the usage of `\` as a escape character. This flag skips that
+behavior and allows using the escape character.
 
 ## Comparisons to other fnmatch/glob implementations
 

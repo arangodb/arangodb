@@ -1,6 +1,13 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
 * Allow usage of projections and covering indexes in more cases.
   Previously, projections were not used if there were complex filter conditions
   on the index attribute(s) that contained the `[*]` expansion operator with
