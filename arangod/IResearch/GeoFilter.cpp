@@ -641,19 +641,7 @@ irs::filter::prepared::ptr GeoFilter::prepare(
   if (type == geo::ShapeContainer::Type::S2_POINT) {
     auto const& region = basics::downCast<S2PointRegion>(*shape.region());
     geoTerms = indexer.GetQueryTerms(region.point(), options.prefix);
-  } else if (options.stored == StoredType::S2Shape) {
-    S2RegionCoverer coverer{options.options};
-    auto cellIds = shape.covering(coverer);
-    if (type == geo::ShapeContainer::Type::S2_MULTIPOINT ||
-        type == geo::ShapeContainer::Type::S2_MULTIPOLYLINE) {
-      coverer.CanonicalizeCovering(&cellIds);
-    } else {
-      TRI_ASSERT(coverer.IsCanonical(cellIds));
-    }
-    geoTerms = indexer.GetQueryTermsForCanonicalCovering(
-        S2CellUnion::FromVerbatim(std::move(cellIds)), {});
   } else {
-    // TODO(MBkkt) only in legacy case
     geoTerms = indexer.GetQueryTerms(*shape.region(), {});
   }
 

@@ -51,6 +51,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -758,13 +759,45 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
+    auto message = inspection::deserializeWithErrorT<StatusUpdated>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize StatusUpdated message: {}",
+                      message.error().error()));
+    }
+    co->workerStatusUpdate(std::move(message.get()));
   } else if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
+    auto message = inspection::deserializeWithErrorT<GraphLoaded>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GraphLoaded message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStartup(message.get());
   } else if (path == Utils::finishedWorkerStepPath) {
-    outBuilder = co->finishedWorkerStep(body);
+    auto message = inspection::deserializeWithErrorT<GlobalSuperStepFinished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GlobalSuperStepFinished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStep(message.get());
   } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
+    auto message = inspection::deserializeWithErrorT<Finished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize Finished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerFinalize(message.get());
   }
 }
 
@@ -797,8 +830,10 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
         velocypack::SharedSlice({}, body));
     if (!createWorker.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot deserialize CreateWorker message");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize CreateWorker message: {}",
+                      createWorker.error().error()));
     }
 
     addWorker(AlgoRegistry::createWorker(vocbase, createWorker.get(), *this),
@@ -827,25 +862,46 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Cannot deserialize PrepareGlobalSuperStep message");
+          fmt::format("Cannot deserialize PrepareGlobalSuperStep message: {}",
+                      message.error().error()));
     }
-    w->prepareGlobalStep(message.get(), outBuilder);
+    auto prepared = w->prepareGlobalStep(message.get());
+    auto response = inspection::serializeWithErrorT(prepared);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize GlobalSuperStepPrepared message: {}",
+                      message.error().error()));
+    }
+    outBuilder.add(response.get().slice());
   } else if (path == Utils::startGSSPath) {
     auto message = inspection::deserializeWithErrorT<RunGlobalSuperStep>(
         velocypack::SharedSlice({}, body));
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "Cannot deserialize RunGlobalSuperStep message");
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize RunGlobalSuperStep message: {}",
+                      message.error().error()));
     }
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
-    w->receivedMessages(body);
+    auto message = inspection::deserializeWithErrorT<PregelMessage>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize PregelMessage message: {}",
+                      message.error().error()));
+    }
+    w->receivedMessages(message.get());
   } else if (path == Utils::finalizeExecutionPath) {
     auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
         velocypack::SharedSlice({}, body));
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "Cannot deserialize FinalizeExecution message");
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize FinalizeExecution message: {}",
+                      message.error().error()));
     }
     w->finalizeExecution(message.get(),
                          [this, exeNum]() { cleanupWorker(exeNum); });
@@ -855,9 +911,18 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Cannot deserialize CollectPregelResults message");
+          fmt::format("Cannot deserialize CollectPregelResults message: {}",
+                      message.error().error()));
     }
-    w->aqlResult(outBuilder, message.get().withId);
+    auto results = w->aqlResult(message.get().withId);
+    auto response = inspection::serializeWithErrorT(results);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize PregelResults message: {}",
+                      response.error().error()));
+    }
+    outBuilder.add(response.get().slice());
   }
 }
 

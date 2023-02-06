@@ -937,7 +937,8 @@ template<typename S>
 auto ReplicatedState<S>::buildCore(
     TRI_vocbase_t& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
-  if constexpr (std::is_void_v<typename S::CoreParameterType>) {
+  using CoreParameterType = typename S::CoreParameterType;
+  if constexpr (std::is_void_v<CoreParameterType>) {
     return factory->constructCore(vocbase, gid);
   } else {
     if (!coreParameter.has_value()) {
@@ -947,8 +948,16 @@ auto ReplicatedState<S>::buildCore(
                       "ID {}, created in database {}, for {} state",
                       gid.id, gid.database, S::NAME));
     }
-    auto params = velocypack::deserialize<typename S::CoreParameterType>(
-        coreParameter->slice());
+    auto params = CoreParameterType{};
+    try {
+      params =
+          velocypack::deserialize<CoreParameterType>(coreParameter->slice());
+    } catch (std::exception const& ex) {
+      LOG_CTX("63857", ERR, loggerContext)
+          << "failed to deserialize core parameters for replicated state "
+          << gid << ". " << ex.what() << " json = " << coreParameter->toJson();
+      throw;
+    }
     PersistedStateInfo info;
     info.stateId = gid.id;
     info.specification.type = S::NAME;
