@@ -1,3 +1,14 @@
+v3.9.10 (XXXX-XX-XX)
+--------------------
+
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
+
 v3.9.9 (2023-02-19)
 -------------------
 
