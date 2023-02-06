@@ -188,7 +188,7 @@ TEST(
                     TrivialActor::Message{TrivialMessage{"baz"}});
 
   ASSERT_EQ(runtime->getActorStateByID<TrivialActor>(actor_id),
-            (TrivialState{.state = fmt::format("recieving actor {} not found",
+            (TrivialState{.state = fmt::format("receiving actor {} not found",
                                                unknown_actor),
                           .called = 2}));
 }

@@ -220,6 +220,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   std::atomic<bool> finished{false};
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
+  // tunable parameter: maximal number of processed messages per work() call
   std::size_t batchSize{16};
 
  public:

@@ -87,19 +87,19 @@ TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
-  auto recieving_server = ServerID{"B"};
+  auto receiving_server = ServerID{"B"};
   runtimes.emplace(
-      recieving_server,
-      std::make_shared<MockRuntime>(recieving_server, "RuntimeTest-receiving",
+      receiving_server,
+      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
                                     scheduler, dispatcher));
-  auto recieving_actor_id = runtimes[recieving_server]->spawn<TrivialActor>(
+  auto receiving_actor_id = runtimes[receiving_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto recieving_actor =
-      ActorPID{.server = recieving_server, .id = recieving_actor_id};
+  auto receiving_actor =
+      ActorPID{.server = receiving_server, .id = receiving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(
-      sending_actor, recieving_actor,
+      sending_actor, receiving_actor,
       TrivialActor::Message{TrivialMessage("baz")});
 
   // sending actor state did not change
@@ -109,10 +109,10 @@ TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
   ASSERT_EQ(sending_actor_state,
             (TrivialActor::State{.state = "foo", .called = 1}));
   // receiving actor state changed
-  auto recieving_actor_state =
-      runtimes[recieving_server]->getActorStateByID<TrivialActor>(
-          recieving_actor_id);
-  ASSERT_EQ(recieving_actor_state,
+  auto receiving_actor_state =
+      runtimes[receiving_server]->getActorStateByID<TrivialActor>(
+          receiving_actor_id);
+  ASSERT_EQ(receiving_actor_state,
             (TrivialActor::State{.state = "foobaz", .called = 2}));
 }
 
@@ -147,25 +147,25 @@ TEST(ActorMultiRuntimeTest,
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
-  auto recieving_server = ServerID{"B"};
+  auto receiving_server = ServerID{"B"};
   runtimes.emplace(
-      recieving_server,
-      std::make_shared<MockRuntime>(recieving_server, "RuntimeTest-receiving",
+      receiving_server,
+      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
                                     scheduler, dispatcher));
-  auto recieving_actor_id = runtimes[recieving_server]->spawn<TrivialActor>(
+  auto receiving_actor_id = runtimes[receiving_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto recieving_actor =
-      ActorPID{.server = recieving_server, .id = recieving_actor_id};
+  auto receiving_actor =
+      ActorPID{.server = receiving_server, .id = receiving_actor_id};
 
   // send
-  runtimes[sending_server]->dispatch(sending_actor, recieving_actor,
+  runtimes[sending_server]->dispatch(sending_actor, receiving_actor,
                                      SomeMessages{SomeMessage{}});
 
-  // recieving actor state was called once
-  auto recieving_actor_state =
-      runtimes[recieving_server]->getActorStateByID<TrivialActor>(
-          recieving_actor_id);
-  ASSERT_EQ(recieving_actor_state,
+  // receiving actor state was called once
+  auto receiving_actor_state =
+      runtimes[receiving_server]->getActorStateByID<TrivialActor>(
+          receiving_actor_id);
+  ASSERT_EQ(receiving_actor_state,
             (TrivialActor::State{.state = "foo", .called = 1}));
   // sending actor received an unknown message error after it sent wrong
   // message type
@@ -175,7 +175,7 @@ TEST(ActorMultiRuntimeTest,
   ASSERT_EQ(
       sending_actor_state,
       (TrivialActor::State{
-          .state = fmt::format("sent unknown message to {}", recieving_actor),
+          .state = fmt::format("sent unknown message to {}", receiving_actor),
           .called = 2}));
 }
 
@@ -198,14 +198,14 @@ TEST(
       ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
-  auto recieving_server = ServerID{"B"};
+  auto receiving_server = ServerID{"B"};
   runtimes.emplace(
-      recieving_server,
-      std::make_shared<MockRuntime>(recieving_server, "RuntimeTest-receiving",
+      receiving_server,
+      std::make_shared<MockRuntime>(receiving_server, "RuntimeTest-receiving",
                                     scheduler, dispatcher));
 
   // send
-  auto unknown_actor = ActorPID{.server = recieving_server, .id = {999}};
+  auto unknown_actor = ActorPID{.server = receiving_server, .id = {999}};
   runtimes[sending_server]->dispatch(
       sending_actor, unknown_actor,
       TrivialActor::Message{TrivialMessage("baz")});
@@ -216,7 +216,7 @@ TEST(
       runtimes[sending_server]->getActorStateByID<TrivialActor>(
           sending_actor_id),
       (TrivialActor::State{
-          .state = fmt::format("recieving actor {} not found", unknown_actor),
+          .state = fmt::format("receiving actor {} not found", unknown_actor),
           .called = 2}));
 }
 
@@ -250,7 +250,7 @@ TEST(
       runtimes[sending_server]->getActorStateByID<TrivialActor>(
           sending_actor_id),
       (TrivialActor::State{
-          .state = fmt::format("recieving server {} not found", unknown_server),
+          .state = fmt::format("receiving server {} not found", unknown_server),
           .called = 2}));
 }
 

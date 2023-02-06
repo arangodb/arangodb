@@ -93,14 +93,14 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
   auto operator()(ActorNotFound notFound) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
-        fmt::format("recieving actor {} not found", notFound.actor);
+        fmt::format("receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(ServerNotFound notFound) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
-        fmt::format("recieving server {} not found", notFound.server);
+        fmt::format("receiving server {} not found", notFound.server);
     return std::move(this->state);
   }
 
