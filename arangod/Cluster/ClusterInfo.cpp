@@ -1720,7 +1720,8 @@ void ClusterInfo::loadPlan() {
         CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroupPlanSpecification>();
+          auto spec = std::make_shared<
+              replication2::agency::CollectionGroupPlanSpecification>();
           velocypack::deserialize(groupSlice, *spec);
           groups.emplace(spec->id, std::move(spec));
         }
