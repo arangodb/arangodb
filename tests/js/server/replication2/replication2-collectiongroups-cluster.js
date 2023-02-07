@@ -35,7 +35,9 @@ const database = 'CollectionGroupsTest';
 const {setUpAll, tearDownAll, setUp, tearDown} = testHelperFunctions(database, {replicationVersion: "2"});
 
 const readAgencyCollectionGroups = (databaseName) => {
-    return readAgencyValueAt(`Target/CollectionGroups/${databaseName}/`);
+    // TODO: As soon as Supervision is implemented we need this to be Target again
+    // return readAgencyValueAt(`Target/CollectionGroups/${databaseName}/`);
+    return readAgencyValueAt(`Plan/CollectionGroups/${databaseName}/`);
 };
 
 const getGroupWithCollection = (groups, collection) => {
