@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 const ParameterEdgeLabel = () => {
@@ -22,9 +21,12 @@ const ParameterEdgeLabel = () => {
           setUrlParameters(newUrlParameters);
         }}>
       </Textinput>
-      <Tooltip placement="bottom" title={"Enter a valid edge attribute to be used as an edge label."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
+      <ToolTip
+        title={"Enter a valid edge attribute to be used as an edge label."}
+        setArrow={true}
+      >
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+      </ToolTip>
     </div>
   );
 };
