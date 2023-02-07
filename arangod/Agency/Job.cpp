@@ -1099,16 +1099,6 @@ void Job::addPreconditionServerReadLocked(Builder& pre,
   }
 }
 
-void Job::addPreconditionServerWriteLockable(Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId) {
-  pre.add(VPackValue(blockedServersPrefix + server));
-  {
-    VPackObjectBuilder shardLockEmpty(&pre);
-    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
-  }
-}
-
 void Job::addPreconditionServerWriteLocked(Builder& pre,
                                            std::string const& server,
                                            std::string const& jobId) {
