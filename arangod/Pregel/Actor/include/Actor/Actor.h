@@ -125,6 +125,8 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     return finished.load() and idle.load();
   }
 
+  auto isIdle() -> bool override { return idle.load(); }
+
   auto serialize() -> velocypack::SharedSlice override {
     auto res = inspection::serializeWithErrorT(*this);
     ADB_PROD_ASSERT(res.ok());
@@ -149,6 +151,11 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   void kick() {
     // Make sure that *someone* works here
+
+    // capture 'this' as weak ptr: this way, actor can be destroyed although
+    // this callback is still waiting in the scheduler. When this callback is
+    // executed in the queue after actor was destroyed, the weak ptr will
+    // be empty and work will just not be executed
     (*runtime->scheduler)([self = this->weak_from_this()]() {
       auto me = self.lock();
       if (me != nullptr) {
@@ -158,9 +165,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   }
 
   void work() {
-    if (finished.load()) {
-      return;
-    }
     auto i = batchSize;
 
     while (auto msg = inbox.pop()) {
@@ -182,7 +186,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     idle.store(true);
 
     // push more work to scheduler if a message was added to queue after
-    // previous inbox.empty check
+    // previous inbox.empty check and set idle to false
     auto isIdle = true;
     if (not inbox.empty() and idle.compare_exchange_strong(isIdle, false)) {
       kick();
@@ -205,12 +209,18 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   }
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
+    // don't add new messages when actor is finished
+    if (finished.load()) {
+      return;
+    }
+
     inbox.push(std::move(msg));
 
     // only push work to scheduler if actor is idle (meaning no work is waiting
     // on the scheduler and no work is currently processed in work())
+    // and set idle to false
     auto isIdle = true;
-    if (idle.load() and idle.compare_exchange_strong(isIdle, false)) {
+    if (idle.compare_exchange_strong(isIdle, false)) {
       kick();
     }
   }

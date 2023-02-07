@@ -83,6 +83,17 @@ struct ActorList {
     });
   }
 
+  auto checkAll(std::function<bool(std::shared_ptr<ActorBase> const&)> fn) const
+      -> bool {
+    return actors.doUnderLock([&fn](ActorMap const& map) {
+      bool result = true;
+      for (auto const& [id, actor] : map) {
+        result = result and fn(actor);
+      }
+      return result;
+    });
+  }
+
   auto allIDs() const -> std::vector<ActorID> {
     return actors.doUnderLock([](ActorMap const& map) {
       auto res = std::vector<ActorID>{};

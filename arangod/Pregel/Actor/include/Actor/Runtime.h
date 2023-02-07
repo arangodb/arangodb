@@ -145,6 +145,12 @@ struct Runtime
     }
   }
 
+  auto areAllActorsIdle() -> bool {
+    return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
+      return actor->isIdle();
+    });
+  }
+
   auto softShutdown() -> void {
     actors.apply(
         [](std::shared_ptr<ActorBase> const& actor) { actor->finish(); });

@@ -41,6 +41,7 @@ struct ActorBaseMock : ActorBase {
   };
   auto finish() -> void override { finished = true; };
   auto finishedAndIdle() -> bool override { return finished; };
+  auto isIdle() -> bool override { return true; };
 
   std::string type;
   bool finished = false;
@@ -165,4 +166,33 @@ TEST(ActorListTest, applies_function_to_each_actor) {
   ASSERT_TRUE(list.find(ActorID{2}).value()->finishedAndIdle());
   ASSERT_TRUE(list.find(ActorID{3}).value()->finishedAndIdle());
   ASSERT_TRUE(list.find(ActorID{4}).value()->finishedAndIdle());
+}
+
+TEST(ActorListTest,
+     unsucessfully_checks_condition_not_fulfilled_by_all_actors) {
+  auto list =
+      ActorList({{{ActorID{1}, std::make_shared<ActorBaseMock>("true")},
+                  {ActorID{2}, std::make_shared<ActorBaseMock>("true")},
+                  {ActorID{3}, std::make_shared<ActorBaseMock>("false")},
+                  {ActorID{4}, std::make_shared<ActorBaseMock>("false")}}});
+
+  auto check = list.checkAll([](std::shared_ptr<ActorBase> const& actor) {
+    return actor->typeName() == "true";
+  });
+
+  ASSERT_FALSE(check);
+}
+
+TEST(ActorListTest, sucessfully_checks_condition_fulfilled_by_all_actors) {
+  auto list =
+      ActorList({{{ActorID{1}, std::make_shared<ActorBaseMock>("true")},
+                  {ActorID{2}, std::make_shared<ActorBaseMock>("true")},
+                  {ActorID{3}, std::make_shared<ActorBaseMock>("true")},
+                  {ActorID{4}, std::make_shared<ActorBaseMock>("true")}}});
+
+  auto check = list.checkAll([](std::shared_ptr<ActorBase> const& actor) {
+    return actor->typeName() == "true";
+  });
+
+  ASSERT_TRUE(check);
 }

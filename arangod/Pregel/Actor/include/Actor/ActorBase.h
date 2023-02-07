@@ -38,6 +38,7 @@ struct ActorBase {
   virtual auto serialize() -> velocypack::SharedSlice = 0;
   virtual auto finish() -> void = 0;
   virtual auto finishedAndIdle() -> bool = 0;
+  virtual auto isIdle() -> bool = 0;
 };
 
 }  // namespace arangodb::pregel::actor

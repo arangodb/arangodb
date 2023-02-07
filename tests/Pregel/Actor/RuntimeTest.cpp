@@ -274,17 +274,19 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
-
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       FinishingState{}, FinishingStart{});
 
   runtime->dispatch(ActorPID{.server = serverID, .id = finishing_actor},
                     ActorPID{.server = serverID, .id = finishing_actor},
                     FinishingActor::Message{FinishingFinish{}});
+  // wait for actor to work off all messages
+  while (not runtime->areAllActorsIdle()) {
+  }
 
-  this->scheduler->stop();
   runtime->garbageCollect();
 
+  this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
@@ -309,10 +311,13 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
       ActorPID{.server = serverID, .id = another_actor_to_be_finished},
       ActorPID{.server = serverID, .id = another_actor_to_be_finished},
       FinishingActor::Message{FinishingFinish{}});
+  // wait for actor to work off all messages
+  while (not runtime->areAllActorsIdle()) {
+  }
 
-  this->scheduler->stop();
   runtime->garbageCollect();
 
+  this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 3);
   auto remaining_actor_ids = runtime->getActorIDs();
   std::unordered_set<ActorID> actor_ids(remaining_actor_ids.begin(),
@@ -333,9 +338,12 @@ TYPED_TEST(ActorRuntimeTest,
   runtime->template spawn<TrivialActor>(TrivialState{}, TrivialStart{});
   runtime->template spawn<TrivialActor>(TrivialState{}, TrivialStart{});
   ASSERT_EQ(runtime->actors.size(), 5);
+  // wait for actor to work off all messages
+  while (not runtime->areAllActorsIdle()) {
+  }
 
-  this->scheduler->stop();
   runtime->softShutdown();
 
+  this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
 }

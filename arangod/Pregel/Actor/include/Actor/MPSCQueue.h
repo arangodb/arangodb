@@ -122,28 +122,11 @@ struct MPSCQueue {
   }
 
   auto flush() -> void {
-    auto node = tail.load();
+    auto node = pop();
     while (node != nullptr) {
-      auto next = node->next.load();
-
-      // ignore stub
-      if (node == &stub) {
-        node = next;
-        continue;
-      }
-
-      // at end of list: add stub such that messages can still be pushed
-      // (which will also be deleted in this function)
-      if (next == nullptr) {
-        push_internal(&stub);
-        // might be stub or anything else if new message was pushed in between
-        next = node->next.load();
-      }
-
-      // make sure that tail points to next node before deleting node
-      tail.store(next);
-      delete node;
-      node = next;
+      auto ptr = node.release();
+      delete ptr;
+      node = pop();
     }
   }
 
