@@ -252,6 +252,7 @@ class StaticStrings {
   static std::string const KeyOptions;
   static std::string const MinReplicationFactor;
   static std::string const NumberOfShards;
+  static std::string const GroupId;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
   static std::string const Satellite;

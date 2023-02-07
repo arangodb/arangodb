@@ -38,12 +38,11 @@ namespace arangodb::replication2::replicated_state::document {
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
     network::ConnectionPool* connectionPool,
-    MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
+    MaintenanceFeature& maintenanceFeature)
     : _server(server),
       _agencyCache(agencyCache),
       _connectionPool(connectionPool),
-      _maintenanceFeature(maintenaceFeature),
-      _databaseFeature(databaseFeature) {}
+      _maintenanceFeature(maintenanceFeature) {}
 
 auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateAgencyHandler> {
@@ -58,45 +57,28 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
 }
 
 auto DocumentStateHandlersFactory::createSnapshotHandler(
-    GlobalLogIdentifier const& gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::unique_ptr<IDocumentStateSnapshotHandler> {
-  auto* vocbase = _databaseFeature.lookupDatabase(gid.database);
-  if (vocbase == nullptr) {
-    LOG_TOPIC("52f26", ERR, Logger::REPLICATION2)
-        << "database " << gid.database
-        << " not found during creation of snapshot handler";
-    return nullptr;
-  }
   return std::make_unique<DocumentStateSnapshotHandler>(
-      std::make_unique<CollectionReaderFactory>(*vocbase));
+      std::make_unique<CollectionReaderFactory>(vocbase));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
-    GlobalLogIdentifier gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
-  try {
-    return std::make_unique<DocumentStateTransactionHandler>(
-        std::move(gid),
-        std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
-        shared_from_this());
-  } catch (basics::Exception const& ex) {
-    // TODO this is a temporary fix, see CINFRA-588
-    if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-      return nullptr;
-    }
-    throw;
-  }
+  return std::make_unique<DocumentStateTransactionHandler>(
+      std::move(gid), &vocbase, shared_from_this());
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
+    DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
     -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(
-      dbGuard.database(), doc.tid, options);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, doc.tid,
+                                                               options);
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
 

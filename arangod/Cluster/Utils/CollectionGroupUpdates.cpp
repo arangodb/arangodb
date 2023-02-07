@@ -35,14 +35,19 @@ CollectionID toCollectionIdString(arangodb::DataSourceId const& cid) {
 }  // namespace
 
 agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
-    UserInputCollectionProperties const& collection) {
-  auto newId = agency::CollectionGroupId(collection.id.id());
+    UserInputCollectionProperties const& collection,
+    std::function<uint64_t()> const& generateId) {
+  auto newId = agency::CollectionGroupId(generateId());
   agency::CollectionGroup g;
   g.id = newId;
   g.attributes.waitForSync = false;
   g.attributes.writeConcern = 1;
   g.collections.emplace(::toCollectionIdString(collection.id),
                         agency::CollectionGroup::Collection{});
+  for (std::size_t it(0); it < collection.numberOfShards; ++it) {
+    g.shardSheaves.emplace_back(
+        agency::CollectionGroup::ShardSheaf{LogId{generateId()}});
+  }
   newGroups.emplace_back(std::move(g));
   return newId;
 }

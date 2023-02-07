@@ -236,4 +236,21 @@ struct QuorumData {
   void toVelocyPack(velocypack::Builder& builder) const;
 };
 
+namespace {
+constexpr std::string_view kStringUnconfigured = "Unconfigured";
+constexpr std::string_view kStringRecovery = "RecoveryInProgress";
+constexpr std::string_view kStringOperational = "ServiceOperational";
+}  // namespace
+
+enum class LocalStateMachineStatus { kUnconfigured, kRecovery, kOperational };
+auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
+
+template<class Inspector>
+auto inspect(Inspector& f, LocalStateMachineStatus& x) {
+  return f.enumeration(x).values(
+      LocalStateMachineStatus::kUnconfigured, kStringUnconfigured,
+      LocalStateMachineStatus::kRecovery, kStringRecovery,
+      LocalStateMachineStatus::kOperational, kStringOperational);
+}
+
 }  // namespace arangodb::replication2::replicated_log

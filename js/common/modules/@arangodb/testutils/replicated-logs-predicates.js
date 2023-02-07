@@ -41,6 +41,10 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
+      if (current.localStatus[srv].state !== "ServiceOperational") {
+        return Error(`Participant ${srv} state not yet ready, found  ${current.localStatus[srv].state}` +
+            `, expected = "ServiceOperational".`);
+      }
     }
 
     if (leader !== undefined) {

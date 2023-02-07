@@ -319,7 +319,6 @@ const replicatedStateSuite = function (stateType) {
       const res = dropState(database, logId);
       assertEqual(200, res.code);
 
-      lh.waitFor(spreds.replicatedStateIsGone(database, logId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, logId));
     },
   };

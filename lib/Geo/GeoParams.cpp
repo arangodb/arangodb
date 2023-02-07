@@ -88,6 +88,7 @@ std::string QueryParams::toString() const {
     " incl: ", t(minInclusive),
     " maxDistance: ", maxDistance,
     " incl: ", t(maxInclusive),
+    " distanceRestricted: ", t(distanceRestricted),
     " sorted: ", t(sorted),
     " ascending: ", t(ascending),
     " origin: ", origin.lng().degrees(), " , ", origin.lat().degrees(),

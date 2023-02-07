@@ -121,7 +121,7 @@ void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("02579", DEBUG, Logger::SUPERVISION)
-      << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
+      << "Todo: Move shard " << _shard << " from " << _from << " to " << _to;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -193,7 +193,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("cb317", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -295,8 +295,8 @@ bool MoveShard::start(bool&) {
 
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
-  if (health != "GOOD") {
-    if (health == "BAD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
+    if (health == Supervision::HEALTH_STATUS_BAD) {
       LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
           << "server " << _to << " is currently " << health
           << ", not starting MoveShard job " << _jobId;
@@ -456,8 +456,8 @@ bool MoveShard::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("2482a", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -579,7 +579,8 @@ bool MoveShard::start(bool&) {
       addPreconditionShardNotBlocked(pending, _shard);
       addMoveShardToServerCanLock(pending);
       addMoveShardFromServerCanLock(pending);
-      addPreconditionServerHealth(pending, _to, "GOOD");
+      addPreconditionServerHealth(pending, _to,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }  // precondition done
@@ -591,12 +592,13 @@ bool MoveShard::start(bool&) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("45120", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return true;
   }
 
   LOG_TOPIC("0a925", DEBUG, Logger::SUPERVISION)
-      << "Start precondition failed for MoveShard job " + _jobId;
+      << "Start precondition failed for MoveShard job " << _jobId;
   return false;
 }
 
@@ -612,7 +614,12 @@ bool MoveShard::startReplication2() {
   // Preconditions:
   //  - target version is as expected
   using namespace replication2;
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
+
   auto targetPath = targetRepStatePrefix + _database + "/" + to_string(stateId);
   auto target = readStateTarget(_snapshot, _database, stateId).value();
 
@@ -675,7 +682,7 @@ bool MoveShard::startReplication2() {
       addPreconditionShardNotBlocked(trx, _shard);
       addMoveShardToServerCanLock(trx);
       addMoveShardFromServerCanLock(trx);
-      addPreconditionServerHealth(trx, _to, "GOOD");
+      addPreconditionServerHealth(trx, _to, Supervision::HEALTH_STATUS_GOOD);
 
       {
         VPackObjectBuilder ob(&trx, targetPath + "/version");
@@ -693,12 +700,13 @@ bool MoveShard::startReplication2() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("4512d", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return true;
   }
 
   LOG_TOPIC("0a92d", DEBUG, Logger::SUPERVISION)
-      << "Start precondition failed for MoveShard job " + _jobId;
+      << "Start precondition failed for MoveShard job " << _jobId;
   return false;
 }
 
@@ -732,7 +740,10 @@ JOB_STATUS MoveShard::status() {
 std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
   // arango/Current/ReplicatedLogs/<database>/<replicated-state-id>/supervision/targetVersion
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
   using namespace cluster::paths;
   auto path = aliases::current()
                   ->replicatedLogs()
@@ -784,12 +795,13 @@ JOB_STATUS MoveShard::pendingReplication2() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return FINISHED;
   }
 
   LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
-      << "Precondition failed for MoveShard job " + _jobId;
+      << "Precondition failed for MoveShard job " << _jobId;
   return PENDING;
 }
 
@@ -1130,12 +1142,13 @@ JOB_STATUS MoveShard::pendingLeader() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("ffc21", DEBUG, Logger::SUPERVISION)
-        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+        << "Pending: Move shard " << _shard << " from " << _from << " to "
+        << _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
   LOG_TOPIC("52feb", DEBUG, Logger::SUPERVISION)
-      << "Precondition failed for MoveShard job " + _jobId;
+      << "Precondition failed for MoveShard job " << _jobId;
   return PENDING;
 }
 

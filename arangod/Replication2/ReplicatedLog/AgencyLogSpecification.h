@@ -169,6 +169,7 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
   bool snapshotAvailable{false};
+  replicated_log::LocalStateMachineStatus state;
 
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
@@ -227,6 +228,12 @@ struct LogCurrentSupervision {
     static constexpr std::string_view code = "TargetLeaderExcluded";
     friend auto operator==(TargetLeaderExcluded const& s,
                            TargetLeaderExcluded const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderSnapshotMissing {
+    static constexpr std::string_view code = "TargetLeaderSnapshotMissing";
+    friend auto operator==(TargetLeaderSnapshotMissing const& s,
+                           TargetLeaderSnapshotMissing const& s2) noexcept
         -> bool = default;
   };
   struct TargetLeaderFailed {
@@ -294,11 +301,11 @@ struct LogCurrentSupervision {
 
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
-                   TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, LeaderElectionImpossible,
-                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
-                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
-                   CurrentNotAvailable>;
+                   TargetLeaderSnapshotMissing, TargetLeaderFailed,
+                   TargetNotEnoughParticipants, WaitingForConfigCommitted,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 

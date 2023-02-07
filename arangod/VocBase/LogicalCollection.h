@@ -30,6 +30,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -68,7 +69,6 @@ namespace replication {
 enum class Version;
 }
 namespace replication2 {
-class LogId;
 namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
@@ -242,6 +242,7 @@ class LogicalCollection : public LogicalDataSource {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
 
+  void setDocumentStateId(replication2::LogId id);
   auto getDocumentState()
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
@@ -482,6 +483,9 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+
+  // Temporarily here, used for shards, only on DBServers
+  std::optional<arangodb::replication2::LogId> _replicatedStateId;
 };
 
 }  // namespace arangodb

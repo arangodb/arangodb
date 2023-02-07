@@ -47,7 +47,7 @@ auto DocumentStateShardHandler::createLocalShard(
           {maintenance::DATABASE, _gid.database},
           {maintenance::SERVER_ID, std::move(serverId)},
           {maintenance::THE_LEADER, "replication2"},
-      },
+          {maintenance::REPLICATED_LOG_ID, to_string(_gid.id)}},
       maintenance::HIGHER_PRIORITY, false, properties);
 
   maintenance::CreateCollection collectionCreator(_maintenanceFeature,

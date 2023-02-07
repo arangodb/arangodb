@@ -49,13 +49,12 @@ void DocumentStateMachineFeature::start() {
   auto& networkFeature = s.getFeature<NetworkFeature>();
   auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
-  auto& databaseFeature = s.getFeature<DatabaseFeature>();
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
           s, clusterFeature.agencyCache(), networkFeature.pool(),
-          maintenanceFeature, databaseFeature),
+          maintenanceFeature),
       *transaction::ManagerFeature::manager());
 }
 

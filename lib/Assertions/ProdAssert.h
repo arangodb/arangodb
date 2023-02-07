@@ -51,6 +51,9 @@
 #else  // Production
 
 #include "AssertionLogger.h"
+#include "Basics/system-compiler.h"
+
+#include "Basics/system-compiler.h"
 
 #define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
   (ADB_LIKELY(expr))                                                          \

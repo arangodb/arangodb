@@ -102,7 +102,7 @@ auto MockDocumentStateHandlersFactory::makeRealTransactionHandler(
     -> std::shared_ptr<MockDocumentStateTransactionHandler> {
   auto real = std::make_shared<
       replicated_state::document::DocumentStateTransactionHandler>(
-      gid, std::make_unique<MockDatabaseGuard>(), shared_from_this());
+      gid, nullptr, shared_from_this());
   return std::make_shared<
       testing::NiceMock<MockDocumentStateTransactionHandler>>(std::move(real));
 }

@@ -176,8 +176,6 @@ struct arangodb::VocBaseLogManager {
 
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
-    // TODO handle exceptions, maybe terminate the process if this fails.
-    //      also make sure that leftovers are cleaned up during startup!
     LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
     StorageEngine& engine =
         _server.getFeature<EngineSelectorFeature>().engine();
@@ -203,7 +201,6 @@ struct arangodb::VocBaseLogManager {
         // Invalidate the snapshot in persistent storage.
         metadata->snapshot.updateStatus(
             replication2::replicated_state::SnapshotStatus::kInvalidated);
-        // TODO check return value
         // TODO make sure other methods working on the state, probably meaning
         //      configuration updates, handle an invalidated snapshot correctly.
         if (auto res = storage->updateMetadata(*metadata); res.fail()) {
@@ -283,6 +280,12 @@ struct arangodb::VocBaseLogManager {
         [&](GuardedData& data)
             -> ResultT<std::shared_ptr<
                 replication2::replicated_state::ReplicatedStateBase>> {
+          if (_vocbase.isDropped()) {
+            // Note that this check must happen under the _guardedData mutex, so
+            // there's no race between a create call, and resignAll, which
+            // happens after markAsDropped().
+            return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          }
           auto state = data.buildReplicatedState(
               id, type, parameter, feature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _server,
@@ -446,7 +449,7 @@ struct arangodb::VocBaseLogManager {
         throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
       }
       auto const& stateParams = maybeMetadata->specification.parameters;
-      auto&& stateHandle = state->createStateHandle(stateParams);
+      auto&& stateHandle = state->createStateHandle(vocbase, stateParams);
 
       stateAndLog.connection = log->connect(std::move(stateHandle));
 
@@ -1923,6 +1926,15 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
   _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
+                             CreateDatabaseInfo&& info)
+    : _server(info.server()),
+      _info(std::move(info)),
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
+      _deadlockDetector(false) {}
+#endif
+
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
   // do a final cleanup of collections
@@ -1945,6 +1957,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
       .clear();  // clear map before deallocating TRI_vocbase_t members
   _dataSourceByUuid
       .clear();  // clear map before deallocating TRI_vocbase_t members
+
+  TRI_ASSERT(_logManager->_guardedData.getLockedGuard()->statesAndLogs.empty());
 }
 
 std::string TRI_vocbase_t::path() const {

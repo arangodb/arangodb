@@ -90,7 +90,7 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto prepareCollectionGroups(
       ClusterInfo& ci, std::string_view databaseName,
-      std::vector<CreateCollectionBody> const& collections)
+      std::vector<CreateCollectionBody>& collections)
       -> ResultT<replication2::CollectionGroupUpdates>;
 };
 

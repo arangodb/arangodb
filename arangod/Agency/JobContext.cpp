@@ -36,11 +36,10 @@
 
 using namespace arangodb::consensus;
 
-JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
-                       AgentInterface* agent)
+JobContext::JobContext(JOB_STATUS status, std::string const& id,
+                       Node const& snapshot, AgentInterface* agent)
     : _job(nullptr) {
-  std::string path = pos[status] + id;
-  auto typePair = snapshot.hasAsString(path + "/type");
+  auto typePair = snapshot.hasAsString(pos[status] + id + "/type");
   std::string type;
 
   if (typePair) {

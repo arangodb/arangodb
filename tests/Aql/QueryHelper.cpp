@@ -45,16 +45,18 @@ auto vpackHasNoneRecursive(VPackSlice slice) -> bool {
   }
 
   if (slice.isArray()) {
-    auto iter = VPackArrayIterator(slice);
-    return std::any_of(iter.begin(), iter.end(),
-                       [](auto slice) { return vpackHasNoneRecursive(slice); });
-  }
-  if (slice.isObject()) {
-    auto iter = VPackObjectIterator(slice);
-    return std::any_of(iter.begin(), iter.end(), [](auto pair) {
-      return vpackHasNoneRecursive(pair.key) ||
-             vpackHasNoneRecursive(pair.value);
-    });
+    for (auto it : VPackArrayIterator(slice)) {
+      if (vpackHasNoneRecursive(it)) {
+        return true;
+      }
+    }
+  } else if (slice.isObject()) {
+    for (auto it :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+      if (vpackHasNoneRecursive(it.key) || vpackHasNoneRecursive(it.value)) {
+        return true;
+      }
+    }
   }
 
   return false;

@@ -43,8 +43,8 @@ DocumentFollowerState::DocumentFollowerState(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _shardHandler(handlersFactory->createShardHandler(core->getGid())),
-      _transactionHandler(
-          handlersFactory->createTransactionHandler(core->getGid())),
+      _transactionHandler(handlersFactory->createTransactionHandler(
+          core->getVocbase(), core->getGid())),
       _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
@@ -94,16 +94,6 @@ auto DocumentFollowerState::applyEntries(
        ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
         if (data.didResign()) {
           return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-        }
-
-        if (self->_transactionHandler == nullptr) {
-          // TODO this is a temporary fix, see CINFRA-588
-          LOG_CTX("cfd76", ERR, self->loggerContext) << fmt::format(
-              "Transaction handler is missing from "
-              "DocumentFollowerState {}! This happens if the vocbase cannot be "
-              "found during DocumentState construction.",
-              self->shardId);
-          return Result{};
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {
@@ -196,15 +186,6 @@ auto DocumentFollowerState::applyEntries(
 auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
-  if (_transactionHandler == nullptr) {
-    // TODO this is a temporary fix, see CINFRA-588
-    LOG_CTX("27c2b", ERR, loggerContext) << fmt::format(
-        "Transaction handler is missing from "
-        "DocumentFollowerState {}! This happens if the vocbase cannot be found "
-        "during DocumentState construction.",
-        shardId);
-    return Result{};
-  }
   auto trxId = TransactionId::createFollower();
   auto doc =
       DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
