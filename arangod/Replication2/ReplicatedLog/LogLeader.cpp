@@ -527,7 +527,6 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
-
   // TODO This is a bug and requires a fix. The unique ptr of the stateHandle
   //  should not be dereference without having the _guardedLeaderData lock.
   //  resign could be called in the meantime.
