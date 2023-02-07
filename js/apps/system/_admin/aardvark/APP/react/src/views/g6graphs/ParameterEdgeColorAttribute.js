@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
@@ -23,9 +22,12 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
         }}
         disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
-      <Tooltip placement="bottom" title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
+      <ToolTip
+        title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}
+        setArrow={true}
+      >
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+      </ToolTip>
     </div>
   );
 };
