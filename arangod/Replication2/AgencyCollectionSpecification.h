@@ -33,6 +33,7 @@
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::agency {
 
@@ -67,13 +68,23 @@ struct CollectionGroup {
   Attributes attributes;
 };
 
-struct CollectionGroupTargetSpecification : public CollectionGroup {};
+struct CollectionGroupTargetSpecification : public CollectionGroup {
+  std::optional<uint64_t> version;
+};
 
 struct CollectionGroupPlanSpecification : public CollectionGroup {
   struct ShardSheaf {
     LogId replicatedLog;
   };
   std::vector<ShardSheaf> shardSheaves;
+};
+
+struct CollectionGroupCurrentSpecification {
+  struct Supervision {
+    std::optional<uint64_t> version;
+  };
+
+  Supervision supervision;
 };
 
 /***
