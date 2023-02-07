@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Checkbox, Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import Checkbox from "../../components/pure-css/form/Checkbox";
+import ToolTip from '../../components/arango/tootip';
 
 const ParameterEdgeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -12,6 +12,8 @@ const ParameterEdgeColorByCollection = () => {
   return (
     <div>
       <Checkbox
+        label='Color edges by collection'
+        inline
         checked={edgeColorByCollection}
         onChange={() => {
           const newEdgeColorByCollection = !edgeColorByCollection;
@@ -20,12 +22,13 @@ const ParameterEdgeColorByCollection = () => {
           setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
+      />
+      <ToolTip
+        title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}
+        setArrow={true}
       >
-        Color edges by collection
-      </Checkbox>
-      <Tooltip placement="bottom" title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+      </ToolTip>
     </div>
   );
 };
