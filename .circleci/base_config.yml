@@ -181,7 +181,7 @@ jobs:
           command: ulimit -c unlimited
       - run:
           name: Install dependencies
-          command: pip install psutil
+          command: pip install psutil py7zr && sudo apt update && sudo apt install 7zip
       - run:
           name: Run << parameters.suiteName >> tests
           command: |
