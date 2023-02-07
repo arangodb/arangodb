@@ -75,7 +75,7 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
       SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=debug
+      SCCACHE_LOG: info,sccache::cache=info
     steps:
       - run:
           name: Checkout
@@ -93,7 +93,6 @@ jobs:
           name: Build
           command: |
             cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
-            cat /tmp/sccache.log
       - run:
           name: Size leaderboard
           command: |
@@ -188,11 +187,6 @@ jobs:
           command: |
             mkdir work
             python3 scripts/test/test_launch_controller.py << parameters.suites >> --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> --extraArgs "<< parameters.extraArgs >>" --definition tests/test-definitions.txt
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/
