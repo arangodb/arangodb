@@ -202,7 +202,7 @@ if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif ()
 
-# enable dtrace
+# enable code coverage
 option(USE_COVERAGE "enable gcov code coverage" OFF)
 if (USE_COVERAGE)
   add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
