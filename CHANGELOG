@@ -2,8 +2,8 @@ devel
 -----
 
 * BTS-1193: Fix for schema update. When removing a field and then inserting a 
- new field into the schema, previously, both old and new schema would be 
- merged, meaning it would maintain the old field and add the new one. 
+  new field into the schema, previously, both old and new schema would be 
+  merged, meaning it would maintain the old field and add the new one. 
 
 * Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
   CVE-2020-36604 in joi.
