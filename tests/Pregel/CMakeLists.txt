@@ -3,6 +3,7 @@
 # we intent to remove the TypedBuffer construct soon
 add_library(arango_tests_pregel OBJECT
   DurationTest.cpp
+  PregelShardTest.cpp
   StatusTest.cpp)
 
 target_include_directories(arango_tests_pregel

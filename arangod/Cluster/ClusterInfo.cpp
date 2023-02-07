@@ -4112,7 +4112,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
-  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
+  VPackBuilder builder =
+      VPackCollection::merge(collection, temp.slice(), false);
 
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
@@ -6076,7 +6077,7 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader,"
+        << "getResponsibleServerReplication1: found resigned leader, "
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
