@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Checkbox, Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import Checkbox from "../../components/pure-css/form/Checkbox";
+import ToolTip from '../../components/arango/tootip';
 
 const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -12,6 +12,8 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
   return (
     <div>
       <Checkbox
+        label='Show collection name'
+        inline
         checked={nodeLabelByCollection}
         onChange={() => {
           const newNodeLabelByCollection = !nodeLabelByCollection;
@@ -20,12 +22,13 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
           setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
+      />
+      <ToolTip
+        title={"Adds a collection name to the node label."}
+        setArrow={true}
       >
-        Show collection name
-      </Checkbox>
-      <Tooltip placement="bottom" title={"Adds a collection name to the node label."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+      </ToolTip>
     </div>
   );
 };
