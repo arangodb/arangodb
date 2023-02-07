@@ -1213,12 +1213,13 @@ std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
 
   // Get the collection group
   auto groupPath =
-      "Target/CollectionGroups/" + db + "/" + std::to_string(groupId.getUInt());
+      "Plan/CollectionGroups/" + db + "/" + std::to_string(groupId.getUInt());
   auto groupNode = snap.get(groupPath);
   if (not groupNode.has_value()) {
     return std::nullopt;
   }
-  auto group = velocypack::deserialize<replication2::agency::CollectionGroup>(
+  auto group = velocypack::deserialize<
+      replication2::agency::CollectionGroupPlanSpecification>(
       groupNode->get().toBuilder().slice());
   TRI_ASSERT(shardIndex < group.shardSheaves.size());
   auto logId = group.shardSheaves.at(shardIndex).replicatedLog;

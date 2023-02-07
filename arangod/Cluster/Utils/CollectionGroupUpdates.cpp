@@ -38,15 +38,16 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
     UserInputCollectionProperties const& collection,
     std::function<uint64_t()> const& generateId) {
   auto newId = agency::CollectionGroupId(generateId());
-  agency::CollectionGroup g;
+  agency::CollectionGroupPlanSpecification g;
   g.id = newId;
-  g.attributes.waitForSync = false;
-  g.attributes.writeConcern = 1;
+  g.attributes.mutableAttributes.waitForSync = false;
+  g.attributes.mutableAttributes.writeConcern = 1;
   g.collections.emplace(::toCollectionIdString(collection.id),
                         agency::CollectionGroup::Collection{});
   for (std::size_t it(0); it < collection.numberOfShards; ++it) {
     g.shardSheaves.emplace_back(
-        agency::CollectionGroup::ShardSheaf{LogId{generateId()}});
+        agency::CollectionGroupPlanSpecification::ShardSheaf{
+            LogId{generateId()}});
   }
   newGroups.emplace_back(std::move(g));
   return newId;
