@@ -1720,7 +1720,8 @@ void ClusterInfo::loadPlan() {
         CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroup>();
+          auto spec = std::make_shared<
+              replication2::agency::CollectionGroupPlanSpecification>();
           velocypack::deserialize(groupSlice, *spec);
           groups.emplace(spec->id, std::move(spec));
         }
@@ -3020,12 +3021,11 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
     VPackBuilder groupsBuilder;
     std::ignore =
-        agencyCache.get(groupsBuilder, "Target/CollectionGroups/" + name);
+        agencyCache.get(groupsBuilder, "Plan/CollectionGroups/" + name);
     auto groupsSlice = groupsBuilder.slice();
     for (auto const& group : VPackObjectIterator(groupsSlice)) {
-      auto collectionGroup =
-          velocypack::deserialize<replication2::agency::CollectionGroup>(
-              group.value);
+      auto collectionGroup = velocypack::deserialize<
+          replication2::agency::CollectionGroupPlanSpecification>(group.value);
       for (auto const& shardSheaf : collectionGroup.shardSheaves) {
         replicatedStates.emplace_back(shardSheaf.replicatedLog);
       }
@@ -4048,18 +4048,18 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       velocypack::Slice shardsR2Slice = collectionSlice.get("shardsR2");
       TRI_ASSERT(shardsR2Slice.isArray());
 
+      // TODO: Needs to be moved to Target as soon as supervision is completed
       auto [groupsBuilder, _] = agencyCache.read(std::vector<std::string>{
-          AgencyCommHelper::path("Target/CollectionGroups/" + dbName + "/" +
+          AgencyCommHelper::path("Plan/CollectionGroups/" + dbName + "/" +
                                  std::to_string(groupId.id()))});
 
       velocypack::Slice groupsSlice =
           groupsBuilder->slice()[0].get(std::initializer_list<std::string_view>{
-              AgencyCommHelper::path(), "Target", "CollectionGroups", dbName,
+              AgencyCommHelper::path(), "Plan", "CollectionGroups", dbName,
               std::to_string(groupId.id())});
 
-      auto collectionGroup =
-          velocypack::deserialize<replication2::agency::CollectionGroup>(
-              groupsSlice);
+      auto collectionGroup = velocypack::deserialize<
+          replication2::agency::CollectionGroupPlanSpecification>(groupsSlice);
 
       TRI_ASSERT(shardsR2Slice.length() == collectionGroup.shardSheaves.size());
       std::size_t shardSheafIdx = 0;

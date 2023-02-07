@@ -607,7 +607,7 @@ const getShardsToLogsMapping = function (dbName, colId) {
   if (colPlan.hasOwnProperty("groupId")) {
     const groupId = colPlan.groupId;
     const shards = colPlan.shardsR2;
-    const colGroup = readAgencyValueAt(`Target/CollectionGroups/${dbName}/${groupId}`);
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
     const shardSheaves = colGroup.shardSheaves;
     for (let idx = 0; idx < shards.length; ++idx) {
       mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
