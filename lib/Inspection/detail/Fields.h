@@ -288,7 +288,7 @@ struct EmbeddedFieldsWithObjectInvariant : EmbeddedFields<Inspector> {
   }
 
   Status checkInvariant() override {
-    return Inspector::Base::template checkInvariant<
+    return Inspector::Base::template doCheckInvariant<
         detail::ObjectInvariantFailedError>(std::forward<Invariant>(invariant),
                                             object);
   }

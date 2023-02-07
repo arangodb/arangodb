@@ -46,7 +46,8 @@ class SharedAqlItemBlockPtr;
 class QueryResultCursor final : public arangodb::Cursor {
  public:
   QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
-                    size_t batchSize, double ttl, bool hasCount);
+                    size_t batchSize, double ttl, bool hasCount,
+                    bool isRetriable);
 
   ~QueryResultCursor() = default;
 
@@ -89,8 +90,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize,
-                    double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
+                    bool isRetriable);
 
   ~QueryStreamCursor();
 

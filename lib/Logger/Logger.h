@@ -212,28 +212,6 @@ class Logger {
     int _precision;
   };
 
-  struct CHARS {
-    CHARS(char const* data, size_t size) noexcept : data(data), size(size) {}
-    char const* data;
-    size_t size;
-  };
-
-  struct BINARY {
-    BINARY(void const* baseAddress, size_t size)
-    noexcept : baseAddress(baseAddress), size(size) {}
-    explicit BINARY(std::string const& data) noexcept
-        : BINARY(data.data(), data.size()) {}
-    void const* baseAddress;
-    size_t size;
-  };
-
-  struct RANGE {
-    RANGE(void const* baseAddress, size_t size)
-    noexcept : baseAddress(baseAddress), size(size) {}
-    void const* baseAddress;
-    size_t size;
-  };
-
   struct LINE {
     explicit LINE(int line) noexcept : _line(line) {}
     int _line;

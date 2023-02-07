@@ -336,7 +336,7 @@ function GenericAqlSetupPathSuite(type) {
       case "SearchAliasView":
         return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Satellite":
         return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'v'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
@@ -356,7 +356,7 @@ function GenericAqlSetupPathSuite(type) {
       case "View":
         return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "SearchAliasView":
-        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${searchAliasViewName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "InvertedIndex":
         return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Satellite":
@@ -380,7 +380,7 @@ function GenericAqlSetupPathSuite(type) {
       case "SearchAliasView":
         return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;  
+        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;  
       case "Satellite":
         return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       default:

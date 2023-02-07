@@ -27,9 +27,6 @@
 #include "Basics/Thread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
@@ -37,7 +34,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
 
-#include <condition_variable>
 #include <mutex>
 #include <memory>
 #include <vector>
@@ -48,6 +44,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class IOHeartbeatThread;
 class LogicalCollection;
 }  // namespace arangodb
 
@@ -75,36 +72,6 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   }
 };
 
-class IOHeartbeatThread final : public ServerThread<ArangodServer> {
- public:
-  IOHeartbeatThread(IOHeartbeatThread const&) = delete;
-  IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
-
-  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature);
-  ~IOHeartbeatThread();
-
-  void run() override;
-  void wakeup() {
-    std::lock_guard<std::mutex> guard(_mutex);
-    _cv.notify_one();
-  }
-
- private:
-  // how long will the thread pause between iterations, in case of trouble:
-  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble =
-      std::chrono::seconds(1);
-  // how long will the thread pause between iterations:
-  static constexpr std::chrono::duration<int64_t> checkIntervalNormal =
-      std::chrono::seconds(15);
-
-  std::mutex _mutex;
-  std::condition_variable _cv;  // for waiting with wakeup
-
-  metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
-  metrics::Counter& _failures;
-  metrics::Counter& _delays;
-};
-
 class DatabaseFeature : public ArangodFeature {
   friend class DatabaseManagerThread;
 
@@ -112,6 +79,7 @@ class DatabaseFeature : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(Server& server);
+  ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -121,9 +89,9 @@ class DatabaseFeature : public ArangodFeature {
   void unprepare() override final;
   void prepare() override final;
 
-  // used by catch tests
+  // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
+  ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif

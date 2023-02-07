@@ -272,7 +272,7 @@ struct BoostScorer : public irs::sort {
    public:
     Prepared() = default;
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
@@ -293,7 +293,7 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+        irs::SubReader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_provider const&, irs::score_t boost) const override {
       struct ScoreCtx : public irs::score_ctx {
         explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
@@ -330,7 +330,7 @@ struct CustomScorer : public irs::sort {
    public:
     Prepared(float_t i) : i(i) {}
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
@@ -350,7 +350,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::ScoreFunction prepare_scorer(irs::sub_reader const&,
+    virtual irs::ScoreFunction prepare_scorer(irs::SubReader const&,
                                               irs::term_reader const&,
                                               irs::byte_type const*,
                                               irs::attribute_provider const&,
@@ -751,7 +751,7 @@ void assertFilterOptimized(
         .trx = &trx,
         .ast = plan->getAst(),
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = &viewNode->outVariable(),
         .filterOptimization = viewNode->filterOptimization(),
         .isSearchQuery = true};
@@ -773,6 +773,9 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/) {
+  SCOPED_TRACE(testing::Message("assertExpressionFilter failed for query: <")
+               << queryString << ">");
+
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
@@ -841,7 +844,7 @@ void assertExpressionFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = &exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
 
@@ -862,42 +865,46 @@ void assertExpressionFilter(
   }
 }
 
-void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
-  EXPECT_EQ(expected.boost(), actual.boost());
-
+static bool assertFilterBoostImpl(irs::filter const& expected,
+                                  irs::filter const& actual) {
+  if (expected.boost() != actual.boost()) {
+    return false;
+  }
   auto* expectedBooleanFilter =
       dynamic_cast<irs::boolean_filter const*>(&expected);
-
   if (expectedBooleanFilter) {
     auto* actualBooleanFilter =
         dynamic_cast<irs::boolean_filter const*>(&actual);
-    ASSERT_NE(nullptr, actualBooleanFilter);
-    ASSERT_EQ(expectedBooleanFilter->size(), actualBooleanFilter->size());
+    if (actualBooleanFilter == nullptr ||
+        expectedBooleanFilter->size() != actualBooleanFilter->size()) {
+      return false;
+    }
 
     auto expectedBegin = expectedBooleanFilter->begin();
     auto expectedEnd = expectedBooleanFilter->end();
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      assertFilterBoost(*expectedBegin, *actualBegin);
+      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+        return false;
+      }
       ++expectedBegin;
       ++actualBegin;
     }
 
-    return;  // we're done
+    return true;
   }
-
   auto* expectedNegationFilter = dynamic_cast<irs::Not const*>(&expected);
-
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    ASSERT_NE(nullptr, actualNegationFilter);
-
-    assertFilterBoost(*expectedNegationFilter->filter(),
-                      *actualNegationFilter->filter());
-
-    return;  // we're done
+    return actualNegationFilter != nullptr &&
+           assertFilterBoostImpl(*expectedNegationFilter->filter(),
+                                 *actualNegationFilter->filter());
   }
+  return true;
+}
+void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
+  EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
 }
 
 void buildActualFilter(
@@ -977,7 +984,7 @@ void buildActualFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1082,7 +1089,7 @@ void assertFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
         .namePrefix = arangodb::iresearch::nestedRoot(hasNested),
@@ -1092,13 +1099,16 @@ void assertFilter(
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
         .query = ctx, .contextAnalyzer = analyzer};
-    EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
-                          &actual, filterCtx, *filterNode)
-                          .ok());
-
+    auto r = arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
+                                                        *filterNode);
     if (execOk) {
-      EXPECT_EQ(expected, actual);
-      assertFilterBoost(expected, actual);
+      EXPECT_TRUE(r.ok()) << r.errorMessage();
+      if (r.ok()) {
+        EXPECT_EQ(expected, actual);
+        EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
+      }
+    } else {
+      EXPECT_FALSE(r.ok());
     }
   }
 }

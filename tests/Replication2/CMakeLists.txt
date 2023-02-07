@@ -88,11 +88,12 @@ target_include_directories(arango_tests_replication2 PUBLIC
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
 target_link_libraries(arango_tests_replication2
+  PRIVATE
+    arango_replication2
     gtest
     gmock
     arango
     arango_futures
-    arango_replication2
     velocypack
     fmt)
 
@@ -106,16 +107,14 @@ else()
 endif()
 
 target_link_libraries(arangodbtests_replication2
-    gtest
-    arango_tests_basics
     arango_tests_replication2
+    arango_tests_basics
     arango_agency
     arango_cluster_engine
     arango_rocksdb
     arango_v8server
     arangoserver
-    boost_boost
-    fmt)
+    boost_boost)
 
 add_test(NAME replication2
          COMMAND arangodbtests_replication2)

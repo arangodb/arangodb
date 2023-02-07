@@ -25,8 +25,6 @@
 #include <map>
 #include <sstream>
 
-#include <unicode/unistr.h>
-
 #include "IniFileParser.h"
 
 #include "Basics/Common.h"

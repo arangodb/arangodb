@@ -2539,16 +2539,16 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
   struct DataStore {
     irs::memory_directory dir;
-    irs::directory_reader reader;
-    irs::index_writer::ptr writer;
+    irs::DirectoryReader reader;
+    irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
-      writer->commit();
+      writer->Commit();
 
-      reader = irs::directory_reader::open(dir);
+      reader = irs::DirectoryReader(dir);
     }
   };
 
@@ -2572,25 +2572,25 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     // insert document
     {
-      auto ctx = writer->documents();
-      auto doc = ctx.insert();
+      auto ctx = writer->GetBatch();
+      auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
+      EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
     }
-    writer->commit();
+    writer->Commit();
 
     ++size;
   }
 
-  store0.reader = store0.reader->reopen();
+  store0.reader = store0.reader->Reopen();
   EXPECT_EQ(size, store0.reader->size());
   EXPECT_EQ(size, store0.reader->docs_count());
 
-  store1.writer->import(*store0.reader);
-  store1.writer->commit();
+  store1.writer->Import(*store0.reader);
+  store1.writer->Commit();
 
-  auto reader = store1.reader->reopen();
+  auto reader = store1.reader->Reopen();
   ASSERT_TRUE(reader);
   EXPECT_EQ(1, reader->size());
   EXPECT_EQ(size, reader->docs_count());
@@ -2716,16 +2716,16 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
   struct DataStore {
     irs::memory_directory dir;
-    irs::directory_reader reader;
-    irs::index_writer::ptr writer;
+    irs::DirectoryReader reader;
+    irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
-      writer->commit();
+      writer->Commit();
 
-      reader = irs::directory_reader::open(dir);
+      reader = irs::DirectoryReader(dir);
     }
   };
 
@@ -2746,10 +2746,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
     // insert document
     {
-      auto ctx = store.writer->documents();
-      auto doc = ctx.insert();
+      auto ctx = store.writer->GetBatch();
+      auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
+      EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
       ++expectedDocs;
       ++expectedLiveDocs;
@@ -2761,15 +2761,15 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     arangodb::iresearch::Field field;
     auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
         arangodb::LocalDocumentId(12345));
-    auto ctx = store.writer->documents();
-    auto doc = ctx.insert();
+    auto ctx = store.writer->GetBatch();
+    auto doc = ctx.Insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
+    EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
     EXPECT_TRUE(doc);
   }
 
-  store.writer->commit();
-  store.reader = store.reader->reopen();
+  store.writer->Commit();
+  store.reader = store.reader->Reopen();
   EXPECT_EQ(1, store.reader->size());
   EXPECT_EQ(expectedDocs + 1,
             store.reader->docs_count());  // +1 for keep-alive doc
@@ -3295,15 +3295,15 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "geo_field", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "keys2", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "keys2", "my_geo");
       },
       [](auto& server, auto const& it) {
@@ -3331,7 +3331,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleNumeric("array[*].id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
@@ -3347,11 +3347,11 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {

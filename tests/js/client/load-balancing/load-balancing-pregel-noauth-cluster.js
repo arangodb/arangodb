@@ -110,7 +110,6 @@ function PregelSuite () {
           resultField: "result",
           store: false
         },
-        store: false
       };
       let ids = [];
       for (let i = 0; i < 5; ++i) {

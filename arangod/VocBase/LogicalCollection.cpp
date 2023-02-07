@@ -71,18 +71,6 @@ using Helper = basics::VelocyPackHelper;
 
 namespace {
 
-static std::string translateStatus(TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    default:
-      return "unknown";
-  }
-}
-
 std::string readGloballyUniqueId(velocypack::Slice info) {
   auto guid = basics::VelocyPackHelper::getStringValue(
       info, StaticStrings::DataSourceGuid, StaticStrings::Empty);
@@ -148,8 +136,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
           info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
-      _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
-          info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isDisjoint(
@@ -160,10 +146,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 #endif
       _allowUserKeys(
           Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
-      _waitForSync(Helper::getBooleanValue(
-          info, StaticStrings::WaitForSyncString, false)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _waitForSync(Helper::getBooleanValue(
+          info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
       _physical(vocbase.server()
@@ -172,7 +158,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                     .createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
-    _usesRevisionsAsDocumentIds.store(false);
+    _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
   }
 
@@ -468,31 +454,10 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   return numberOfShards() != 1;
 }
 
-uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
-
-TRI_col_type_e LogicalCollection::type() const { return _type; }
-
-TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
-
-TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _statusLock);
-  return _status;
-}
-
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
   WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
-}
-
-TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _statusLock);
-  if (locker.isLocked()) {
-    didFetch = true;
-    return _status;
-  }
-  didFetch = false;
-  return TRI_VOC_COL_STATUS_CORRUPTED;
 }
 
 // SECTION: Properties
@@ -519,7 +484,7 @@ void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
 #endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
-  return _usesRevisionsAsDocumentIds.load(std::memory_order_relaxed);
+  return _usesRevisionsAsDocumentIds;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
@@ -585,15 +550,9 @@ Result LogicalCollection::rename(std::string&& newName) {
         "failed to find feature 'Database' while renaming collection");
   }
 
-  // Check for illegal states.
-  if (_status != TRI_VOC_COL_STATUS_LOADED) {
-    if (_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    } else if (_status == TRI_VOC_COL_STATUS_DELETED) {
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    }
-    // Unknown status
-    return TRI_ERROR_INTERNAL;
+  // Check for illegal state.
+  if (deleted()) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   std::string oldName = name();
@@ -604,6 +563,7 @@ Result LogicalCollection::rename(std::string&& newName) {
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
     engine.changeCollection(vocbase(), *this);
+    ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -616,9 +576,6 @@ Result LogicalCollection::rename(std::string&& newName) {
     return {TRI_ERROR_INTERNAL};
   }
 
-  // CHECK if this ordering is okay. Before change the version was increased
-  // after swapping in vocbase mapping.
-  increaseV8Version();
   return {};
 }
 
@@ -629,18 +586,10 @@ Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  deleted(true);
+  setDeleted();
   _physical->drop();
 
   return {};
-}
-
-void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
-  _status = status;
-
-  if (status == TRI_VOC_COL_STATUS_LOADED) {
-    increaseV8Version();
-  }
 }
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
@@ -739,8 +688,17 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
-  build.add("status", VPackValue(_status));
-  build.add("statusString", VPackValue(::translateStatus(_status)));
+
+  // there are no collection statuses anymore, but we need to keep
+  // API-compatibility. so the following attributes' values are hard-coded.
+  if (deleted()) {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+    build.add("statusString", VPackValue("deleted"));
+  } else {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+    build.add("statusString", VPackValue("loaded"));
+  }
+
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
@@ -838,8 +796,6 @@ void LogicalCollection::includeVelocyPackEnterprise(
   // We ain't no Enterprise Edition
 }
 #endif
-
-void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(_sharding != nullptr);
