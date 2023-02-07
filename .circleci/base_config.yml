@@ -210,7 +210,7 @@ workflows:
           name: clang-format
           requires:
             - minimal-checkout
-  devel-pr:
+  community-pr:
     when:
       matches:
         pattern: /^(bug-fix|feature|chore)\/.*$/

@@ -234,7 +234,7 @@ def generate_output(args, tests):
     with open(args.base_config, "r", encoding="utf-8") as instream:
         with open(args.output, "w", encoding="utf-8") as outstream:
             config = yaml.safe_load(instream)
-            jobs = config["workflows"]["devel-pr"]["jobs"]
+            jobs = config["workflows"]["community-pr"]["jobs"]
             for test in tests:
                 print("test: {}".format(test))
                 if "cluster" in test["flags"]:
