@@ -4112,7 +4112,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
-  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
+  VPackBuilder builder =
+      VPackCollection::merge(collection, temp.slice(), false);
 
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
