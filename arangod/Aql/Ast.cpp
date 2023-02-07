@@ -1893,7 +1893,8 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     }
   } else {
     // user-defined function (UDF)
-    if (!_query.vocbase()
+    if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
+        !_query.vocbase()
              .server()
              .getFeature<V8DealerFeature>()
              .allowJavaScriptUdfs()) {
