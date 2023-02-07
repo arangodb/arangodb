@@ -816,14 +816,16 @@ arangodb::Result visitAnalyzers(
     }
 
     arangodb::Result res;
-    if (!coords.empty() &&
-        !vocbase.isSystem() && // System database could be on other server so OneShard optimization will not work
-        (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard() ||
-          vocbase.isOneShard())) {
+    if (!coords.empty() && !vocbase.isSystem() &&  // System database could be on other server so OneShard optimization will not work
+        vocbase.isOneShard()) {
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       auto& clusterInfo = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-      auto collection = clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
+      auto collection =
+          clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
       if (!collection) {
-        return {}; // treat missing collection as if there are no analyzers
+        return {};  // treat missing collection as if there are no analyzers
       }
 
       auto shards = collection->shardIds();
