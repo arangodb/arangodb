@@ -53,9 +53,10 @@ inline constexpr auto StringFollower = std::string_view{"follower"};
 
 enum class LeaderInternalState {
   kUninitializedState,
-  kWaitingForLeadershipEstablished,
+  // kWaitingForLeadershipEstablished,
   kRecoveryInProgress,
-  kServiceStarting,
+  kRecoveryFailed,
+  // kServiceStarting,
   kServiceAvailable,
 };
 
@@ -71,14 +72,20 @@ struct LeaderInternalStateStringTransformer {
 struct LeaderStatus {
   using clock = std::chrono::system_clock;
 
-  // struct ManagerState {
-  //   LeaderInternalState state{};
-  //   clock::time_point lastChange{};
-  //   std::optional<std::string> detail;
-  // };
-  //
-  // ManagerState managerState;
-  StateGeneration generation;
+  struct ManagerState {
+    LeaderInternalState state = LeaderInternalState::kUninitializedState;
+    clock::time_point lastChange = clock::now();
+    std::optional<std::string> detail;
+
+    void setState(LeaderInternalState state_,
+                  std::optional<std::string> detail_ = std::nullopt) {
+      state = state_;
+      lastChange = clock::now();
+      detail = std::move(detail_);
+    }
+  };
+
+  ManagerState managerState;
   SnapshotInfo snapshot;
 };
 
@@ -86,21 +93,20 @@ template<class Inspector>
 auto inspect(Inspector& f, LeaderStatus& x) {
   auto role = std::string{static_strings::StringLeader};
   return f.object(x).fields(
-      f.field(static_strings::StringGeneration, x.generation),
       f.field(static_strings::StringSnapshot, x.snapshot),
-      // f.field(static_strings::StringManager, x.managerState),
+      f.field(static_strings::StringManager, x.managerState),
       f.field(static_strings::StringRole, role));
 }
 
-// template<class Inspector>
-// auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
-//   return f.object(x).fields(
-//       f.field(static_strings::StringManagerState, x.state)
-//           .transformWith(LeaderInternalStateStringTransformer{}),
-//       f.field(static_strings::StringLastChange, x.lastChange)
-//           .transformWith(inspection::TimeStampTransformer{}),
-//       f.field(static_strings::StringDetail, x.detail));
-// }
+template<class Inspector>
+auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
+  return f.object(x).fields(
+      f.field(static_strings::StringManagerState, x.state)
+          .transformWith(LeaderInternalStateStringTransformer{}),
+      f.field(static_strings::StringLastChange, x.lastChange)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field(static_strings::StringDetail, x.detail));
+}
 
 enum class FollowerInternalState {
   kUninitializedState,
@@ -131,7 +137,6 @@ struct FollowerStatus {
   };
 
   ManagerState managerState;
-  StateGeneration generation;
   SnapshotInfo snapshot;
   LogIndex lastAppliedIndex;
 };
@@ -140,7 +145,6 @@ template<class Inspector>
 auto inspect(Inspector& f, FollowerStatus& x) {
   auto role = std::string{static_strings::StringFollower};
   return f.object(x).fields(
-      f.field(static_strings::StringGeneration, x.generation),
       f.field(static_strings::StringSnapshot, x.snapshot),
       f.field(static_strings::StringManager, x.managerState),
       f.field(static_strings::StringLastAppliedIndex, x.lastAppliedIndex),
@@ -158,7 +162,6 @@ auto inspect(Inspector& f, FollowerStatus::ManagerState& x) {
 }
 
 struct UnconfiguredStatus {
-  StateGeneration generation;
   SnapshotInfo snapshot;
   auto operator==(UnconfiguredStatus const&) const noexcept -> bool = default;
 };
@@ -166,10 +169,8 @@ struct UnconfiguredStatus {
 template<class Inspector>
 auto inspect(Inspector& f, UnconfiguredStatus& x) {
   auto role = std::string{static_strings::StringUnconfigured};
-  return f.object(x).fields(
-      f.field(static_strings::StringGeneration, x.generation),
-      f.field(static_strings::StringSnapshot, x.snapshot),
-      f.field(static_strings::StringRole, role));
+  return f.object(x).fields(f.field(static_strings::StringSnapshot, x.snapshot),
+                            f.field(static_strings::StringRole, role));
 }
 
 struct StateStatus {
@@ -187,11 +188,6 @@ struct StateStatus {
   [[nodiscard]] auto getSnapshotInfo() const noexcept -> SnapshotInfo const& {
     return std::visit(
         [](auto&& s) -> SnapshotInfo const& { return s.snapshot; }, variant);
-  }
-
-  [[nodiscard]] auto getGeneration() const noexcept -> StateGeneration {
-    return std::visit([](auto&& s) -> StateGeneration { return s.generation; },
-                      variant);
   }
 
   void toVelocyPack(velocypack::Builder&) const;

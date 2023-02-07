@@ -26,7 +26,6 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/WaitForQueue.h"
@@ -215,6 +214,9 @@ struct LeaderStateManager
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
     std::shared_ptr<StreamImpl> _stream;
     bool _recoveryCompleted{false};
+    LeaderStatus::ManagerState _status{
+        .state = LeaderInternalState::kUninitializedState,
+        .lastChange = std::chrono::system_clock::now()};
   };
   Guarded<GuardedData> _guardedData;
 };

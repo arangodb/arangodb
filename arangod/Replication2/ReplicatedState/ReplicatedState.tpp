@@ -387,19 +387,28 @@ auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
 template<typename S>
 void LeaderStateManager<S>::recoverEntries() {
   LOG_CTX("1b3d0", DEBUG, _loggerContext) << "starting recovery";
-  auto future = _guardedData.getLockedGuard()->recoverEntries();
-  std::move(future).thenFinal(
-      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
-        // TODO error handling
-        ADB_PROD_ASSERT(tryResult.hasValue());
-        ADB_PROD_ASSERT(tryResult.get().ok()) << tryResult.get();
-        if (auto self = weak.lock(); self != nullptr) {
-          auto guard = self->_guardedData.getLockedGuard();
-          guard->_leaderState->onRecoveryCompleted();
-          guard->_recoveryCompleted = true;
-          LOG_CTX("1b3de", INFO, self->_loggerContext) << "recovery completed";
-        }
-      });
+  auto future = _guardedData.doUnderLock([](GuardedData& data) {
+    data._status.setState(LeaderInternalState::kRecoveryInProgress);
+    return data.recoverEntries();
+  });
+  std::move(future).thenFinal([weak = this->weak_from_this()](
+                                  futures::Try<Result>&& tryResult) {
+    // TODO error handling
+    ADB_PROD_ASSERT(tryResult.hasValue());
+    ADB_PROD_ASSERT(tryResult.get().ok()) << tryResult.get();
+    if (std::shared_ptr<LeaderStateManager<S>> self = weak.lock();
+        self != nullptr) {
+      auto guard = self->_guardedData.getLockedGuard();
+      if (tryResult.hasValue() && tryResult.get().ok()) {
+        guard->_leaderState->onRecoveryCompleted();
+        guard->_recoveryCompleted = true;
+        guard->_status.setState(LeaderInternalState::kServiceAvailable);
+        LOG_CTX("1b3de", INFO, self->_loggerContext) << "recovery completed";
+      } else {
+        guard->_status.setState(LeaderInternalState::kRecoveryFailed);
+      }
+    }
+  });
 }
 
 template<typename S>
@@ -439,7 +448,10 @@ auto LeaderStateManager<S>::resign() && noexcept
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
-  // TODO remove
+
+  status.managerState = _guardedData.doUnderLock(
+      [](GuardedData const& data) { return data._status; });
+
   return StateStatus{.variant = std::move(status)};
 }
 

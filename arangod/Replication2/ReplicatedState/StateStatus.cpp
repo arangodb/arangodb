@@ -36,12 +36,13 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 
 namespace {
-inline constexpr std::string_view StringWaitingForLeadershipEstablished =
-    "WaitingForLeadershipEstablished";
+// inline constexpr std::string_view StringWaitingForLeadershipEstablished =
+//     "WaitingForLeadershipEstablished";
 inline constexpr std::string_view StringRecoveryInProgress =
     "RecoveryInProgress";
+inline constexpr std::string_view StringRecoveryFailed = "RecoveryFailed";
 inline constexpr std::string_view StringServiceAvailable = "ServiceAvailable";
-inline constexpr std::string_view StringServiceStarting = "ServiceStarting";
+// inline constexpr std::string_view StringServiceStarting = "ServiceStarting";
 
 inline constexpr std::string_view StringWaitForLeaderConfirmation =
     "WaitForLeaderConfirmation";
@@ -61,12 +62,14 @@ auto replicated_state::to_string(LeaderInternalState state) noexcept
   switch (state) {
     case LeaderInternalState::kUninitializedState:
       return StringUninitializedState;
-    case LeaderInternalState::kWaitingForLeadershipEstablished:
-      return StringWaitingForLeadershipEstablished;
+    // case LeaderInternalState::kWaitingForLeadershipEstablished:
+    //   return StringWaitingForLeadershipEstablished;
     case LeaderInternalState::kRecoveryInProgress:
       return StringRecoveryInProgress;
-    case LeaderInternalState::kServiceStarting:
-      return StringServiceStarting;
+    case LeaderInternalState::kRecoveryFailed:
+      return StringRecoveryFailed;
+    // case LeaderInternalState::kServiceStarting:
+    //   return StringServiceStarting;
     case LeaderInternalState::kServiceAvailable:
       return StringServiceAvailable;
   }
@@ -160,12 +163,14 @@ auto LeaderInternalStateStringTransformer::fromSerialized(
     -> inspection::Status {
   if (source == StringUninitializedState) {
     target = LeaderInternalState::kUninitializedState;
-  } else if (source == StringWaitingForLeadershipEstablished) {
-    target = LeaderInternalState::kWaitingForLeadershipEstablished;
+    // } else if (source == StringWaitingForLeadershipEstablished) {
+    //   target = LeaderInternalState::kWaitingForLeadershipEstablished;
   } else if (source == StringRecoveryInProgress) {
     target = LeaderInternalState::kRecoveryInProgress;
-  } else if (source == StringServiceStarting) {
-    target = LeaderInternalState::kServiceStarting;
+  } else if (source == StringRecoveryFailed) {
+    target = LeaderInternalState::kRecoveryFailed;
+    // } else if (source == StringServiceStarting) {
+    //   target = LeaderInternalState::kServiceStarting;
   } else if (source == StringServiceAvailable) {
     target = LeaderInternalState::kServiceAvailable;
   } else {

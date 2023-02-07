@@ -41,7 +41,6 @@ namespace arangodb::replication2::replicated_state {
 struct PersistedStateInfo {
   LogId stateId;  // could be removed
   SnapshotInfo snapshot;
-  StateGeneration generation;
   replication2::agency::ImplementationSpec specification;
 };
 
@@ -49,7 +48,6 @@ template<class Inspector>
 auto inspect(Inspector& f, PersistedStateInfo& x) {
   return f.object(x).fields(f.field("stateId", x.stateId),
                             f.field("snapshot", x.snapshot),
-                            f.field("generation", x.generation),
                             f.field("specification", x.specification));
 }
 

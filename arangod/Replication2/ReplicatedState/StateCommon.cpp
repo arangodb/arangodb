@@ -23,10 +23,6 @@
 
 #include "StateCommon.h"
 
-#include <velocypack/Value.h>
-#include <velocypack/Builder.h>
-
-#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 
@@ -40,36 +36,6 @@ auto const String_Failed = std::string_view{"Failed"};
 auto const String_Invalidated = std::string_view{"Invalidated"};
 auto const String_Uninitialized = std::string_view{"Uninitialized"};
 }  // namespace
-
-StateGeneration::operator arangodb::velocypack::Value() const noexcept {
-  return arangodb::velocypack::Value(value);
-}
-
-auto StateGeneration::operator+(std::uint64_t delta) const -> StateGeneration {
-  return StateGeneration{value + delta};
-}
-
-auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept
-    -> StateGeneration {
-  if (value > delta) {
-    return StateGeneration{value - delta};
-  }
-  return StateGeneration{0};
-}
-
-auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
-    -> std::ostream& {
-  return os << g.value;
-}
-
-auto StateGeneration::operator++() noexcept -> StateGeneration& {
-  ++value;
-  return *this;
-}
-
-auto StateGeneration::operator++(int) noexcept -> StateGeneration {
-  return StateGeneration{value++};
-}
 
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
     -> std::ostream& {
@@ -114,10 +80,6 @@ auto replicated_state::snapshotStatusFromString(
   } else {
     return SnapshotStatus::kUninitialized;
   }
-}
-
-auto replicated_state::to_string(StateGeneration g) -> std::string {
-  return std::to_string(g.value);
 }
 
 auto SnapshotStatusStringTransformer::toSerialized(SnapshotStatus source,

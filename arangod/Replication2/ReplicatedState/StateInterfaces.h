@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/WaitForQueue.h"

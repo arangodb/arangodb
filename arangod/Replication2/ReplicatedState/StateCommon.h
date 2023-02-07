@@ -37,50 +37,12 @@
 
 namespace arangodb::velocypack {
 class Value;
-template<typename, typename>
-struct Extractor;
 class Builder;
 class Slice;
 }  // namespace arangodb::velocypack
+
 namespace arangodb {
 namespace replication2::replicated_state {
-
-struct StateGeneration {
-  constexpr StateGeneration() noexcept : value{0} {}
-  constexpr explicit StateGeneration(std::uint64_t value) noexcept
-      : value{value} {}
-  std::uint64_t value;
-
-  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept
-      -> StateGeneration;
-
-  friend auto operator<=>(StateGeneration const&,
-                          StateGeneration const&) = default;
-
-  [[nodiscard]] auto operator+(std::uint64_t delta) const -> StateGeneration;
-  auto operator++() noexcept -> StateGeneration&;
-  auto operator++(int) noexcept -> StateGeneration;
-
-  friend auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
-
-  [[nodiscard]] explicit operator velocypack::Value() const noexcept;
-};
-
-auto to_string(StateGeneration) -> std::string;
-
-template<class Inspector>
-auto inspect(Inspector& f, StateGeneration& x) {
-  if constexpr (Inspector::isLoading) {
-    auto v = uint64_t{0};
-    auto res = f.apply(v);
-    if (res.ok()) {
-      x = StateGeneration(v);
-    }
-    return res;
-  } else {
-    return f.apply(x.value);
-  }
-}
 
 enum class SnapshotStatus {
   kUninitialized,
@@ -115,7 +77,6 @@ struct SnapshotInfo {
 auto to_string(SnapshotStatus) noexcept -> std::string_view;
 auto snapshotStatusFromString(std::string_view) noexcept -> SnapshotStatus;
 auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
-auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 
 struct SnapshotStatusStringTransformer {
   using SerializedType = std::string;
@@ -146,15 +107,5 @@ auto inspect(Inspector& f, SnapshotInfo::Error& x) {
 }
 
 }  // namespace replication2::replicated_state
-
-template<>
-struct arangodb::velocypack::Extractor<
-    replication2::replicated_state::StateGeneration> {
-  static auto extract(velocypack::Slice slice)
-      -> replication2::replicated_state::StateGeneration {
-    return replication2::replicated_state::StateGeneration{
-        slice.getNumericValue<std::uint64_t>()};
-  }
-};
 
 }  // namespace arangodb
