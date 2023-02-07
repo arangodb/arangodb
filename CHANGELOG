@@ -3,14 +3,19 @@ devel
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
+* Added startup option `--javascript.user-defined-functions`. 
+  This option controls whether JavaScript user-defined functions (UDFs) can
+  be used in AQL queries. The option defaults to `true`. The option can be
+  set to `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
 * Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
   CVE-2020-36604 in joi.
 
 * Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
 
 * Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
-
-* Deleted customizable Pregel (AIR) and Greenspun library
 
 * Allowing enabling/disabling supervision maintenance mode also via followers
   in active failover mode. Previously the supervision maintenance mode could
