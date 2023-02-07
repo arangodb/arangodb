@@ -137,3 +137,17 @@ TEST(ActorMPSCQueue, threads_push_stuff_comes_out) {
                             [](auto x) { return x; }));
   }
 }
+
+TEST(ActorMPSCQueue, flushes_all_messages) {
+  auto queue = MPSCQueue<MPSCStringMessage>();
+  ASSERT_TRUE(queue.empty());
+
+  queue.push(std::make_unique<MPSCStringMessage>("aon"));
+  queue.push(std::make_unique<MPSCStringMessage>("dha"));
+  queue.push(std::make_unique<MPSCStringMessage>("tri"));
+  ASSERT_FALSE(queue.empty());
+
+  queue.flush();
+
+  ASSERT_TRUE(queue.empty());
+}

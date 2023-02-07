@@ -47,7 +47,7 @@ struct MPSCQueue {
   MPSCQueue& operator=(MPSCQueue const&) = delete;
   MPSCQueue& operator=(MPSCQueue&&) = delete;
 
-  auto push_internal(Node *value) -> void {
+  auto push_internal(Node* value) -> void {
     value->next.store(nullptr);
     auto prev = head.exchange(value);
     prev->next.store(value);
@@ -121,10 +121,38 @@ struct MPSCQueue {
     return nullptr;
   }
 
-private:
+  auto flush() -> void {
+    auto node = tail.load();
+    while (node != nullptr) {
+      auto next = node->next.load();
+
+      // ignore stub
+      if (node == &stub) {
+        node = next;
+        continue;
+      }
+
+      // at end of list: add stub such that messages can still be pushed
+      // (which will also be deleted in this function)
+      if (next == nullptr) {
+        push_internal(&stub);
+        // might be stub or anything else if new message was pushed in between
+        next = node->next.load();
+      }
+
+      // make sure that tail points to next node before deleting node
+      tail.store(next);
+      delete node;
+      node = next;
+    }
+  }
+
+  ~MPSCQueue() { flush(); }
+
+ private:
   Node stub{};
-  std::atomic<Node*> head;
-  std::atomic<Node*> tail;
+  std::atomic<Node*> head;  // pushed to
+  std::atomic<Node*> tail;  // popped from
 };
 
 }  // namespace arangodb::pregel::mpscqueue
