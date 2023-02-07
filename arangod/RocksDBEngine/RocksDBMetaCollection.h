@@ -175,7 +175,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
     explicit MyScheduler(Scheduler* scheduler) : scheduler(scheduler) {}
     template<class Fn>
     void queue(Fn&& fn) {
-      scheduler->queue(RequestLane::CLIENT_SLOW, std::forward<Fn>(fn));
+      scheduler->queue(RequestLane::DELAYED_FUTURE, std::forward<Fn>(fn));
     }
     Scheduler* scheduler;
   };
