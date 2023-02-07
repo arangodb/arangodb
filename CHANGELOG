@@ -1,6 +1,15 @@
 devel
 -----
 
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
+* Deleted customizable Pregel (AIR) and Greenspun library
+
 * Allowing enabling/disabling supervision maintenance mode also via followers
   in active failover mode. Previously the supervision maintenance mode could
   only be enabled/disabled by making a call to the active failover leader.

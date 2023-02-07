@@ -256,9 +256,6 @@ struct Job {
   static void addPreconditionServerReadLocked(velocypack::Builder& pre,
                                               std::string const& server,
                                               std::string const& jobId);
-  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
-                                                 std::string const& server,
-                                                 std::string const& jobId);
   static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
                                                std::string const& server,
                                                std::string const& jobId);
