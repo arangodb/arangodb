@@ -1,8 +1,7 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
+import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
-import { InfoCircleFilled } from '@ant-design/icons';
 
 const ParameterLimit = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -23,9 +22,12 @@ const ParameterLimit = () => {
             setUrlParameters(newUrlParameters);
           }}>
         </Textinput>
-        <Tooltip placement="bottom" title={"Limit nodes count. If empty or zero, no limit is set."}>
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
+        <ToolTip
+          title={"Limit nodes count. If empty or zero, no limit is set."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        </ToolTip>
       </form>
     </>
   );
