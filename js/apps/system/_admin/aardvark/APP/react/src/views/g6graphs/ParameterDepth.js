@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 const ParameterDepth = () => {
@@ -23,9 +22,12 @@ const ParameterDepth = () => {
               setUrlParameters(newUrlParameters);
             }}>
         </Textinput>
-        <Tooltip placement="bottom" title={"Search depth, starting from your start node."}>
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
+        <ToolTip
+          title={"Search depth, starting from your start node."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        </ToolTip>
       </form>
     </>
   );
