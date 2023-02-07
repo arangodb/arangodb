@@ -1,6 +1,10 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* BTS-1193: Fix for schema update. When removing a field and then inserting a
+  new field into the schema, previously, both old and new schema would be
+  merged, meaning it would maintain the old field and add the new one.
+
 * Updated arangosync to v2.14.0.
 
 * Updated ArangoDB Starter to 0.15.6.
