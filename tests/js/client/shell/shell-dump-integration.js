@@ -33,6 +33,30 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
+const validatorJson = {
+  "message": "",
+  "level": "new",
+  "type": "json",
+  "rule": {
+    "additionalProperties": true,
+    "properties": {
+      "value1": {
+        "type": "integer"
+      },
+      "value2": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value1",
+      "value2"
+    ],
+    "type": "object"
+  }
+};
 
 function checkDumpJsonFile (dbName, path, id) {
   let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
@@ -213,6 +237,12 @@ function dumpIntegrationSuite () {
         }
         c.insert(docs);
       }
+      c = db._create(cn + "WithSchema", {schema: validatorJson, numberOfShards: 3});
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({value1: i, value2: "abc"});
+      }
+      c.insert(docs);
     },
 
     tearDownAll: function () {
@@ -220,7 +250,23 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
       db._drop(cn + "Padded");
       db._drop(cn + "AutoIncrement");
+      db._drop(cn + "WithSchema");
+    },
 
+    testDumpForCollectionWithSchema: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + "WithSchema", '--compress-output', 'false'];
+        let tree = runDump(path, args, 0);
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn + "WithSchema");
+        checkDataFile(tree, path, false, false, false, cn + "WithSchema");
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
     },
     
     testDumpOnlyOneShard: function () {

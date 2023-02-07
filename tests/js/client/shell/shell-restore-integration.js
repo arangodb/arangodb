@@ -34,6 +34,30 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
+const validatorJson = {
+  "message": "",
+  "level": "new",
+  "type": "json",
+  "rule": {
+    "additionalProperties": true,
+    "properties": {
+      "value1": {
+        "type": "integer"
+      },
+      "value2": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value1",
+      "value2"
+    ],
+    "type": "object"
+  }
+};
 
 function createDumpJsonFile (path, databaseName, id) {
   let fn = fs.join(path, "dump.json");
