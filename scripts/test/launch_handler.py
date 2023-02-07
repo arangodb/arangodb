@@ -17,7 +17,7 @@ def launch(args, tests):
     try:
         runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
         for test in tests:
-            runner.register_test_func(args.cluster, test)
+            runner.register_test_func(test)
         runner.sort_by_priority()
     except Exception as exc:
         logging.exception()
