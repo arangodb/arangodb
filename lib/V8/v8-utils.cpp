@@ -6153,7 +6153,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
       TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
 
-#ifdef COVERAGE
+#ifdef USE_COVERAGE
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::True(isolate));
 #else

@@ -162,7 +162,7 @@ void Version::initialize() {
 #else
   Values["ndebug"] = "false";
 #endif
-#ifdef COVERAGE
+#ifdef USE_COVERAGE
   Values["coverage"] = "true";
 #else
   Values["coverage"] = "false";
