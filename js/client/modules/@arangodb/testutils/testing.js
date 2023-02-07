@@ -163,7 +163,8 @@ let optionsDocumentation = [
   ''
 ];
 
-const isSan = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+const isSan = versionHas('asan') || versionHas('tsan');
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -217,8 +218,9 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': (isSan? 25 : 15) * 60,
+  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,
