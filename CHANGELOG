@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
 * BTS-1193: Fix for schema update. When removing a field and then inserting a 
   new field into the schema, previously, both old and new schema would be 
   merged, meaning it would maintain the old field and add the new one. 
