@@ -33,6 +33,7 @@ using namespace arangodb::aql;
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block,
                                    size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(_block->isShadowRow(_baseIndex));
@@ -54,6 +55,7 @@ bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other,
 #endif
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
@@ -61,6 +63,7 @@ AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
 }
 
 AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId < getNumRegisters());
   // caller needs to take immediate ownership.
@@ -68,11 +71,13 @@ AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
 }
 
 size_t ShadowAqlItemRow::getShadowDepthValue() const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   return block().getShadowRowDepth(_baseIndex);
 }
 
 uint64_t ShadowAqlItemRow::getDepth() const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   return static_cast<uint64_t>(block().getShadowRowDepth(_baseIndex));
 }

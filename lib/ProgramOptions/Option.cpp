@@ -220,8 +220,7 @@ size_t Option::optionsWidth() const {
 
 // strip the "--" from a string
 std::string Option::stripPrefix(std::string const& name) {
-  size_t pos = name.find("--");
-  if (pos == 0) {
+  if (name.starts_with("--")) {
     // strip initial "--"
     return name.substr(2);
   }
@@ -230,8 +229,7 @@ std::string Option::stripPrefix(std::string const& name) {
 
 // strip the "-" from a string
 std::string Option::stripShorthand(std::string const& name) {
-  size_t pos = name.find('-');
-  if (pos == 0) {
+  if (name.starts_with('-')) {
     // strip initial "-"
     return name.substr(1);
   }

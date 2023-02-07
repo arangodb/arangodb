@@ -94,6 +94,7 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
   builder.add("supports", velocypack::Value(VPackValueType::Object));
+  // legacy attribute, always false since 3.7.
   builder.add("dfdb", velocypack::Value(false));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));

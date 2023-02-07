@@ -69,6 +69,7 @@ struct ErrorT {
   [[nodiscard]] auto operator*() & -> T& { return get(); }
   [[nodiscard]] auto operator*() const& -> T const& { return get(); }
 
+  // cppcheck-suppress returnStdMoveLocal
   [[nodiscard]] auto operator*() && -> T&& { return std::move(get()); }
 
  private:
