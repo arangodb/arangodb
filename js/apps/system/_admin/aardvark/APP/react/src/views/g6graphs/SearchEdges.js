@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Tooltip } from 'antd';
+import ToolTip from '../../components/arango/tootip';
 import { Edge } from './components/edge/Edge';
-import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 
 const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeSelect }) => {
@@ -45,9 +44,12 @@ const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeS
               edge={edge} />
           ))}
         </datalist>
-        <Tooltip placement="bottom" title={"Select the edge you are looking for."} overlayClassName="graph-border-box">
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
+        <ToolTip
+          title={"Select the edge you are looking for."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        </ToolTip>
       </div>
     </div>
   );
