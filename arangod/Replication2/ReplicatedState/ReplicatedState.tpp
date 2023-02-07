@@ -1022,8 +1022,8 @@ auto ReplicatedState<S>::createStateHandle(
 
   struct Wrapper : replicated_log::IReplicatedStateHandle {
     explicit Wrapper(ReplicatedStateManager<S>& manager) : manager(manager) {}
-    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>
-    resignCurrentState() noexcept override {
+    [[nodiscard]] auto resignCurrentState() noexcept
+        -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override {
       return manager.resignCurrentState();
     }
     void leadershipEstablished(
@@ -1044,6 +1044,10 @@ auto ReplicatedState<S>::createStateHandle(
       return manager.updateCommitIndex(index);
     }
     void dropEntries() override { return manager.dropEntries(); }
+    [[nodiscard]] auto getQuickStatus() const
+        -> replicated_log::LocalStateMachineStatus override {
+      return manager.getQuickStatus();
+    }
 
     ReplicatedStateManager<S>& manager;
   };
