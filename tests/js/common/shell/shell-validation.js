@@ -728,7 +728,6 @@ function UpdateSchemaCoverageSuite() {
   const validatorJson = {
     "message": "",
     "level": "new",
-    "type": "json",
     "rule": {
       "additionalProperties": true,
       "properties": {
@@ -753,7 +752,6 @@ function UpdateSchemaCoverageSuite() {
   const validatorJson2 = {
     "message": "",
     "level": "new",
-    "type": "json",
     "rule": {
       "additionalProperties": true,
       "properties": {
@@ -805,7 +803,6 @@ function UpdateSchemaCoverageSuite() {
       const schema = testCollection.properties({"schema": validatorJson}).schema;
       assertEqual(schema.message, validatorJson.message);
       assertEqual(schema.level, validatorJson.level);
-      assertEqual(schema.type, validatorJson.type);
       assertEqual(schema.rule, validatorJson.rule);
     },
     testPropertiesRemoveAndInsertAttributes: () => {
@@ -813,7 +810,6 @@ function UpdateSchemaCoverageSuite() {
       const schema = testCollection.properties({"schema": validatorJson2}).schema;
       assertEqual(schema.message, validatorJson2.message);
       assertEqual(schema.level, validatorJson2.level);
-      assertEqual(schema.type, validatorJson2.type);
       assertEqual(schema.rule, validatorJson2.rule);
     },
     testPropertiesRemove2AttributesAndInsert: () => {
@@ -823,7 +819,6 @@ function UpdateSchemaCoverageSuite() {
       const schema = testCollection.properties({"schema": validatorJson2}).schema;
       assertEqual(schema.message, validatorJson2.message);
       assertEqual(schema.level, validatorJson2.level);
-      assertEqual(schema.type, validatorJson2.type);
       assertEqual(schema.rule, validatorJson2.rule);
     },
   };
