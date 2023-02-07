@@ -62,7 +62,9 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId>;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)

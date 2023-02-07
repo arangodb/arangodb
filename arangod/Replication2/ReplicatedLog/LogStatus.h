@@ -45,6 +45,7 @@ enum class ParticipantRole { kUnconfigured, kLeader, kFollower };
  */
 struct QuickLogStatus {
   ParticipantRole role{ParticipantRole::kUnconfigured};
+  LocalStateMachineStatus localState{LocalStateMachineStatus::kUnconfigured};
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
   bool leadershipEstablished{false};
@@ -85,7 +86,8 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
   }
   auto res = f.object(x).fields(
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
-      f.field("term", x.term), f.field("local", x.local),
+      f.field("localState", x.localState), f.field("term", x.term),
+      f.field("local", x.local),
       f.field("leadershipEstablished", x.leadershipEstablished),
       f.field("snapshotAvailable", x.snapshotAvailable),
       f.field("commitFailReason", x.commitFailReason),

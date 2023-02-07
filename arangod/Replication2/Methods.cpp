@@ -25,6 +25,7 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include <iterator>
 #include <utility>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -251,11 +252,10 @@ struct VPackLogIterator final : PersistedLogIterator {
   explicit VPackLogIterator(
       std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
       : buffer(std::move(buffer_ptr)),
-        iter(VPackSlice(buffer->data()).get("result")),
-        end(iter.end()) {}
+        iter(VPackSlice(buffer->data()).get("result")) {}
 
   auto next() -> std::optional<PersistingLogEntry> override {
-    while (iter != end) {
+    while (iter != std::default_sentinel) {
       return PersistingLogEntry::fromVelocyPack(*iter++);
     }
     return std::nullopt;
@@ -264,7 +264,6 @@ struct VPackLogIterator final : PersistedLogIterator {
  private:
   std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
   VPackArrayIterator iter;
-  VPackArrayIterator end;
 };
 
 }  // namespace
@@ -702,9 +701,9 @@ struct ReplicatedLogMethodsCoordinator final
           std::vector<LogIndex> indexes;
           indexes.reserve(payloadSize);
           auto indexIter = velocypack::ArrayIterator(result.get("indexes"));
-          std::transform(
-              indexIter.begin(), indexIter.end(), std::back_inserter(indexes),
-              [](auto const& it) { return it.template extract<LogIndex>(); });
+          for (auto it : indexIter) {
+            indexes.push_back(it.template extract<LogIndex>());
+          }
           return std::make_pair(
               std::move(indexes),
               replicated_log::WaitForResult(commitIndex, std::move(quorum)));

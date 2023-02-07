@@ -527,27 +527,31 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
-  return _guardedLeaderData.doUnderLock(
-      [term = _currentTerm](GuardedLeaderData const& leaderData) {
-        if (leaderData._didResign) {
-          throw ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-        }
-        auto commitFailReason = std::optional<CommitFailReason>{};
-        if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
-          commitFailReason = leaderData._lastCommitFailReason;
-        }
-        return QuickLogStatus{
-            .role = ParticipantRole::kLeader,
-            .term = term,
-            .local = leaderData.getLocalStatistics(),
-            .leadershipEstablished = leaderData._leadershipEstablished,
-            .snapshotAvailable = true,
-            .commitFailReason = commitFailReason,
-            .activeParticipantsConfig = leaderData.activeParticipantsConfig,
-            .committedParticipantsConfig =
-                leaderData.committedParticipantsConfig};
-      });
+
+  // TODO This is a bug and requires a fix. The unique ptr of the stateHandle
+  //  should not be dereference without having the _guardedLeaderData lock.
+  //  resign could be called in the meantime.
+  auto& stateHandle = *_guardedLeaderData.getLockedGuard()->_stateHandle;
+  auto stateStatus = stateHandle.getQuickStatus();
+  auto guard = _guardedLeaderData.getLockedGuard();
+  if (guard->_didResign) {
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+  }
+  auto commitFailReason = std::optional<CommitFailReason>{};
+  if (guard->calculateCommitLag() > std::chrono::seconds{20}) {
+    commitFailReason = guard->_lastCommitFailReason;
+  }
+  return QuickLogStatus{
+      .role = ParticipantRole::kLeader,
+      .localState = stateStatus,
+      .term = _currentTerm,
+      .local = guard->getLocalStatistics(),
+      .leadershipEstablished = guard->_leadershipEstablished,
+      .snapshotAvailable = true,
+      .commitFailReason = commitFailReason,
+      .activeParticipantsConfig = guard->activeParticipantsConfig,
+      .committedParticipantsConfig = guard->committedParticipantsConfig};
 }
 
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
@@ -697,6 +701,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     // leadership is established if commitIndex is non-zero
     ADB_PROD_ASSERT(newIndex > LogIndex{0});
     _leadershipEstablished = true;
+    LOG_CTX("f1136", DEBUG, _self._logContext) << "leadership established";
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
   }
 
@@ -1334,12 +1339,11 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept
       << "local follower received resign, term = " << _leader._currentTerm;
   // Although this method is marked noexcept, the doUnderLock acquires a
   // std::mutex which can throw an exception. In that case we just crash here.
-  return _guardedMethods.doUnderLock([&](auto& guardedLogCore) {
-    auto logCore = std::move(guardedLogCore);
-    LOG_CTX_IF("0f9b8", DEBUG, _logContext, logCore == nullptr)
+  return _guardedMethods.doUnderLock([&](auto& methods) {
+    LOG_CTX_IF("0f9b8", DEBUG, _logContext, methods == nullptr)
         << "local follower asked to resign but log core already gone, term = "
         << _leader._currentTerm;
-    return logCore;
+    return std::move(methods);
   });
 }
 

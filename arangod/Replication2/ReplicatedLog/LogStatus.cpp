@@ -269,7 +269,7 @@ auto replicated_log::to_string(ParticipantRole role) noexcept
     case ParticipantRole::kFollower:
       return "Follower";
   }
-  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+  LOG_TOPIC("e3142", ERR, Logger::REPLICATION2)
       << "Unhandled participant role: "
       << static_cast<std::underlying_type_t<decltype(role)>>(role);
   TRI_ASSERT(false);

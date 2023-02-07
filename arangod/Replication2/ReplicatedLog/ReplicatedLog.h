@@ -43,10 +43,8 @@ namespace arangodb::cluster {
 struct IFailureOracle;
 }
 namespace arangodb::replication2::replicated_log {
-class LogFollower;
 class LogLeader;
 struct AbstractFollower;
-struct LogCore;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
@@ -93,6 +91,8 @@ struct IReplicatedStateHandle {
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex, std::uint64_t) = 0;
   virtual void updateCommitIndex(LogIndex) = 0;
+  [[nodiscard]] virtual auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };

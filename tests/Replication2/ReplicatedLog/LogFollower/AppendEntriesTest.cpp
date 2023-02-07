@@ -45,6 +45,8 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
   MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex, std::uint64_t),
               (noexcept, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(replicated_log::LocalStateMachineStatus, getQuickStatus, (),
+              (const, override));
   MOCK_METHOD(void, dropEntries, (), (override));
 };
 }  // namespace

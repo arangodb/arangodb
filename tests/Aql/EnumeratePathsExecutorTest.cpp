@@ -375,8 +375,8 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
           while (verticesExpected != std::end(pathExpected) &&
                  verticesResult != verticesResult.end()) {
             ASSERT_EQ((*verticesResult).copyString(), *verticesExpected);
-            verticesResult++;
-            verticesExpected++;
+            ++verticesResult;
+            ++verticesExpected;
           }
           ASSERT_TRUE((verticesExpected == std::end(pathExpected)) &&
                       // Yes, really, they didn't implement == for iterators

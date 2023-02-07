@@ -406,7 +406,7 @@ std::string Job::randomIdleAvailableServer(
       }
 
       std::string const status = (*srv.second).hasAsString("Status").value();
-      if (status == "GOOD") {
+      if (status == Supervision::HEALTH_STATUS_GOOD) {
         good.push_back(srv.first);
       }
     }
@@ -447,8 +447,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
         // Ignore a potential _ prefix, which can occur on leader resign:
-        if (serverStr.size() > 0 && serverStr[0] == '_') {
-          serverStr.erase(0, 1);  // remove trailing _
+        if (serverStr.starts_with('_')) {
+          serverStr.erase(0, 1);  // remove leading _
         }
         // Now look up this server:
         auto it = healthData.find(serverStr);
@@ -458,7 +458,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
-              status && (status.value() == "GOOD" || status.value() == "BAD")) {
+              status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                         status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
           } else if (maintenanceSet.has_value() &&
@@ -489,7 +490,8 @@ size_t Job::countGoodOrBadServersInList(
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
-            status && (status.value() == "GOOD" || status.value() == "BAD")) {
+            status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                       status.value() == Supervision::HEALTH_STATUS_BAD)) {
           ++count;
         }
       }
@@ -663,7 +665,8 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
   std::unordered_map<std::string, bool> good;
 
   for (auto const& i : snap.hasAsChildren(healthPrefix).value().get()) {
-    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
   }
 
   std::unordered_map<std::string, size_t> currentServers;
@@ -863,13 +866,10 @@ void Job::doForAllShards(
                        std::string& curPath)>
         worker) {
   for (auto const& collShard : shards) {
-    std::string shard = collShard.shard;
-    std::string collection = collShard.collection;
-
-    std::string planPath =
-        planColPrefix + database + "/" + collection + "/shards/" + shard;
-    std::string curPath =
-        curColPrefix + database + "/" + collection + "/" + shard + "/servers";
+    std::string planPath = planColPrefix + database + "/" +
+                           collShard.collection + "/shards/" + collShard.shard;
+    std::string curPath = curColPrefix + database + "/" + collShard.collection +
+                          "/" + collShard.shard + "/servers";
 
     Slice plan = snapshot.hasAsSlice(planPath).value();
     Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
@@ -1037,7 +1037,7 @@ std::string Job::checkServerHealth(Node const& snapshot,
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
   if (!status) {
-    return "UNCLEAR";
+    return std::string{Supervision::HEALTH_STATUS_UNCLEAR};
   }
   return status.value();
 }
@@ -1235,7 +1235,8 @@ std::string Job::findOtherHealthyParticipant(Node const& snap,
   }
   std::unordered_map<std::string, bool> good;
   for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
-    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
   }
 
   for (const auto& [id, participantData] : target->participants) {

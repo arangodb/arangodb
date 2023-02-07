@@ -147,8 +147,7 @@ Result Response::combinedResult() const {
 
 /// @brief shardId or empty
 std::string Response::destinationShard() const {
-  if (this->destination.size() > 6 &&
-      this->destination.compare(0, 6, "shard:", 6) == 0) {
+  if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
     return this->destination.substr(6);
   }
   return StaticStrings::Empty;
@@ -156,7 +155,7 @@ std::string Response::destinationShard() const {
 
 std::string Response::serverId() const {
   if (this->destination.size() > 7 &&
-      this->destination.compare(0, 7, "server:", 7) == 0) {
+      this->destination.starts_with("server:")) {
     return this->destination.substr(7);
   }
   return StaticStrings::Empty;

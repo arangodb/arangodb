@@ -471,7 +471,9 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
-  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+  auto stateStatus = _stateHandle->getQuickStatus();
+  return _guardedFollowerData.doUnderLock([this, stateStatus](
+                                              auto const& followerData) {
     if (followerData._logCore == nullptr) {
       throw ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
@@ -479,6 +481,7 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
     constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{
         .role = ParticipantRole::kFollower,
+        .localState = stateStatus,
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
         .leadershipEstablished = followerData._commitIndex > kBaseIndex,

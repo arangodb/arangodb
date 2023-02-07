@@ -146,6 +146,15 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto allStatesReady() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.state =
+          replication2::replicated_log::LocalStateMachineStatus::kOperational;
+    }
+    return *this;
+  }
+
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();

@@ -58,6 +58,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
@@ -651,21 +652,23 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
     return nullptr;
   }
 
-  EngineSelectorFeature& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  auto guard = scopeGuard([manager, ctx]() noexcept {
+  if (batchId != 0) {
+    EngineSelectorFeature& selector = _logicalCollection.vocbase()
+                                          .server()
+                                          .getFeature<EngineSelectorFeature>();
+    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+    RocksDBReplicationManager* manager = engine.replicationManager();
+
+    RocksDBReplicationContextGuard ctx = manager->find(batchId);
     if (ctx) {
-      manager->release(ctx);
+      return std::make_unique<RocksDBRevisionReplicationIterator>(
+          _logicalCollection, ctx->snapshot());
     }
-  });
-  rocksdb::Snapshot const* snapshot = ctx ? ctx->snapshot() : nullptr;
+    // fallthrough intentional
+  }
 
   return std::make_unique<RocksDBRevisionReplicationIterator>(
-      _logicalCollection, snapshot);
+      _logicalCollection, /*snapshot*/ nullptr);
 }
 
 std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(

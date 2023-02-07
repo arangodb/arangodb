@@ -56,6 +56,16 @@ auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
+  auto core = _guardedData.doUnderLock([&](auto& data) {
+    TRI_ASSERT(!data.didResign());
+    if (data.didResign()) {
+      LOG_CTX("f9c79", ERR, loggerContext)
+          << "resigning leader " << gid
+          << " is not possible because it is already resigned";
+    }
+    return std::move(data.core);
+  });
+
   auto snapshotsGuard = _snapshotHandler.getLockedGuard();
   if (auto& snapshotHandler = snapshotsGuard.get(); snapshotHandler) {
     snapshotHandler->clear();
@@ -77,14 +87,7 @@ auto DocumentLeaderState::resign() && noexcept
     }
   });
 
-  return _guardedData.doUnderLock([&](auto& data) {
-    if (data.didResign()) {
-      LOG_CTX("f9c79", ERR, loggerContext)
-          << "resigning leader " << gid
-          << " is not possible because it is already resigned";
-    }
-    return std::move(data.core);
-  });
+  return core;
 }
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
@@ -93,7 +96,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      return TRI_ERROR_CLUSTER_NOT_LEADER;
+      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
     }
 
     auto transactionHandler = self->_handlersFactory->createTransactionHandler(

@@ -286,6 +286,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       if (!max->isValueType(aql::VALUE_TYPE_STRING)) {
         qp.maxDistance = max->getDoubleValue();
       }  // else assert(max->getStringValue() == "unlimited")
+      qp.distanceRestricted = true;
       break;
     }
     case aql::NODE_TYPE_OPERATOR_BINARY_GE:
@@ -306,6 +307,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
       qp.minDistance = min->getDoubleValue();
+      qp.distanceRestricted = true;
       break;
     }
     default:
@@ -329,6 +331,7 @@ void Index::parseCondition(aql::AstNode const* node,
   if (params.filterType == geo::FilterType::NONE && params.minDistance == 0 &&
       params.maxDistance == 0 && params.maxInclusive) {
     params.maxDistance = geo::kRadEps * geo::kEarthRadiusInMeters;
+    params.distanceRestricted = true;
   }
 }
 
