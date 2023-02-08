@@ -354,7 +354,15 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
+
+
   auto const outRegister = variableToRegisterId(outVariable);
+
+  RegisterId outSearchDocRegister =
+      !isLateMaterialized() ? RegisterId::makeInvalid()
+      : _outSearchDocVar    ? variableToRegisterId(_outSearchDocVar)
+                            : outRegister;
+
   auto numIndVarsRegisters =
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
@@ -403,7 +411,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
       _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
       _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(outNonMaterializedIndRegs), outSearchDocRegister);
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -535,6 +543,9 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
+  if (_outSearchDocVar && _outSearchDocVar != _outVariable) {
+    vars.emplace_back(_outSearchDocVar);
+  }
 
   return vars;
 }
@@ -546,11 +557,13 @@ std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes()
 
 void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
                                     IndexId commonIndexId,
-                                    IndexVarsInfo const& indexVariables) {
+                                    IndexVarsInfo const& indexVariables,
+                                    aql::Variable const* searchDocVariable) {
   _outNonMaterializedDocId = docIdVariable;
   _outNonMaterializedIndVars.first = commonIndexId;
   _outNonMaterializedIndVars.second.clear();
   _outNonMaterializedIndVars.second.reserve(indexVariables.size());
+  _outSearchDocVar = searchDocVariable;
   for (auto& indVars : indexVariables) {
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);

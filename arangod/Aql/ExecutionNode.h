@@ -1170,8 +1170,6 @@ class MaterializeNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  auto getReadableInputRegisters(RegisterId inNmDocId) const -> RegIdSet;
-
  protected:
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
@@ -1211,6 +1209,7 @@ class MaterializeSingleNode : public MaterializeNode,
   MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
                         aql::Collection const* collection,
                         aql::Variable const& inDocId,
+                        aql::Variable const* inSearchDocVariable,
                         aql::Variable const& outVariable);
 
   MaterializeSingleNode(ExecutionPlan* plan,
@@ -1226,10 +1225,14 @@ class MaterializeSingleNode : public MaterializeNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  void getVariablesUsedHere(VarSet& vars) const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
+
+  aql::Variable const* _inSearchDocVariable;
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,

@@ -75,38 +75,40 @@ MaterializeExecutor<T>::MaterializeExecutor(
 
 template<typename T>
 void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
-  if constexpr (!isSingleCollection) {
-    _bufferedDocs.clear();
-    auto const block = inputRange.getBlock();
-    if (block == nullptr) {
-      return;
+  _bufferedDocs.clear();
+  auto const block = inputRange.getBlock();
+  if (block == nullptr) {
+    return;
+  }
+  auto const numRows = block->numRows();
+  auto const numDataRows = numRows - block->numShadowRows();
+  if (ADB_UNLIKELY(!numDataRows)) {
+    return;
+  }
+  auto const tracked = _memoryTracker.tracked();
+  auto const required =
+      numDataRows * sizeof(typename decltype(_bufferedDocs)::value_type);
+  if (required > tracked) {
+    _memoryTracker.increase(required - tracked);
+  }
+  _bufferedDocs.reserve(numDataRows);
+  auto readInputDocs = [numRows, this, &block]<bool HasShadowRows, bool hasSingleCollection, bool readLocalDocumentId>() {
+    auto searchDocRegId = _readDocumentContext._infos->inputSearchDocRegId();
+    LogicalCollection const* lastCollection{nullptr};
+    if constexpr (hasSingleCollection) {
+      lastCollection = _collection;
     }
-    auto const numRows = block->numRows();
-    auto const numDataRows = numRows - block->numShadowRows();
-    if (ADB_UNLIKELY(!numDataRows)) {
-      return;
-    }
-    auto const tracked = _memoryTracker.tracked();
-    auto const required =
-        numDataRows * sizeof(typename decltype(_bufferedDocs)::value_type);
-    if (required > tracked) {
-      _memoryTracker.increase(required - tracked);
-    }
-    _bufferedDocs.reserve(numDataRows);
-    auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
-      auto docRegId =
-          _readDocumentContext._infos->inputNonMaterializedDocRegId();
-      LogicalCollection const* lastCollection{nullptr};
-      auto lastSourceId = DataSourceId::none();
-      for (size_t i = 0; i < numRows; ++i) {
-        if constexpr (HasShadowRows) {
-          if (block->isShadowRow(i)) {
-            continue;
-          }
+    auto lastSourceId = DataSourceId::none();
+    for (size_t i = 0; i < numRows; ++i) {
+      if constexpr (HasShadowRows) {
+        if (block->isShadowRow(i)) {
+          continue;
         }
-        auto const buf =
-            block->getValueReference(i, docRegId).slice().stringView();
-        auto searchDoc = iresearch::SearchDoc::decode(buf);
+      }
+      auto const buf =
+          block->getValueReference(i, searchDocRegId).slice().stringView();
+      auto searchDoc = iresearch::SearchDoc::decode(buf);
+      if constexpr (!hasSingleCollection) {
         auto docSourceId = std::get<0>(*searchDoc.segment());
         if (docSourceId != lastSourceId) {
           lastSourceId = docSourceId;
@@ -129,58 +131,85 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
             lastCollection = cachedCollection->second;
           }
         }
-        if (ADB_LIKELY(lastCollection)) {
+      }
+      if (ADB_LIKELY(lastCollection)) {
+        if constexpr (readLocalDocumentId) {
+          _bufferedDocs.push_back(std::make_tuple(
+              searchDoc,
+              LocalDocumentId(block
+                                  ->getValueReference(
+                                      i, _readDocumentContext._infos
+                                             ->inputNonMaterializedDocRegId())
+                                  .slice()
+                                  .getUInt()),
+              lastCollection));
+        } else {
           _bufferedDocs.push_back(
               std::make_tuple(searchDoc, LocalDocumentId{}, lastCollection));
         }
       }
-    };
+    }
+  };
 
-    if (block->hasShadowRows()) {
-      readInputDocs.template operator()<true>();
+  if (block->hasShadowRows()) {
+    if (_readDocumentContext._infos->inputNonMaterializedDocRegId().isValid()) {
+      readInputDocs.template operator()<true, isSingleCollection, true>();
     } else {
-      readInputDocs.template operator()<false>();
+      readInputDocs.template operator()<true, isSingleCollection, false>();
     }
-    std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
-    std::iota(readOrder.begin(), readOrder.end(), 0);
-    std::sort(std::begin(readOrder), std::end(readOrder),
-              [&](auto& lhs, auto& rhs) {
-                return std::get<0>(_bufferedDocs[lhs]) <
-                       std::get<0>(_bufferedDocs[rhs]);
-              });
-    iresearch::ViewSegment const* lastSegment{nullptr};
-    irs::doc_iterator::ptr pkReader;
-    irs::payload const* docValue{nullptr};
-    LocalDocumentId documentId;
-    auto doc = readOrder.begin();
-    auto end = readOrder.end();
-    while (doc != end) {
-      TRI_ASSERT(*doc < _bufferedDocs.size());
-      auto& document = _bufferedDocs[*doc];
-      auto& searchDoc = std::get<0>(document);
-      if (lastSegment != searchDoc.segment()) {
-        lastSegment = searchDoc.segment();
-        pkReader = iresearch::pkColumn(*std::get<1>(*lastSegment));
-        if (ADB_LIKELY(pkReader)) {
-          docValue = irs::get<irs::payload>(*pkReader);
-        } else {
-          // skip segment without PK column
-          do {
-            ++doc;
-          } while (doc != end &&
-                   lastSegment == std::get<0>(_bufferedDocs[*doc]).segment());
-          continue;
-        }
-      }
-      TRI_ASSERT(docValue);
-      if (std::get<0>(document).doc() ==
-          pkReader->seek(std::get<0>(document).doc())) {
-        arangodb::iresearch::DocumentPrimaryKey::read(documentId,
-                                                      docValue->value);
-        std::get<1>(document) = documentId;
-      }
-      ++doc;
+  } else {
+    if (_readDocumentContext._infos->inputNonMaterializedDocRegId().isValid()) {
+      readInputDocs.template operator()<false, isSingleCollection, true>();
+    } else {
+      readInputDocs.template operator()<false, isSingleCollection, false>();
     }
+  }
+  std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
+  std::iota(readOrder.begin(), readOrder.end(), 0);
+  std::sort(std::begin(readOrder), std::end(readOrder),
+            [&](auto& lhs, auto& rhs) {
+              if (std::get<1>(_bufferedDocs[lhs]).isSet() !=
+                  std::get<1>(_bufferedDocs[rhs]).isSet()) {
+                return std::get<1>(_bufferedDocs[lhs]).isSet();
+              }
+              return std::get<0>(_bufferedDocs[lhs]) <
+                     std::get<0>(_bufferedDocs[rhs]);
+            });
+  iresearch::ViewSegment const* lastSegment{nullptr};
+  irs::doc_iterator::ptr pkReader;
+  irs::payload const* docValue{nullptr};
+  LocalDocumentId documentId;
+  auto doc = std::find_if(readOrder.begin(), readOrder.end(), [this](auto idx) {
+    return !std::get<1>(_bufferedDocs[idx]).isSet();
+  });
+  auto end = readOrder.end();
+  while (doc != end) {
+    TRI_ASSERT(*doc < _bufferedDocs.size());
+    auto& document = _bufferedDocs[*doc];
+    auto& searchDoc = std::get<0>(document);
+    TRI_ASSERT(searchDoc.isValid());
+    if (lastSegment != searchDoc.segment()) {
+      lastSegment = searchDoc.segment();
+      pkReader = iresearch::pkColumn(*std::get<1>(*lastSegment));
+      if (ADB_LIKELY(pkReader)) {
+        docValue = irs::get<irs::payload>(*pkReader);
+      } else {
+        // skip segment without PK column
+        do {
+          ++doc;
+        } while (doc != end &&
+                 lastSegment == std::get<0>(_bufferedDocs[*doc]).segment());
+        continue;
+      }
+    }
+    TRI_ASSERT(docValue);
+    if (std::get<0>(document).doc() ==
+        pkReader->seek(std::get<0>(document).doc())) {
+      arangodb::iresearch::DocumentPrimaryKey::read(documentId,
+                                                    docValue->value);
+      std::get<1>(document) = documentId;
+    }
+    ++doc;
   }
 }
 
@@ -193,7 +222,15 @@ MaterializeExecutor<T>::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
-  if constexpr (!isSingleCollection) {
+  if constexpr (isSingleCollection) {
+    if (_collection == nullptr) {
+      _collection = _trx.documentCollection(
+          _readDocumentContext._infos->collectionSource());
+    }
+    TRI_ASSERT(_collection != nullptr);
+  }
+
+  if (_readDocumentContext._infos->inputSearchDocRegId().isValid()) {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
     fillBuffer(inputRange);
@@ -206,14 +243,6 @@ MaterializeExecutor<T>::produceRows(AqlItemBlockInputRange& inputRange,
     bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    if constexpr (isSingleCollection) {
-      if (_collection == nullptr) {
-        _collection = _trx.documentCollection(
-            _readDocumentContext._infos->collectionSource());
-      }
-      TRI_ASSERT(_collection != nullptr);
-    }
-
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
 
@@ -230,15 +259,18 @@ MaterializeExecutor<T>::produceRows(AqlItemBlockInputRange& inputRange,
       }
     }
 
-    if constexpr (isSingleCollection) {
+    if (!_readDocumentContext._infos->inputSearchDocRegId().isValid()) {
       // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-      written =
-          _collection->getPhysical()
-              ->read(
-                  &_trx,
-                  LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                  callback, ReadOwnWrites::no)
-              .ok();
+      TRI_ASSERT(isSingleCollection);
+      if constexpr (isSingleCollection) {
+        written =
+            _collection->getPhysical()
+                ->read(
+                    &_trx,
+                    LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
+                    callback, ReadOwnWrites::no)
+                .ok();
+      }
     } else {
       if (doc != end) {
         auto const& documentId = std::get<1>(*doc);
@@ -246,11 +278,17 @@ MaterializeExecutor<T>::produceRows(AqlItemBlockInputRange& inputRange,
           auto collection = std::get<2>(*doc);
           TRI_ASSERT(collection);
           // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-          written = collection->getPhysical()
-                        ->readFromSnapshot(
-                            &_trx, documentId, callback, ReadOwnWrites::no,
-                            std::get<2>(*std::get<0>(*doc).segment()))
-                        .ok();
+          if (std::get<0>(*doc).isValid()) {
+            written = collection->getPhysical()
+                          ->readFromSnapshot(
+                              &_trx, documentId, callback, ReadOwnWrites::no,
+                              std::get<2>(*std::get<0>(*doc).segment()))
+                          .ok();
+          } else {
+            written = collection->getPhysical()
+                          ->read(&_trx, documentId, callback, ReadOwnWrites::no)
+                          .ok();
+          }
         }
         ++doc;
       }

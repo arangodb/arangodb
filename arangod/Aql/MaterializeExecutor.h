@@ -72,10 +72,11 @@ template<typename T>
 class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
  public:
   template<class... _Types>
-  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
+  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId inSearchDoc, RegisterId outDocRegId,
                             aql::QueryContext& query, _Types&&... Args)
       : MaterializerExecutorInfosBase<T>(Args...),
         _inNonMaterializedDocRegId(inNmDocId),
+        _inSearchDocRegId(inSearchDoc),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query) {}
 
@@ -84,22 +85,27 @@ class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 
-  RegisterId outputMaterializedDocumentRegId() const {
+  RegisterId outputMaterializedDocumentRegId() const noexcept {
     return _outMaterializedDocumentRegId;
   }
 
-  RegisterId inputNonMaterializedDocRegId() const {
+  RegisterId inputNonMaterializedDocRegId() const noexcept {
     return _inNonMaterializedDocRegId;
   }
 
-  aql::QueryContext& query() const { return _query; }
+  RegisterId inputSearchDocRegId() const noexcept {
+    return _inSearchDocRegId;
+  }
+
+  aql::QueryContext& query() const noexcept { return _query; }
 
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
+  /// @brief register for providing search docs
+  RegisterId const _inSearchDocRegId;
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
-
   aql::QueryContext& _query;
 };
 

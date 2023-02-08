@@ -154,7 +154,7 @@ struct DocumentProducingFunctionContext {
   containers::FlatHashSet<LocalDocumentId> _alreadyReturned;
 
   RegisterId const _outputRegister;
-  RegisterId const _outputSearchDocRegister{RegisterId::makeInvalid()};
+  RegisterId const _outputSearchDocRegister;
   Variable const* _outputVariable;
 
   ReadOwnWrites const _readOwnWrites;

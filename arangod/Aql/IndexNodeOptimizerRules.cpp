@@ -327,14 +327,29 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // we could apply late materialization
         // 1. We need to notify index node - it should not materialize
         // documents, but produce only localDocIds
+        // if there is at least one invertedIndex and other indexes we will need
+        // additional variable to handle snapshot transferring.
+        Variable const* searchDocVar{nullptr};
+        auto const& indexes = indexNode->getIndexes();
+        for (auto const& idx : indexes) {
+          if (idx->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+            if (indexes.size() > 1) {
+              searchDocVar = ast->variables()->createTemporaryVariable();
+            } else {
+              searchDocVar = localDocIdTmp;
+            }
+            break;
+          }
+        }
+
         indexNode->setLateMaterialized(localDocIdTmp, index->id(),
-                                       uniqueVariables);
+                                       uniqueVariables, searchDocVar);
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeSingleNode>(
                 plan.get(), plan->nextId(), indexNode->collection(),
-                *localDocIdTmp, *var));
+                *localDocIdTmp, searchDocVar, * var));
         TRI_ASSERT(materializeNode);
 
         // on cluster we need to materialize node stay close to sort node on db
