@@ -317,11 +317,10 @@ struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
   static auto apply(Inspector& f, VPackBuilder& x) {
     if constexpr (Inspector::isLoading) {
       x.clear();
-      x.add(f.slice());
-      return Status{};
+      return f.value(x);
     } else {
       if (!x.isClosed()) {
-        return Status{"Exected closed VPackBuilder"};
+        return Status{"Expected closed VPackBuilder"};
       }
       return f.apply(x.slice());
     }
