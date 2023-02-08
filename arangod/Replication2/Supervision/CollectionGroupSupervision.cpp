@@ -308,16 +308,20 @@ struct TransactionBuilder {
   }
 
   void operator()(AddParticipantToLog const& action) {
-    env.write().key(basics::StringUtils::concatT(
-                        "/Target/ReplicatedLogs/", database, "/", action.logId,
-                        "/participants/", action.participant),
-                    VPackSlice::emptyObjectSlice());
+    env = env.write()
+              .key(basics::StringUtils::concatT(
+                       "/Target/ReplicatedLogs/", database, "/", action.logId,
+                       "/participants/", action.participant),
+                   VPackSlice::emptyObjectSlice())
+              .end();
   }
 
   void operator()(RemoveParticipantFromLog const& action) {
-    env.write().remove(basics::StringUtils::concatT(
-        "/Target/ReplicatedLogs/", database, "/", action.logId,
-        "/participants/", action.participant));
+    env = env.write()
+              .remove(basics::StringUtils::concatT(
+                  "/Target/ReplicatedLogs/", database, "/", action.logId,
+                  "/participants/", action.participant))
+              .end();
   }
 
   void operator()(NoActionRequired const&) {}
