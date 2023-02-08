@@ -957,10 +957,11 @@ Result Collections::create(
 }
 
 void Collections::applySystemCollectionProperties(
-    CreateCollectionBody& col, TRI_vocbase_t const& vocbase, DatabaseConfiguration const& config) {
+    CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+    DatabaseConfiguration const& config, bool isLegacyDatabase) {
   col.isSystem = true;
   // that forces all collections to be on the same physical DBserver
-  auto const& designatedLeaderName = vocbase.isSystem()
+  auto const& designatedLeaderName = vocbase.isSystem() && !isLegacyDatabase
                                          ? StaticStrings::UsersCollection
                                          : StaticStrings::GraphsCollection;
   if (col.name == designatedLeaderName) {

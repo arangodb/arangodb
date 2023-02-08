@@ -137,9 +137,9 @@ struct Collections {
       std::string const& collectionName, VPackBuilder& builder,
       TRI_vocbase_t const&);
 
-  static void applySystemCollectionProperties(CreateCollectionBody& col,
-                                              TRI_vocbase_t const& vocbase,
-                                              DatabaseConfiguration const& config);
+  static void applySystemCollectionProperties(
+      CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+      DatabaseConfiguration const& config, bool isLegacyDatabase);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,

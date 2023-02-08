@@ -138,8 +138,15 @@ Result createSystemCollections(
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   Result res;
 
+  // The Legacy mode is to stay compatible with a _system database that was
+  // created somewhere in the 2.X series and upgraded to latest.
+  // This still has old-style sharding following _graphs.
+  // This is now twice obsolete. First: We follow _users. Second we introduced
+  // Collection Groups.
+  bool legacyMode = false;
   if (vocbase.isSystem()) {
-    // check for legacy sharding, could still be graphs.
+    // LegacyMode can only show up on system database.
+    // We have been sharded by _graphs back then
     std::shared_ptr<LogicalCollection> coll;
     res = methods::Collections::lookup(vocbase, StaticStrings::GraphsCollection,
                                        coll);
@@ -147,42 +154,20 @@ Result createSystemCollections(
       TRI_ASSERT(coll);
       if (coll && coll->distributeShardsLike().empty()) {
         // We have a graphs collection, and this is not sharded by something
-        // else.
-        colToDistributeShardsLike = std::move(coll);
+        // else. Turn on legacyMode
+        legacyMode = true;
       }
     }
-
-    if (colToDistributeShardsLike == nullptr) {
-      // otherwise, we will use UsersCollection for distributeShardsLike
-      res = methods::Collections::createSystem(
-          vocbase, options, StaticStrings::UsersCollection,
-          /*isNewDatabase*/ true, colToDistributeShardsLike);
-      if (!res.ok()) {
-        return res;
-      }
-    } else {
-      systemCollections.push_back(StaticStrings::UsersCollection);
-    }
-
-    createdCollections.push_back(colToDistributeShardsLike);
-    systemCollections.push_back(StaticStrings::GraphsCollection);
+    // NOTE: We could hard-code this on compile-time
+    // List of _system database only collections
+    systemCollections.push_back(StaticStrings::UsersCollection);
     systemCollections.push_back(StaticStrings::StatisticsCollection);
     systemCollections.push_back(StaticStrings::Statistics15Collection);
     systemCollections.push_back(StaticStrings::StatisticsRawCollection);
-  } else {
-    // we will use GraphsCollection for distributeShardsLike
-    // this is equal to older versions
-    res = methods::Collections::createSystem(
-        vocbase, options, StaticStrings::GraphsCollection,
-        /*isNewDatabase*/ true, colToDistributeShardsLike);
-    if (!res.ok()) {
-      return res;
-    }
-    createdCollections.push_back(colToDistributeShardsLike);
+    // All others are available in all other Databases as well.
   }
 
-  TRI_ASSERT(colToDistributeShardsLike != nullptr);
-
+  systemCollections.push_back(StaticStrings::GraphsCollection);
   systemCollections.push_back(StaticStrings::AnalyzersCollection);
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
   systemCollections.push_back(StaticStrings::QueuesCollection);
@@ -192,6 +177,8 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::FrontendCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
+    // TODO: This failure is copy pasted as-is from original, need to check if
+    // this does what we want it to do.
     VPackBuilder testOptions;
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
     std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
@@ -223,21 +210,19 @@ Result createSystemCollections(
                               std::end(cols));
   }
 
-  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-
   auto config = vocbase.getDatabaseConfiguration();
   // Override lookup for leading CollectionName
-  config.getCollectionGroupSharding = [&createdCollections, &vocbase] (std::string const& name)-> ResultT<UserInputCollectionProperties> {
+  config.getCollectionGroupSharding = [&systemCollectionsToCreate, &vocbase] (std::string const& name)-> ResultT<UserInputCollectionProperties> {
     // For the time being the leading collection is created as standalone
     // before adding the others. So it has to be part of createdCollections.
     // So let us scan there
-    for (auto const& c : createdCollections) {
-      if (c->name() == name) {
+    for (auto const& c : systemCollectionsToCreate) {
+      if (c.name == name) {
         // On new databases the leading collection is in the first position.
         // So we will quickly loop here.
         // During upgrades there may be some collections before, however
         // it is not performance critical.
-        return c->getCollectionProperties();
+        return c;
       }
     }
     return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
@@ -245,6 +230,9 @@ Result createSystemCollections(
                       " in database " + vocbase.name()};
 
   };
+  // Now split all collections to be created into two groups:
+  // a) already created, we can return those
+  // b) to be created, we add them in the systemCollectionsToCreate vector
   for (auto const& cname : systemCollections) {
     std::shared_ptr<LogicalCollection> col;
     res = methods::Collections::lookup(vocbase, cname, col);
@@ -255,7 +243,8 @@ Result createSystemCollections(
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       CreateCollectionBody newCollection;
       newCollection.name = cname;
-      methods::Collections::applySystemCollectionProperties(newCollection, vocbase, config);
+      methods::Collections::applySystemCollectionProperties(
+          newCollection, vocbase, config, legacyMode);
       systemCollectionsToCreate.emplace_back(std::move(newCollection));
     }
   }
