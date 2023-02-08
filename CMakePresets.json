@@ -88,8 +88,6 @@
       "name": "gcov",
       "cacheVariables": {
         "USE_COVERAGE": "On",
-        "CMAKE_CXX_FLAGS": "-fno-stack-protector -fprofile-arcs -ftest-coverage",
-        "CMAKE_C_FLAGS": "-fno-stack-protector -fprofile-arcs -ftest-coverage",
         "USE_JEMALLOC": "Off"
       }
     },
