@@ -65,9 +65,8 @@ class IndexExecutorInfos {
   IndexExecutorInfos(
       RegisterId outputRegister, QueryContext& query,
       Collection const* collection, Variable const* outVariable,
-      bool produceResult, Expression* filter,
-      arangodb::aql::Projections projections,
-      arangodb::aql::Projections filterProjections,
+      bool produceResult, Expression* filter, aql::Projections projections,
+      aql::Projections filterProjections,
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
@@ -208,7 +207,7 @@ class IndexExecutor {
 
   struct CursorReader {
    public:
-    CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
+    CursorReader(transaction::Methods& trx, IndexExecutorInfos& infos,
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
                  CursorStats& cursorStats, bool checkUniqueness);
@@ -253,7 +252,7 @@ class IndexExecutor {
     };
 
     transaction::Methods& _trx;
-    IndexExecutorInfos const& _infos;
+    IndexExecutorInfos& _infos;
     AstNode const* _condition;
     std::shared_ptr<Index> const& _index;
     std::unique_ptr<IndexIterator> _cursor;

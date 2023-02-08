@@ -34,26 +34,24 @@
 namespace arangodb {
 
 namespace trx {
-struct BuilderTrx : public arangodb::transaction::Methods {
-  BuilderTrx(
-      std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
-      arangodb::LogicalDataSource const& collection,
-      arangodb::AccessMode::Type type)
-      : arangodb::transaction::Methods(transactionContext),
+struct BuilderTrx : public transaction::Methods {
+  BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
+             LogicalDataSource const& collection, AccessMode::Type type,
+             transaction::Options options = transaction::Options())
+      : transaction::Methods(transactionContext, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
-    addHint(arangodb::transaction::Hints::Hint::NO_DLD);
+    addHint(transaction::Hints::Hint::NO_DLD);
   }
 
   /// @brief get the underlying transaction collection
-  arangodb::RocksDBTransactionCollection* resolveTrxCollection() {
-    return static_cast<arangodb::RocksDBTransactionCollection*>(
-        trxCollection(_cid));
+  RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<RocksDBTransactionCollection*>(trxCollection(_cid));
   }
 
  private:
-  arangodb::DataSourceId _cid;
+  DataSourceId _cid;
 };
 }  // namespace trx
 
@@ -74,9 +72,9 @@ class RocksDBCollection;
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
 /// and adds some required synchronization logic on top
-class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
+class RocksDBBuilderIndex final : public RocksDBIndex {
  public:
-  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
+  explicit RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex>,
                                uint64_t numDocsHint, size_t parallelism);
 
   /// @brief return a VelocyPack representation of the index
@@ -108,8 +106,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx) override {
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
     _wrapped->afterTruncate(tick, trx);
   }
 
@@ -122,15 +119,14 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice,
+                LocalDocumentId const& documentId, velocypack::Slice slice,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice) override;
+                LocalDocumentId const& documentId, velocypack::Slice slice,
+                OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimatorType* estimator() override {
@@ -164,7 +160,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
 
-  std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  std::shared_ptr<RocksDBIndex> _wrapped;
   std::atomic<uint64_t> _docsProcessed;
   uint64_t const _numDocsHint;
   size_t const _numThreads;

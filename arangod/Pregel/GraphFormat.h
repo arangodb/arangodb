@@ -30,8 +30,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
-#include "Pregel/Graph.h"
-#include "Greenspun/EvalResult.h"
+#include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -62,12 +61,6 @@ struct GraphFormat {
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    V const* targetPtr) const = 0;
-
-  virtual greenspun::EvalResult buildVertexDocumentWithResult(
-      arangodb::velocypack::Builder& b, V const* targetPtr) const {
-    buildVertexDocument(b, targetPtr);
-    return {};
-  }
 
  private:
   application_features::ApplicationServer& _server;

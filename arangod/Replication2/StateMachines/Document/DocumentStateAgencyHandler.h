@@ -31,7 +31,7 @@
 #include <memory>
 
 namespace arangodb {
-class ClusterFeature;
+class AgencyCache;
 }  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
@@ -49,7 +49,7 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  public:
   explicit DocumentStateAgencyHandler(GlobalLogIdentifier gid,
                                       ArangodServer& server,
-                                      ClusterFeature& clusterFeature);
+                                      AgencyCache& agencyCache);
   auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override;
   auto reportShardInCurrent(
@@ -60,7 +60,7 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  private:
   GlobalLogIdentifier _gid;
   ArangodServer& _server;
-  ClusterFeature& _clusterFeature;
+  AgencyCache& _agencyCache;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

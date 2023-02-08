@@ -119,17 +119,20 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string toServer;
     std::string collectionID;
     bool remainsFollower;
+    bool tryUndo;
 
     MoveShardContext(std::string database, std::string collection,
                      std::string shard, std::string from, std::string to,
-                     std::string collectionID, bool remainsFollower)
+                     std::string collectionID, bool remainsFollower,
+                     bool tryUndo = false)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
           fromServer(std::move(from)),
           toServer(std::move(to)),
           collectionID(std::move(collectionID)),
-          remainsFollower(true) {}
+          remainsFollower(remainsFollower),
+          tryUndo(tryUndo) {}
 
     static std::unique_ptr<MoveShardContext> fromVelocyPack(
         arangodb::velocypack::Slice slice);
@@ -139,7 +142,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job,
-                                         std::string const& server);
+                                         std::string const& server,
+                                         VPackSlice body);
 
   RestStatus handleFailureOracleStatus();
   RestStatus handleFailureOracleFlush();
@@ -209,7 +213,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 
   cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
-      std::vector<std::string> const& excludedDatabases);
+      std::vector<std::string> const& excludedDatabases,
+      bool excludeSystemCollections);
 
   struct MoveShardCount {
     std::size_t todo;

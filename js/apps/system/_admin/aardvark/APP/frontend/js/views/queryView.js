@@ -63,6 +63,7 @@
 
     aqlEditor: null,
     queryPreview: null,
+    sortByHistory: false,
 
     initialize: function () {
       this.refreshAQL();
@@ -82,6 +83,7 @@
       'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
+      'click #sortByHistory': 'toggleSortByHistory',
       'click #createNewQuery': 'createAQL',
       'click #saveCurrentQuery': 'addAQL',
       'click #updateCurrentQuery': 'updateAQL',
@@ -106,6 +108,12 @@
 
     clearQuery: function () {
       this.aqlEditor.setValue('', 1);
+    },
+
+    toggleSortByHistory: function () {
+      this.sortByHistory = !this.sortByHistory;
+      this.updateQueryTable();
+      this.resize();
     },
 
     closeProfile: function (e) {
@@ -302,7 +310,7 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -865,6 +873,8 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
+      
+      $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
     cleanupGraphs: function () {
@@ -1453,6 +1463,10 @@
       this.updateLocalQueries();
 
       this.myQueriesTableDesc.rows = this.customQueries;
+      
+      // Reverse order: Last added query shall be displayed first
+      self.customQueries.reverse();
+
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1478,7 +1492,9 @@
         return x;
       }
 
-      this.myQueriesTableDesc.rows.sort(compare);
+      if(!this.sortByHistory) {
+        this.myQueriesTableDesc.rows.sort(compare);
+      }
 
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
@@ -2377,7 +2393,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'
           ];
 
           var colors = [
@@ -2387,6 +2403,7 @@
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(64, 74, 83)',
+            'rgb(110, 112, 57)',
             'rgb(96, 189, 104)',
             'rgb(221, 224, 114)'
           ];
@@ -2396,8 +2413,9 @@
             'query parsing',
             'abstract syntax tree optimizations',
             'loading collections',
-            'instanciation of initial execution plan',
+            'instantiation of initial execution plan',
             'execution plan optimization and permutation',
+            'instantiation of query executors (incl. distribution)',
             'query execution',
             'query finalization'
           ];

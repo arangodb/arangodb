@@ -271,13 +271,30 @@
       }
     },
 
+    checkAndSetGraphConfig: function (data) {
+      // This method check whether we do have stored visual properties already available
+      // in our database.
+
+      // combinedName: Variable which uses a database and graph-name bound unique id to store its properties.
+      const combinedName = frontendConfig.db + '_' + this.name;
+
+      const dataAsJson = data.toJSON();
+      if (dataAsJson.result && dataAsJson.result.graphs) {
+        if (data.toJSON().result.graphs[combinedName]) {
+          this.graphConfig = data.toJSON().result.graphs[combinedName];
+        }
+      } else {
+        this.graphConfig = null;
+      }
+    },
+
     getGraphSettings: function (render) {
       var self = this;
       var combinedName = frontendConfig.db + '_' + this.name;
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.checkAndSetGraphConfig(data);
           if (render) {
             self.continueRender();
           }
@@ -342,7 +359,10 @@
         // enable edge editing by default (as this was an option in the past)
         config[combinedName].edgeEditable = 'true';
 
-        var callback = function () {
+        let callbackAfterStore = function (storedData) {
+          if (storedData && storedData[combinedName]) {
+            self.graphConfig = storedData[combinedName];
+          }
           self.lastConfigChange = new Date();
           if (window.App.graphViewer) {
             // no complete rerender needed
@@ -398,7 +418,7 @@
           }
         }.bind(this);
 
-        this.userConfig.setItem('graphs', config, callback);
+        this.userConfig.setItem('graphs', config, callbackAfterStore);
       } else {
         // aql mode - only visual
 

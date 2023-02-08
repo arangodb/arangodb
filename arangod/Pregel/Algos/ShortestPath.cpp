@@ -24,10 +24,10 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -36,9 +36,9 @@ using namespace arangodb::pregel::algos;
 static std::string const spUpperPathBound = "bound";
 
 struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
-  PregelID _target;
+  VertexID _target;
 
-  explicit SPComputation(PregelID const& target) : _target(target) {}
+  explicit SPComputation(VertexID const& target) : _target(target) {}
   void compute(MessageIterator<int64_t> const& messages) override {
     int64_t current = vertexData();
     for (const int64_t* msg : messages) {
@@ -58,7 +58,6 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       if (this->pregelId() == _target) {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
-        enterNextGlobalSuperstep();
         LOG_TOPIC("0267f", DEBUG, Logger::PREGEL) << "Found target " << current;
         return;
       }
@@ -120,7 +119,7 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
-  PregelID target = _config->documentIdToPregel(_target);
+  VertexID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
 

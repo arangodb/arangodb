@@ -33,7 +33,6 @@ var arangodb = require('@arangodb');
 
 var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
-var db = arangodb.db;
 
 var simple = require('@arangodb/simple-query');
 
@@ -322,8 +321,8 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
     if (probability >= 1.0) {
       cursor = this.all();
     }else {
-      stmt = sprintf('FOR d IN %s FILTER rand() >= @prob RETURN d', this.name());
-      stmt = db._createStatement({ query: stmt });
+      stmt = sprintf('FOR d IN %s FILTER rand() <= @prob RETURN d', this.name());
+      stmt = arangodb.db._createStatement({ query: stmt });
 
       if (probability < 1.0) {
         stmt.bind('prob', probability);
@@ -343,9 +342,9 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
     if (probability >= 1.0) {
       cursor = this.all().limit(limit);
     }else {
-      stmt = sprintf('FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d',
+      stmt = sprintf('FOR d IN %s FILTER rand() <= @prob LIMIT %d RETURN d',
         this.name(), limit);
-      stmt = db._createStatement({ query: stmt });
+      stmt = arangodb.db._createStatement({ query: stmt });
 
       if (probability < 1.0) {
         stmt.bind('prob', probability);

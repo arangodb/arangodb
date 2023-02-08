@@ -31,11 +31,11 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(
+std::string_view columnCompressionToString(
     irs::type_info::type_id type) noexcept {
   if (ADB_UNLIKELY(type == nullptr)) {
     TRI_ASSERT(false);
-    return irs::string_ref::EMPTY;
+    return irs::kEmptyStringView<char>;
   }
   auto const mangled_name = type().name();
   TRI_ASSERT(!mangled_name.empty());
@@ -44,13 +44,13 @@ irs::string_ref columnCompressionToString(
          *(demangled_start - 1) != ':') {
     demangled_start--;
   }
-  return irs::string_ref(demangled_start,
-                         std::distance(demangled_start, mangled_name.end()));
+  return std::string_view(&(*demangled_start),
+                          std::distance(demangled_start, mangled_name.end()));
 }
 
 irs::type_info::type_id columnCompressionFromString(
-    irs::string_ref c) noexcept {
-  TRI_ASSERT(!c.null());
+    std::string_view c) noexcept {
+  TRI_ASSERT(!irs::IsNull(c));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (c == "test") {
     return irs::type<irs::compression::mock::test_compressor>::id();

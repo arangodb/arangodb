@@ -277,7 +277,6 @@ const replicatedLogSuite = function () {
           expectedDocumentsInserted[quorum.index] = secondDoc;
           assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
         }
-        print(log.status());
       }
 
       // now stop the leader
@@ -1042,6 +1041,32 @@ const replicatedLogSuite = function () {
       };
       assertEqual(counts, expected);
       */
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    // This test first sets a new leader and waits for the leader exchange to take place.
+    // Then the new leader is stopped, thus an election is triggered.
+    // Although the now failed ex-leader remains in target, the election is expected to succeed.
+    testMoveLeadershipBackToFailedServer: function () {
+      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // force leader in target
+      setReplicatedLogLeaderTarget(database, logId, leader);
+
+      // Stop current leader and wait for the leader to be changed
+      stopServer(leader);
+
+      // Supervision should notice that the target leader is failed and should not try to set it.
+      const errorCode = "TargetLeaderFailed";
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+
+      waitFor(lpreds.replicatedLogLeaderPlanChanged(database, logId, leader));
+      let {newLeader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      waitFor(replicatedLogIsReady(database, logId, term + 2, followers, newLeader));
+
+      continueServer(leader);
+      // if we continue the server, we expect the old leader to come back
+      waitFor(replicatedLogIsReady(database, logId, term + 3, servers, leader));
       replicatedLogDeleteTarget(database, logId);
     },
   };

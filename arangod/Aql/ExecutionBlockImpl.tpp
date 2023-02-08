@@ -54,7 +54,6 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
@@ -83,14 +82,11 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
-
-#include <velocypack/Dumper.h>
 
 #include <type_traits>
 
@@ -111,6 +107,21 @@ using AllShortestPathsTracer =
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
+using ShortestPath = arangodb::graph::ShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPathTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
 /* ClusterProvider Section */
 using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
@@ -122,6 +133,18 @@ using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using AllShortestPathsClusterTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedShortestPathCluster =
+    arangodb::graph::WeightedShortestPathEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using WeightedShortestPathClusterTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
@@ -613,9 +636,16 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       useExecutor ==
               (is_one_of_v<
-                  Executor, FilterExecutor, ShortestPathExecutor,
+                  Executor, FilterExecutor, ShortestPathExecutor<ShortestPath>,
+                  ShortestPathExecutor<ShortestPathTracer>,
+                  ShortestPathExecutor<ShortestPathCluster>,
+                  ShortestPathExecutor<ShortestPathClusterTracer>,
+                  ShortestPathExecutor<WeightedShortestPath>,
+                  ShortestPathExecutor<WeightedShortestPathTracer>,
+                  ShortestPathExecutor<WeightedShortestPathCluster>,
+                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor,
-                  EnumeratePathsExecutor<graph::KShortestPathsFinder>,
+                  EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
                   EnumeratePathsExecutor<KPathRefactored>,
                   EnumeratePathsExecutor<KPathRefactoredTracer>,
                   EnumeratePathsExecutor<KPathRefactoredCluster>,
@@ -660,7 +690,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef USE_ENTERPRISE
                   arangodb::iresearch::OffsetMaterializeExecutor,
 #endif
-                  MaterializeExecutor<RegisterId>,
+                  MaterializeExecutor<void>,
                   MaterializeExecutor<std::string const&>>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -1336,7 +1366,30 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // We can never hit an offset on the shadowRow level again,
         // we can only hit this with HARDLIMIT / FULLCOUNT
         TRI_ASSERT(shadowCall.getOffset() == 0);
-        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+
+        // `depthToSkip` is the depth according to our call and output; when
+        // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
+        // applied to our input.
+        // For SQS nodes, this needs to be adjusted; in principle we'd just need
+        //   depthToSkip += offset;
+        // , except depthToSkip is unsigned, and we would get integer
+        // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
+        // Note that SubqueryEnd nodes do *not* need this adjustment, as an
+        // additional call is pushed to the stack already when the
+        // ExecutionContext is constructed at the beginning of
+        // executeWithoutTrace, so input and call-stack already align at this
+        // point.
+        constexpr static int depthOffset = ([]() consteval->int {
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return -1;
+          } else {
+            return 0;
+          }
+        })();
+
+        auto skipped =
+            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+                depthToSkip);
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
                                        MultiAqlItemBlockInputRange>) {

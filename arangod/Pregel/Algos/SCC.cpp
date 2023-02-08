@@ -29,7 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -119,7 +119,7 @@ struct SCCComputation
         if (vertexState->vertexID == vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           // sendMessageToAllParents
-          for (PregelID const& pid : vertexState->parents) {
+          for (VertexID const& pid : vertexState->parents) {
             sendMessage(pid, message);  // todo: if the parent was deactivated
                                         //  this reactivates it in the
                                         //  refactored Pregel. Change this.
@@ -132,7 +132,7 @@ struct SCCComputation
       case SCCPhase::BACKWARD_TRAVERSAL_REST: {
         for (SenderMessage<uint64_t> const* msg : messages) {
           if (vertexState->color == msg->value) {
-            for (PregelID const& pid : vertexState->parents) {
+            for (VertexID const& pid : vertexState->parents) {
               sendMessage(pid, *msg);
             }
             aggregate(kConverged, true);

@@ -565,16 +565,21 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  if (!options.coreCheck && !options.setInterruptable) {
+    print("fatal exit of arangod! Bye!");
+    pu.killRemainingProcesses({status: false});
+    process.exit();
+  }
   GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
-  const generateCoreDump = (
+  const generateCoreDump = options.coreGen && ((
     stats.virtualSize  < 310000000 &&
     stats.residentSize < 140000000
-  ) || stats.virtualSize === 0;
+  ) || stats.virtualSize === 0);
   if (options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);

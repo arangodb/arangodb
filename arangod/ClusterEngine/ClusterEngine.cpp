@@ -38,6 +38,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -135,9 +136,8 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection, VPackSlice const& info) {
-  return std::unique_ptr<PhysicalCollection>(
-      new ClusterCollection(collection, engineType(), info));
+    LogicalCollection& collection, velocypack::Slice info) {
+  return std::make_unique<ClusterCollection>(collection, engineType(), info);
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
@@ -192,18 +192,8 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
 // -----------------------------------------
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(
-    arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR,
-                                         std::move(info));
-}
-
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
-    arangodb::CreateDatabaseInfo&& info, ErrorCode& status) {
-  status = TRI_ERROR_INTERNAL;
-  auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR,
-                                            std::move(info));
-  status = TRI_ERROR_NO_ERROR;
-  return rv;
+    arangodb::CreateDatabaseInfo&& info, bool /*isUpgrade*/) {
+  return std::make_unique<TRI_vocbase_t>(std::move(info));
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -233,8 +223,7 @@ arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection,
-                                     bool doSync) {
+                                     LogicalCollection const& collection) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -299,31 +288,20 @@ void ClusterEngine::waitForEstimatorSync(
   // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
 }
-
-auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&,
-                                        arangodb::replication2::LogId)
-    -> ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
-}
-
-auto ClusterEngine::dropReplicatedLog(
-    TRI_vocbase_t&,
-    std::shared_ptr<
-        arangodb::replication2::replicated_log::PersistedLog> const&)
-    -> Result {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
-}
-
-Result ClusterEngine::updateReplicatedState(
+Result ClusterEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    replication2::replicated_state::PersistedStateInfo const& info) {
+    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
+        ptr) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterEngine::dropReplicatedState(TRI_vocbase_t& vocbase,
-                                          arangodb::replication2::LogId id) {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
+ResultT<std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>
+ClusterEngine::createReplicatedState(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    replication2::replicated_state::PersistedStateInfo const& info) {
+  return ResultT<
+      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>{
+      TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 // -----------------------------------------------------------------------------

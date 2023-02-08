@@ -31,54 +31,91 @@ var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function arangoSearchFiltersMerging () {
+function viewFiltersMerging(isSearchAlias) {
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._dropView("UnitTestView");
       db._dropView("UnitTestViewSorted");
       db._drop("UnitTestsCollection");
-      let c = db._create("UnitTestsCollection", { numberOfShards: 3 });
+      let c = db._create("UnitTestsCollection", {numberOfShards: 3});
 
       let docs = [];
       for (let i = 0; i < 20; ++i) {
-        docs.push({ value: "footest" + i, count: i });
+        docs.push({value: "footest" + i, count: i});
       }
       c.insert(docs);
-      
-      db._createView("UnitTestView", "arangosearch", {links:{
-                                                       UnitTestsCollection:{
-                                                         includeAllFields:false,
-                                                         fields:{
-                                                           value:{
-                                                             analyzers:["identity"]},
-                                                           count:{
-                                                             analyzers:["identity"]}}}}});
+      if (isSearchAlias) {
+        let c = db._collection("UnitTestsCollection");
+        let i = c.ensureIndex({
+          type: "inverted",
+          fields: ["value", "count"]
+        });
+        db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
+      } else {
+        db._createView("UnitTestView", "arangosearch", {
+          links: {
+            UnitTestsCollection: {
+              includeAllFields: false,
+              fields: {
+                value: {
+                  analyzers: ["identity"]
+                },
+                count: {
+                  analyzers: ["identity"]
+                }
+              }
+            }
+          }
+        });
+      }
       // sync the views
       db._query("FOR d IN UnitTestView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._dropView("UnitTestView");
       db._drop("UnitTestsCollection");
     },
-    
+
     testMergeSimple() {
       let res = db._query("FOR d IN UnitTestView SEARCH " +
-      "LEVENSHTEIN_MATCH(d.value, 'footest', 1, false) " + 
-      "AND STARTS_WITH(d.value, 'footest') RETURN d").toArray(); 
+        "LEVENSHTEIN_MATCH(d.value, 'footest', 1, false) " +
+        "AND STARTS_WITH(d.value, 'footest') RETURN d").toArray();
       assertEqual(10, res.length);
     },
     testMergeDisabled() {
       let res = db._query("FOR d IN UnitTestView SEARCH " +
-      "LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) " + 
-      "AND STARTS_WITH(d.value, 'footest') OPTIONS {filterOptimization: 0} RETURN d").toArray(); 
+        "LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) " +
+        "AND STARTS_WITH(d.value, 'footest') OPTIONS {filterOptimization: 0} RETURN d").toArray();
       assertEqual(20, res.length);
     },
   };
 }
 
+function arangoSearchFiltersMerging() {
+  let suite = {};
+  deriveTestSuite(
+    viewFiltersMerging(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasFiltersMerging() {
+  let suite = {};
+  deriveTestSuite(
+    viewFiltersMerging(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
 jsunity.run(arangoSearchFiltersMerging);
+jsunity.run(searchAliasFiltersMerging);
 
 return jsunity.done();
 

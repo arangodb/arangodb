@@ -29,7 +29,6 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

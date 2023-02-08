@@ -31,6 +31,7 @@
 
 #include "Job.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
@@ -45,6 +46,9 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Helpers.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -65,10 +69,8 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
-std::string const planRepLogPrefix = "/Plan/ReplicatedLogs/";
-std::string const targetRepLogPrefix = "/Target/ReplicatedLogs/";
-std::string const targetRepStatePrefix = "/Target/ReplicatedStates/";
-std::string const planRepStatePrefix = "/Plan/ReplicatedStates/";
+std::string const targetRepStatePrefix = "/Target/ReplicatedLogs/";
+std::string const planRepStatePrefix = "/Plan/ReplicatedLogs/";
 std::string const planDBPrefix = "/Plan/Databases/";
 std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -82,6 +84,7 @@ std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
+std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 
 write_ret_t singleWriteTransaction(AgentInterface* _agent,
                                    velocypack::Builder const& transaction,
@@ -401,7 +404,7 @@ std::string Job::randomIdleAvailableServer(
       }
 
       std::string const status = (*srv.second).hasAsString("Status").value();
-      if (status == "GOOD") {
+      if (status == Supervision::HEALTH_STATUS_GOOD) {
         good.push_back(srv.first);
       }
     }
@@ -442,8 +445,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
         // Ignore a potential _ prefix, which can occur on leader resign:
-        if (serverStr.size() > 0 && serverStr[0] == '_') {
-          serverStr.erase(0, 1);  // remove trailing _
+        if (serverStr.starts_with('_')) {
+          serverStr.erase(0, 1);  // remove leading _
         }
         // Now look up this server:
         auto it = healthData.find(serverStr);
@@ -453,7 +456,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
-              status && (status.value() == "GOOD" || status.value() == "BAD")) {
+              status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                         status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
           } else if (maintenanceSet.has_value() &&
@@ -484,7 +488,8 @@ size_t Job::countGoodOrBadServersInList(
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
-            status && (status.value() == "GOOD" || status.value() == "BAD")) {
+            status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                       status.value() == Supervision::HEALTH_STATUS_BAD)) {
           ++count;
         }
       }
@@ -658,7 +663,8 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
   std::unordered_map<std::string, bool> good;
 
   for (auto const& i : snap.hasAsChildren(healthPrefix).value().get()) {
-    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
   }
 
   std::unordered_map<std::string, size_t> currentServers;
@@ -858,13 +864,10 @@ void Job::doForAllShards(
                        std::string& curPath)>
         worker) {
   for (auto const& collShard : shards) {
-    std::string shard = collShard.shard;
-    std::string collection = collShard.collection;
-
-    std::string planPath =
-        planColPrefix + database + "/" + collection + "/shards/" + shard;
-    std::string curPath =
-        curColPrefix + database + "/" + collection + "/" + shard + "/servers";
+    std::string planPath = planColPrefix + database + "/" +
+                           collShard.collection + "/shards/" + collShard.shard;
+    std::string curPath = curColPrefix + database + "/" + collShard.collection +
+                          "/" + collShard.shard + "/servers";
 
     Slice plan = snapshot.hasAsSlice(planPath).value();
     Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
@@ -1032,7 +1035,7 @@ std::string Job::checkServerHealth(Node const& snapshot,
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
   if (!status) {
-    return "UNCLEAR";
+    return std::string{Supervision::HEALTH_STATUS_UNCLEAR};
   }
   return status.value();
 }
@@ -1096,16 +1099,6 @@ void Job::addPreconditionServerReadLocked(Builder& pre,
   }
 }
 
-void Job::addPreconditionServerWriteLockable(Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId) {
-  pre.add(VPackValue(blockedServersPrefix + server));
-  {
-    VPackObjectBuilder shardLockEmpty(&pre);
-    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
-  }
-}
-
 void Job::addPreconditionServerWriteLocked(Builder& pre,
                                            std::string const& server,
                                            std::string const& jobId) {
@@ -1122,4 +1115,102 @@ auto Job::isReplication2Database(std::string_view database) -> bool {
     return false;
   }
   return isReplicationTwoDB(dbs->get(), std::string{database});
+}
+
+bool Job::isServerLeaderForState(const Node& snap, std::string const& db,
+                                 arangodb::replication2::LogId stateId,
+                                 const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return false;
+  }
+  if (target->leader == server) {
+    return true;
+  }
+  auto plan = readLogPlan(snap, db, stateId);
+  if (not plan) {
+    return false;
+  }
+  return plan->currentTerm.has_value() and plan->currentTerm->leader and
+         plan->currentTerm->leader->serverId == server;
+}
+
+bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
+                                      arangodb::replication2::LogId stateId,
+                                      const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (target) {
+    return target->participants.contains(server);
+  }
+
+  return false;
+}
+
+std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
+    Node const& snap, std::string const& db, replication2::LogId stateId) {
+  using namespace arangodb::cluster::paths::aliases;
+  auto targetPath = target()->replicatedLogs()->database(db)->log(stateId);
+  auto targetNode = snap.get(targetPath);
+  if (not targetNode.has_value()) {
+    return std::nullopt;
+  }
+  auto target =
+      velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
+          targetNode->get().toBuilder().slice());
+  return target;
+}
+
+std::optional<arangodb::replication2::agency::LogPlanSpecification>
+Job::readLogPlan(Node const& snap, std::string const& db,
+                 replication2::LogId stateId) {
+  auto planPath = "/Plan/ReplicatedLogs/" + db + "/" + to_string(stateId);
+  auto planNode = snap.get(planPath);
+  if (not planNode.has_value()) {
+    return std::nullopt;
+  }
+  auto plan = velocypack::deserialize<
+      arangodb::replication2::agency::LogPlanSpecification>(
+      planNode->get().toBuilder().slice());
+  return plan;
+}
+
+std::string Job::findOtherHealthyParticipant(Node const& snap,
+                                             std::string const& db,
+                                             replication2::LogId stateId,
+                                             std::string const& serverToAvoid) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return {};
+  }
+  std::unordered_map<std::string, bool> good;
+  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
+  }
+
+  for (const auto& [id, participantData] : target->participants) {
+    if (id == serverToAvoid) {
+      // Skip current leader for which we are seeking a replacement
+      continue;
+    }
+
+    if (not good[id]) {
+      // Skip unhealthy servers
+      continue;
+    }
+
+    if (snap.has(blockedServersPrefix + id)) {
+      // server is blocked
+      continue;
+    }
+
+    if (snap.has(maintenancePrefix + id)) {
+      // server is in maintenance mode
+      continue;
+    }
+
+    return id;
+  }
+
+  return {};
 }

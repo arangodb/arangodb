@@ -36,6 +36,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -47,7 +49,6 @@ namespace arangodb::pregel {
 
 class Conductor;
 class IWorker;
-class RecoveryManager;
 
 class PregelFeature final : public ArangodFeature {
  public:
@@ -56,13 +57,8 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  std::pair<Result, uint64_t> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
-      std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          edgeCollectionRestrictions,
-      VPackSlice const& params);
+  ResultT<ExecutionNumber> startExecution(TRI_vocbase_t& vocbase,
+                                          PregelOptions options);
 
   void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions>
                           options) override final;
@@ -74,21 +70,18 @@ class PregelFeature final : public ArangodFeature {
 
   bool isStopping() const noexcept;
 
-  uint64_t createExecutionNumber();
-  void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
-  std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
+  ExecutionNumber createExecutionNumber();
+  void addConductor(std::shared_ptr<Conductor>&&,
+                    ExecutionNumber executionNumber);
+  std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
 
-  void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
-  std::shared_ptr<IWorker> worker(uint64_t executionNumber);
+  void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
+  std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
-  void cleanupConductor(uint64_t executionNumber);
-  void cleanupWorker(uint64_t executionNumber);
-
-  RecoveryManager* recoveryManager() {
-    return _recoveryManagerPtr.load(std::memory_order_acquire);
-  }
+  void cleanupConductor(ExecutionNumber executionNumber);
+  void cleanupWorker(ExecutionNumber executionNumber);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -139,15 +132,6 @@ class PregelFeature final : public ArangodFeature {
 
   mutable Mutex _mutex;
 
-  std::unique_ptr<RecoveryManager> _recoveryManager;
-  /// @brief _recoveryManagerPtr always points to the same object as
-  /// _recoveryManager, but allows the pointer to be read atomically. This is
-  /// necessary because _recoveryManager is initialized lazily at a time when
-  /// other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once
-  /// and lives until the owning PregelFeature instance is also destroyed.
-  std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
-
   Scheduler::WorkHandle _gcHandle;
 
   struct ConductorEntry {
@@ -156,8 +140,9 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
+  std::unordered_map<ExecutionNumber,
+                     std::pair<std::string, std::shared_ptr<IWorker>>>
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;

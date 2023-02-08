@@ -137,7 +137,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice,
                               std::span<std::string const> attributes,
                               bool docComplete, ErrorCode& error,
                               std::string_view key) {
-  uint64_t hashval = TRI_FnvHashBlockInitial();
+  uint64_t hashval = kFnvHashBlockInitial;
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
 
@@ -257,7 +257,6 @@ ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
 ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
     : ShardingStrategy(),
       _sharding(sharding),
-      _shards(),
       _usesDefaultShardKeys(false),
       _shardsSet(false) {
   auto shardKeys = _sharding->shardKeys();
@@ -278,8 +277,8 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
 ErrorCode ShardingStrategyHashBase::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
     bool& usesDefaultShardKeys, std::string_view key) {
-  determineShards();
-  TRI_ASSERT(!_shards.empty());
+  auto const shards = determineShards();
+  TRI_ASSERT(!shards.empty());
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
@@ -288,32 +287,30 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
   // note: we even need to call this in case we only have a single shard,
   // because hashByAttributes can set `res` to an error
   auto res = TRI_ERROR_NO_ERROR;
-  uint64_t hashval = hashByAttributes(slice, std::span(_sharding->shardKeys()),
-                                      docComplete, res, key);
+  uint64_t hashval =
+      hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
 
-  if (_shards.size() == 1) {
+  if (shards.size() == 1) {
     // only a single shard. this is easy. avoid modulo computation for
     // this simple case
-    shardID = _shards[0];
+    shardID = shards[0];
   } else {
     static constexpr char const* magicPhrase =
         "Foxx you have stolen the goose, give she back again!";
     static constexpr size_t magicLength = 52;
 
     // To improve our hash function result:
-    hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
-    shardID = _shards[hashval % _shards.size()];
+    hashval = FnvHashBlock(hashval, magicPhrase, magicLength);
+    shardID = shards[hashval % shards.size()];
   }
   return res;
 }
 
-void ShardingStrategyHashBase::determineShards() {
-  if (!_shardsSet.load(std::memory_order_relaxed)) {
-    MUTEX_LOCKER(mutex, _shardsSetMutex);
-
+std::span<ShardID const> ShardingStrategyHashBase::determineShards() {
+  if (!_shardsSet.load(std::memory_order_acquire)) {
+    std::lock_guard lock{_shardsSetMutex};
     if (_shardsSet.load(std::memory_order_relaxed)) {
-      TRI_ASSERT(!_shards.empty());
-      return;
+      return _shards;
     }
 
     // determine all available shards (which will stay const afterwards)
@@ -333,8 +330,7 @@ void ShardingStrategyHashBase::determineShards() {
     _shards = *shards;
     _shardsSet.store(true, std::memory_order_release);
   }
-
-  TRI_ASSERT(!_shards.empty());
+  return _shards;
 }
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+#include <velocypack/SharedSlice.h>
 
 #include <atomic>
 #include <unordered_set>
@@ -38,19 +39,25 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Conductor.h"
-#include "Pregel/Recovery.h"
+#include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Metrics/MetricsFeature.h"
@@ -95,16 +102,59 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
-std::pair<Result, uint64_t> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
-    std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    VPackSlice const& params) {
+ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
+                                                       PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
-    return std::make_pair(
-        Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"}, 0);
+    return Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"};
+  }
+
+  // // extract the collections
+  std::vector<std::string> vertexCollections;
+  std::vector<std::string> edgeCollections;
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictions;
+
+  if (std::holds_alternative<GraphCollectionNames>(
+          options.graphSource.graphOrCollections)) {
+    auto collectionNames =
+        std::get<GraphCollectionNames>(options.graphSource.graphOrCollections);
+    vertexCollections = collectionNames.vertexCollections;
+    edgeCollections = collectionNames.edgeCollections;
+    edgeCollectionRestrictions =
+        options.graphSource.edgeCollectionRestrictions.items;
+  } else {
+    auto graphName =
+        std::get<GraphName>(options.graphSource.graphOrCollections);
+    if (graphName.graph == "") {
+      return Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"};
+    }
+
+    graph::GraphManager gmngr{vocbase};
+    auto graphRes = gmngr.lookupGraphByName(graphName.graph);
+    if (graphRes.fail()) {
+      return std::move(graphRes).result();
+    }
+    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
+
+    auto const& gv = graph->vertexCollections();
+    for (auto const& v : gv) {
+      vertexCollections.push_back(v);
+    }
+
+    auto const& ge = graph->edgeCollections();
+    for (auto const& e : ge) {
+      edgeCollections.push_back(e);
+    }
+
+    auto const& ed = graph->edgeDefinitions();
+    for (auto const& e : ed) {
+      auto const& from = e.second.getFrom();
+      // intentionally create map entry
+      for (auto const& f : from) {
+        auto& restrictions = edgeCollectionRestrictions[f];
+        restrictions.push_back(e.second.getName());
+      }
+    }
   }
 
   ServerState* ss = ServerState::instance();
@@ -112,21 +162,23 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    TRI_ASSERT(params.isObject());
-    VPackSlice storeSlice = params.get("store");
+    // TODO get rid of that when we have a pregel parameter struct
+    TRI_ASSERT(options.userParameters.slice().isObject());
+    VPackSlice storeSlice = options.userParameters.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+
     for (std::string const& vc : vertexCollections) {
       bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
       bool canRead = exec.canUseCollection(vc, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+        return Result{TRI_ERROR_FORBIDDEN};
       }
     }
     for (std::string const& ec : edgeCollections) {
       bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
       bool canRead = exec.canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+        return Result{TRI_ERROR_FORBIDDEN};
       }
     }
   }
@@ -138,30 +190,24 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              0);
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "Cannot use pregel on system collection"};
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        if (coll->deleted()) {
+          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
-          coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+      if (coll == nullptr || coll->deleted()) {
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+      return Result{TRI_ERROR_INTERNAL};
     }
   }
 
@@ -175,37 +221,36 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              0);
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "Cannot use pregel on system collection"};
         }
 
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
 
-          std::string shardKeyAttribute = "vertex";
-          if (params.hasKey("shardKeyAttribute")) {
-            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
-          }
+          // TODO get rid of that when we have a pregel parameter struct
+          std::string shardKeyAttribute =
+              options.userParameters.slice().hasKey("shardKeyAttribute")
+                  ? options.userParameters.slice()
+                        .get("shardKeyAttribute")
+                        .copyString()
+                  : "vertex";
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
-            return std::make_pair(
-                Result{TRI_ERROR_BAD_PARAMETER,
-                       "Edge collection needs to be sharded "
-                       "by shardKeyAttribute parameter ('" +
-                           shardKeyAttribute +
-                           "'), or use SmartGraphs. The current shardKey is: " +
-                           (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+            return Result{
+                TRI_ERROR_BAD_PARAMETER,
+                "Edge collection needs to be sharded "
+                "by shardKeyAttribute parameter ('" +
+                    shardKeyAttribute +
+                    "'), or use SmartGraphs. The current shardKey is: " +
+                    (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
-                },
-                0);
+            };
           }
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        if (coll->deleted()) {
+          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
 
         // smart edge collections contain multiple actual collections
@@ -213,36 +258,33 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
       std::vector<std::string> actual = coll->realNamesForRead();
       edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+      return Result{TRI_ERROR_INTERNAL};
     }
   }
 
-  uint64_t en = createExecutionNumber();
+  auto en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      algorithm, params, *this);
+      options.algorithm, options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
-
-  return std::make_pair(Result{}, en);
+  return en;
 }
 
-uint64_t PregelFeature::createExecutionNumber() {
-  return TRI_NewServerSpecificTick();
+ExecutionNumber PregelFeature::createExecutionNumber() {
+  return ExecutionNumber{TRI_NewServerSpecificTick()};
 }
 
 PregelFeature::PregelFeature(Server& server)
@@ -277,8 +319,8 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset,
-                                        [this](bool canceled) {
+  auto handle = scheduler->queueDelayed("pregel-gc", RequestLane::INTERNAL_LOW,
+                                        offset, [this](bool canceled) {
                                           if (!canceled) {
                                             garbageCollectConductors();
                                             scheduleGarbageCollection();
@@ -293,60 +335,113 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("pregel", "Pregel jobs");
 
   options
-      ->addOption(
-          "--pregel.parallelism",
-          "default parallelism to use in a Pregel job if none is specified",
-          new SizeTParameter(&_defaultParallelism),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Dynamic,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      ->addOption("--pregel.parallelism",
+                  "The default parallelism to use in a Pregel job if none is "
+                  "specified.",
+                  new SizeTParameter(&_defaultParallelism),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(The default parallelism for a Pregel job is only
+used if you start a job without setting the `parallelism` attribute.
+
+Defaults to the number of available cores divided by 4. The result is limited to
+a value between 1 and 16.)");
 
   options
       ->addOption("--pregel.min-parallelism",
-                  "minimum parallelism usable in a Pregel job",
+                  "The minimum parallelism usable in a Pregel job.",
                   new SizeTParameter(&_minParallelism),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(Increasing the value of this option forces each
+Pregel job to run with at least this level of parallelism. In a cluster
+deployment, the limit applies per DB-Server.)");
 
   options
       ->addOption("--pregel.max-parallelism",
-                  "maximum parallelism usable in a Pregel job",
+                  "The maximum parallelism usable in a Pregel job.",
                   new SizeTParameter(&_maxParallelism),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(This option effectively limits the parallelism of
+each Pregel job to the specified value. In a cluster deployment, the limit
+applies per DB-Server.
+
+Defaults to the number of available cores.)");
 
   options
-      ->addOption("--pregel.memory-mapped-files",
-                  "use memory mapped files for storing Pregel temporary data "
-                  "(as opposed "
-                  "to storing in RAM) if nothing is specifed in a Pregel job",
-                  new BooleanParameter(&_useMemoryMaps),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      ->addOption(
+          "--pregel.memory-mapped-files",
+          "Whether to use memory mapped files for storing Pregel "
+          "temporary data (as opposed to storing it in RAM) by default.",
+          new BooleanParameter(&_useMemoryMaps),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(If set to `true`, Pregel jobs store their
+temporary data in disk-backed memory-mapped files. If set to `false`, the
+temporary data of Pregel jobs is buffered in main memory.
+
+Memory-mapped files are used by default. This has the advantage of a lower RAM
+utilization, which reduces the likelihood of out-of-memory situations. However,
+storing the files on disk requires a certain disk capacity, so that instead of
+running out of RAM, it is possible to run out of a disk space. Make sure to use
+a suitable storage location.
+
+You can override this option for each Pregel job by setting the `useMemoryMaps`
+attribute of the job.)");
 
   options
       ->addOption("--pregel.memory-mapped-files-location-type",
-                  "location for Pregel's temporary files",
+                  "The location for Pregel's temporary files.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_tempLocationType, ::tempLocationTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(You can configure the location for the
+memory-mapped files written by Pregel with this option. This option is only
+meaningful if you use memory-mapped files.
+
+The option can have one of the following values:
+
+- `temp-directory`: store memory-mapped files in the temporary directory, as
+  configured via `--temp.path`. If `--temp.path` is not set, the system's
+  temporary directory is used.
+- `database-directory`: store memory-mapped files in a separate directory
+  underneath the database directory.
+- `custom`: use a custom directory location for memory-mapped files. You can set
+  the location via the `--pregel.memory-mapped-files-custom-path` option.
+
+The default location for Pregel's memory-mapped files is the temporary directory 
+(`--temp.path`), which may not provide enough capacity for larger Pregel jobs.
+It may be more sensible to configure a custom directory for memory-mapped files
+and provide the necessary disk space there (`custom`). 
+Such custom directory can be mounted on ephemeral storage, as the files are only 
+needed temporarily. If a custom directory location is used, you need to specify 
+the actual location via the `--pregel.memory-mapped-files-custom-path`
+parameter.
+
+You can also use a subdirectory of the database directory as the storage
+location for the memory-mapped files (`--database.directory`). The database
+directory often provides a lot of disk space capacity, but when Pregel's
+temporary files are stored in there too, it has to provide enough capacity to
+store both the regular database data and the Pregel files.)");
 
   options
       ->addOption("--pregel.memory-mapped-files-custom-path",
@@ -357,7 +452,9 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(If you use this option, you need to specify the
+storage directory location as an absolute path.)");
 }
 
 void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -464,13 +561,6 @@ void PregelFeature::start() {
       << ", memory mapping: " << (_useMemoryMaps ? "on" : "off")
       << ", temp path: " << tempDirectory;
 
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    _recoveryManager = std::make_unique<RecoveryManager>(ci);
-    _recoveryManagerPtr.store(_recoveryManager.get(),
-                              std::memory_order_release);
-  }
-
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
   }
@@ -545,7 +635,7 @@ size_t PregelFeature::maxParallelism() const noexcept {
 bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
-                                 uint64_t executionNumber) {
+                                 ExecutionNumber executionNumber) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -558,7 +648,8 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
                      std::move(c)});
 }
 
-std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
+std::shared_ptr<Conductor> PregelFeature::conductor(
+    ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
   return (it != _conductors.end() && ::authorized(it->second.user))
@@ -592,7 +683,7 @@ void PregelFeature::garbageCollectConductors() try {
 
   MUTEX_LOCKER(guard, _mutex);
   for (auto& c : conductors) {
-    uint64_t executionNumber = c->executionNumber();
+    ExecutionNumber executionNumber = c->executionNumber();
 
     _conductors.erase(executionNumber);
     _workers.erase(executionNumber);
@@ -601,7 +692,7 @@ void PregelFeature::garbageCollectConductors() try {
 }
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
-                              uint64_t executionNumber) {
+                              ExecutionNumber executionNumber) {
   if (isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -611,7 +702,8 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
   _workers.try_emplace(executionNumber, std::move(user), std::move(w));
 }
 
-std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
+std::shared_ptr<IWorker> PregelFeature::worker(
+    ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
   return (it != _workers.end() && ::authorized(it->second.first))
@@ -619,13 +711,13 @@ std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
              : nullptr;
 }
 
-void PregelFeature::cleanupConductor(uint64_t executionNumber) {
+void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);
   _workers.erase(executionNumber);
 }
 
-void PregelFeature::cleanupWorker(uint64_t executionNumber) {
+void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -647,11 +739,12 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
     LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
   }
-  uint64_t exeNum = 0;
+  auto exeNum = ExecutionNumber{0};
   if (sExecutionNum.isInteger()) {
-    exeNum = sExecutionNum.getUInt();
+    exeNum = ExecutionNumber{sExecutionNum.getUInt()};
   } else if (sExecutionNum.isString()) {
-    exeNum = basics::StringUtils::uint64(sExecutionNum.copyString());
+    exeNum = ExecutionNumber{
+        basics::StringUtils::uint64(sExecutionNum.copyString())};
   }
   std::shared_ptr<Conductor> co = conductor(exeNum);
   if (!co) {
@@ -661,20 +754,50 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,
-        "Conductor not found, invalid execution number: " +
-            std::to_string(exeNum));
+        fmt::format("Conductor not found, invalid execution number: {}",
+                    exeNum));
   }
 
   if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
+    auto message = inspection::deserializeWithErrorT<StatusUpdated>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize StatusUpdated message: {}",
+                      message.error().error()));
+    }
+    co->workerStatusUpdate(std::move(message.get()));
   } else if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
+    auto message = inspection::deserializeWithErrorT<GraphLoaded>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GraphLoaded message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStartup(message.get());
   } else if (path == Utils::finishedWorkerStepPath) {
-    outBuilder = co->finishedWorkerStep(body);
+    auto message = inspection::deserializeWithErrorT<GlobalSuperStepFinished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GlobalSuperStepFinished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStep(message.get());
   } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
-  } else if (path == Utils::finishedRecoveryPath) {
-    co->finishedRecoveryStep(body);
+    auto message = inspection::deserializeWithErrorT<Finished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize Finished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerFinalize(message.get());
   }
 }
 
@@ -693,7 +816,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
 
-  uint64_t exeNum = sExecutionNum.getUInt();
+  auto exeNum = ExecutionNumber{sExecutionNum.getUInt()};
 
   std::shared_ptr<IWorker> w = worker(exeNum);
 
@@ -704,17 +827,19 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
-
-    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
-    worker(exeNum)->setupWorker();  // will call conductor
-
-    return;
-  } else if (path == Utils::startRecoveryPath) {
-    if (!w) {
-      addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
+    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
+        velocypack::SharedSlice({}, body));
+    if (!createWorker.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize CreateWorker message: {}",
+                      createWorker.error().error()));
     }
 
-    worker(exeNum)->startRecovery(body);
+    addWorker(AlgoRegistry::createWorker(vocbase, createWorker.get(), *this),
+              exeNum);
+    worker(exeNum)->setupWorker();  // will call conductor
+
     return;
   } else if (!w) {
     // any other call should have a working worker instance
@@ -732,26 +857,72 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    w->prepareGlobalStep(body, outBuilder);
-  } else if (path == Utils::startGSSPath) {
-    w->startGlobalStep(body);
-  } else if (path == Utils::messagesPath) {
-    w->receivedMessages(body);
-  } else if (path == Utils::cancelGSSPath) {
-    w->cancelGlobalStep(body);
-  } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
-  } else if (path == Utils::continueRecoveryPath) {
-    w->compensateStep(body);
-  } else if (path == Utils::finalizeRecoveryPath) {
-    w->finalizeRecovery(body);
-  } else if (path == Utils::aqlResultsPath) {
-    bool withId = false;
-    if (body.isObject()) {
-      VPackSlice slice = body.get("withId");
-      withId = slice.isBoolean() && slice.getBool();
+    auto message = inspection::deserializeWithErrorT<PrepareGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize PrepareGlobalSuperStep message: {}",
+                      message.error().error()));
     }
-    w->aqlResult(outBuilder, withId);
+    auto prepared = w->prepareGlobalStep(message.get());
+    auto response = inspection::serializeWithErrorT(prepared);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize GlobalSuperStepPrepared message: {}",
+                      message.error().error()));
+    }
+    outBuilder.add(response.get().slice());
+  } else if (path == Utils::startGSSPath) {
+    auto message = inspection::deserializeWithErrorT<RunGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize RunGlobalSuperStep message: {}",
+                      message.error().error()));
+    }
+    w->startGlobalStep(message.get());
+  } else if (path == Utils::messagesPath) {
+    auto message = inspection::deserializeWithErrorT<PregelMessage>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize PregelMessage message: {}",
+                      message.error().error()));
+    }
+    w->receivedMessages(message.get());
+  } else if (path == Utils::finalizeExecutionPath) {
+    auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize FinalizeExecution message: {}",
+                      message.error().error()));
+    }
+    w->finalizeExecution(message.get(),
+                         [this, exeNum]() { cleanupWorker(exeNum); });
+  } else if (path == Utils::aqlResultsPath) {
+    auto message = inspection::deserializeWithErrorT<CollectPregelResults>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize CollectPregelResults message: {}",
+                      message.error().error()));
+    }
+    auto results = w->aqlResult(message.get().withId);
+    auto response = inspection::serializeWithErrorT(results);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize PregelResults message: {}",
+                      response.error().error()));
+    }
+    outBuilder.add(response.get().slice());
   }
 }
 

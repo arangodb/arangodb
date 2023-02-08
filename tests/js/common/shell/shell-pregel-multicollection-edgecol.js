@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -111,6 +112,7 @@ function multiCollectionTestSuite() {
 
       console.log("extended edge definition");
 
+      let cols = {};
       for (let c = 0; c < numComponents; c++) {
         let x = 0;
         let vertices = [];
@@ -122,9 +124,16 @@ function multiCollectionTestSuite() {
           vertices[i].push({ _key: String(c) + ":" + String(x++) });
         }
         for (let i = 0; i < cn; ++i) {
-          db[`${vColl}_${i}`].insert(vertices[i]);
+          let coln = `${vColl}_${i}`;
+          if (!cols.hasOwnProperty(coln)) {
+            cols[coln] = [];
+          }
+          cols[coln] = cols[coln].concat(vertices[i]);
         }
       }
+      Object.keys(cols).forEach(coln => {
+        db[coln].insert(cols[coln]);
+      });
 
       for (let i = 0; i < cn; ++i) {
         assertEqual(db[`${vColl}_${i}`].count(), numComponents * n / cn);
@@ -134,6 +143,7 @@ function multiCollectionTestSuite() {
 
       let lcg = createRand();
 
+      let edgeCols = {};
       for (let c = 0; c < numComponents; c++) {
         let edges = [];
         for (let i = 0; i < cn; ++i) {
@@ -155,7 +165,11 @@ function multiCollectionTestSuite() {
         }
         for (let i = 0; i < cn; ++i) {
           for (let j = 0; j < cn; ++j) {
-            db[`${eColl}_${i}_${j}`].insert(edges[i][j]);
+            let coln = `${eColl}_${i}_${j}`;
+            if (!edgeCols.hasOwnProperty(coln)) {
+              edgeCols[coln] = [];
+            }
+          edgeCols[coln] = edgeCols[coln].concat(edges[i][j]);
           }
         }
 
@@ -168,9 +182,16 @@ function multiCollectionTestSuite() {
           const vTo = (toId + c) % cn;
           const from = `${vColl}_${vFrom}/${fromKey}`;
           const to = `${vColl}_${vTo}/${toKey}`;
-          db[`${eColl}_${vFrom}_${vTo}`].insert({ _from: from, _to: to, vertex: String(fromKey) });
+          let coln = `${eColl}_${vFrom}_${vTo}`;
+          if (!cols.hasOwnProperty(coln)) {
+            cols[coln] = [];
+          }
+          edgeCols[coln] = edgeCols[coln].concat({ _from: from, _to: to, vertex: String(fromKey) });
         }
       }
+      Object.keys(edgeCols).forEach(coln => {
+        db[coln].insert(edgeCols[coln]);
+      });
       
       let count = 0;
       for (let i = 0; i < cn; ++i) {
@@ -192,102 +213,62 @@ function multiCollectionTestSuite() {
 
     testMultiWCC: function () {
       var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
-      var i = 10000;
-      do {
-        internal.sleep(0.2);
-        let stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-          assertEqual(stats.vertexCount, numComponents * n, stats);
-          assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-          assertFalse(stats.hasOwnProperty("parallelism"));
+      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-          let mySet = new Set();
-          for (let j = 0; j < cn; ++j) {
-            let c = db[`${vColl}_${j}`].all();
-            while (c.hasNext()) {
-              let doc = c.next();
-              assertTrue(doc.result !== undefined, doc);
-              mySet.add(doc.result);
-            }
-          }
+      assertEqual(stats.vertexCount, numComponents * n, stats);
+      assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+      assertFalse(stats.hasOwnProperty("parallelism"));
 
-          assertEqual(mySet.size, numComponents);
-
-          break;
-        }
-      } while (i-- >= 0);
-      if (i === 0) {
-        assertTrue(false, "timeout in WCC execution");
+      let allUniquePregelResults = new Set();
+      for (let j = 0; j < cn; ++j) {
+        let c = db[`${vColl}_${j}`].all();
+        const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+        allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
       }
+
+      assertEqual(allUniquePregelResults.size, numComponents);
+
     },
     
     testMultiWCCParallelism: function () {
       [ 1, 2, 4, 8 ].forEach((parallelism) => {
         let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism });
-        let i = 10000;
-        do {
-          internal.sleep(0.2);
-          let stats = pregel.status(pid);
-          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-            assertTrue( stats.gss <= 25);
-            assertEqual(stats.vertexCount, numComponents * n, stats);
-            assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-            assertTrue(stats.hasOwnProperty("parallelism"));
-            assertEqual(parallelism, stats.parallelism);
+        const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-            let mySet = new Set();
-            for (let j = 0; j < cn; ++j) {
-              let c = db[`${vColl}_${j}`].all();
-              while (c.hasNext()) {
-                let doc = c.next();
-                assertTrue(doc.result !== undefined, doc);
-                mySet.add(doc.result);
-              }
-            }
+        assertTrue( stats.gss <= 25);
+        assertEqual(stats.vertexCount, numComponents * n, stats);
+        assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+        assertTrue(stats.hasOwnProperty("parallelism"));
+        assertEqual(parallelism, stats.parallelism);
 
-            assertEqual(mySet.size, numComponents);
-
-            break;
-          }
-        } while (i-- >= 0);
-        if (i === 0) {
-          assertTrue(false, "timeout in WCC execution");
+        let allUniquePregelResults = new Set();
+        for (let j = 0; j < cn; ++j) {
+          let c = db[`${vColl}_${j}`].all();
+          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
         }
+        assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
     
     testMultiWCCParallelismMemoryMapping: function () {
       [ 1, 2, 4, 8 ].forEach((parallelism) => {
         let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
-        let i = 10000;
-        do {
-          internal.sleep(0.2);
-          let stats = pregel.status(pid);
-          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-            assertTrue(stats.gss <= 25);
-            assertEqual(stats.vertexCount, numComponents * n, stats);
-            assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-            assertTrue(stats.hasOwnProperty("parallelism"));
-            assertEqual(parallelism, stats.parallelism);
+        const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-            let mySet = new Set();
-            for (let j = 0; j < cn; ++j) {
-              let c = db[`${vColl}_${j}`].all();
-              while (c.hasNext()) {
-                let doc = c.next();
-                assertTrue(doc.result !== undefined, doc);
-                mySet.add(doc.result);
-              }
-            }
+        assertTrue(stats.gss <= 25, stats);
+        assertEqual(stats.vertexCount, numComponents * n, stats);
+        assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+        assertTrue(stats.hasOwnProperty("parallelism"), stats);
+        assertEqual(parallelism, stats.parallelism, stats);
 
-            assertEqual(mySet.size, numComponents);
-
-            break;
-          }
-        } while (i-- >= 0);
-        if (i === 0) {
-          assertTrue(false, "timeout in WCC execution");
+        let allUniquePregelResults = new Set();
+        for (let j = 0; j < cn; ++j) {
+          let c = db[`${vColl}_${j}`].all();
+          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
+          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
         }
+        assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
 
@@ -300,54 +281,45 @@ function edgeCollectionRestrictionsTestSuite() {
   const cn = 'UnitTestCollection';
 
   let checkResult = function(pid) {
-    var i = 10000;
-    do {
-      internal.sleep(0.2);
-      let stats = pregel.status(pid);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-        assertEqual(200, stats.vertexCount, stats);
-        assertEqual(90, stats.edgeCount, stats);
-        assertTrue(stats.hasOwnProperty("parallelism"));
+    const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-        let fromComponents = {};
-        let toComponents = {};
-        for (let i = 0; i < 10; ++i) {
-          let fromName = cn + 'VertexFrom' + i;
-          let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc.order RETURN doc`).toArray();
-          assertEqual(10, fromDocs.length);
+    assertEqual(200, stats.vertexCount, stats);
+    assertEqual(90, stats.edgeCount, stats);
+    assertTrue(stats.hasOwnProperty("parallelism"));
 
-          fromDocs.forEach((doc, index) => {
-            if (!fromComponents.hasOwnProperty(doc.result)) {
-              fromComponents[doc.result] = 0;
-            }
-            ++fromComponents[doc.result];
-          });
+    let fromComponents = {};
+    let toComponents = {};
+    for (let i = 0; i < 10; ++i) {
+      let fromName = cn + 'VertexFrom' + i;
+      let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc.order RETURN doc`).toArray();
+      assertEqual(10, fromDocs.length);
 
-          let toName = cn + 'VertexTo' + i;
-          let toDocs = db._query(`FOR doc IN ${toName} SORT doc.order RETURN doc`).toArray();
-          assertEqual(10, toDocs.length);
-
-          toDocs.forEach((doc, index) => {
-            if (!toComponents.hasOwnProperty(doc.result)) {
-              toComponents[doc.result] = 0;
-            }
-            ++toComponents[doc.result];
-          });
+      fromDocs.forEach((doc, index) => {
+        if (!fromComponents.hasOwnProperty(doc.result)) {
+          fromComponents[doc.result] = 0;
         }
-        assertEqual(100, Object.keys(fromComponents).length); 
-        Object.keys(fromComponents).forEach((k) => {
-          assertEqual(1, fromComponents[k]);
-        });
-        assertEqual(100, Object.keys(toComponents).length); 
-        Object.keys(toComponents).forEach((k) => {
-          assertEqual(1, toComponents[k]);
-        });
-        break;
-      }
-    } while (i-- >= 0);
-    if (i === 0) {
-      assertTrue(false, "timeout in algorithm execution");
+        ++fromComponents[doc.result];
+      });
+
+      let toName = cn + 'VertexTo' + i;
+      let toDocs = db._query(`FOR doc IN ${toName} SORT doc.order RETURN doc`).toArray();
+      assertEqual(10, toDocs.length);
+
+      toDocs.forEach((doc, index) => {
+        if (!toComponents.hasOwnProperty(doc.result)) {
+          toComponents[doc.result] = 0;
+        }
+        ++toComponents[doc.result];
+      });
     }
+    assertEqual(100, Object.keys(fromComponents).length); 
+    Object.keys(fromComponents).forEach((k) => {
+      assertEqual(1, fromComponents[k]);
+    });
+    assertEqual(100, Object.keys(toComponents).length); 
+    Object.keys(toComponents).forEach((k) => {
+      assertEqual(1, toComponents[k]);
+    });
   };
 
   return {

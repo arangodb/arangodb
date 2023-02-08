@@ -78,16 +78,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                             bool& foundInCache) const;
 
   /// @brief reads a revision id from the primary index
-  /// if the document does not exist, this function will return false
-  /// if the document exists, the function will return true
   /// the revision id will only be non-zero if the primary index
   /// value contains the document's revision id. note that this is not
   /// the case for older collections
   /// in this case the caller must fetch the revision id from the actual
   /// document
-  bool lookupRevision(transaction::Methods* trx, std::string_view key,
-                      LocalDocumentId& id, RevisionId& revisionId,
-                      ReadOwnWrites) const;
+  Result lookupRevision(transaction::Methods* trx, std::string_view key,
+                        LocalDocumentId& id, RevisionId& revisionId,
+                        ReadOwnWrites, bool lockForUpdate = false) const;
 
   Index::FilterCosts supportsFilterCondition(
       transaction::Methods& trx,
@@ -100,9 +98,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                          size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* node,
@@ -125,8 +124,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
@@ -135,20 +134,16 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                 bool /*performChecks*/) override;
 
  private:
-  /// @brief test if the specified key (keySlice) already exists.
-  /// if it exists and the key exists, lock it for updates!
-  Result probeKey(transaction::Methods& trx, RocksDBMethods* mthd,
-                  RocksDBKeyLeaser const& key, velocypack::Slice keySlice,
-                  OperationOptions const& options, bool insert);
-
   /// @brief create the iterator, for a single attribute, IN operator
-  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
+  std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
+                                                  transaction::Methods*,
                                                   aql::AstNode const*,
                                                   aql::AstNode const*,
                                                   bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
+  std::unique_ptr<IndexIterator> createEqIterator(ResourceMonitor& monitor,
+                                                  transaction::Methods*,
                                                   aql::AstNode const*,
                                                   aql::AstNode const*,
                                                   ReadOwnWrites readOwnWrites);

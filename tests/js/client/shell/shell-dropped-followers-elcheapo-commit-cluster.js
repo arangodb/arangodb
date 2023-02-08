@@ -37,14 +37,20 @@ let { getEndpointsByType,
       waitForShardsInSync
     } = require('@arangodb/test-helper');
 
-function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
-  db._create(cn, {numberOfShards:2, replicationFactor:2});
-  // Get dbserver names first:
-  let health = arango.GET("/_admin/cluster/health").Health;
-  let endpointMap = {};
+    
+function getEndpointMap() {
+  const health = arango.GET("/_admin/cluster/health").Health;
+  const endpointMap = {};
   for (let sid in health) {
     endpointMap[health[sid].ShortName] = health[sid].Endpoint;
   }
+  return endpointMap;
+}
+
+function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
+  db._create(cn, {numberOfShards:2, replicationFactor:2});
+  // Get dbserver names first:
+  const endpointMap = getEndpointMap();
   let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
   let shards = Object.keys(plan);
   let coordinator = "Coordinator0001";
@@ -133,15 +139,19 @@ function dropFollowersElCheapoSuite() {
   const cn = 'UnitTestsElCheapoDroppedFollowers';
   let collInfo = {};
 
-  return {
+  const endpointMap = getEndpointMap();
+  const info = { endpointMap, coordinator: "Coordinator0001" };
 
+  return {
     setUp: function () {
+      switchConnectionToCoordinator(info);
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
       collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
     },
 
     tearDown: function () {
+      switchConnectionToCoordinator(info);
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },

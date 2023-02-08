@@ -35,9 +35,22 @@
 #include "Agency/AgencyCommon.h"
 #include "Basics/Result.h"
 
-namespace arangodb::velocypack {
+namespace arangodb {
+namespace velocypack {
 class Slice;
 }
+namespace replication2 {
+class LogId;
+namespace replicated_state::agency {
+struct Target;
+struct Plan;
+}  // namespace replicated_state::agency
+namespace agency {
+struct LogPlanSpecification;
+struct LogTarget;
+}  // namespace agency
+}  // namespace replication2
+}  // namespace arangodb
 
 namespace arangodb::consensus {
 class AgentInterface;
@@ -57,8 +70,6 @@ extern std::string const cleanedPrefix;
 extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
-extern std::string const planRepLogPrefix;
-extern std::string const targetRepLogPrefix;
 extern std::string const targetRepStatePrefix;
 extern std::string const planRepStatePrefix;
 extern std::string const curColPrefix;
@@ -73,6 +84,7 @@ extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
 extern std::string const planAnalyzersPrefix;
+extern std::string const returnLeadershipPrefix;
 
 struct Job {
   struct shard_t {
@@ -140,6 +152,24 @@ struct Job {
   static std::string findNonblockedCommonHealthyInSyncFollower(
       Node const& snap, std::string const& db, std::string const& col,
       std::string const& shrd, std::string const& serverToAvoid);
+
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, std::string const& db, replication2::LogId stateId,
+      std::string const& serverToAvoid);
+
+  static bool isServerLeaderForState(Node const& snap, std::string const& db,
+                                     replication2::LogId stateId,
+                                     std::string const& server);
+  static bool isServerParticipantForState(Node const& snap,
+                                          std::string const& db,
+                                          replication2::LogId stateId,
+                                          std::string const& server);
+
+  static std::optional<arangodb::replication2::agency::LogTarget>
+  readStateTarget(Node const& snap, std::string const& db,
+                  replication2::LogId stateId);
+  static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
+      Node const& snap, std::string const& db, replication2::LogId logId);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
@@ -226,9 +256,6 @@ struct Job {
   static void addPreconditionServerReadLocked(velocypack::Builder& pre,
                                               std::string const& server,
                                               std::string const& jobId);
-  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
-                                                 std::string const& server,
-                                                 std::string const& jobId);
   static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
                                                std::string const& server,
                                                std::string const& jobId);

@@ -134,7 +134,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
-  TransactionStatistics& statistics() noexcept;
+  TransactionStatistics& statistics() const noexcept;
 
   [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
@@ -159,7 +159,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief return the collection from a transaction
   [[nodiscard]] TransactionCollection* collection(
-      std::string const& name, AccessMode::Type accessType) const;
+      std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
@@ -196,6 +196,32 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return _hints.has(hint);
   }
 
+  using CommitCallback = std::function<void(TransactionState&)>;
+  using BeforeCommitCallback = CommitCallback;
+  using AfterCommitCallback = CommitCallback;
+
+  void addBeforeCommitCallback(BeforeCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _beforeCommitCallbacks.push_back(callback);
+  }
+  void addAfterCommitCallback(AfterCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _afterCommitCallbacks.push_back(callback);
+  }
+  void applyBeforeCommitCallbacks() noexcept {
+    return applyCallbackImpl(_beforeCommitCallbacks);
+  }
+  void applyAfterCommitCallbacks() noexcept {
+    return applyCallbackImpl(_afterCommitCallbacks);
+  }
+
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
+  [[nodiscard]] virtual bool ensureSnapshot() = 0;
+
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
@@ -206,8 +232,16 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
-  virtual arangodb::Result performIntermediateCommitIfRequired(
+  virtual Result triggerIntermediateCommit() = 0;
+
+  virtual futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
+
+  /// @returns number of insertions/removals in a transaction, update takes 2
+  /// primitive operations
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
 
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
@@ -267,6 +301,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
  private:
   void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
 
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
+
  public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
@@ -318,7 +363,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
-  void clearQueryCache();
+  void clearQueryCache() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // reset the internal Transaction ID to none.
@@ -350,6 +395,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
+
+  std::vector<BeforeCommitCallback const*> _beforeCommitCallbacks;
+  std::vector<AfterCommitCallback const*> _afterCommitCallbacks;
 
  private:
   TransactionId _id;  /// @brief local trx id

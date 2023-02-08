@@ -36,11 +36,12 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
                          std::string const& database,
                          std::string const& collection,
-                         std::string const& shard)
+                         std::string const& shard, std::string const& notBefore)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
-      _shard(shard) {}
+      _shard(shard),
+      _notBefore(notBefore) {}
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
@@ -51,12 +52,15 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_collection = _snapshot.hasAsString(path + "collection");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_timeCreated = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database && tmp_collection && tmp_shard && tmp_creator) {
+  if (tmp_database && tmp_collection && tmp_shard && tmp_creator &&
+      tmp_timeCreated) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _shard = tmp_shard.value();
     _creator = tmp_creator.value();
+    _timeCreated = tmp_timeCreated.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -65,6 +69,10 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     // constructor
     finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
+  }
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+  if (tmp_notBefore) {
+    _notBefore = tmp_notBefore.value();
   }
 }
 
@@ -102,6 +110,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("notBefore", VPackValue(_notBefore));
   }
 
   _status = TODO;
@@ -122,7 +131,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("02cef", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -194,6 +203,22 @@ bool AddFollower::start(bool&) {
     return false;
   }
 
+  // Check if configured delay has passed since the creation of the job,
+  // or we are in "urgent" mode:
+  if (!_notBefore.empty()) {
+    auto now = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point notBefore =
+        stringToTimepoint(_notBefore);
+    if (now < notBefore) {
+      LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
+          << "shard " << _shard
+          << " needs addFollower but configured AddFollowerDelay has not yet "
+             "passed, delaying job "
+          << _jobId;
+      return false;
+    }
+  }
+
   // Now find some new servers to add:
   auto available = Job::availableServers(_snapshot);
   // Remove those already in Plan:
@@ -205,7 +230,7 @@ bool AddFollower::start(bool&) {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerHealth(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != Supervision::HEALTH_STATUS_GOOD) {
       it = available.erase(it);
     } else {
       ++it;
@@ -229,7 +254,8 @@ bool AddFollower::start(bool&) {
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
-        << " does not have enough candidates to add followers, waiting, jobId="
+        << " does not have enough candidates to add followers, waiting, "
+           "jobId="
         << _jobId;
     return false;
   }
@@ -263,8 +289,8 @@ bool AddFollower::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("24c50", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -329,7 +355,7 @@ bool AddFollower::start(bool&) {
           });
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
@@ -346,7 +372,7 @@ bool AddFollower::start(bool&) {
   }
 
   LOG_TOPIC("63ba4", INFO, Logger::SUPERVISION)
-      << "Start precondition failed for AddFollower " + _jobId;
+      << "Start precondition failed for AddFollower " << _jobId;
   return false;
 }
 

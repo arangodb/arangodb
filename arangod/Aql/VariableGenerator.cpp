@@ -153,7 +153,7 @@ std::string VariableGenerator::nextName() {
 void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
   for (auto const& it : _variables) {
-    it.second->toVelocyPack(builder);
+    it.second->toVelocyPack(builder, Variable::WithConstantValue{});
   }
 }
 

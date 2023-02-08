@@ -1,9 +1,7 @@
 add_library(arango_graph STATIC
-  AttributeWeightShortestPathFinder.cpp
   BaseOptions.cpp
   ClusterGraphDatalake.cpp
   ClusterTraverserCache.cpp
-  ConstantWeightShortestPathFinder.cpp
   Graph.cpp
   GraphManager.cpp
   GraphOperations.cpp
@@ -34,9 +32,6 @@ target_link_libraries(arango_graph
 target_include_directories(arango_graph PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_graph PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_subdirectory(Cache)
 add_subdirectory(Cursors)

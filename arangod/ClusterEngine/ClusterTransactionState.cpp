@@ -138,6 +138,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  TRI_ASSERT(_beforeCommitCallbacks.empty());
+  TRI_ASSERT(_afterCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -171,8 +173,14 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }

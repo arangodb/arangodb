@@ -21,9 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Graph/TraverserOptions.h>
-#include <velocypack/Iterator.h>
-
 #include "ExecutionPlan.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -63,6 +60,9 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -526,8 +526,21 @@ bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
 }
 
 /// @brief increase the node counter for the type
-void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
+void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
+  auto const type = node.getType();
   ++_typeCounts[type];
+
+  // Tracking forced index hints left to use.
+  // This could be only collection nodes. IndexNodes
+  // are created by optimizer as a result of applying index
+  // and corresponding hint if any.
+  if (type == ExecutionNode::ENUMERATE_COLLECTION) {
+    EnumerateCollectionNode const* en =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |=
+        hint.type() == aql::IndexHint::HintType::Simple && hint.isForced();
+  }
 }
 
 /// @brief process the list of collections in a VelocyPack
@@ -603,41 +616,29 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, unsigned flags) const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = false;
-  options.buildUnindexedArrays = true;
-  auto builder = std::make_shared<VPackBuilder>(&options);
-  toVelocyPack(*builder, ast, flags);
-  return builder;
-}
-
-/// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
-
   _root->allToVelocyPack(builder, flags);
 
-  TRI_ASSERT(builder.isOpenObject());
-
   // set up rules
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
   for (auto const& ruleName :
        OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValuePair(ruleName.data(), ruleName.size(),
-                               VPackValueType::String));
+    builder.add(VPackValue(ruleName));
   }
   builder.close();
 
   // set up collections
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("collections"));
   ast->query().collections().toVelocyPack(builder);
 
   // set up variables
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
@@ -990,6 +991,10 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.validate = !value->isTrue();
         } else if (name == StaticStrings::KeepNullString) {
           options.keepNull = value->isTrue();
+        } else if (name == StaticStrings::RefillIndexCachesString) {
+          options.refillIndexCaches = value->isTrue()
+                                          ? RefillIndexCaches::kRefill
+                                          : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
         } else if (name == StaticStrings::Overwrite) {
@@ -1314,7 +1319,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == StaticStrings::IdString) {
+          member->getStringView() == StaticStrings::IdString) {
         start = member->getMember(0);
         break;
       }
@@ -1331,6 +1336,18 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   // Prune Expression
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
+
+  std::string errorReason;
+  if (pruneExpression != nullptr &&
+      !pruneExpression->canBeUsedInPrune(_ast->query().vocbase().isOneShard(),
+                                         errorReason)) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("Invalid PRUNE expression: ", errorReason));
+  }
 
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
@@ -1380,7 +1397,7 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = vertex->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == StaticStrings::IdString) {
+          member->getStringView() == StaticStrings::IdString) {
         vertex = member->getMember(0);
         break;
       }
@@ -2402,6 +2419,7 @@ void ExecutionPlan::findEndNodes(
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
+/// and if there are any forced index hints left in the plan on collection nodes
 void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
@@ -2411,7 +2429,7 @@ void ExecutionPlan::findVarUsage() {
   for (auto& counter : _typeCounts) {
     counter = 0;
   }
-
+  _hasForcedIndexHints = false;
   _varSetBy.clear();
   ::VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
@@ -2479,7 +2497,6 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
     TRI_ASSERT(x != nullptr);
     node->removeDependency(x);
   }
-
   clearVarUsageComputed();
 }
 
@@ -2609,7 +2626,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // we have to count all nodes by their type here, because our caller
     // will set the _varUsageComputed flag to true manually, bypassing the
     // regular counting!
-    increaseCounter(ret->getType());
+    increaseCounter(*ret);
 
     TRI_ASSERT(ret != nullptr);
 

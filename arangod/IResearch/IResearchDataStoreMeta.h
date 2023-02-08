@@ -3,25 +3,17 @@
 ///
 /// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation) contain
-/// proprietary information of ArangoDB GmbH; they are provided under a license
-/// agreement containing restrictions on use and disclosure and are also
-/// protected by copyright, patent and other intellectual and industrial
-/// property laws. Reverse engineering, disassembly or decompilation of the
-/// Programs, except to the extent required to obtain interoperability with
-/// other independently created software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// It shall be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of
-/// applications if the Programs are used for purposes such as nuclear,
-/// aviation, mass transit, medical, or other inherently dangerous applications,
-/// and ArangoDB GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of ArangoDB
-/// GmbH. You shall not disclose such confidential and proprietary information
-/// and shall use it only in accordance with the terms of the license agreement
-/// you entered into with ArangoDB GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
@@ -39,20 +31,17 @@ struct IResearchDataStoreMeta {
   class ConsolidationPolicy {
    public:
     ConsolidationPolicy() = default;
-    ConsolidationPolicy(irs::index_writer::consolidation_policy_t&& policy,
+    ConsolidationPolicy(irs::ConsolidationPolicy&& policy,
                         VPackBuilder&& properties) noexcept
         : _policy(std::move(policy)), _properties(std::move(properties)) {}
 
-    irs::index_writer::consolidation_policy_t const& policy() const noexcept {
-      return _policy;
-    }
+    irs::ConsolidationPolicy const& policy() const noexcept { return _policy; }
 
     VPackSlice properties() const noexcept { return _properties.slice(); }
 
    private:
-    irs::index_writer::consolidation_policy_t
-        _policy;               // policy instance (false == disable)
-    VPackBuilder _properties;  // normalized policy definition
+    irs::ConsolidationPolicy _policy;  // policy instance (false == disable)
+    VPackBuilder _properties;          // normalized policy definition
   };
 
   IResearchDataStoreMeta();

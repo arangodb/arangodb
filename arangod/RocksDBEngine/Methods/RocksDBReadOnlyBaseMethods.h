@@ -36,7 +36,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
                                       rocksdb::TransactionDB* db);
 
-  ~RocksDBReadOnlyBaseMethods();
+  ~RocksDBReadOnlyBaseMethods() override;
 
   bool ensureSnapshot() override;
 
@@ -51,6 +51,8 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   bool hasOperations() const noexcept override { return false; }
 
   uint64_t numOperations() const noexcept override { return 0; }
+
+  uint64_t numPrimitiveOperations() const noexcept override { return 0; }
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType) override;
@@ -71,6 +73,12 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
                          RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const&) override;
+
+  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
+                                  rocksdb::Slice const&,
+                                  rocksdb::PinnableSlice*, ReadOwnWrites,
+                                  rocksdb::Snapshot const*) final;
+
   void PutLogData(rocksdb::Slice const&) override;
 
   void SetSavePoint() override {}

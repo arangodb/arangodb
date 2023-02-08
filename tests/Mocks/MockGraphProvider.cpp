@@ -28,6 +28,8 @@
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Graph/EdgeDocumentToken.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -69,9 +71,23 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
       _edge({}),
       _isProcessable(isProcessable) {}
 
+MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
+                              size_t depth, double weight)
+    : arangodb::graph::BaseStep<Step>{prev, depth, weight},
+      _vertex(v),
+      _edge({}),
+      _isProcessable(isProcessable) {}
+
 MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
+      _vertex(v),
+      _edge(e),
+      _isProcessable(isProcessable) {}
+
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
+                              bool isProcessable, size_t depth, double weight)
+    : arangodb::graph::BaseStep<Step>{prev, depth, weight},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
@@ -86,6 +102,9 @@ MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
   for (auto const& it : opts.data().edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
+  }
+  if (opts._weightCallback.has_value()) {
+    setWeightEdgeCallback(opts._weightCallback.value());
   }
 }
 
@@ -173,6 +192,16 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.close();
 }
 
+auto MockGraphProvider::getEdgeDocumentToken(const Step::Edge& edge)
+    -> arangodb::graph::EdgeDocumentToken {
+  VPackBuilder builder;
+  addEdgeToBuilder(edge, builder);
+
+  // Might require datalake as well, as soon as we really use this method in our
+  // cpp tests.
+  return arangodb::graph::EdgeDocumentToken{builder.slice()};
+}
+
 auto MockGraphProvider::addEdgeIDToBuilder(
     const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
   std::string fromId = edge.getEdge()._from;
@@ -228,8 +257,13 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
       for (auto const& edge : _toIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
-        result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
-                              (source.getDepth() + 1)});
+        if (_weightCallback.has_value()) {
+          result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
+                                (source.getDepth() + 1), edge.getWeight()});
+        } else {
+          result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
+                                (source.getDepth() + 1)});
+        }
 
         LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
@@ -246,8 +280,13 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
            _fromIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
-        result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
-                              (source.getDepth() + 1)});
+        if (_weightCallback.has_value()) {
+          result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
+                                (source.getDepth() + 1), edge.getWeight()});
+        } else {
+          result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
+                                (source.getDepth() + 1)});
+        }
 
         LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH

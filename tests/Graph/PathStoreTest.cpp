@@ -83,14 +83,14 @@ class PathStoreTest : public ::testing::Test {
 
 TEST_F(PathStoreTest, it_should_be_empty_if_new_path_store_is_initialized) {
   auto ps = testee();
-  EXPECT_EQ(ps.size(), 0);
+  EXPECT_EQ(ps.size(), 0U);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
   auto ps = testee();
-  EXPECT_EQ(ps.size(), 0);
+  EXPECT_EQ(ps.size(), 0U);
   std::ignore = ps.append({0, 1, 0, false});
-  EXPECT_EQ(ps.size(), 1);
+  EXPECT_EQ(ps.size(), 1U);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_clear) {
@@ -113,14 +113,14 @@ TEST_F(PathStoreTest, it_should_be_able_to_clear) {
   lastIndex = ps.append({4, 1, lastIndex, false});
   EXPECT_GT(_resourceMonitor.current(), memoryUsage);
   memoryUsage = _resourceMonitor.current();
-  EXPECT_EQ(ps.size(), 5);
+  EXPECT_EQ(ps.size(), 5U);
 
   ps.reset();
   memoryUsage = _resourceMonitor.current();
 
-  EXPECT_EQ(ps.size(), 0);
+  EXPECT_EQ(ps.size(), 0U);
   EXPECT_EQ(_resourceMonitor.current(), memoryUsage);
-  EXPECT_EQ(_resourceMonitor.current(), 0);
+  EXPECT_EQ(_resourceMonitor.current(), 0U);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
@@ -132,11 +132,11 @@ TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
   lastIndex = ps.append({2, 1, lastIndex, false});
   lastIndex = ps.append({3, 1, lastIndex, false});
   lastIndex = ps.append({4, 1, lastIndex, false});
-  EXPECT_EQ(ps.size(), 5);
+  EXPECT_EQ(ps.size(), 5U);
   ps.reset();
 
   lastIndex = ps.append({0, 1, lastIndex, false});
-  EXPECT_EQ(ps.size(), 1);
+  EXPECT_EQ(ps.size(), 1U);
 }
 
 TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
@@ -144,18 +144,18 @@ TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
-  EXPECT_EQ(lastIndex, 0);
+  EXPECT_EQ(lastIndex, 0U);
 
   lastIndex = ps.append({1, 1, lastIndex, false});
-  EXPECT_EQ(lastIndex, 1);
+  EXPECT_EQ(lastIndex, 1U);
 
   lastIndex = ps.append({2, 1, lastIndex, false});
-  EXPECT_EQ(lastIndex, 2);
+  EXPECT_EQ(lastIndex, 2U);
 
   lastIndex = ps.append({0, 1, lastIndex, false});
-  EXPECT_EQ(lastIndex, 3);
+  EXPECT_EQ(lastIndex, 3U);
 
-  EXPECT_EQ(ps.size(), 4);
+  EXPECT_EQ(ps.size(), 4U);
 }
 
 TEST_F(PathStoreTest, it_should_provide_a_path_visitor) {
@@ -172,7 +172,7 @@ TEST_F(PathStoreTest, it_should_provide_a_path_visitor) {
   Step last{4, 1, lastIndex, false};
   ps.append(last);
 
-  EXPECT_EQ(ps.size(), 4);
+  EXPECT_EQ(ps.size(), 4U);
   size_t expectedId = 4;
   auto visitor = [&](Step const& step) -> bool {
     EXPECT_EQ(expectedId, step.getVertex());
@@ -181,7 +181,7 @@ TEST_F(PathStoreTest, it_should_provide_a_path_visitor) {
   };
   ps.visitReversePath(last, visitor);
   // We started at 1 so, we need to end up at expected == 0
-  EXPECT_EQ(expectedId, 0);
+  EXPECT_EQ(expectedId, 0U);
 }
 
 TEST_F(PathStoreTest, it_should_abort_a_path_visitor_if_it_returns_false) {
@@ -198,7 +198,7 @@ TEST_F(PathStoreTest, it_should_abort_a_path_visitor_if_it_returns_false) {
   Step last{4, 1, lastIndex, false};
   ps.append(last);
 
-  EXPECT_EQ(ps.size(), 4);
+  EXPECT_EQ(ps.size(), 4U);
   size_t expectedId = 4;
   auto visitor = [&](Step const& step) -> bool {
     EXPECT_EQ(expectedId, step.getVertex());
@@ -210,7 +210,7 @@ TEST_F(PathStoreTest, it_should_abort_a_path_visitor_if_it_returns_false) {
   };
   ps.visitReversePath(last, visitor);
   // We aborted at 2 so, we need to end up at expected == 2
-  EXPECT_EQ(expectedId, 2);
+  EXPECT_EQ(expectedId, 2U);
 }
 
 TEST_F(PathStoreTest, it_should_only_visit_one_path) {
@@ -244,7 +244,7 @@ TEST_F(PathStoreTest, it_should_only_visit_one_path) {
   ps.append({48, 1, lastIndex, false});
 
   // 4 on path, + 8 times noise.
-  EXPECT_EQ(ps.size(), 12);
+  EXPECT_EQ(ps.size(), 12U);
   size_t expectedId = 4;
   auto visitor = [&](Step const& step) -> bool {
     EXPECT_EQ(expectedId, step.getVertex());
@@ -253,7 +253,7 @@ TEST_F(PathStoreTest, it_should_only_visit_one_path) {
   };
   ps.visitReversePath(last, visitor);
   // We started at 1 so, we need to end up at expected == 0
-  EXPECT_EQ(expectedId, 0);
+  EXPECT_EQ(expectedId, 0U);
 }
 
 }  // namespace graph_path_store_test

@@ -43,6 +43,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
@@ -70,7 +71,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -562,10 +562,10 @@ void ClusterInfo::triggerBackgroundGetIds() {
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
     ClusterCollectionCreationInfo const& info, std::string const& databaseName)
-    -> replication2::replicated_state::agency::Target {
+    -> replication2::agency::LogTarget {
   using namespace replication2::replicated_state;
 
-  replication2::replicated_state::agency::Target spec;
+  replication2::agency::LogTarget spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
@@ -578,9 +578,7 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.leader = serverIds.front();
 
   for (auto const& serverId : serverIds) {
-    spec.participants.emplace(
-        serverId,
-        replication2::replicated_state::agency::Target::Participant{});
+    spec.participants.emplace(serverId, replication2::ParticipantFlags{});
   }
 
   spec.config.writeConcern = info.writeConcern;
@@ -593,17 +591,17 @@ auto ClusterInfo::createDocumentStateSpec(
 
 auto ClusterInfo::waitForReplicatedStatesCreation(
     std::string const& databaseName,
-    std::vector<replication2::replicated_state::agency::Target> const&
-        replicatedStates) -> futures::Future<Result> {
+    std::vector<replication2::agency::LogTarget> const& replicatedStates)
+    -> futures::Future<Result> {
   auto replicatedStateMethods =
-      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          _server, databaseName);
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
 
   std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
   futureStates.reserve(replicatedStates.size());
   for (auto const& spec : replicatedStates) {
     futureStates.emplace_back(
-        replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+        replicatedStateMethods->waitForLogReady(spec.id, *spec.version));
   }
 
   // we need to define this here instead of using an inline lambda expression
@@ -623,7 +621,8 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
             for (auto& v : raftIndices) {
               maxIndex = std::max(maxIndex, v.get().get());
             }
-            return clusterInfo.waitForPlan(maxIndex);
+            return clusterInfo.fetchAndWaitForPlanVersion(
+                std::chrono::seconds{240});
           })
       .then([&appendErrorMessage](auto&& tryResult) {
         Result result =
@@ -643,14 +642,13 @@ auto ClusterInfo::deleteReplicatedStates(
     std::vector<replication2::LogId> const& replicatedStatesIds)
     -> futures::Future<Result> {
   auto replicatedStateMethods =
-      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          _server, databaseName);
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
 
   std::vector<futures::Future<Result>> deletedStates;
   deletedStates.reserve(replicatedStatesIds.size());
   for (auto const& id : replicatedStatesIds) {
-    deletedStates.emplace_back(
-        replicatedStateMethods->deleteReplicatedState(id));
+    deletedStates.emplace_back(replicatedStateMethods->deleteReplicatedLog(id));
   }
 
   return futures::collectAll(std::move(deletedStates))
@@ -705,6 +703,13 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
+  TRI_IF_FAILURE("deterministic-cluster-wide-uniqid") {
+    // we want to use value range which HLC encoded starts with a digit.
+    // 54 * 64 ^ 3 HLC encoded is "0---"
+    static std::atomic<uint64_t> idCounter = 54 * 64 * 64 * 64;
+    return idCounter.fetch_add(1);
+  }
+
   MUTEX_LOCKER(mutexLocker, _idLock);
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -2579,8 +2584,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  // make capture explicit as callback might be called after the return
+  // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [errMsg, dbServerResult, DBServers](VPackSlice result) {
         size_t numDbServers = DBServers->size();
         if (result.isObject() && result.length() >= numDbServers) {
           // We use >= here since the number of DBservers could have increased
@@ -2914,8 +2921,10 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // make capture explicit as callback might be called after the return
+  // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [dbServerResult](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
@@ -3178,7 +3187,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyPrecondition> precs;
   containers::FlatHashSet<std::string> conditions;
   containers::FlatHashSet<ServerID> allServers;
-  std::vector<replication2::replicated_state::agency::Target> replicatedStates;
+  std::vector<replication2::agency::LogTarget> replicatedStates;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
@@ -3208,6 +3217,9 @@ Result ClusterInfo::createCollectionsCoordinator(
     // the database via dbServerResult, in errMsg and in info.state.
     //
     // The AgencyCallback will copy the closure and take responsibility of it.
+    // this here is ok as ClusterInfo is not destroyed
+    // for &info it should have ensured lifetime somehow. OR ensured that
+    // callback is noop in case it is triggered too late.
     auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
                     nrDone, isCleaned, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
@@ -3363,8 +3375,10 @@ Result ClusterInfo::createCollectionsCoordinator(
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
-        auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
-                                               databaseName, spec.id);
+        auto path = paths::aliases::target()
+                        ->replicatedLogs()
+                        ->database(databaseName)
+                        ->log(spec.id);
 
         opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
                                            std::move(builder)));
@@ -3479,12 +3493,11 @@ Result ClusterInfo::createCollectionsCoordinator(
       auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
       if (replicationVersion == replication::Version::TWO) {
         std::vector<replication2::LogId> stateIds;
-        std::transform(
-            replicatedStates.begin(), replicatedStates.end(),
-            std::back_inserter(stateIds),
-            [](replication2::replicated_state::agency::Target const& spec) {
-              return spec.id;
-            });
+        std::transform(replicatedStates.begin(), replicatedStates.end(),
+                       std::back_inserter(stateIds),
+                       [](replication2::agency::LogTarget const& spec) {
+                         return spec.id;
+                       });
 
         replicatedStatesCleanup =
             this->deleteReplicatedStates(databaseName, stateIds);
@@ -3784,8 +3797,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
-    // Wait for Callbacks to be triggered, it is sufficent to wait for the first
-    // non, done
+    // Wait for Callbacks to be triggered, it is sufficient to wait for the
+    // first non, done
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationState::INIT) {
@@ -3880,8 +3893,10 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   double const interval = getPollInterval();
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // Capture only explicitly! Please check lifetime of captured objects
+  // as callback might be called after this function returns.
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [dbServerResult](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
@@ -4080,8 +4095,13 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   VPackBuilder temp;
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
-  temp.add(StaticStrings::ReplicationFactor,
-           VPackValue(info->replicationFactor()));
+  if (info->isSatellite()) {
+    temp.add(StaticStrings::ReplicationFactor,
+             VPackValue(StaticStrings::Satellite));
+  } else {
+    temp.add(StaticStrings::ReplicationFactor,
+             VPackValue(info->replicationFactor()));
+  }
   temp.add(StaticStrings::MinReplicationFactor,
            VPackValue(info->writeConcern()));  // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
@@ -4095,7 +4115,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
-  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
+  VPackBuilder builder =
+      VPackCollection::merge(collection, temp.slice(), false);
 
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
@@ -4864,8 +4885,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  // We need explicit copies as this callback may run even after
+  // this function returns. So let's keep all used variables
+  // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =  // for format
-      [=](VPackSlice result) {
+      [dbServerResult, errMsg, numberOfShards,
+       idString = std::string{idString}](VPackSlice result) {
         if (!result.isObject() || result.length() != numberOfShards) {
           return true;
         }
@@ -4882,7 +4907,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             for (VPackSlice v : VPackArrayIterator(indexes)) {
               VPackSlice const k = v.get(StaticStrings::IndexId);
-              if (!k.isString() || idString != k.copyString()) {
+              if (!k.isString() || idString != k.stringView()) {
                 continue;  // this is not our index
               }
 
@@ -4891,7 +4916,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                 // Note that this closure runs with the mutex in the condition
                 // variable of the agency callback, which protects writing
                 // to *errMsg:
-                *errMsg = extractErrorMessage(shard.key.copyString(), v);
+                *errMsg = extractErrorMessage(shard.key.stringView(), v);
                 *errMsg = "Error during index creation: " + *errMsg;
                 // Returns the specific error number if set, or the general
                 // error otherwise
@@ -4929,8 +4954,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         ob->add(e.value);
       }
     }
-    if (numberOfShards > 0 &&
-        !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (numberOfShards > 0) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
       // add our coordinator id and reboot id
       ob->add(StaticStrings::AttrCoordinator,
@@ -5043,7 +5067,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         if (indexes.isArray()) {
           for (VPackSlice v : VPackArrayIterator(indexes)) {
             VPackSlice const k = v.get(StaticStrings::IndexId);
-            if (k.isString() && k.isEqualString(idString)) {
+            if (k.isString() && k.stringView() == idString) {
               // index is still here
               found = true;
               break;
@@ -5335,8 +5359,11 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // We need explicit copies as this callback may run even after
+  // this function returns. So let's keep all used variables
+  // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice current) {
+      [dbServerResult, idString, numberOfShards](VPackSlice current) {
         if (numberOfShards == 0) {
           return false;
         }
@@ -6053,7 +6080,7 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader,"
+        << "getResponsibleServerReplication1: found resigned leader, "
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -6096,6 +6123,10 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
+
+        // TODO Sanity check, can be removed later
+        TRI_ASSERT(participants.size() < 1000000);
+
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!
@@ -6114,7 +6145,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: did not found leader,"
+        << "getResponsibleServerReplication2: did not find leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -6266,7 +6297,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
 
     LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
-        << "getResponsibleServersReplication2: did not found leader,"
+        << "getResponsibleServersReplication2: did not find leader,"
         << "waiting for half a second...";
 
     if (tries >= 100 || !result.empty() || _server.isStopping()) {
@@ -7137,8 +7168,9 @@ bool ClusterInfo::SyncerThread::start() {
 }
 
 void ClusterInfo::SyncerThread::run() {
+  // Syncer thread is not destroyed. So we assume it is fine to capture this
   std::function<bool(VPackSlice result)> update =  // for format
-      [=, this](VPackSlice result) {
+      [this](VPackSlice result) {
         if (!result.isNumber()) {
           LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
               << "Plan Version is not a number! " << result.toJson();

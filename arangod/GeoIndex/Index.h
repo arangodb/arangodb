@@ -42,7 +42,6 @@ class Slice;
 }
 
 namespace geo {
-struct Coordinate;
 struct QueryParams;
 class ShapeContainer;
 }  // namespace geo
@@ -71,13 +70,13 @@ struct Index {
 
  public:
   /// @brief Parse document and return cells for indexing
-  Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
+  Result indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                     S2Point& centroid) const;
 
-  Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
+  Result shape(velocypack::Slice doc, geo::ShapeContainer& shape) const;
 
   /// @brief Parse AQL condition into query parameters
-  /// Public to allow usage by legacy geo indexes
+  /// Public to allow usage by legacy geo indexes.
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params, bool legacy);

@@ -29,12 +29,14 @@
 
 #include <map>
 
-#include "Pregel/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
+#include "Pregel/VertexComputation.h"
 
-namespace arangodb {
-namespace pregel {
+#include "Inspection/VPack.h"
+
+namespace arangodb::pregel {
 
 // Speaker-listerner Label propagation
 struct SLPAValue {
@@ -79,19 +81,19 @@ struct HITSKleinbergValue {
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
-  std::map<PregelID, float> membershipDegree;
-  std::map<PregelID, float> disCol;
+  std::map<VertexID, float> membershipDegree;
+  std::map<VertexID, float> disCol;
 };
 
 struct DMIDMessage {
   DMIDMessage() {}
-  DMIDMessage(PregelID const& pid, float val) : senderId(pid), weight(val) {}
+  DMIDMessage(VertexID const& pid, float val) : senderId(pid), weight(val) {}
 
-  DMIDMessage(PregelID const& sender, PregelID const& leader)
+  DMIDMessage(VertexID const& sender, VertexID const& leader)
       : senderId(sender), leaderId(leader) {}
 
-  PregelID senderId;
-  PregelID leaderId;
+  VertexID senderId;
+  VertexID leaderId;
   float weight = 0;
 };
 
@@ -105,7 +107,7 @@ struct HLLCounter {
   constexpr static double ALPHA = 0.709;
 
   uint32_t getCount();
-  void addNode(PregelID const& pregelId);
+  void addNode(VertexID const& pregelId);
   void merge(HLLCounter const& counter);
 
  private:
@@ -119,33 +121,100 @@ struct ECValue {
 };
 
 struct SCCValue {
-  std::vector<PregelID> parents;
+  std::vector<VertexID> parents;
   uint64_t vertexID;
   uint64_t color;
 };
 
+using CollectionIdType = uint16_t;
+using ColorType = uint16_t;
+using PropagatedColor = uint16_t;
+using VectorOfColors = std::vector<PropagatedColor>;
+
+struct ColorPropagationValue {
+  CollectionIdType equivalenceClass;
+  std::vector<bool> colors;
+
+  static CollectionIdType none() {
+    return std::numeric_limits<CollectionIdType>::max();
+  }
+
+  [[nodiscard]] bool contains(ColorType color) const {
+    // todo assert that color < numColors
+    return colors[color];
+  }
+
+  void add(ColorType color) {
+    // todo assert that color < numColors
+    colors[color] = true;
+  }
+
+  [[nodiscard]] VectorOfColors getColors() const {
+    VectorOfColors result;
+    auto const size = colors.size();
+    result.reserve(size);
+    for (size_t color = 0; color < size; ++color) {
+      if (contains(static_cast<ColorType>(color))) {
+        result.push_back(static_cast<decltype(result)::value_type>(color));
+      }
+    }
+    result.shrink_to_fit();
+    return result;
+  }
+};
+
+struct ColorPropagationMessageValue {
+  CollectionIdType equivalenceClass = 0;
+  std::vector<PropagatedColor> colors;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ColorPropagationMessageValue& x) {
+  return f.object(x).fields(
+      f.field(Utils::equivalenceClass, x.equivalenceClass),
+      f.field(Utils::colors, x.colors));
+}
+
+struct ColorPropagationUserParameters {
+  uint64_t maxGss;
+  uint16_t numColors;
+  std::string inputColorsFieldName;
+  std::string outputColorsFieldName;
+  std::string equivalenceClassFieldName;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ColorPropagationUserParameters& x) {
+  return f.object(x).fields(
+      f.field(Utils::maxGSS, x.maxGss), f.field(Utils::numColors, x.numColors),
+      f.field(Utils::inputColorsFieldName, x.inputColorsFieldName),
+      f.field(Utils::outputColorsFieldName, x.outputColorsFieldName),
+      f.field(Utils::equivalenceClass, x.equivalenceClassFieldName));
+}
+
 struct WCCValue {
   uint64_t component;
-  std::unordered_set<PregelID> inboundNeighbors;
+  std::unordered_set<VertexID> inboundNeighbors;
 };
 
 template<typename T>
 struct SenderMessage {
   SenderMessage() = default;
-  SenderMessage(PregelID pid, T const& val)
+  SenderMessage(VertexID pid, T const& val)
       : senderId(std::move(pid)), value(val) {}
 
-  PregelID senderId;
+  VertexID senderId;
   T value;
 };
 
 template<typename T>
 struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
-  SenderMessageFormat() {}
+  SenderMessageFormat() = default;
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
-    senderVal.senderId.shard = (PregelShard)((*array).getUInt());
+    senderVal.senderId.shard =
+        PregelShard(static_cast<PregelShard::value_type>((*array).getUInt()));
     senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
@@ -160,5 +229,18 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
     arrayBuilder.close();
   }
 };
-}  // namespace pregel
-}  // namespace arangodb
+
+struct ColorPropagationValueMessageFormat
+    : public MessageFormat<ColorPropagationMessageValue> {
+  ColorPropagationValueMessageFormat() = default;
+  void unwrapValue(VPackSlice s,
+                   ColorPropagationMessageValue& value) const override {
+    value = deserialize<ColorPropagationMessageValue>(s);
+  }
+  void addValue(VPackBuilder& arrayBuilder,
+                ColorPropagationMessageValue const& value) const override {
+    serialize(arrayBuilder, value);
+  }
+};
+
+}  // namespace arangodb::pregel

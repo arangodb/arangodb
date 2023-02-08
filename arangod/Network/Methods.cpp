@@ -101,9 +101,17 @@ std::unique_ptr<arangodb::fuerte::Response> Response::stealResponse() noexcept {
 }
 
 // returns a slice of the payload if there was no error
-velocypack::Slice Response::slice() const {
+velocypack::Slice Response::slice() const noexcept {
   if (error == fuerte::Error::NoError && _response) {
-    return _response->slice();
+    try {
+      return _response->slice();
+    } catch (std::exception const& ex) {
+      // BTS-163: catch exceptions in slice() method so that
+      // NetworkFeature can be used in a safer way.
+      LOG_TOPIC("35b27", WARN, Logger::COMMUNICATION)
+          << "caught exception in Response::slice(): " << ex.what();
+    }
+    // fallthrough intentional
   }
   return velocypack::Slice();  // none slice
 }
@@ -115,7 +123,7 @@ std::size_t Response::payloadSize() const noexcept {
   return 0;
 }
 
-fuerte::StatusCode Response::statusCode() const {
+fuerte::StatusCode Response::statusCode() const noexcept {
   if (error == fuerte::Error::NoError && _response) {
     return _response->statusCode();
   }
@@ -139,8 +147,7 @@ Result Response::combinedResult() const {
 
 /// @brief shardId or empty
 std::string Response::destinationShard() const {
-  if (this->destination.size() > 6 &&
-      this->destination.compare(0, 6, "shard:", 6) == 0) {
+  if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
     return this->destination.substr(6);
   }
   return StaticStrings::Empty;
@@ -148,7 +155,7 @@ std::string Response::destinationShard() const {
 
 std::string Response::serverId() const {
   if (this->destination.size() > 7 &&
-      this->destination.compare(0, 7, "server:", 7) == 0) {
+      this->destination.starts_with("server:")) {
     return this->destination.substr(7);
   }
   return StaticStrings::Empty;
@@ -595,17 +602,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _workItem =
-        sch->queueDelayed(_options.continuationLane, tryAgainAfter,
-                          [self = shared_from_this()](bool canceled) {
-                            if (canceled) {
-                              self->_promise.setValue(Response{
-                                  std::move(self->_destination),
-                                  Error::ConnectionCanceled, nullptr, nullptr});
-                            } else {
-                              self->startRequest();
-                            }
-                          });
+    _workItem = sch->queueDelayed(
+        "request-retry", _options.continuationLane, tryAgainAfter,
+        [self = shared_from_this()](bool canceled) {
+          if (canceled) {
+            self->_promise.setValue(Response{std::move(self->_destination),
+                                             Error::ConnectionCanceled, nullptr,
+                                             nullptr});
+          } else {
+            self->startRequest();
+          }
+        });
   }
 };
 

@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/BatchOptions.h"
@@ -43,6 +44,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include <string_view>
 
 using namespace arangodb;
 
@@ -434,13 +437,7 @@ std::string transaction::helpers::makeIdFromParts(
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-  if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
-    resolved.erase(0, StaticStrings::FullLocalPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
-    resolved.erase(0, StaticStrings::FullFromPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
-    resolved.erase(0, StaticStrings::FullToPrefix.size());
-  }
+  ClusterMethods::realNameFromSmartName(resolved);
 #endif
   VPackValueLength keyLength;
   char const* p = key.getString(keyLength);
@@ -647,7 +644,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
 /// @brief new object for insert, computes the hash of the key
 Result transaction::helpers::newObjectForInsert(
     transaction::Methods& trx, LogicalCollection& collection,
-    velocypack::Slice value, RevisionId& revisionId,
+    std::string_view key, velocypack::Slice value, RevisionId& revisionId,
     velocypack::Builder& builder, OperationOptions const& options,
     transaction::BatchOptions& batchOptions) {
   transaction::BuilderLeaser b(&trx);
@@ -658,31 +655,7 @@ Result transaction::helpers::newObjectForInsert(
   // _key, _id, _from, _to, _rev
 
   // _key
-  VPackSlice s = value.get(StaticStrings::KeyString);
-  if (s.isNone()) {
-    TRI_ASSERT(!options.isRestore);  // need key in case of restore
-    auto keyString = collection.keyGenerator().generate(value);
-
-    if (keyString.empty()) {
-      return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
-    }
-
-    b->add(StaticStrings::KeyString, VPackValue(keyString));
-  } else if (!s.isString()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  } else {
-    TRI_ASSERT(s.isString());
-
-    // validate and track the key just used
-    auto res = collection.keyGenerator().validate(s.stringView(), value,
-                                                  options.isRestore);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-
-    b->add(StaticStrings::KeyString, s);
-  }
+  b->add(StaticStrings::KeyString, key);
 
   // _id
   uint8_t* p = b->add(StaticStrings::IdString,
@@ -731,7 +704,7 @@ Result transaction::helpers::newObjectForInsert(
   TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
   if (isRestore) {
     // copy revision id verbatim
-    s = value.get(StaticStrings::RevString);
+    auto s = value.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
       revisionId = RevisionId::fromString(s.stringView());

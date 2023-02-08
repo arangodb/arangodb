@@ -2,18 +2,7 @@
 ## define variables
 ################################################################################
 
-# TODO move CMAKE_DEPRECATE_OPTIONS to presets
-if (USE_FAIL_ON_WARNINGS)
-  if (MSVC)
-    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-      # There's a warning about /MP being unused if compiling only a single file
-      list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Wno-unused-command-line-argument)
-    endif()
-  else ()
-    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Werror -Wno-error=deprecated-declarations)
-  endif ()
-endif ()
+add_compile_warnings_flags()
 
 ################################################################################
 ## arangod executable
@@ -36,7 +25,7 @@ add_executable(${BIN_ARANGOD}
   ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
-
+  
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
@@ -53,8 +42,6 @@ target_include_directories(${BIN_ARANGOD} PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(${BIN_ARANGOD} PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 
 ################################################################################

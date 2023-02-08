@@ -26,7 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
@@ -144,7 +144,7 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
     // This is a very rough and guessed estimate.
     // We need some space for the inbound connections,
     // but we have not a single clue how many we will have
-    return sizeof(uint64_t) + 8 * sizeof(PregelID);
+    return sizeof(uint64_t) + 8 * sizeof(VertexID);
   }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 

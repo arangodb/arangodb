@@ -22,48 +22,44 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <velocypack/Iterator.h>
 
+#include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewSort.h"
+#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "store/mmap_directory.hpp"
+#include "utils/index_utils.hpp"
 
-#include <velocypack/Iterator.h>
-
-#include "utils/string_utils.hpp"
-
+namespace arangodb::tests {
 namespace {
-
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
-
 class TestDelimAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestDelimAnalyzer";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
     if (slice.isString()) {
-      PTR_NAMED(TestDelimAnalyzer, ptr,
-                arangodb::iresearch::getStringRef(slice));
-      return ptr;
+      return std::make_unique<TestDelimAnalyzer>(
+          arangodb::iresearch::getStringRef(slice));
     } else if (slice.isObject() && slice.hasKey("args") &&
                slice.get("args").isString()) {
-      PTR_NAMED(TestDelimAnalyzer, ptr,
-                arangodb::iresearch::getStringRef(slice.get("args")));
-      return ptr;
+      return std::make_unique<TestDelimAnalyzer>(
+          arangodb::iresearch::getStringRef(slice.get("args")));
     } else {
       return nullptr;
     }
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -86,9 +82,9 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestDelimAnalyzer(irs::string_ref delim)
+  TestDelimAnalyzer(std::string_view delim)
       : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
-        _delim(irs::ref_cast<irs::byte_type>(delim)) {}
+        _delim(irs::ViewCast<irs::byte_type>(delim)) {}
 
   virtual irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
@@ -106,300 +102,220 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     size_t i = 0;
 
     for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
+      auto data = irs::ViewCast<char>(_data);
+      auto delim = irs::ViewCast<char>(irs::bytes_view{_delim});
 
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value = irs::bytes_ref(_data.c_str(), i);
-        _data = irs::bytes_ref(
-            _data.c_str() + i + (std::max)(size_t(1), _delim.size()),
+      if (0 == strncmp(&(data.data()[i]), delim.data(), delim.size())) {
+        _term.value = irs::bytes_view(_data.data(), i);
+        _data = irs::bytes_view(
+            _data.data() + i + (std::max)(size_t(1), _delim.size()),
             _data.size() - i - (std::max)(size_t(1), _delim.size()));
         return true;
       }
     }
 
     _term.value = _data;
-    _data = irs::bytes_ref::NIL;
+    _data = irs::bytes_view{};
     return true;
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
+  virtual bool reset(std::string_view data) override {
+    _data = irs::ViewCast<irs::byte_type>(data);
     return true;
   }
 
  private:
   std::basic_string<irs::byte_type> _delim;
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::term_attribute _term;
 };
 
 REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make,
                         TestDelimAnalyzer::normalize);
 
-class IResearchQueryTokensTest : public IResearchQueryTest {};
+class QueryTokens : public QueryTest {
+ protected:
+  void queryTests() {
+    // test no-match
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {};
+      auto result = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.prefix IN TOKENS('def', "
+          "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN "
+          "d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
 
-}  // namespace
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
 
-TEST_P(IResearchQueryTokensTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  std::vector<arangodb::velocypack::Builder> insertedDocs;
-  arangodb::LogicalView* view;
-
-  // create collection0
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
-
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
-        VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
-        VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-        VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-        VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
-    };
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
-
-    for (auto& entry : docs) {
-      auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
+      EXPECT_EQ(i, expected.size());
     }
 
-    EXPECT_TRUE(trx.commit().ok());
-  }
+    // test no-match via []
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {};
+      auto result = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', "
+          "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN "
+          "d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
 
-  // create collection1
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection1\" }");
-    auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
 
-    irs::utf8_path resource;
-    resource /= std::string_view(arangodb::tests::testResourceDir);
-    resource /= std::string_view("simple_sequential.json");
-
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-        resource.string());
-    auto slice = builder.slice();
-    ASSERT_TRUE(slice.isArray());
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
+      EXPECT_EQ(i, expected.size());
     }
 
-    EXPECT_TRUE(trx.commit().ok());
-  }
+    // test single match
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {
+          _insertedDocs[9].slice(),
+      };
+      auto result = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', "
+          "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN "
+          "d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
 
-  // create view
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice(), false);
-    ASSERT_FALSE(!logicalView);
-
-    view = logicalView.get();
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_FALSE(!impl);
-
-    auto viewDefinitionTemplate = R"({
-      "links": {
-        "testCollection0": {
-          "includeAllFields": true,
-          "trackListPositions": true,
-          "version": %u },
-        "testCollection1": {
-          "version": %u,
-          "includeAllFields": true }
-    }})";
-
-    auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
-
-    auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
-
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections(
-        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
-          cids.emplace(cid);
-          return true;
-        });
-    EXPECT_EQ(2, cids.size());
-    EXPECT_TRUE(
-        (arangodb::tests::executeQuery(vocbase,
-                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
-                                       "{ waitForSync: true } RETURN d")
-             .result.ok()));  // commit
-  }
-
-  // test no-match
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.prefix IN TOKENS('def', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_EQ(i, expected.size());
     }
 
-    EXPECT_EQ(i, expected.size());
-  }
+    // test single match via []
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {
+          _insertedDocs[9].slice(),
+      };
+      auto result = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', "
+          "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN "
+          "d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
 
-  // test no-match via []
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_EQ(i, expected.size());
     }
 
-    EXPECT_EQ(i, expected.size());
-  }
+    // test mulptiple match
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {
+          _insertedDocs[36].slice(),  // (duplicate term)
+          _insertedDocs[37].slice(),  // (duplicate term)
+          _insertedDocs[6].slice(),   // (unique term)
+          _insertedDocs[26].slice(),  // (unique term)
+      };
+      auto result = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', "
+          "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN "
+          "d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
 
-  // test single match
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[9].slice(),
-    };
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
+
+      EXPECT_EQ(i, expected.size());
     }
 
-    EXPECT_EQ(i, expected.size());
-  }
+    // test mulptiple match via []
+    {
+      std::vector<arangodb::velocypack::Slice> expected = {
+          _insertedDocs[36].slice(),  // (duplicate term)
+          _insertedDocs[37].slice(),  // (duplicate term)
+          _insertedDocs[6].slice(),   // (unique term)
+          _insertedDocs[26].slice(),  // (unique term)
+      };
+      auto result =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d['prefix'] "
+                                        "IN TOKENS('z,xy,abcy,abcd,abc', "
+                                        "'test_csv_analyzer') SORT BM25(d) "
+                                        "ASC, TFIDF(d) DESC, d.seq RETURN d");
+      ASSERT_TRUE(result.result.ok());
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      size_t i = 0;
 
-  // test single match via []
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[9].slice(),
-    };
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
+      for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+        auto const resolved = itr.value().resolveExternals();
+        EXPECT_TRUE(i < expected.size());
+        EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                              expected[i++], resolved, true)));
+      }
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
+      EXPECT_EQ(i, expected.size());
     }
-
-    EXPECT_EQ(i, expected.size());
   }
+};
 
-  // test mulptiple match
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[36].slice(),  // (duplicate term)
-        insertedDocs[37].slice(),  // (duplicate term)
-        insertedDocs[6].slice(),   // (unique term)
-        insertedDocs[26].slice(),  // (unique term)
-    };
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
+class QueryTokensView : public QueryTokens {
+ protected:
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
+};
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
-    }
+class QueryTokensSearch : public QueryTokens {
+ protected:
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
+};
 
-    EXPECT_EQ(i, expected.size());
-  }
-
-  // test mulptiple match via []
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[36].slice(),  // (duplicate term)
-        insertedDocs[37].slice(),  // (duplicate term)
-        insertedDocs[6].slice(),   // (unique term)
-        insertedDocs[26].slice(),  // (unique term)
-    };
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('z,xy,abcy,abcd,abc', "
-        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            expected[i++], resolved, true)));
-    }
-
-    EXPECT_EQ(i, expected.size());
-  }
+TEST_P(QueryTokensView, Test) {
+  createCollections();
+  createView(R"("trackListPositions": true,)", R"()");
+  queryTests();
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryTokensTest, IResearchQueryTokensTest,
-                        GetLinkVersions());
+TEST_P(QueryTokensSearch, Test) {
+  createCollections();
+  createIndexes(R"("trackListPositions": true,)", R"()");
+  createSearch();
+  queryTests();
+}
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryTokensView, GetLinkVersions());
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryTokensSearch, GetIndexVersions());
+
+}  // namespace
+}  // namespace arangodb::tests

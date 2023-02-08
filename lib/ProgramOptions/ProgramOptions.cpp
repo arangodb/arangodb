@@ -28,6 +28,7 @@
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/Section.h"
 #include "ProgramOptions/Translator.h"
 
@@ -42,6 +43,50 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;
+
+ProgramOptions::ProcessingResult::ProcessingResult()
+    : _positionals(), _touched(), _frozen(), _exitCode(0) {}
+
+ProgramOptions::ProcessingResult::~ProcessingResult() = default;
+
+// mark an option as being touched during options processing
+void ProgramOptions::ProcessingResult::touch(std::string const& name) {
+  _touched.emplace(name);
+}
+
+// whether or not an option was touched during options processing,
+// including the current pass
+bool ProgramOptions::ProcessingResult::touched(std::string const& name) const {
+  return _touched.contains(Option::stripPrefix(name));
+}
+
+// mark an option as being frozen
+void ProgramOptions::ProcessingResult::freeze(std::string const& name) {
+  _frozen.emplace(name);
+}
+
+// whether or not an option was touched during options processing,
+// not including the current pass
+bool ProgramOptions::ProcessingResult::frozen(std::string const& name) const {
+  return _frozen.contains(Option::stripPrefix(name));
+}
+
+// mark options processing as failed
+void ProgramOptions::ProcessingResult::fail(int exitCode) noexcept {
+  _exitCode = exitCode;
+}
+
+// return the registered exit code
+int ProgramOptions::ProcessingResult::exitCode() const noexcept {
+  return _exitCode;
+}
+
+int ProgramOptions::ProcessingResult::exitCodeOrFailure() const noexcept {
+  if (_exitCode != 0) {
+    return _exitCode;
+  }
+  return EXIT_FAILURE;
+}
 
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
                                std::string const& more, char const* binaryPath)
@@ -65,12 +110,40 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
   _translator = EnvironmentTranslator;
 }
 
+std::string ProgramOptions::progname() const { return _progname; }
+
 // sets a value translator
 void ProgramOptions::setTranslator(
     std::function<std::string(std::string const&, char const*)> const&
         translator) {
   _translator = translator;
 }
+
+// return a const reference to the processing result
+ProgramOptions::ProcessingResult const& ProgramOptions::processingResult()
+    const {
+  return _processingResult;
+}
+
+// return a reference to the processing result
+ProgramOptions::ProcessingResult& ProgramOptions::processingResult() {
+  return _processingResult;
+}
+
+// seal the options
+// trying to add an option or a section after sealing will throw an error
+void ProgramOptions::seal() { _sealed = true; }
+
+// allow or disallow overriding already set options
+void ProgramOptions::allowOverride(bool value) {
+  checkIfSealed();
+  _overrideOptions = value;
+}
+
+bool ProgramOptions::allowOverride() const { return _overrideOptions; }
+
+// set context for error reporting
+void ProgramOptions::setContext(std::string const& value) { _context = value; }
 
 // adds a sub-headline for one option or a group of options
 void ProgramOptions::addHeadline(std::string const& prefix,
@@ -199,6 +272,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
             builder.add("link", VPackValue(section.link));
           }
           builder.add("description", VPackValue(option.description));
+          if (option.hasLongDescription()) {
+            builder.add("longDescription", VPackValue(option.longDescription));
+          }
           builder.add(
               "category",
               VPackValue(option.hasFlag(arangodb::options::Flags::Command)
@@ -453,6 +529,55 @@ void ProgramOptions::addOldOption(std::string const& old,
   _oldOptions[Option::stripPrefix(old)] = Option::stripPrefix(replacement);
 }
 
+// adds a section to the options
+std::map<std::string, Section>::iterator ProgramOptions::addSection(
+    Section&& section) {
+  checkIfSealed();
+
+  auto name = section.name;
+  auto [it, emplaced] =
+      _sections.try_emplace(std::move(name), std::move(section));
+  if (!emplaced) {
+    // section already present. check if we need to update it
+    Section& sec = it->second;
+    if (!section.description.empty() && sec.description.empty()) {
+      // copy over description
+      sec.description = section.description;
+    }
+  }
+  return it;
+}
+
+// adds an option to the program options.
+Option& ProgramOptions::addOption(std::string const& name,
+                                  std::string const& description,
+                                  std::unique_ptr<Parameter> parameter,
+                                  std::underlying_type<Flags>::type flags) {
+  addOption(Option(name, description, std::move(parameter), flags));
+  return getOption(name);
+}
+
+// adds an option to the program options. old API!
+Option& ProgramOptions::addOption(std::string const& name,
+                                  std::string const& description,
+                                  Parameter* parameter,
+                                  std::underlying_type<Flags>::type flags) {
+  addOption(name, description, std::unique_ptr<Parameter>(parameter), flags);
+  return getOption(name);
+}
+
+// adds a deprecated option that has no effect to the program options to not
+// throw an unrecognized startup option error after upgrades until fully
+// removed. not listed by --help (uncommon option)
+Option& ProgramOptions::addObsoleteOption(std::string const& name,
+                                          std::string const& description,
+                                          bool requiresValue) {
+  addOption(Option(name, description,
+                   std::make_unique<ObsoleteParameter>(requiresValue),
+                   makeFlags(Flags::Uncommon, Flags::Obsolete)));
+  return getOption(name);
+}
+
 // check whether or not an option requires a value
 bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
@@ -497,6 +622,25 @@ Option& ProgramOptions::getOption(std::string const& name) {
   }
 
   return (*it2).second;
+}
+
+// returns a pointer to an option value, specified by option name
+// returns a nullptr if the option is unknown
+Parameter* ProgramOptions::getParameter(std::string const& name) const {
+  auto parts = Option::splitName(name);
+
+  auto it = _sections.find(parts.first);
+  if (it == _sections.end()) {
+    return nullptr;
+  }
+
+  auto it2 = (*it).second.options.find(parts.second);
+  if (it2 == (*it).second.options.end()) {
+    return nullptr;
+  }
+
+  Option const& option = (*it2).second;
+  return option.parameter.get();
 }
 
 // returns an option description

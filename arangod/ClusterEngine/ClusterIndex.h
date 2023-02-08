@@ -102,7 +102,7 @@ class ClusterIndex : public Index {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
-  void updateProperties(velocypack::Slice const&);
+  void updateProperties(velocypack::Slice slice);
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;

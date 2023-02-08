@@ -39,6 +39,7 @@ struct IDocumentStateTransaction {
 
   [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
       -> OperationResult = 0;
+  [[nodiscard]] virtual auto intermediateCommit() -> Result = 0;
   [[nodiscard]] virtual auto commit() -> Result = 0;
   [[nodiscard]] virtual auto abort() -> Result = 0;
 };
@@ -50,6 +51,7 @@ class DocumentStateTransaction
   explicit DocumentStateTransaction(
       std::unique_ptr<transaction::Methods> methods);
   auto apply(DocumentLogEntry const& entry) -> OperationResult override;
+  auto intermediateCommit() -> Result override;
   auto commit() -> Result override;
   auto abort() -> Result override;
 

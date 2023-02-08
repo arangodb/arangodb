@@ -37,9 +37,11 @@
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
-#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
+#include "Logger/LogMacros.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -247,7 +249,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
 
         if (ll != nullptr && lr != nullptr) {
           // both lower bounds are set
-          res = CompareAstNodes(ll, lr, true);
+          res = compareAstNodes(ll, lr, true);
 
           if (res != 0) {
             return res < 0;
@@ -271,7 +273,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
   root->clearMembers();
 
   usedIndexes.clear();
-  std::unordered_set<std::string> seenIndexConditions;
+  containers::FlatHashSet<std::string> seenIndexConditions;
 
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
@@ -290,9 +292,9 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
       // try to find duplicate condition parts, and only return each
       // unique condition part once
       try {
-        std::string conditionString =
-            conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second->id().id());
+        auto conditionString =
+            absl::StrCat(conditionData->first->toString(), " - ",
+                         conditionData->second->id().id());
         isUnique =
             seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
@@ -538,10 +540,10 @@ bool accessesNonRegisterVariable(AstNode const* node) {
  * later execution. Extracts all required variables and retains their registers,
  * s.t. all necessary pieces are stored in the container.
  */
-void captureNonConstExpression(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    AstNode* expression, std::vector<size_t> selectedMembersFromRoot,
-    NonConstExpressionContainer& result) {
+void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
+                               AstNode* expression,
+                               std::vector<size_t> selectedMembersFromRoot,
+                               NonConstExpressionContainer& result) {
   // all new AstNodes are registered with the Ast in the Query
   auto e = std::make_unique<aql::Expression>(ast, expression);
 
@@ -570,9 +572,9 @@ void captureNonConstExpression(
 }
 
 void captureFCallArgumentExpressions(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    AstNode const* fCallExpression, std::vector<size_t> selectedMembersFromRoot,
-    Variable const* indexVariable, NonConstExpressionContainer& result) {
+    Ast* ast, VarInfoMap const& varInfo, AstNode const* fCallExpression,
+    std::vector<size_t> selectedMembersFromRoot, Variable const* indexVariable,
+    NonConstExpressionContainer& result) {
   TRI_ASSERT(fCallExpression->type == NODE_TYPE_FCALL);
   TRI_ASSERT(1 == fCallExpression->numMembers());
 
@@ -592,10 +594,9 @@ void captureFCallArgumentExpressions(
 }
 
 void captureArrayFilterArgumentExpressions(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    AstNode const* filter, std::vector<size_t> const& selectedMembersFromRoot,
-    bool evaluateFCalls, Variable const* indexVariable,
-    NonConstExpressionContainer& result) {
+    Ast* ast, VarInfoMap const& varInfo, AstNode const* filter,
+    std::vector<size_t> const& selectedMembersFromRoot, bool evaluateFCalls,
+    Variable const* indexVariable, NonConstExpressionContainer& result) {
   for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
     auto member = filter->getMemberUnchecked(i);
     if (!member->isConstant()) {
@@ -709,16 +710,14 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode const* condition,
-    Variable const* indexVariable,
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result);
 
 void extractNonConstPartsOfLeafNode(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode* leaf,
-    Variable const* indexVariable,
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode* leaf, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   if (leaf->isConstant()) {
@@ -840,9 +839,8 @@ void extractNonConstPartsOfLeafNode(
 }
 
 void extractNonConstPartsOfAndPart(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode const* andNode,
-    Variable const* indexVariable,
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* andNode, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // in case of a geo spatial index a might take the form
@@ -860,9 +858,8 @@ void extractNonConstPartsOfAndPart(
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode const* condition,
-    Variable const* indexVariable,
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
@@ -905,7 +902,7 @@ namespace arangodb::aql::utils {
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
-                     std::unordered_set<AttributeNamePath>& attributes) {
+                     containers::FlatHashSet<AttributeNamePath>& attributes) {
   using EN = aql::ExecutionNode;
 
   VarSet vars;
@@ -1291,9 +1288,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 }
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode const* condition,
-    Variable const* indexVariable) {
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
   TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||

@@ -321,6 +321,9 @@ Variable const* TraversalNode::pathOutVariable() const {
 
 /// @brief set the path out variable
 void TraversalNode::setPathOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_pathOutVariable);
+  }
   _pathOutVariable = outVar;
 }
 
@@ -365,16 +368,18 @@ void TraversalNode::replaceVariables(
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
   for (auto const& condVar : _conditionVariables) {
-    if (condVar != getTemporaryVariable()) {
+    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
       result.emplace(condVar);
     }
   }
+
   for (auto const& pruneVar : _pruneVariables) {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
     }
   }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
@@ -508,7 +513,7 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       nodes.add(VPackValue("variables"));
       VPackArrayBuilder postFilterVariablesGuard(&nodes);
       for (auto const& var : _postFilterVariables) {
-        var->toVelocyPack(nodes);
+        var->toVelocyPack(nodes, Variable::WithConstantValue{});
       }
     }
   }
@@ -774,7 +779,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           filterConditionVariables,
           opts->collectionToShard(),
           opts->getVertexProjections(),
-          opts->getEdgeProjections()};
+          opts->getEdgeProjections(),
+          opts->produceVertices()};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1096,6 +1102,10 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                     it.second->clone(_plan->getAst()));
   }
 
+  if (_condition) {
+    c.setCondition(_condition->clone());
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
 #endif
@@ -1219,7 +1229,8 @@ void TraversalNode::setCondition(
          oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
-        (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
+        (_inVariable == nullptr || oneVar->id != _inVariable->id) &&
+        (!_optimizedOutVariables.contains(oneVar->id))) {
       _conditionVariables.emplace(oneVar);
     }
   }
@@ -1271,6 +1282,10 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
   // We cannot modify the postFilterExpression after it was build
   TRI_ASSERT(_postFilterExpression == nullptr);
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(!condition->willUseV8());
+  TRI_ASSERT(!ServerState::instance()->isRunningInCluster() ||
+             condition->canRunOnDBServer(vocbase()->isOneShard()));
   _postFilterConditions.emplace_back(condition);
   Ast::getReferencedVariables(condition, _postFilterVariables);
 }

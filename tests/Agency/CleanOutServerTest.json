@@ -34,7 +34,7 @@ R"=(
           "collection2": {
             "replicationFactor": 3,
             "shards": {
-              "shard": [
+              "s0001": [
                 "leader",
                 "follower1",
                 "follower2"

@@ -27,13 +27,21 @@
 
 namespace arangodb {
 
+struct IRocksDBTransactionCallback {
+  virtual ~IRocksDBTransactionCallback() = default;
+  virtual rocksdb::SequenceNumber prepare() = 0;
+  virtual void cleanup() = 0;
+  virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
+};
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState* state,
+                                 IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxBaseMethods();
+  ~RocksDBTrxBaseMethods() override;
 
   virtual bool isIndexingDisabled() const final override {
     return _indexingDisabled;
@@ -70,9 +78,18 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
+  uint64_t numPrimitiveOperations() const noexcept final override {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
+  }
+
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 
+  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle* family,
+                                  rocksdb::Slice const& slice,
+                                  rocksdb::PinnableSlice* pinnable,
+                                  ReadOwnWrites rw,
+                                  rocksdb::Snapshot const* snapshot) override;
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -101,7 +118,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief create a new rocksdb transaction
   virtual void createTransaction();
 
-  arangodb::Result doCommit();
+  Result doCommit();
+  Result doCommitImpl();
+
+  IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
 

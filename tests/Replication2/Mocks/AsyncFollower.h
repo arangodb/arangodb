@@ -41,6 +41,7 @@ struct AsyncFollower : replicated_log::ILogFollower {
                                  DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto release(LogIndex doneWithIdx) -> Result override;
+  auto compact() -> Result override;
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   auto appendEntries(replicated_log::AppendEntriesRequest request)

@@ -35,13 +35,16 @@
 
 namespace arangodb::iresearch::kludge {
 
-#ifdef USE_ENTERPRISE
+inline constexpr char kTypeDelimiter = '\0';
+inline constexpr char kAnalyzerDelimiter = '\1';
 inline constexpr char kNestedDelimiter = '\2';
-bool isNestedField(irs::string_ref name) noexcept;
-void mangleNested(std::string& name);
+
+#ifdef USE_ENTERPRISE
+bool isNestedField(std::string_view name) noexcept;
 #endif
 
-bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept;
+bool needTrackPrevDoc(std::string_view name, bool nested) noexcept;
+void mangleNested(std::string& name);
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 
@@ -61,6 +64,11 @@ std::string_view demangleType(std::string_view name) noexcept;
                                                   std::string& buf) {
   return demangleNested(demangleType(name), buf);
 }
+
+std::string_view extractAnalyzerName(std::string_view fieldName);
 #endif
+
+bool isPrimitiveAnalyzer(std::string_view type) noexcept;
+bool isGeoAnalyzer(std::string_view type) noexcept;
 
 }  // namespace arangodb::iresearch::kludge

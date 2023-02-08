@@ -25,8 +25,6 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <boost/container_hash/hash.hpp>
 
 namespace arangodb::test {
@@ -105,9 +103,6 @@ struct OnceActorBase {
 };
 
 struct SupervisionActor : ActorBase<SupervisionActor> {
-  static auto stepReplicatedState(AgencyState const& agency)
-      -> std::optional<AgencyTransition>;
-
   static auto stepReplicatedLog(AgencyState const& agency)
       -> std::optional<AgencyTransition>;
 

@@ -26,6 +26,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -57,20 +59,22 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   bool waitForSync = false;
-  bool waitForCollector = false;
+  bool flushColumnFamilies = false;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
+      if (TRI_HasProperty(context, isolate, obj,
+                          StaticStrings::WaitForSyncString)) {
         waitForSync = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForSync"))
+            obj->Get(context, TRI_V8_ASCII_STD_STRING(
+                                  isolate, StaticStrings::WaitForSyncString))
                 .FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(
+        flushColumnFamilies = TRI_ObjectToBoolean(
             isolate,
             obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector"))
                 .FromMaybe(v8::Local<v8::Value>()));
@@ -79,14 +83,14 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
+        flushColumnFamilies = TRI_ObjectToBoolean(isolate, args[1]);
       }
     }
   }
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   v8g->server().getFeature<EngineSelectorFeature>().engine().flushWal(
-      waitForSync, waitForCollector);
+      waitForSync, flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -286,23 +290,20 @@ static void JS_CollectionRevisionTreeVerification(
     RocksDBEngine& engine =
         server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
-    double ttl = 3600;
-    // the "17" is a magic number. we just need any client id to proceed.
-    RocksDBReplicationContext* ctx =
-        manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
-    if (ctx == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL(
-          "Could not create RocksDBReplicationContext");
-    }
-    RocksDBReplicationContextGuard guard(manager, ctx);
+    // the 600 and 17 are magic numbers here. we can put in any ttl and any
+    // client id to proceed. the context created here is thrown away
+    // immediately afterwards anyway.
+    auto ctx = manager->createContext(engine, /*ttl*/ 600, SyncerId{17},
+                                      ServerId{17}, "");
+    TRI_ASSERT(ctx);
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
       storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
-      ctx->setDeleted();
+      ctx.setDeleted();
     } catch (...) {
-      ctx->setDeleted();
+      ctx.setDeleted();
       throw;
     }
   }

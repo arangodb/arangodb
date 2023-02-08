@@ -35,6 +35,14 @@ the cursor is exhausted.  Once the *hasMore* attribute has a value of
 @RESTRETURNCODE{200}
 The server will respond with *HTTP 200* in case of success.
 
+@RESTREPLYBODY{nextBatchId,string,optional,string}
+Only set if the `allowRetry` query option is enabled.
+
+The ID of the batch after the current one. The first batch has an ID of `1` and
+the value is incremented by 1 with every batch. You can remember and use this
+batch ID should retrieving the next batch fail. Use the
+`POST /_api/cursor/<cursor-id>/<batch-id>` endpoint to ask for the batch again.
+
 @RESTRETURNCODE{400}
 If the cursor identifier is omitted, the server will respond with *HTTP 404*.
 
@@ -77,9 +85,7 @@ Valid request for next batch
     };
     var response = logCurlRequest('POST', url, body);
 
-    var body = response.body.replace(/\\/g, '');
-    var _id = JSON.parse(body).id;
-    response = logCurlRequest('POST', url + '/' + _id, '');
+    response = logCurlRequest('POST', url + '/' + response.parsedBody.id, '');
     assert(response.code === 200);
 
     logJsonResponse(response);

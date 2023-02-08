@@ -54,6 +54,9 @@ struct Status {
     return _error->path;
   }
 
+  template<class, class, class>
+  friend struct InspectorBase;
+
   struct AttributeTag {};
   struct ArrayTag {};
 

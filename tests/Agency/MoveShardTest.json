@@ -13,7 +13,8 @@ R"=(
             }
           }
         }
-      }
+      },
+      "ServersKnown": {}
     },
     "Plan": {
       "Collections": {

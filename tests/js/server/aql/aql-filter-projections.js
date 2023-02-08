@@ -177,8 +177,8 @@ function filterProjectionsPlansTestSuite () {
     testPersistentStoredValuesSubAttributesMulti : function () {
       c.ensureIndex({ type: "persistent", fields: ["foo.bar"], storedValues: ["moo"] });
       let queries = [
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux == 2 RETURN doc.value`, 'persistent', ['moo'], ['value'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux != 3 RETURN [doc.foo.bar, doc.value]`, 'persistent', ['moo'], [['foo', 'bar'], 'value'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux == 2 RETURN doc.value`, 'persistent', [['moo', 'baz'], ['moo', 'qux']], ['value'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux != 3 RETURN [doc.foo.bar, doc.value]`, 'persistent', [['moo', 'baz'], ['moo', 'qux']], [['foo', 'bar'], 'value'] ],
       ];
 
       queries.forEach(function(query) {

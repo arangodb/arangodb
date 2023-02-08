@@ -42,11 +42,14 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -208,7 +211,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
-  if (n >= AstNode::SortNumberThreshold &&
+  if (n >= AstNode::kSortNumberThreshold &&
       (node->getMember(1)->isSorted() ||
        ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
@@ -461,10 +464,10 @@ AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
       return executeSimpleExpressionNaryAndOr(ctx, node, mustDestroy);
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     std::string("node type '") +
-                                         node->getTypeString() +
-                                         "' is not supported in expressions");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          absl::StrCat("node type '", node->getTypeString(),
+                       "' is not supported in expressions"));
 
     default:
       std::string msg("unhandled type '");
@@ -915,8 +918,8 @@ AqlValue Expression::invokeV8Function(
           .FromMaybe(v8::Local<v8::Value>());
 
   try {
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-  } catch (arangodb::basics::Exception const& ex) {
+    V8Executor::handleV8Error(tryCatch, result);
+  } catch (basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;
     }
@@ -943,6 +946,15 @@ AqlValue Expression::invokeV8Function(
 AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
                                                     AstNode const* node,
                                                     bool& mustDestroy) {
+  if (ServerState::instance()->isDBServer()) {
+    // we actually should not get here, but in case we do due to some changes,
+    // it is better to abort the query with a proper error rather than crashing
+    // with assertion failure or segfault.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "user-defined functions cannot be executed on DB-Servers");
+  }
+
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
@@ -952,7 +964,24 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
+
+    std::string jsName;
+    if (node->type == NODE_TYPE_FCALL_USER) {
+      jsName = "FCALL_USER";
+    } else {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+      TRI_ASSERT(func->hasV8Implementation());
+      jsName = "AQL_" + func->name;
+    }
+
+    if (v8g == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "no V8 context available when executing call to function ",
+              jsName));
+    }
 
     VPackOptions const& options = ctx.trx().vpackOptions();
 
@@ -961,14 +990,13 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
     auto sg =
         arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
-    std::string jsName;
     size_t const n = member->numMembers();
     size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
     if (node->type == NODE_TYPE_FCALL_USER) {
       // a call to a user-defined function
-      jsName = "FCALL_USER";
+      auto context = TRI_IGETC;
       v8::Handle<v8::Array> params =
           v8::Array::New(isolate, static_cast<int>(n));
 
@@ -994,7 +1022,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
       TRI_ASSERT(func->hasV8Implementation());
-      jsName = "AQL_" + func->name;
 
       for (size_t i = 0; i < n; ++i) {
         auto arg = member->getMemberUnchecked(i);
@@ -1874,6 +1901,24 @@ bool Expression::isDeterministic() {
 bool Expression::willUseV8() {
   TRI_ASSERT(_type != UNPROCESSED);
   return (_type == SIMPLE && _node->willUseV8());
+}
+
+bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
+  errorReason.clear();
+
+  if (willUseV8()) {
+    errorReason = "JavaScript expressions cannot be used inside PRUNE";
+    return false;
+  }
+  if (!canRunOnDBServer(isOneShard)) {
+    errorReason =
+        "PRUNE expression contains a function that cannot be used on "
+        "DB-Servers";
+    return false;
+  }
+
+  TRI_ASSERT(errorReason.empty());
+  return true;
 }
 
 std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {

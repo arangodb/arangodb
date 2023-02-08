@@ -86,11 +86,11 @@ struct FieldMeta {
     }
 
     bool operator()(AnalyzerPool::ptr const& lhs,
-                    irs::string_ref rhs) const noexcept {
+                    std::string_view rhs) const noexcept {
       return lhs->name() < rhs;
     }
 
-    bool operator()(irs::string_ref lhs,
+    bool operator()(std::string_view lhs,
                     AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs < rhs->name();
     }
@@ -102,12 +102,19 @@ struct FieldMeta {
           _fields(mask),
           _includeAllFields(mask),
           _trackListPositions(mask),
-          _storeValues(mask) {}
+#ifdef USE_ENTERPRISE
+          _cache(mask),
+#endif
+          _storeValues(mask) {
+    }
 
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
     bool _trackListPositions;
+#ifdef USE_ENTERPRISE
+    bool _cache;
+#endif
     bool _storeValues;
   };
 
@@ -139,7 +146,7 @@ struct FieldMeta {
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(ArangodServer& server, velocypack::Slice const& slice,
-            std::string& errorField, irs::string_ref defaultVocbase,
+            std::string& errorField, std::string_view defaultVocbase,
             LinkVersion version, FieldMeta const& defaults,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
             Mask* mask);
@@ -167,6 +174,14 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
 
+  bool hasNested() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _hasNested;
+#else
+    return false;
+#endif
+  }
+
   // Analyzers to apply to every field.
   std::vector<Analyzer> _analyzers;
   // Offset of the first non-primitive analyzer.
@@ -187,6 +202,8 @@ struct FieldMeta {
   bool _trackListPositions{false};
 #ifdef USE_ENTERPRISE
   bool _hasNested{false};
+  // field's norms columns should be cached in RAM
+  bool _cache{false};
 #endif
 };
 
@@ -204,13 +221,22 @@ struct IResearchLinkMeta : public FieldMeta {
           _storedValues(mask),
           _sortCompression(mask),
           _collectionName(mask),
-          _version(mask) {}
+#ifdef USE_ENTERPRISE
+          _sortCache(mask),
+          _pkCache(mask),
+#endif
+          _version(mask) {
+    }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
     bool _collectionName;
+#ifdef USE_ENTERPRISE
+    bool _sortCache;
+    bool _pkCache;
+#endif
     bool _version;
   };
 
@@ -218,6 +244,11 @@ struct IResearchLinkMeta : public FieldMeta {
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+#ifdef USE_ENTERPRISE
+  bool _sortCache{false};
+  bool _pkCache{false};
+#endif
   // The version of the iresearch interface e.g. which how
   // data is stored in iresearch (default == 0).
   uint32_t _version;
@@ -228,6 +259,11 @@ struct IResearchLinkMeta : public FieldMeta {
   // there is no problem but solved recovery issue - we will be able to index
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
+  std::string_view collectionName() const noexcept { return _collectionName; }
+
+#ifdef USE_ENTERPRISE
+  bool sortCache() const noexcept { return _sortCache; }
+#endif
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
@@ -253,7 +289,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(ArangodServer& server, VPackSlice slice, std::string& errorField,
-            irs::string_ref defaultVocbase = irs::string_ref::NIL,
+            std::string_view defaultVocbase = std::string_view{},
             LinkVersion defaultVersion = LinkVersion::MIN,
             Mask* mask = nullptr);
 

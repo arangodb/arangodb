@@ -24,6 +24,7 @@
 #include "RocksDBTrxMethods.h"
 
 #include "Aql/QueryCache.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -37,8 +38,9 @@
 using namespace arangodb;
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
+                                     IRocksDBTransactionCallback& callback,
                                      rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
+    : RocksDBTrxBaseMethods(state, callback, db) {
   TRI_ASSERT(!_state->isSingleOperation());
 }
 
@@ -100,15 +102,13 @@ void RocksDBTrxMethods::rollbackOperation(
   }
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit() {
-  Result res;
+bool RocksDBTrxMethods::isIntermediateCommitNeeded() {
   if (hasIntermediateCommitsEnabled()) {
-    // perform an intermediate commit if necessary
     size_t currentSize =
         _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-    res.reset(checkIntermediateCommit(currentSize));
+    return checkIntermediateCommit(currentSize);
   }
-  return res;
+  return false;
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -234,28 +234,27 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   }
 
   createTransaction();
+  ensureSnapshot();
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  TRI_ASSERT(_iteratorReadSnapshot != nullptr);
+  // read snapshots are only required for AQL queries. But since on followers we
+  // do not run AQL queries, we can have intermediate commits _without_ read
+  // snapshots.
+  TRI_ASSERT(_iteratorReadSnapshot != nullptr ||
+             _state->options().isFollowerTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
+bool RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
   TRI_ASSERT(hasIntermediateCommitsEnabled());
 
-  TRI_IF_FAILURE("noIntermediateCommits") { return {}; }
+  TRI_IF_FAILURE("noIntermediateCommits") { return false; }
 
-  Result res;
   auto numOperations = this->numOperations();
-  // perform an intermediate commit
-  // this will be done if either the "number of operations" or the
+  // perform an intermediate commit if either the "number of operations" or the
   // "transaction size" counters have reached their limit
-  if (_state->options().intermediateCommitCount <= numOperations ||
-      _state->options().intermediateCommitSize <= newSize) {
-    res.reset(triggerIntermediateCommit());
-  }
-
-  return res;
+  return _state->options().intermediateCommitCount <= numOperations ||
+         _state->options().intermediateCommitSize <= newSize;
 }
 
 bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {

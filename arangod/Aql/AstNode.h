@@ -30,7 +30,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -231,9 +230,10 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
-  static std::unordered_map<int, std::string const> const Operators;
-  static std::unordered_map<int, std::string const> const TypeNames;
-  static std::unordered_map<int, std::string const> const ValueTypeNames;
+  /// @brief array values with at least this number of members that
+  /// are in IN or NOT IN lookups will be sorted, so that we can use
+  /// a binary sort to do lookups
+  static constexpr size_t kSortNumberThreshold = 8;
 
   /// @brief create the node
   explicit AstNode(AstNodeType);
@@ -246,9 +246,6 @@ struct AstNode {
 
   /// @brief destroy the node
   ~AstNode();
-
- public:
-  static constexpr size_t SortNumberThreshold = 8;
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
@@ -281,10 +278,10 @@ struct AstNode {
   void sort();
 
   /// @brief return the type name of a node
-  std::string const& getTypeString() const;
+  std::string_view getTypeString() const;
 
   /// @brief return the value type name of a node
-  std::string const& getValueTypeString() const;
+  std::string_view getValueTypeString() const;
 
   /// @brief stringify the AstNode
   static std::string toString(AstNode const*);
@@ -297,15 +294,11 @@ struct AstNode {
   static void validateValueType(int type);
 
   /// @brief fetch a node's type from VPack
-  static AstNodeType getNodeTypeFromVPack(
-      arangodb::velocypack::Slice const& slice);
+  static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice slice);
 
-  /**
-   * @brief Helper class to check if this node can be represented as VelocyPack
-   * If this method returns FALSE a call to "toVelocyPackValue" will yield
-   * no change in the handed in builder.
-   * On TRUE it is guaranteed that the handed in Builder was modified.
-   */
+  void setConstantFlags() noexcept;
+
+  /// @brief function to check if this node can be represented as VelocyPack.
   bool valueHasVelocyPackRepresentation() const;
 
   /// @brief build a VelocyPack representation of the node value
@@ -410,6 +403,10 @@ struct AstNode {
   /// @brief whether or not a node will use V8 internally
   /// this may also set the FLAG_V8 flag for the node
   bool willUseV8() const;
+
+  /// @brief whether or not a node's filter condition can be used inside a
+  /// TraversalNode
+  bool canBeUsedInFilter(bool isOneShard) const;
 
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;
@@ -599,13 +596,8 @@ struct AstNode {
   std::vector<AstNode*> members{};
 };
 
-int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
-
-/// @brief less comparator for Ast value nodes
-template<bool useUtf8>
-struct AstNodeValueLess {
-  bool operator()(AstNode const* lhs, AstNode const* rhs) const;
-};
+template<bool resolveAttributeAccess = true>
+int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

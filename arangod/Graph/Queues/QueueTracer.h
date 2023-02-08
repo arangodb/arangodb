@@ -51,6 +51,7 @@ class QueueTracer {
   std::vector<Step*> getLooseEnds();
 
   Step pop();
+  Step const& peek() const;
 
   // Return all Steps where the Provider needs to call fetchVertices()
   // for in order to be able to process them

@@ -28,6 +28,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "VocBase/VocbaseInfo.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 
@@ -55,14 +58,31 @@ StorageEngine::StorageEngine(Server& server, std::string_view engineName,
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 
+std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
+    CreateDatabaseInfo&& info) {
+  return std::make_unique<TRI_vocbase_t>(std::move(info));
+}
+
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                const VPackSlice& slice) {
+                                                velocypack::Slice slice) {
   return {};
 }
+
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
+
 bool StorageEngine::inRecovery() {
   return recoveryState() < RecoveryState::DONE;
 }
+
+void StorageEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // should not be called on the base engine
+  TRI_ASSERT(false);
+}
+
+void StorageEngine::syncIndexCaches() {}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
@@ -74,6 +94,7 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
   builder.add("supports", velocypack::Value(VPackValueType::Object));
+  // legacy attribute, always false since 3.7.
   builder.add("dfdb", velocypack::Value(false));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
@@ -84,8 +105,8 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& it : indexFactory().indexAliases()) {
-    builder.add(it.first, velocypack::Value(it.second));
+  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+    builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes
   builder.close();  // aliases
@@ -113,16 +134,12 @@ void StorageEngine::registerView(
   vocbase.registerView(true, view);
 }
 
-void StorageEngine::registerReplicatedLog(
-    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
-  vocbase.registerReplicatedLog(id, std::move(log));
-}
-
 void StorageEngine::registerReplicatedState(
-    TRI_vocbase_t& vocbase,
-    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
-  vocbase.registerReplicatedState(info);
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    std::unique_ptr<
+        arangodb::replication2::replicated_state::IStorageEngineMethods>
+        methods) {
+  vocbase.registerReplicatedState(id, std::move(methods));
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }

@@ -42,6 +42,8 @@ class ClusterTransactionState final : public TransactionState {
                           transaction::Options const& options);
   ~ClusterTransactionState() override = default;
 
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
@@ -52,8 +54,14 @@ class ClusterTransactionState final : public TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
 
   /// @brief return number of commits, including intermediate commits
   [[nodiscard]] uint64_t numCommits() const noexcept override;

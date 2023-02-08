@@ -102,7 +102,7 @@ void Scheduler::shutdown() {
     auto const& top = _cronQueue.top();
     auto item = top.second.lock();
     if (item) {
-      TRI_ASSERT(item->isDisabled());
+      TRI_ASSERT(item->isDisabled()) << item->name();
     }
     _cronQueue.pop();
   }
@@ -153,7 +153,7 @@ void Scheduler::runCronThread() {
 }
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
-    RequestLane lane, clock::duration delay,
+    std::string_view name, RequestLane lane, clock::duration delay,
     fu2::unique_function<void(bool cancelled)> handler) noexcept {
   TRI_ASSERT(!isStopping());
 
@@ -163,7 +163,8 @@ Scheduler::WorkHandle Scheduler::queueDelayed(
     return nullptr;
   }
 
-  auto item = std::make_shared<DelayedWorkItem>(std::move(handler), lane, this);
+  auto item =
+      std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
   {
     std::unique_lock<std::mutex> guard(_cronQueueMutex);
     _cronQueue.emplace(clock::now() + delay, item);

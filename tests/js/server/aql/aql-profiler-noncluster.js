@@ -28,49 +28,51 @@
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
-const db = require('@arangodb').db;
-const jsunity = require("jsunity");
-const internal = require("internal");
+ const db = require('@arangodb').db;
+ const jsunity = require("jsunity");
+ const internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @file test suite for AQL tracing/profiling: noncluster tests
-/// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
-/// The main test suite (including comments) is in aql-profiler.js.
-////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @file test suite for AQL tracing/profiling: noncluster tests
+ /// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
+ /// The main test suite (including comments) is in aql-profiler.js.
+ ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlProfilerTestSuite () {
+ // import some names from profHelper directly into our namespace
+ const colName = profHelper.colName;
+ const edgeColName = profHelper.edgeColName;
+ const viewName = profHelper.viewName;
+ const defaultBatchSize = profHelper.defaultBatchSize;
+ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-  // import some names from profHelper directly into our namespace:
-  const colName = profHelper.colName;
-  const edgeColName = profHelper.edgeColName;
-  const viewName = profHelper.viewName;
-  const defaultBatchSize = profHelper.defaultBatchSize;
+ const {
+   AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
+   InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
+   TraversalNode, UpdateNode, UpsertNode
+ } = profHelper;
 
-  const { AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
-    EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-    InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
-    ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    TraversalNode, UpdateNode, UpsertNode } = profHelper;
+ const {
+   AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
+   HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, RemoteBlock,
+   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
+   SortedCollectBlock, SortingGatherBlock, TraversalBlock,
+   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
+   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
+   IResearchViewBlock, IResearchViewOrderedBlock
+ } = profHelper;
 
-  const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
-    EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-    HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, RemoteBlock,
-    ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
-    UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
-    UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
-    IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
+ function ahuacatlProfilerTestSuite() {
+   return {
+     tearDown: function () {
+       db._drop(colName);
+       db._drop(edgeColName);
+     },
 
-  return {
-
-    tearDown : function () {
-      db._drop(colName);
-      db._drop(edgeColName);
-      db._dropView(viewName);
-    },
-    
-    testMaterializeBlock: function () {
-      const col = db._create(colName);
+     testMaterializeBlock: function () {
+       const col = db._create(colName);
       col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
       
       const bind = () => ({'@col': colName});
@@ -527,108 +529,6 @@ function ahuacatlProfilerTestSuite () {
     },
     */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock1
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock1: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0}
-        ];
-      };
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock2
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock2: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0},
-          {type: SortBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
-        ];
-      };
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock3
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock3: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
-          {type: SortBlock, calls: batches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: batches, items: rows, filtered: 0 },
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
-        ];
-      };
-
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
     testLimitCollectCombination: function () {
       const query = `
             FOR x IN 1..@rows
@@ -654,13 +554,203 @@ function ahuacatlProfilerTestSuite () {
       );
     }
 
-  };
-}
+   };
+ }
+
+ function ahuacatlProfilerViewTestSuite(isSearchAlias) {
+   return {
+     tearDown: function () {
+       db._drop(colName);
+       db._drop(edgeColName);
+       db._dropView(viewName);
+     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief test EnumerateViewBlock1
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlProfilerTestSuite);
+     testEnumerateViewBlock1: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
 
-return jsunity.done();
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {
+             type: CalculationBlock,
+             calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
+             items: rows,
+             filtered: 0
+           },
+           {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0}
+         ];
+       };
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateViewBlock2
+////////////////////////////////////////////////////////////////////////////////
+
+     testEnumerateViewBlock2: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
+
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {
+             type: CalculationBlock,
+             calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
+             items: rows,
+             filtered: 0
+           },
+           {type: SortBlock, calls: batches, items: rows, filtered: 0},
+           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+         ];
+       };
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateViewBlock3
+////////////////////////////////////////////////////////////////////////////////
+
+     testEnumerateViewBlock3: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
+
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {type: SortBlock, calls: batches, items: rows, filtered: 0},
+           {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+         ];
+       };
+
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+     testLimitCollectCombination: function () {
+       const query = `
+            FOR x IN 1..@rows
+              COLLECT AGGREGATE total = SUM(x)
+              LIMIT 0, 1
+              RETURN total
+      `;
+       const prepare = () => {
+       };
+       const bind = (rows) => ({rows});
+       const genNodeList = (rows, batches) => {
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+           {type: SortedCollectBlock, calls: 1, items: 1, filtered: 0},
+           {type: LimitBlock, calls: 1, items: 1, filtered: 0},
+           {type: ReturnBlock, calls: 1, items: 1, filtered: 0}
+         ];
+       };
+
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     }
+
+   };
+ }
+
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief executes the test suite
+ ////////////////////////////////////////////////////////////////////////////////
+
+ //jsunity.run(ahuacatlProfilerTestSuite);
+
+ function ahuacatlProfilerArangoSearchTestSuite() {
+   let suite = {};
+   deriveTestSuite(
+     ahuacatlProfilerViewTestSuite(false),
+     suite,
+     "_arangosearch"
+   );
+   return suite;
+ }
+
+ function ahuacatlProfilerSearchAliasTestSuite() {
+   let suite = {};
+   deriveTestSuite(
+     ahuacatlProfilerViewTestSuite(true),
+     suite,
+     "_search-alias"
+   );
+   return suite;
+ }
+
+ jsunity.run(ahuacatlProfilerArangoSearchTestSuite);
+ jsunity.run(ahuacatlProfilerSearchAliasTestSuite);
+
+ return jsunity.done();

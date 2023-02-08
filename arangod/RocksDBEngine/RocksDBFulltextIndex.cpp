@@ -54,7 +54,8 @@ namespace arangodb {
 /// El Cheapo index iterator
 class RocksDBFulltextIndexIterator final : public IndexIterator {
  public:
-  RocksDBFulltextIndexIterator(LogicalCollection* collection,
+  RocksDBFulltextIndexIterator(ResourceMonitor& monitor,
+                               LogicalCollection* collection,
                                transaction::Methods* trx,
                                std::set<LocalDocumentId>&& docs)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
@@ -265,7 +266,8 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
-                                    velocypack::Slice doc) {
+                                    velocypack::Slice doc,
+                                    OperationOptions const& /*options*/) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -522,9 +524,9 @@ Result RocksDBFulltextIndex::applyQueryToken(
 }
 
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* condNode,
-    aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* condNode, aql::Variable const* var,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
@@ -561,6 +563,6 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return std::make_unique<RocksDBFulltextIndexIterator>(&_collection, trx,
-                                                        std::move(results));
+  return std::make_unique<RocksDBFulltextIndexIterator>(
+      monitor, &_collection, trx, std::move(results));
 }

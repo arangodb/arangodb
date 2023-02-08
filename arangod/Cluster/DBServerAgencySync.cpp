@@ -72,8 +72,7 @@ void DBServerAgencySync::work() {
 
 Result DBServerAgencySync::getLocalCollections(
     containers::FlatHashSet<std::string> const& dirty,
-    AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
-    LocalStatesMap& replStates) {
+    AgencyCache::databases_t& databases, LocalLogsMap& replLogs) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -86,12 +85,11 @@ Result DBServerAgencySync::getLocalCollections(
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   for (auto const& dbname : dirty) {
-    TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
+    auto tmp = dbfeature.useDatabase(dbname);
     if (tmp == nullptr) {
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
-    auto unuse = scopeGuard([&vocbase]() noexcept { vocbase.release(); });
 
     auto [it, created] =
         databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
@@ -103,22 +101,11 @@ Result DBServerAgencySync::getLocalCollections(
     }
 
     {
-      auto [it, created] =
-          replLogs.try_emplace(dbname, vocbase.getReplicatedLogsQuickStatus());
+      auto [it, created] = replLogs.try_emplace(
+          dbname, vocbase.getReplicatedStatesQuickStatus());
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
-        return Result(
-            TRI_ERROR_INTERNAL,
-            "Failed to emplace new entry in local replicated logs cache");
-      }
-    }
-    {
-      auto [it, created] =
-          replStates.try_emplace(dbname, vocbase.getReplicatedStateStatus());
-      if (!created) {
-        LOG_TOPIC("5d5c8", WARN, Logger::MAINTENANCE)
-            << "Failed to emplace new entry in local replicated state cache";
         return Result(
             TRI_ERROR_INTERNAL,
             "Failed to emplace new entry in local replicated logs cache");
@@ -249,10 +236,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
-  LocalStatesMap localStates;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs, localStates);
+  Result glc = getLocalCollections(dirty, local, localLogs);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -281,7 +267,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     tmp = arangodb::maintenance::phaseOne(
         plan, planIndex, current, currentIndex, dirty, moreDirt, local,
-        serverId, mfeature, rb, currentShardLocks, localLogs, localStates);
+        serverId, mfeature, rb, currentShardLocks, localLogs);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", TRACE, Logger::MAINTENANCE)
@@ -313,8 +299,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     local.clear();
     localLogs.clear();
-    localStates.clear();
-    glc = getLocalCollections(dirty, local, localLogs, localStates);
+    glc = getLocalCollections(dirty, local, localLogs);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -330,9 +315,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    tmp = arangodb::maintenance::phaseTwo(
-        plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, localStates);
+    tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
+                                          local, serverId, mfeature, rb,
+                                          currentShardLocks, localLogs);
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -383,7 +368,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyCommResult r =
               comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
-            LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
+            LOG_TOPIC("d73b8", DEBUG, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
                 << " message: " << r.errorMessage()
                 << ". This can be ignored, since it will be retried "

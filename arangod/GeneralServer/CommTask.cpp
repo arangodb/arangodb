@@ -60,8 +60,8 @@ std::string const AdminAardvark("/_admin/aardvark/");
 std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
 
-TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
-                                         GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -75,7 +75,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
 
 /// Set the appropriate requestContext
 bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
+  auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -84,7 +84,9 @@ bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
+  std::unique_ptr<VocbaseContext> guard(
+      VocbaseContext::create(req, *vocbase.release()));
   if (!guard) {
     return false;
   }
@@ -257,6 +259,7 @@ CommTask::Flow CommTask::prepareExecution(
       // the following paths are allowed on followers
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
+          !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
@@ -363,7 +366,7 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
-      !ServerState::instance()->isDBServer()) {
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -389,6 +392,18 @@ void CommTask::finishExecution(GeneralResponse& res,
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
                             StaticStrings::NoSniff);
+
+    // CSP Headers for security.
+    res.setHeaderNCIfNotSet(StaticStrings::ContentSecurityPolicy,
+                            "frame-ancestors 'self'; form-action 'self';");
+    res.setHeaderNCIfNotSet(
+        StaticStrings::CacheControl,
+        "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+        "max-age=0, s-maxage=0");
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, "no-cache");
+    res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
+                            "max-age=31536000 ; includeSubDomains");
   }
 
   // add "x-arango-queue-time-seconds" header
@@ -533,6 +548,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard guard{_statisticsMutex};
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();

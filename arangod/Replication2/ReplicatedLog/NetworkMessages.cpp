@@ -136,22 +136,23 @@ auto AppendEntriesRequest::operator=(
 }
 
 auto replicated_log::operator++(MessageId& id) -> MessageId& {
-  ++id.value;
+  ++id._value;
   return id;
 }
 
 auto replicated_log::operator<<(std::ostream& os, MessageId id)
     -> std::ostream& {
-  return os << id.value;
+  return os << id._value;
 }
 
 auto replicated_log::to_string(MessageId id) -> std::string {
-  return std::to_string(id.value);
+  return std::to_string(id._value);
 }
 
 MessageId::operator velocypack::Value() const noexcept {
-  return velocypack::Value(value);
+  return velocypack::Value(_value);
 }
+auto MessageId::value() -> std::uint64_t { return _value; }
 
 void replicated_log::AppendEntriesResult::toVelocyPack(
     velocypack::Builder& builder) const {
@@ -162,6 +163,7 @@ void replicated_log::AppendEntriesResult::toVelocyPack(
     builder.add(VPackValue("reason"));
     reason.toVelocyPack(builder);
     builder.add("messageId", VPackValue(messageId));
+    builder.add("snapshotAvailable", VPackValue(snapshotAvailable));
     if (conflict.has_value()) {
       TRI_ASSERT(errorCode ==
                  TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -179,6 +181,7 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason::fromVelocyPack(slice.get("reason"));
   auto messageId = slice.get("messageId").extract<MessageId>();
+  auto snapshotAvailable = slice.get("snapshotAvailable").isTrue();
 
   if (reason.error == AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch) {
     TRI_ASSERT(errorCode ==
@@ -187,71 +190,76 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(
     TRI_ASSERT(conflict.isObject());
     return AppendEntriesResult{logTerm, messageId,
                                TermIndexPair::fromVelocyPack(conflict),
-                               std::move(reason)};
+                               std::move(reason), snapshotAvailable};
   }
 
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason.error != AppendEntriesErrorReason::ErrorType::kNone);
-  return AppendEntriesResult{logTerm, errorCode, reason, messageId};
+  return AppendEntriesResult{logTerm, errorCode, reason, messageId,
+                             snapshotAvailable};
 }
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(
     LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason,
-    MessageId id) noexcept
+    MessageId id, bool snapshotAvailable) noexcept
     : logTerm(logTerm),
       errorCode(errorCode),
       reason(std::move(reason)),
-      messageId(id) {
+      messageId(id),
+      snapshotAvailable(snapshotAvailable) {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason.error != AppendEntriesErrorReason::ErrorType::kNone);
 }
 
-replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm,
-                                                         MessageId id) noexcept
-    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, {}, id) {}
+replicated_log::AppendEntriesResult::AppendEntriesResult(
+    LogTerm logTerm, MessageId id, bool snapshotAvailable) noexcept
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, {}, id,
+                          snapshotAvailable) {}
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(
     LogTerm term, replicated_log::MessageId id, TermIndexPair conflict,
-    AppendEntriesErrorReason reason) noexcept
+    AppendEntriesErrorReason reason, bool snapshotAvailable) noexcept
     : AppendEntriesResult(
           term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-          std::move(reason), id) {
+          std::move(reason), id, snapshotAvailable) {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   this->conflict = conflict;
 }
 
 auto replicated_log::AppendEntriesResult::withConflict(
-    LogTerm term, replicated_log::MessageId id, TermIndexPair conflict) noexcept
-    -> replicated_log::AppendEntriesResult {
+    LogTerm term, replicated_log::MessageId id, TermIndexPair conflict,
+    bool snapshotAvailable) noexcept -> replicated_log::AppendEntriesResult {
   return {term,
           id,
           conflict,
-          {AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch}};
+          {AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch},
+          snapshotAvailable};
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(
-    LogTerm term, MessageId id, AppendEntriesErrorReason reason) noexcept
-    -> AppendEntriesResult {
+    LogTerm term, MessageId id, AppendEntriesErrorReason reason,
+    bool snapshotAvailable) noexcept -> AppendEntriesResult {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   return {term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-          std::move(reason), id};
+          std::move(reason), id, snapshotAvailable};
 }
 
 auto replicated_log::AppendEntriesResult::withPersistenceError(
-    LogTerm term, replicated_log::MessageId id, Result const& res) noexcept
-    -> replicated_log::AppendEntriesResult {
+    LogTerm term, replicated_log::MessageId id, Result const& res,
+    bool snapshotAvailable) noexcept -> replicated_log::AppendEntriesResult {
   return {term,
           res.errorNumber(),
           {AppendEntriesErrorReason::ErrorType::kPersistenceFailure,
            std::string{res.errorMessage()}},
-          id};
+          id,
+          snapshotAvailable};
 }
 
 auto replicated_log::AppendEntriesResult::withOk(
-    LogTerm term, replicated_log::MessageId id) noexcept
+    LogTerm term, replicated_log::MessageId id, bool snapshotAvailable) noexcept
     -> replicated_log::AppendEntriesResult {
-  return {term, id};
+  return {term, id, snapshotAvailable};
 }
 
 auto replicated_log::AppendEntriesResult::isSuccess() const noexcept -> bool {
@@ -290,11 +298,10 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = EntryContainer::transient_type{};
-    std::transform(
-        entriesVp.begin(), entriesVp.end(),
-        std::back_inserter(transientEntries), [](auto const& it) {
-          return InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it));
-        });
+    for (auto it : entriesVp) {
+      transientEntries.push_back(
+          InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it)));
+    }
     return std::move(transientEntries).persistent();
   });
 

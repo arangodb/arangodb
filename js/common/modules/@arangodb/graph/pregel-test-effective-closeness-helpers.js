@@ -25,6 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let db = require("@arangodb").db;
+let pregel = require("@arangodb/pregel");
+
 const isEnterprise = require('internal').isEnterprise();
 let smart_graph_module;
 if (isEnterprise) {
@@ -45,7 +47,7 @@ const {
 } = require("@arangodb/graph/graphs-generation");
 
 const {
-    runPregelInstance,
+    waitUntilRunFinishedSuccessfully,
     assertAlmostEquals,
     epsilon,
     makeSetUp,
@@ -74,14 +76,15 @@ const computeCloseness = function (graph) {
 const testEffectiveClosenessOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "closeness": v.closeness, "v": v}  
-              `;
 
     let parameters = {resultField: "closeness"};
     let algName = "effectivecloseness";
-    const result = runPregelInstance(algName, graphName, parameters, query);
+    const pid = pregel.start("effectivecloseness", graphName, parameters);
+    waitUntilRunFinishedSuccessfully(pid);
+    const result = db._query(`
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "closeness": v.closeness, "v": v}  
+                `).toArray();;
 
     let graph = new Graph(vertices, edges);
     computeCloseness(graph); // write result into the closenessFromTestAlgorithm field

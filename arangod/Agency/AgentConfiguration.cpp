@@ -49,6 +49,12 @@ std::string const config_t::supervisionGracePeriodStr =
     "supervision grace period";
 std::string const config_t::supervisionOkThresholdStr =
     "supervision ok threshold";
+std::string const config_t::supervisionDelayAddFollowerStr =
+    "supervision delay add follower job time";
+std::string const config_t::supervisionDelayFailedFollowerStr =
+    "supervision delay failed follower job time";
+std::string const config_t::supervisionFailedLeaderAddsFollowerStr =
+    "supervision FailedLeader job adds a new follower";
 std::string const config_t::compactionStepSizeStr = "compaction step size";
 std::string const config_t::compactionKeepSizeStr = "compaction keep size";
 std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
@@ -57,7 +63,6 @@ std::string const config_t::startupStr = "startup";
 
 config_t::config_t()
     : _agencySize(0),
-      _poolSize(0),
       _minPing(0.0),
       _maxPing(0.0),
       _timeoutMult(1),
@@ -70,19 +75,20 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0),
+      _supervisionFailedLeaderAddsFollower(true),
       _version(0),
       _startup("origin"),
       _maxAppendSize(250),
       _lock() {}
 
-config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
-                   double maxp, std::string const& e,
-                   std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o,
-                   size_t a)
+config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
+                   std::string const& e, std::vector<std::string> const& g,
+                   bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
+                   double p, double o, uint64_t q, uint64_t r, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
-      _poolSize(ps),
       _minPing(minp),
       _maxPing(maxp),
       _timeoutMult(1),
@@ -96,6 +102,9 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
       _supervisionOkThreshold(o),
+      _supervisionDelayAddFollower(q),
+      _supervisionDelayFailedFollower(r),
+      _supervisionFailedLeaderAddsFollower(t),
       _version(0),
       _startup("origin"),
       _maxAppendSize(a),
@@ -112,7 +121,6 @@ config_t& config_t::operator=(config_t const& other) {
   _id = other._id;
   _recoveryId = other._recoveryId;
   _agencySize = other._agencySize;
-  _poolSize = other._poolSize;
   _minPing = other._minPing;
   _maxPing = other._maxPing;
   _timeoutMult = other._timeoutMult;
@@ -128,6 +136,10 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _supervisionOkThreshold = other._supervisionOkThreshold;
+  _supervisionDelayAddFollower = other._supervisionDelayAddFollower;
+  _supervisionDelayFailedFollower = other._supervisionDelayFailedFollower;
+  _supervisionFailedLeaderAddsFollower =
+      other._supervisionFailedLeaderAddsFollower;
   _version = other._version;
   _startup = other._startup;
   _maxAppendSize = other._maxAppendSize;
@@ -139,7 +151,6 @@ config_t& config_t::operator=(config_t&& other) {
 
   _id = std::move(other._id);
   _agencySize = std::move(other._agencySize);
-  _poolSize = std::move(other._poolSize);
   _minPing = std::move(other._minPing);
   _maxPing = std::move(other._maxPing);
   _timeoutMult = std::move(other._timeoutMult);
@@ -155,6 +166,11 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
+  _supervisionDelayAddFollower = std::move(other._supervisionDelayAddFollower);
+  _supervisionDelayFailedFollower =
+      std::move(other._supervisionDelayFailedFollower);
+  _supervisionFailedLeaderAddsFollower =
+      std::move(other._supervisionFailedLeaderAddsFollower);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
   _maxAppendSize = std::move(other._maxAppendSize);
@@ -174,6 +190,21 @@ double config_t::supervisionGracePeriod() const {
 double config_t::supervisionOkThreshold() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionOkThreshold;
+}
+
+uint64_t config_t::supervisionDelayAddFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionDelayAddFollower;
+}
+
+uint64_t config_t::supervisionDelayFailedFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionDelayFailedFollower;
+}
+
+bool config_t::supervisionFailedLeaderAddsFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionFailedLeaderAddsFollower;
 }
 
 double config_t::minPing() const {
@@ -329,14 +360,9 @@ size_t config_t::size() const {
   return _agencySize;
 }
 
-size_t config_t::poolSize() const {
-  READ_LOCKER(readLocker, _lock);
-  return _poolSize;
-}
-
 bool config_t::poolComplete() const {
   READ_LOCKER(readLocker, _lock);
-  return _poolSize == _pool.size();
+  return _agencySize == _pool.size();
 }
 
 query_t config_t::activeToBuilder() const {
@@ -377,6 +403,10 @@ query_t config_t::poolToBuilder() const {
 
 bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   WRITE_LOCKER(readLocker, _lock);
+  auto it = _pool.find(id);
+  if (it == _pool.end() && _pool.size() == _agencySize) {
+    return false;
+  }
   if (_pool[id] != ep) {
     _pool[id] = ep;
     ++_version;
@@ -450,7 +480,8 @@ void config_t::toBuilder(VPackBuilder& builder) const {
 
     builder.add(idStr, VPackValue(_id));
     builder.add(agencySizeStr, VPackValue(_agencySize));
-    builder.add(poolSizeStr, VPackValue(_poolSize));
+    // deprecated since 3.11
+    builder.add(poolSizeStr, VPackValue(_agencySize));
     builder.add(endpointStr, VPackValue(_endpoint));
     builder.add(minPingStr, VPackValue(_minPing));
     builder.add(maxPingStr, VPackValue(_maxPing));
@@ -461,6 +492,12 @@ void config_t::toBuilder(VPackBuilder& builder) const {
     builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
     builder.add(supervisionOkThresholdStr, VPackValue(_supervisionOkThreshold));
+    builder.add(supervisionDelayAddFollowerStr,
+                VPackValue(_supervisionDelayAddFollower));
+    builder.add(supervisionDelayFailedFollowerStr,
+                VPackValue(_supervisionDelayFailedFollower));
+    builder.add(supervisionFailedLeaderAddsFollowerStr,
+                VPackValue(_supervisionFailedLeaderAddsFollower));
     builder.add(versionStr, VPackValue(_version));
     builder.add(startupStr, VPackValue(_startup));
   }
@@ -535,22 +572,6 @@ bool config_t::merge(VPackSlice const& conf) {
     }
   }
   LOG_TOPIC("c0b77", DEBUG, Logger::AGENCY) << ss.str();
-
-  ss.str("");
-  ss.clear();
-  ss << "Agency pool size: ";
-  if (_poolSize == 0) {  // Command line beats persistence
-    if (conf.hasKey(poolSizeStr)) {
-      _poolSize = conf.get(poolSizeStr).getUInt();
-      ss << _poolSize << " (persisted)";
-    } else {
-      _poolSize = _agencySize;
-      ss << _poolSize << " (default)";
-    }
-  } else {
-    ss << _poolSize << " (command line)";
-  }
-  LOG_TOPIC("474ea", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -686,15 +707,16 @@ bool config_t::merge(VPackSlice const& conf) {
 }
 
 void config_t::updateConfiguration(velocypack::Slice other) {
-  WRITE_LOCKER(writeLocker, _lock);
-
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());
+
+  WRITE_LOCKER(writeLocker, _lock);
+
   _pool.clear();
   for (auto p : VPackObjectIterator(pool)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
-  _poolSize = _pool.size();
+  _agencySize = _pool.size();
 
   auto active = other.get(activeStr);
   TRI_ASSERT(active.isArray());
@@ -702,7 +724,6 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   for (auto id : VPackArrayIterator(active)) {
     _active.push_back(id.copyString());
   }
-  _agencySize = _pool.size();
 
   if (other.hasKey(minPingStr)) {
     _minPing = other.get(minPingStr).getNumber<double>();
@@ -724,6 +745,18 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   if (other.hasKey(supervisionOkThresholdStr)) {
     _supervisionOkThreshold =
         other.get(supervisionOkThresholdStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionDelayAddFollowerStr)) {
+    _supervisionDelayAddFollower =
+        other.get(supervisionDelayAddFollowerStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(supervisionDelayFailedFollowerStr)) {
+    _supervisionDelayFailedFollower =
+        other.get(supervisionDelayFailedFollowerStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(supervisionFailedLeaderAddsFollowerStr)) {
+    _supervisionFailedLeaderAddsFollower =
+        other.get(supervisionFailedLeaderAddsFollowerStr).getBoolean();
   }
   if (other.hasKey(compactionStepSizeStr)) {
     _compactionStepSize =

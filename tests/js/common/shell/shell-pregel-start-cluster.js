@@ -34,6 +34,7 @@ var db = require("@arangodb").db;
 var internal = require("internal");
 let pregel = require("@arangodb/pregel");
 var graph_module = require("@arangodb/general-graph");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 var EPS = 0.0001;
 
@@ -61,7 +62,7 @@ function shardKeysTestSuite() {
     tearDown: function () {
 
       if(pid !== 0) {
-        while(pregel.status(pid).state === 'loading' || pregel.status(pid).state === 'running') {
+        while(!pregelTestHelpers.runFinished(pregel.status(pid))) {
           internal.sleep(0.1);
         }
         pregel.cancel(pid); // delete contents
@@ -134,30 +135,20 @@ function basicTestSuite() {
   function testAlgo(a, p) {
     p.shardKeyAttribute = shardKey;
     var pid = pregel.start(a, graphName, p);
-    var i = 10000;
-    do {
-      internal.wait(0.2);
-      var stats = pregel.status(pid);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-        assertEqual(stats.vertexCount, 11, stats);
-        assertEqual(stats.edgeCount, 17, stats);
+    const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+
+    assertEqual(stats.vertexCount, 11, stats);
+    assertEqual(stats.edgeCount, 17, stats);
   
-        db[vColl].all().toArray()
-          .forEach(function (d) {
-            if (d[a] && d[a] !== -1) {
-              var diff = Math.abs(d[a] - d.result);
-              if (diff > EPS) {
-                console.log("Error on " + JSON.stringify(d));
-                assertTrue(false);// peng
-              }
-            }
-          });
-        break;
-      }
-    } while (i-- >= 0);
-    if (i === 0) {
-      assertTrue(false, "timeout in pregel execution");
-    }
+    db[vColl].all().toArray()
+      .forEach(function (d) {
+        if (d[a] && d[a] !== -1) {
+          var diff = Math.abs(d[a] - d.result);
+          if (diff > EPS) {
+            assertTrue(false, "Error on " + JSON.stringify(d));
+          }
+        }
+      });
   }
 
   return {
@@ -229,11 +220,7 @@ function basicTestSuite() {
     },
 
     testSSSPNormal: function () {
-      testAlgo("sssp", { async: false, source: vColl + "/K", resultField: "result", store: true });
-    },
-
-    testSSSPAsync: function () {
-      testAlgo("sssp", { async: true, source: vColl + "/K", resultField: "result", store: true });
+      testAlgo("sssp", { source: vColl + "/K", resultField: "result", store: true });
     },
 
     testPageRank: function () {
@@ -255,60 +242,50 @@ function basicTestSuite() {
 
     // test the PREGEL_RESULT AQL function
     testPageRankAQLResult: function () {
-      var pid = pregel.start("pagerank", graphName, { shardKeyAttribute: shardKey, threshold: EPS / 10, store: false });
-      var i = 10000;
-      do {
-        internal.wait(0.2);
-        var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-          assertEqual(stats.vertexCount, 11, stats);
-          assertEqual(stats.edgeCount, 17, stats);
+      const pid = pregel.start("pagerank", graphName, { shardKeyAttribute: shardKey, threshold: EPS / 10, store: false });
+      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-          let vertices = db._collection(vColl);
-          // no result was written to the default result field
-          vertices.all().toArray().forEach(d => assertTrue(!d.result));
+      assertEqual(stats.vertexCount, 11, stats);
+      assertEqual(stats.edgeCount, 17, stats);
 
-          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-          assertEqual(array.length, 1);
-          let results = array[0];
-          assertEqual(results.length, 11);
+      let vertices = db._collection(vColl);
+      // no result was written to the default result field
+      vertices.all().toArray().forEach(d => assertTrue(!d.result));
 
-          // verify results
-          results.forEach(function (d) {
-            let v = vertices.document(d._key);
-            assertTrue(v !== null);
-            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
-          });
+      let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+      assertEqual(array.length, 1);
+      let results = array[0];
+      assertEqual(results.length, 11);
 
-          array = db._query("RETURN PREGEL_RESULT(@id, true)", { "id": pid }).toArray();
-          assertEqual(array.length, 1);
-          results = array[0];
-          assertEqual(results.length, 11);
+      // verify results
+      results.forEach(function (d) {
+        let v = vertices.document(d._key);
+        assertTrue(v !== null);
+        assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+      });
 
-          // verify results
-          results.forEach(function (d) {
-            let v = vertices.document(d._key);
-            assertTrue(v !== null);
-            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+      array = db._query("RETURN PREGEL_RESULT(@id, true)", { "id": pid }).toArray();
+      assertEqual(array.length, 1);
+      results = array[0];
+      assertEqual(results.length, 11);
 
-            let v2 = db._document(d._id);
-            assertEqual(v, v2);
-          });
+      // verify results
+      results.forEach(function (d) {
+        let v = vertices.document(d._key);
+        assertTrue(v !== null);
+        assertTrue(Math.abs(v.pagerank - d.result) < EPS);
 
-          pregel.cancel(pid); // delete contents
-          internal.wait(5.0);
+        let v2 = db._document(d._id);
+        assertEqual(v, v2);
+      });
 
-          array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-          assertEqual(array.length, 1);
-          results = array[0];
-          assertEqual(results.length, 0);
+      pregel.cancel(pid); // delete contents
+      internal.wait(5.0);
 
-          break;
-        }
-      } while (i-- >= 0);
-      if (i === 0) {
-        assertTrue(false, "timeout in pregel execution");
-      }
+      array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+      assertEqual(array.length, 1);
+      results = array[0];
+      assertEqual(results.length, 0);
     }
   };
 };

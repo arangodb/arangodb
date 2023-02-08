@@ -28,6 +28,7 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Aql/VarInfoMap.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -55,7 +56,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class SingleServerEdgeCursor;
 class TraverserCache;
 
 /**
@@ -98,10 +98,9 @@ struct BaseOptions {
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice info,
                arangodb::velocypack::Slice shards);
 
-    void initializeNonConstExpressions(
-        aql::Ast* ast,
-        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-        aql::Variable const* indexVariable);
+    void initializeNonConstExpressions(aql::Ast* ast,
+                                       aql::VarInfoMap const& varInfo,
+                                       aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -229,10 +228,9 @@ struct BaseOptions {
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
-  virtual void initializeIndexConditions(
-      aql::Ast* ast,
-      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-      aql::Variable const* indexVariable);
+  virtual void initializeIndexConditions(aql::Ast* ast,
+                                         aql::VarInfoMap const& varInfo,
+                                         aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 

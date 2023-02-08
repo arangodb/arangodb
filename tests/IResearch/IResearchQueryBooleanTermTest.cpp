@@ -1355,7 +1355,7 @@ class QueryBooleanTerm : public QueryTest {
       ASSERT_TRUE(slice.isArray()) << slice.toString();
 
       VPackArrayIterator resultIt{slice};
-      EXPECT_EQ(0, resultIt.size());
+      EXPECT_EQ(0U, resultIt.size());
       EXPECT_FALSE(resultIt.valid());
     }
     // d.seq >= false AND d.seq <= false, unordered
@@ -1368,7 +1368,7 @@ class QueryBooleanTerm : public QueryTest {
       ASSERT_TRUE(slice.isArray()) << slice.toString();
 
       VPackArrayIterator resultIt{slice};
-      EXPECT_EQ(1, resultIt.size());
+      EXPECT_EQ(1U, resultIt.size());
       EXPECT_TRUE(resultIt.valid());
 
       auto const resolved = resultIt.value().resolveExternals();
@@ -1390,7 +1390,7 @@ class QueryBooleanTerm : public QueryTest {
       ASSERT_TRUE(slice.isArray()) << slice.toString();
 
       VPackArrayIterator resultIt{slice};
-      EXPECT_EQ(0, resultIt.size());
+      EXPECT_EQ(0U, resultIt.size());
       EXPECT_FALSE(resultIt.valid());
     }
     // d.seq >= true AND d.seq <= true, unordered
@@ -1433,7 +1433,7 @@ class QueryBooleanTerm : public QueryTest {
       EXPECT_TRUE(result.isArray());
 
       VPackArrayIterator resultIt(result);
-      EXPECT_EQ(0, resultIt.size());
+      EXPECT_EQ(0U, resultIt.size());
       EXPECT_FALSE(resultIt.valid());
     }
     // d.seq >= false AND d.seq <= true, unordered

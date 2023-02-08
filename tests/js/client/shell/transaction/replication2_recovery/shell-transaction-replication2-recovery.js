@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -37,12 +36,14 @@ const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const internal = require('internal');
+const print = internal.print;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const request = require('@arangodb/request');
+const console = require('console');
 
 /**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
@@ -85,20 +86,30 @@ function transactionReplication2Recovery() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
+  const WC = 2;
   const coordinator = replicatedLogsHelper.coordinators[0];
   let c = null;
   let shards = null;
   let shardId = null;
   let logId = null;
 
-  const { setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd } =
-    replicatedLogsHelper.testHelperFunctions(dbn, { replicationVersion: "2" });
+  const {
+    setUpAll,
+    tearDownAll,
+    stopServerWait,
+    stopServersWait,
+    continueServerWait,
+    continueServersWait,
+    setUpAnd,
+    tearDownAnd,
+  } =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: '2'});
 
   return {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, { "numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3 });
+      c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3 });
       shards = c.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
@@ -110,6 +121,9 @@ function transactionReplication2Recovery() {
       c = null;
     }),
 
+    /*
+     * Stop the leader in the middle of a transaction.
+     */
     testFailoverDuringTransaction: function () {
       // Start a transaction.
       let trx = db._createTransaction({
@@ -122,7 +136,7 @@ function transactionReplication2Recovery() {
       // Stop the leader. This triggers a failover.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];
-      assertTrue(participants !== undefined);
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
       const leader = participants[0];
       const followers = participants.slice(1);
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
@@ -143,6 +157,7 @@ function transactionReplication2Recovery() {
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test2", false));
       }
 
+      // A new leader is elected.
       stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
         dbn, logId, newTerm, followers));
@@ -153,16 +168,19 @@ function transactionReplication2Recovery() {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
         }
-        return entry.payload[1].operation === "AbortAllOngoingTrx";
+        return entry.payload.operation === "AbortAllOngoingTrx";
       });
-      assertTrue(abortAllEntryFound);
+      assertTrue(abortAllEntryFound, `AbortAllOngoingTrx not found in log ${logId}.` +
+        ` Log contents: ${JSON.stringify(logContents)}`);
 
       // Expect further transaction operations to fail.
       try {
         tc.insert({ _key: 'test3', value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum);
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum,
+          `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
 
       syncShardsWithLogs(dbn);
@@ -189,7 +207,9 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "foo" });
         trx.commit();
       } catch (err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
 
       servers = Object.assign({}, ...followers.map(
@@ -215,7 +235,9 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "bar" });
         trx.commit();
       } catch (err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
 
       // Expect "bar" to be found on all servers.
@@ -237,17 +259,14 @@ function transactionReplication2Recovery() {
       }
     },
 
-    /**
-     * This test is disabled because currently we can't properly stop the maintenance from deleting the shard
-     * on the newly added follower. When the core is constructed, the follower tries to create the new shard locally,
-     * but because the server is not listed as a participant for that shard in Plan/Collections, the maintenance figures
-     * the shard shouldn't exist locally.
+    /*
+     * Replace a follower during a transaction.
      */
-    DISABLED_testFollowerReplaceDuringTransaction: function () {
+    testFollowerReplaceDuringTransaction: function () {
       // Prepare the grounds for replacing a follower.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];
-      assertTrue(participants !== undefined);
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
       const followers = participants.slice(1);
       const oldParticipant = _.sample(followers);
       const nonParticipants = _.without(replicatedLogsHelper.dbservers, ...participants);
@@ -265,20 +284,43 @@ function transactionReplication2Recovery() {
       // Replace the follower.
       const result = replicatedStateHelper.replaceParticipant(dbn, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
+
+      // Wait for replicated state to be available on the new follower.
       replicatedLogsHelper.waitFor(() => {
-        const stateAgencyContent = replicatedStateHelper.readReplicatedStateAgency(dbn, logId);
-        return replicatedLogsHelper.sortedArrayEqualOrError(
-          newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        const {current} = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId);
+        if (current.leader.hasOwnProperty("committedParticipantsConfig")) {
+          return replicatedLogsHelper.sortedArrayEqualOrError(
+            newParticipants,
+            Object.keys(current.leader.committedParticipantsConfig.participants).sort());
+        } else {
+          return Error(`committedParticipantsConfig not found in ` +
+            JSON.stringify(current.leader));
+        }
       });
 
-      // TODO check that we cannot find test1 and test2 on any servers.
       syncShardsWithLogs(dbn);
+
+      // Expect to find no values on current participants.
+      let servers = Object.assign({}, ...newParticipants.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      const oldEndpoint = replicatedLogsHelper.getServerUrl(oldParticipant);
+
+      for (let cnt = 1; cnt <= 2; ++cnt) {
+        for (const [_, endpoint] of Object.entries(servers)) {
+          replicatedLogsHelper.waitFor(
+            replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, `test${cnt}`, false));
+        }
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(oldEndpoint, dbn, shardId, `test${cnt}`, false));
+      }
 
       // Continue the transaction and expect it to succeed.
       try {
         tc.insert({_key: "test3", value: 3});
-      } catch (ex) {
-        fail("Transaction failed with: " + JSON.stringify(ex));
+      } catch (err) {
+        const logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       } finally {
         if (trx) {
           trx.commit();
@@ -286,9 +328,6 @@ function transactionReplication2Recovery() {
       }
 
       // Expect to find the values on current participants, but not on the old participant.
-      let servers = Object.assign({}, ...newParticipants.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
-      const oldEndpoint = replicatedLogsHelper.getServerUrl(oldParticipant);
       for (let cnt = 1; cnt < 4; ++cnt) {
         for (const [_, endpoint] of Object.entries(servers)) {
           replicatedLogsHelper.waitFor(
@@ -297,6 +336,57 @@ function transactionReplication2Recovery() {
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(oldEndpoint, dbn, shardId, `test${cnt}`, false));
       }
+    },
+
+    /*
+     * We kill all followers, such that write concern cannot be reached anymore,
+     * and assert that we behave as designed in this case - we can no longer insert/update/remove any documents.
+     */
+    testCannotReachWriteConcernDuringTransaction: function () {
+      const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+      const participants = logs[logId];
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
+      const leader = participants[0];
+      const followers = participants.slice(1);
+      const allOtherServers = _.without(replicatedLogsHelper.dbservers, leader);
+
+      // Start a transaction.
+      let trx = db._createTransaction({
+        collections: {write: c.name()}
+      });
+
+      // Stop all servers except for the leader.
+      stopServersWait(allOtherServers);
+
+      let tc = trx.collection(c.name());
+      tc.insert({_key: 'test1', value: 1});
+
+      // Commit transaction
+      const coordinatorEndpoint = replicatedLogsHelper.getServerUrl(coordinator);
+      const url = `/_db/${dbn}/_api/transaction/${trx._id}`;
+      request.put({url: coordinatorEndpoint + url, timeout: 3});
+
+      let leaderServer = replicatedLogsHelper.getServerUrl(leader);
+      replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", false));
+
+      // Resume enough participants to reach write concern.
+      continueServersWait(followers.slice(0, WC - 1));
+
+      // Expect the transaction to be committed
+      replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", true, 1));
+      // TODO Uncomment this, after https://arangodb.atlassian.net/browse/CINFRA-668 is addressed.
+      //      Currently, this can occasionally fail, if the replicated state is recreated (due to the change in
+      //      RebootId) *after* the replicated log on the follower is completely up-to-date (including commit index),
+      //      but *before* the latest entries have been applied to the replicated state.
+      //      Because then, the leader has no reason to send new append entries requests, while the follower's log
+      //      still has a freshly initialized commit index of 0.
+      // for (let cnt = 0; cnt < WC - 1; ++cnt) {
+      //   let server = replicatedLogsHelper.getServerUrl(followers[cnt]);
+      //   replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(server, dbn, shardId,
+      //     "test1", true, 1));
+      // }
     },
   };
 }

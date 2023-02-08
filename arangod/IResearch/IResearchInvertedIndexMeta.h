@@ -59,6 +59,10 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
 
   auto sortCompression() const noexcept { return _sortCompression; }
 
+#ifdef USE_ENTERPRISE
+  bool cache() const noexcept { return _cache; }
+#endif
+
   std::string_view Locale() const noexcept { return _locale.getName(); }
 
   size_t memory() const noexcept {
@@ -71,6 +75,9 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
  private:
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
   icu::Locale _locale;
+#ifdef USE_ENTERPRISE
+  bool _cache{false};
+#endif
 };
 
 struct InvertedIndexField {
@@ -83,7 +90,7 @@ struct InvertedIndexField {
             LinkVersion version, bool extendedNames,
             IResearchAnalyzerFeature& analyzers,
             InvertedIndexField const& parent,
-            irs::string_ref const defaultVocbase, bool rootMode,
+            std::string_view const defaultVocbase, bool rootMode,
             std::string& errorField);
 
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
@@ -136,6 +143,10 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
+#ifdef USE_ENTERPRISE
+  // is cached column
+  bool _cache{false};
+#endif
   /// @brief Field is array/value mix as for arangosearch views.
   ///        Field is excluded from inverted index optimizations for filter!
   bool _isSearchField{false};
@@ -150,6 +161,8 @@ struct IResearchInvertedIndexMetaIndexingContext {
   void addField(InvertedIndexField const& field, bool nested);
 
   void setFeatures(Features const& features);
+
+  std::string_view collectionName() const noexcept;
 
   irs::features_t fieldFeatures() const noexcept {
     return {_fieldFeatures.data(), _fieldFeatures.size()};
@@ -170,7 +183,6 @@ struct IResearchInvertedIndexMetaIndexingContext {
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
   ValueStorage const _storeValues{ValueStorage::ID};
-  std::string _collectionName;
   IResearchInvertedIndexSort const& _sort;
   IResearchViewStoredValues const& _storedValues;
   MissingFieldsMap _missingFieldsMap;
@@ -179,6 +191,9 @@ struct IResearchInvertedIndexMetaIndexingContext {
   bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
+#ifdef USE_ENTERPRISE
+  bool _cache;
+#endif
   bool _isSearchField;
 
  private:
@@ -204,7 +219,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::ArangodServer& server, VPackSlice const& slice,
             bool readAnalyzerDefinition, std::string& errorField,
-            irs::string_ref const defaultVocbase);
+            std::string_view const defaultVocbase);
 
   bool dense() const noexcept { return !_sort.empty(); }
 
@@ -230,6 +245,10 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 
   bool hasNested() const noexcept { return _hasNested; }
 
+#ifdef USE_ENTERPRISE
+  bool sortCache() const noexcept { return _sort.cache(); }
+#endif
+
   std::unique_ptr<IResearchInvertedIndexMetaIndexingContext> _indexingContext;
 
   InvertedIndexField::AnalyzerDefinitions _analyzerDefinitions;
@@ -240,5 +259,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
+#ifdef USE_ENTERPRISE
+  bool _pkCache{false};
+#endif
 };
 }  // namespace arangodb::iresearch

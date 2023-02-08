@@ -24,20 +24,13 @@
 #include "EnumeratePathsExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -279,7 +272,7 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+      if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
         return _finder.startKShortestPathsTraversal(source, target);
       } else {
         _finder.reset(arangodb::velocypack::HashedStringRef(source),
@@ -298,7 +291,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   tmp->clear();
 
   bool nextPath;
-  if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+  if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
     nextPath = _finder.getNextPathAql(*tmp.builder());
   } else {
     nextPath = _finder.getNextPath(*tmp.builder());
@@ -334,7 +327,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
           builder.clear();
           builder.add(VPackValue(idString));
           id = builder.slice();
-          // Guranteed by extractIdValue
+          // Guaranteed by extractIdValue
           TRI_ASSERT(::isValidId(id));
         } catch (...) {
           // _id or _key not present... ignore this error and fall through
@@ -382,8 +375,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template<class FinderType>
 [[nodiscard]] auto EnumeratePathsExecutor<FinderType>::stats() -> Stats {
-  if constexpr (std::is_same_v<FinderType,
-                               arangodb::graph::KShortestPathsFinder>) {
+  if constexpr (std::is_same_v<FinderType, KShortestPathsFinderInterface>) {
     // No Stats available on original variant
     return TraversalStats{};
   } else {
@@ -436,9 +428,10 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
 // template class ::arangodb::aql::EnumeratePathsExecutor<
 //     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-/* Fallback Section - Can be removed completely after refactor is done */
+/* TODO [GraphRefactor]: Fallback Section - Can be removed completely after
+ * refactor is done */
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    arangodb::graph::KShortestPathsFinder>;
+    arangodb::graph::KShortestPathsFinderInterface>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    arangodb::graph::KShortestPathsFinder>;
+    arangodb::graph::KShortestPathsFinderInterface>;

@@ -27,6 +27,7 @@
 #include "Basics/fasthash.h"
 
 #include <algorithm>
+#include <iostream>
 
 namespace arangodb {
 namespace aql {
@@ -136,6 +137,15 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
     ++numEqual;
   }
   return numEqual;
+}
+
+std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
+  stream << "[";
+  for (auto const& it : path.path) {
+    stream << ' ' << it;
+  }
+  stream << " ]";
+  return stream;
 }
 
 }  // namespace aql

@@ -108,22 +108,22 @@ TEST(AsyncValue, multithread) {
 }
 
 TEST(ContainersTest, test_Hasher) {
-  // ensure hashing of irs::bytes_ref is possible
+  // ensure hashing of irs::bytes_view is possible
   {
     typedef arangodb::iresearch::UnorderedRefKeyMapBase<irs::byte_type,
                                                         int>::KeyHasher Hasher;
     Hasher hasher;
-    irs::string_ref strRef("abcdefg");
-    irs::bytes_ref ref = irs::ref_cast<irs::byte_type>(strRef);
+    std::string_view strRef("abcdefg");
+    irs::bytes_view ref = irs::ViewCast<irs::byte_type>(strRef);
     EXPECT_FALSE((0 == hasher(ref)));
   }
 
-  // ensure hashing of irs::string_ref is possible
+  // ensure hashing of std::string_view is possible
   {
     typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher
         Hasher;
     Hasher hasher;
-    irs::string_ref ref("abcdefg");
+    std::string_view ref("abcdefg");
     EXPECT_FALSE((0 == hasher(ref)));
   }
 }
@@ -244,7 +244,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     EXPECT_FALSE((map.empty()));
     EXPECT_TRUE((2 == map.size()));
     EXPECT_TRUE((itr.second));
-    EXPECT_TRUE((irs::string_ref("def") == itr.first.key()));
+    EXPECT_TRUE((std::string_view("def") == itr.first.key()));
     EXPECT_TRUE((2 == itr.first.value().id));
     EXPECT_TRUE((-1 == itr.first.value().value));
   }
@@ -256,7 +256,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     EXPECT_FALSE((map.empty()));
     EXPECT_TRUE((3 == map.size()));
     EXPECT_TRUE((itr.second));
-    EXPECT_TRUE((irs::string_ref("ghi") == itr.first.key()));
+    EXPECT_TRUE((std::string_view("ghi") == itr.first.key()));
     EXPECT_TRUE((3 == itr.first.value().id));
     EXPECT_TRUE((42 == itr.first.value().value));
   }
@@ -278,7 +278,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     EXPECT_FALSE((map.empty()));
     EXPECT_TRUE((3 == map.size()));
     EXPECT_FALSE((itr.second));
-    EXPECT_TRUE((irs::string_ref("ghi") == itr.first.key()));
+    EXPECT_TRUE((std::string_view("ghi") == itr.first.key()));
     EXPECT_TRUE((3 == itr.first.value().id));
     EXPECT_TRUE((42 == itr.first.value().value));
   }
@@ -290,7 +290,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     EXPECT_FALSE((map.empty()));
     EXPECT_TRUE((3 == map.size()));
     EXPECT_FALSE((itr.second));
-    EXPECT_TRUE((irs::string_ref("def") == itr.first.key()));
+    EXPECT_TRUE((std::string_view("def") == itr.first.key()));
     EXPECT_TRUE((2 == itr.first.value().id));
     EXPECT_TRUE((-1 == itr.first.value().value));
   }
@@ -299,7 +299,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
   {
     auto itr = map.find("ghi");
     EXPECT_FALSE((map.end() == itr));
-    EXPECT_TRUE((irs::string_ref("ghi") == itr.key()));
+    EXPECT_TRUE((std::string_view("ghi") == itr.key()));
     EXPECT_TRUE((3 == itr.value().id));
     EXPECT_TRUE((42 == itr.value().value));
 

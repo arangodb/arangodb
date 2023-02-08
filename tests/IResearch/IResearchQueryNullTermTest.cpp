@@ -22,1291 +22,1266 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearch/IResearchVPackComparer.h"
+#include "IResearch/IResearchViewSort.h"
 #include "IResearchQueryCommon.h"
+#include "store/mmap_directory.hpp"
+#include "utils/index_utils.hpp"
 
-#include "IResearch/IResearchView.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Iterator.h>
-
-#include "utils/string_utils.hpp"
-
-extern const char* ARGV0;  // defined in main.cpp
-
+namespace arangodb::tests {
 namespace {
 
-class IResearchQueryNullTermTest : public IResearchQueryTest {};
+class QueryNullTerm : public QueryTest {
+ protected:
+  void create() {
+    // create collection0
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"testCollection0\" }");
+      auto collection = _vocbase.createCollection(createJson->slice());
+      ASSERT_NE(nullptr, collection);
 
-}  // namespace
+      std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": -7 }"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": -6, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": -5, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": -4 }"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": -3, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": -2, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": -1 }"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": 0, \"value\": null }"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": 1 }")};
 
-TEST_P(IResearchQueryNullTermTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  arangodb::LogicalView* view{};
-  std::vector<arangodb::velocypack::Builder> insertedDocs;
+      arangodb::OperationOptions options;
+      options.returnNew = true;
+      arangodb::SingleCollectionTransaction trx(
+          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          *collection, arangodb::AccessMode::Type::WRITE);
+      EXPECT_TRUE(trx.begin().ok());
 
-  // create collection0
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
-
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": -7 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -6, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -5, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": -4 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -3, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -2, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": -1 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": 0, \"value\": null }"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": 1 }")};
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
-
-    for (auto& entry : docs) {
-      auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    EXPECT_TRUE(trx.commit().ok());
-  }
-
-  // create collection1
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection1\" }");
-    auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
-
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": 2, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": 3 }"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": 4 }"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": 5 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": 6, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": 7, \"value\": null}"),
-        arangodb::velocypack::Parser::fromJson("{ \"seq\": 8 }")};
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
-
-    for (auto& entry : docs) {
-      auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    EXPECT_TRUE(trx.commit().ok());
-  }
-
-  // create view
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice(), false);
-    ASSERT_FALSE(!logicalView);
-
-    view = logicalView.get();
-    ASSERT_NE(nullptr, view);
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_FALSE(!impl);
-
-    auto viewDefinitionTemplate = R"({
-      "links": {
-        "testCollection0": {
-          "includeAllFields": true,
-          "trackListPositions": true,
-          "version":%u },
-        "testCollection1": {
-          "includeAllFields": true,
-          "version":%u }
-      }
-    })";
-
-    auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
-        static_cast<uint32_t>(linkVersion()));
-
-    auto updateJson = VPackParser::fromJson(viewDefinition);
-
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections(
-        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
-          cids.emplace(cid);
-          return true;
-        });
-    EXPECT_EQ(2, cids.size());
-    EXPECT_TRUE(
-        (arangodb::tests::executeQuery(vocbase,
-                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
-                                       "{ waitForSync: true } RETURN d")
-             .result.ok()));  // commit
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION-- ==
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value == 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value == 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value == null, unordered
-  {
-    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+      for (auto& entry : docs) {
+        auto res = trx.insert(collection->name(), entry->slice(), options);
+        EXPECT_TRUE(res.ok());
+        _insertedDocs.emplace_back(res.slice().get("new"));
       }
 
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      EXPECT_TRUE(trx.commit().ok());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value == null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // create collection1
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"testCollection1\" }");
+      auto collection = _vocbase.createCollection(createJson->slice());
+      ASSERT_NE(nullptr, collection);
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": 2, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": 3 }"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": 4 }"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": 5 }"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": 6, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson(
+              "{ \"seq\": 7, \"value\": null}"),
+          arangodb::velocypack::Parser::fromJson("{ \"seq\": 8 }")};
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+      arangodb::OperationOptions options;
+      options.returnNew = true;
+      arangodb::SingleCollectionTransaction trx(
+          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          *collection, arangodb::AccessMode::Type::WRITE);
+      EXPECT_TRUE(trx.begin().ok());
 
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value == null, BM25(), TFIDF(), d.seq DESC
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+      for (auto& entry : docs) {
+        auto res = trx.insert(collection->name(), entry->slice(), options);
+        EXPECT_TRUE(res.ok());
+        _insertedDocs.emplace_back(res.slice().get("new"));
       }
 
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      EXPECT_TRUE(trx.commit().ok());
     }
-
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value == null SORT BM25(d), TFIDF(d), "
-        "d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      ++expectedDoc;
-    }
-    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION-- !=
-  // -----------------------------------------------------------------------------
+  void queryTests() {
+    // -----------------------------------------------------------------------------
+    // --SECTION-- ==
+    // -----------------------------------------------------------------------------
 
-  // invalid type
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const keySlice = docSlice.get("seq");
-      auto const fieldSlice = docSlice.get("value");
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value == 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-      if (!fieldSlice.isNone() &&
-          "null" == arangodb::iresearch::getStringRef(fieldSlice)) {
-        continue;
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value == 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // d.value == null, unordered
+    {
+      std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
 
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value == null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
+
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value != 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // d.value == null, BM25(), TFIDF(), d.seq DESC
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // invalid type
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const keySlice = docSlice.get("seq");
-      auto const fieldSlice = docSlice.get("value");
-
-      if (!fieldSlice.isNone() &&
-          (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
-        continue;
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
 
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value == null SORT BM25(d), TFIDF(d), "
+          "d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      auto expectedDoc = expectedDocs.rbegin();
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        ++expectedDoc;
+      }
+      EXPECT_EQ(expectedDoc, expectedDocs.rend());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value != 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // -----------------------------------------------------------------------------
+    // --SECTION-- !=
+    // -----------------------------------------------------------------------------
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+    // invalid type
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const keySlice = docSlice.get("seq");
+        auto const fieldSlice = docSlice.get("value");
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+        if (!fieldSlice.isNone() &&
+            "null" == arangodb::iresearch::getStringRef(fieldSlice)) {
+          continue;
+        }
 
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value != null, unordered
-  {
-    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-
-      if (!valueSlice.isNone() && valueSlice.isNull()) {
-        continue;
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
 
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value != 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
+
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value != null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // invalid type
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const keySlice = docSlice.get("seq");
+        auto const fieldSlice = docSlice.get("value");
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+        if (!fieldSlice.isNone() &&
+            (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
+          continue;
+        }
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value != null, BM25(), TFIDF(), d.seq DESC
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-
-      if (!valueSlice.isNone() && valueSlice.isNull()) {
-        continue;
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
 
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
-    }
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value != 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value != null SORT BM25(d), TFIDF(d), "
-        "d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
 
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      ++expectedDoc;
-    }
-    EXPECT_EQ(expectedDoc, expectedDocs.rend());
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION-- <
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value < 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value < false RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value < 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value < null
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION-- <=
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value <= 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value <= false RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value <= 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value <= null, unordered
-  {
-    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      EXPECT_TRUE(expectedDocs.empty());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // d.value != null, unordered
+    {
+      std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+        if (!valueSlice.isNone() && valueSlice.isNull()) {
+          continue;
+        }
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value <= null, BM25(), TFIDF(), d.seq DESC
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
-    }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value <= null SORT BM25(d), TFIDF(d), "
-        "d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value != null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      ++expectedDoc;
-    }
-    EXPECT_EQ(expectedDoc, expectedDocs.rend());
-  }
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION-- >
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value > 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value > false RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value > 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value > null
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value > null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION-- >=
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value >= 'null' RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value >= 0 RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value >= false RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value >= null, unordered
-  {
-    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      EXPECT_TRUE(expectedDocs.empty());
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value >= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // d.value != null, BM25(), TFIDF(), d.seq DESC
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+        if (!valueSlice.isNone() && valueSlice.isNull()) {
+          continue;
+        }
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
-
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value >= null, BM25(), TFIDF(), d.seq DESC
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
-    }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value >= null SORT BM25(d), TFIDF(d), "
-        "d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
-
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      ++expectedDoc;
-    }
-    EXPECT_EQ(expectedDoc, expectedDocs.rend());
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                       Range(>,
-  // <)
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value > "
-                                      "'null' and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value > 0 and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value > false and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // empty range
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value > null and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Range(>=,
-  // <)
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value >= "
-                                      "'null' and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value >= 0 and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value >= "
-                                      "false and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // empty range
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value >= null and d.value < null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Range(>,
-  // <=)
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value > "
-                                      "'null' and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value > 0 and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value > "
-                                      "false and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // empty range
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value > null and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     Range(>=,
-  // <=)
-  // -----------------------------------------------------------------------------
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value >= "
-                                      "'null' and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value >= 0 and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // invalid type
-  {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value >= "
-                                      "false and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-
-    for (auto const actualDoc : resultIt) {
-      UNUSED(actualDoc);
-      EXPECT_TRUE(false);
-    }
-  }
-
-  // d.value >= null and d.value <= null, unordered
-  {
-    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value != null SORT BM25(d), TFIDF(d), "
+          "d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      auto expectedDoc = expectedDocs.rbegin();
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        ++expectedDoc;
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      EXPECT_EQ(expectedDoc, expectedDocs.rend());
     }
 
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "FOR d IN testView SEARCH d.value >= "
-                                      "null and d.value <= null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // -----------------------------------------------------------------------------
+    // --SECTION-- <
+    // -----------------------------------------------------------------------------
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value < 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("seq");
-      auto const key = keySlice.getNumber<ptrdiff_t>();
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
 
-      auto expectedDoc = expectedDocs.find(key);
-      ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
-
-  // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
-  // (will be converted to d.value >= 0 AND d.value <= 0)
-  {
-    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
-      auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNone() || !valueSlice.isNull()) {
-        continue;
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
       }
-      auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value >= null and d.value <= null SORT "
-        "BM25(d), TFIDF(d), d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value < false RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
 
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      ++expectedDoc;
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
     }
-    EXPECT_EQ(expectedDoc, expectedDocs.rend());
-  }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     Range(>=,
-  // <=)
-  // -----------------------------------------------------------------------------
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value < 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-  // d.value >= null and d.value <= null, unordered
-  // (will be converted to d.value >= 0 AND d.value <= 0)
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.value IN null..null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-    EXPECT_FALSE(resultIt.valid());
-  }
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
 
-  // d.seq >= nullptr AND d.seq <= nullptr, unordered
-  // (will be converted to d.seq >= 0 AND d.seq <= 0)
-  {
-    std::unordered_map<size_t, arangodb::velocypack::Slice> expectedDocs{
-        {0, insertedDocs[7].slice()},  // seq == 0
-    };
-
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase, "FOR d IN testView SEARCH d.seq IN null..null RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
-
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_EQ(expectedDocs.size(), resultIt.size());
-    EXPECT_TRUE(resultIt.valid());
-
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto key = resolved.get("seq");
-      auto expectedDoc = expectedDocs.find(key.getNumber<size_t>());
-      EXPECT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           expectedDoc->second, resolved, true));
-      expectedDocs.erase(expectedDoc);
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
     }
-    EXPECT_TRUE(expectedDocs.empty());
-  }
 
-  // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
-  // (will be converted to d.value >= 0 AND d.value <= 0)
-  {
-    auto queryResult = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH d.value IN null..null SORT BM25(d), "
-        "TFIDF(d), d.seq DESC RETURN d");
-    ASSERT_TRUE(queryResult.result.ok());
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+    // d.value < null
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_EQ(0, resultIt.size());
-    EXPECT_FALSE(resultIt.valid());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- <=
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value <= 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value <= false RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value <= 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // d.value <= null, unordered
+    {
+      std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
+
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
+    }
+
+    // d.value <= null, BM25(), TFIDF(), d.seq DESC
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value <= null SORT BM25(d), TFIDF(d), "
+          "d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      auto expectedDoc = expectedDocs.rbegin();
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        ++expectedDoc;
+      }
+      EXPECT_EQ(expectedDoc, expectedDocs.rend());
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- >
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value > 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value > false RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value > 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // d.value > null
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value > null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- >=
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value >= 'null' RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value >= 0 RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value >= false RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // d.value >= null, unordered
+    {
+      std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value >= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
+
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
+    }
+
+    // d.value >= null, BM25(), TFIDF(), d.seq DESC
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value >= null SORT BM25(d), TFIDF(d), "
+          "d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      auto expectedDoc = expectedDocs.rbegin();
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        ++expectedDoc;
+      }
+      EXPECT_EQ(expectedDoc, expectedDocs.rend());
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- Range(>,
+    // <)
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "'null' and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value > 0 and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "false and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // empty range
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "null and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- Range(>=,
+    // <)
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "'null' and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value >= 0 and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "false and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // empty range
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "null and d.value < null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                      Range(>,
+    // <=)
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "'null' and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value > 0 and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "false and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // empty range
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value > "
+                                        "null and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                     Range(>=,
+    // <=)
+    // -----------------------------------------------------------------------------
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "'null' and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value >= 0 and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // invalid type
+    {
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "false and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        IRS_IGNORE(actualDoc);
+        EXPECT_TRUE(false);
+      }
+    }
+
+    // d.value >= null and d.value <= null, unordered
+    {
+      std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult =
+          arangodb::tests::executeQuery(_vocbase,
+                                        "FOR d IN testView SEARCH d.value >= "
+                                        "null and d.value <= null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto const keySlice = resolved.get("seq");
+        auto const key = keySlice.getNumber<ptrdiff_t>();
+
+        auto expectedDoc = expectedDocs.find(key);
+        ASSERT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
+    }
+
+    // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
+    // (will be converted to d.value >= 0 AND d.value <= 0)
+    {
+      std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+      for (auto const& doc : _insertedDocs) {
+        arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+        auto const valueSlice = docSlice.get("value");
+        if (valueSlice.isNone() || !valueSlice.isNull()) {
+          continue;
+        }
+        auto const keySlice = docSlice.get("seq");
+        expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+      }
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value >= null and d.value <= null SORT "
+          "BM25(d), TFIDF(d), d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+      auto expectedDoc = expectedDocs.rbegin();
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        ++expectedDoc;
+      }
+      EXPECT_EQ(expectedDoc, expectedDocs.rend());
+    }
+
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                     Range(>=,
+    // <=)
+    // -----------------------------------------------------------------------------
+
+    // d.value >= null and d.value <= null, unordered
+    // (will be converted to d.value >= 0 AND d.value <= 0)
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.value IN null..null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+      EXPECT_FALSE(resultIt.valid());
+    }
+
+    // d.seq >= nullptr AND d.seq <= nullptr, unordered
+    // (will be converted to d.seq >= 0 AND d.seq <= 0)
+    {
+      std::unordered_map<size_t, arangodb::velocypack::Slice> expectedDocs{
+          {0, _insertedDocs[7].slice()},  // seq == 0
+      };
+
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase, "FOR d IN testView SEARCH d.seq IN null..null RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      ASSERT_EQ(expectedDocs.size(), resultIt.size());
+      EXPECT_TRUE(resultIt.valid());
+
+      for (auto const actualDoc : resultIt) {
+        auto const resolved = actualDoc.resolveExternals();
+        auto key = resolved.get("seq");
+        auto expectedDoc = expectedDocs.find(key.getNumber<size_t>());
+        EXPECT_NE(expectedDoc, expectedDocs.end());
+        EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                             expectedDoc->second, resolved, true));
+        expectedDocs.erase(expectedDoc);
+      }
+      EXPECT_TRUE(expectedDocs.empty());
+    }
+
+    // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
+    // (will be converted to d.value >= 0 AND d.value <= 0)
+    {
+      auto queryResult = arangodb::tests::executeQuery(
+          _vocbase,
+          "FOR d IN testView SEARCH d.value IN null..null SORT BM25(d), "
+          "TFIDF(d), d.seq DESC RETURN d");
+      ASSERT_TRUE(queryResult.result.ok());
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
+
+      arangodb::velocypack::ArrayIterator resultIt(result);
+      EXPECT_EQ(0U, resultIt.size());
+      EXPECT_FALSE(resultIt.valid());
+    }
   }
+};
+
+class QueryNullTermView : public QueryNullTerm {
+ protected:
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
+};
+
+class QueryNullTermSearch : public QueryNullTerm {
+ protected:
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
+};
+
+TEST_P(QueryNullTermView, Test) {
+  create();
+  createView(R"("trackListPositions": true,)", R"()");
+  queryTests();
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryNullTermTest, IResearchQueryNullTermTest,
-                        GetLinkVersions());
+TEST_P(QueryNullTermSearch, Test) {
+  create();
+  createIndexes(R"("trackListPositions": true,)", R"()");
+  createSearch();
+  queryTests();
+}
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryNullTermView, GetLinkVersions());
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryNullTermSearch, GetIndexVersions());
+
+}  // namespace
+}  // namespace arangodb::tests

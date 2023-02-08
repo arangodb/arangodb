@@ -56,7 +56,6 @@ enum class RocksDBEntryType : char {
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
   RevisionTreeValue = '*',
-  ReplicatedLog = 'l',
   ReplicatedState = 's',
   ZkdIndexValue = 'z',
   UniqueZkdIndexValue = 'Z',

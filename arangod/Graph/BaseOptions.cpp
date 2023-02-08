@@ -23,7 +23,6 @@
 
 #include "BaseOptions.h"
 
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -40,7 +39,6 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
@@ -214,8 +212,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
       ast, varInfo, false, nullptr, indexCondition, indexVariable);
@@ -532,8 +529,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
 }
 
 void BaseOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
     it.initializeNonConstExpressions(ast, varInfo, indexVariable);

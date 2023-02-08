@@ -62,8 +62,7 @@ class InRangeFunctionTest : public ::testing::Test {
             warnings->insert(static_cast<int>(c));
           }
         });
-    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL,
-                              testDBInfo(server.server()));
+    TRI_vocbase_t mockVocbase(testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });

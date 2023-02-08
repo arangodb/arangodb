@@ -37,8 +37,7 @@
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#include <absl/strings/str_cat.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -146,11 +145,11 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_VALUE: {
-      return 0 == aql::CompareAstNodes(lhs, rhs, true);
+      return 0 == aql::compareAstNodes(lhs, rhs, true);
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
-      irs::string_ref lhsValue, rhsValue;
+      std::string_view lhsValue, rhsValue;
       iresearch::parseValue(lhsValue, *lhs);
       iresearch::parseValue(rhsValue, *rhs);
 
@@ -166,7 +165,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
-      irs::string_ref lhsName, rhsName;
+      std::string_view lhsName, rhsName;
       iresearch::parseValue(lhsName, *lhs);
       iresearch::parseValue(rhsName, *rhs);
 
@@ -191,7 +190,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(static_cast<const void*>(typeString.c_str()),
+  hash = fasthash64(static_cast<const void*>(typeString.data()),
                     typeString.size(), hash);
 
   // hash node members
@@ -303,8 +302,8 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   }
 }
 
-irs::string_ref getFuncName(aql::AstNode const& node) {
-  irs::string_ref fname;
+std::string_view getFuncName(aql::AstNode const& node) {
+  std::string_view fname;
 
   switch (node.type) {
     case aql::NODE_TYPE_FCALL:
@@ -353,17 +352,6 @@ void visitReferencedVariables(
 }
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
-
-/*static*/ irs::string_ref ScopedAqlValue::typeString(
-    ScopedValueType type) noexcept {
-  static irs::string_ref constexpr kTypeNames[] = {
-      "invalid", "null",  "boolean", "double",
-      "string",  "array", "range",   "object"};
-
-  TRI_ASSERT(size_t(type) < std::size(kTypeNames));
-
-  return kTypeNames[size_t(type)];
-}
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {
@@ -526,7 +514,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     };
 
     bool read(aql::AstNode const* node, QueryContext const* ctx) noexcept {
-      this->strVal = irs::string_ref::NIL;
+      this->strVal = std::string_view{};
       this->iVal = 0;
       this->type = Type::INVALID;
       this->root = nullptr;
@@ -630,7 +618,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     }
 
     iresearch::ScopedAqlValue aqlValue;
-    irs::string_ref strVal;
+    std::string_view strVal;
     int64_t iVal;
     Type type{Type::INVALID};
     aql::AstNode const* root = nullptr;
@@ -665,7 +653,7 @@ bool nameFromAttributeAccess(
           _filter{filter} {}
 
     bool attributeAccess(aql::AstNode const& node) {
-      irs::string_ref strValue;
+      std::string_view strValue;
 
       if (!parseValue(strValue, node)) {
         // wrong type
@@ -703,7 +691,7 @@ bool nameFromAttributeAccess(
           append(_value.getInt64());
           return true;
         case iresearch::SCOPED_VALUE_TYPE_STRING: {
-          irs::string_ref strValue;
+          std::string_view strValue;
 
           if (!_value.getString(strValue)) {
             // unable to parse value as string
@@ -718,18 +706,19 @@ bool nameFromAttributeAccess(
       }
     }
 
-    void append(irs::string_ref const& value) {
+    void append(std::string_view value) {
       if (!_str.empty()) {
-        _str += NESTING_LEVEL_DELIMITER;
+        _str.push_back(NESTING_LEVEL_DELIMITER);
       }
-      _str.append(value.c_str(), value.size());
+      _str.append(value);
     }
 
     void append(int64_t value) {
-      _str += NESTING_LIST_OFFSET_PREFIX;
-      auto const written = sprintf(_buf, "%" PRIu64, value);
-      _str.append(_buf, written);
-      _str += NESTING_LIST_OFFSET_SUFFIX;
+      _str.push_back(NESTING_LIST_OFFSET_PREFIX);
+      auto const len = static_cast<size_t>(
+          absl::numbers_internal::FastIntToBuffer(value, _buf) - &_buf[0]);
+      _str.append(_buf, len);
+      _str.push_back(NESTING_LIST_OFFSET_SUFFIX);
     }
 
    private:
@@ -748,7 +737,8 @@ bool nameFromAttributeAccess(
   if (visitRes && !ctx.isSearchQuery) {
     auto const fields = ctx.fields;
     auto const it = getNested(name, fields);
-    visitRes = it != std::end(fields) && !it->_isSearchField;
+    visitRes = it != std::end(fields) && !it->_isSearchField &&
+               !it->_trackListPositions;
     if (visitRes && subFields) {
       *subFields = it->_fields;
     }

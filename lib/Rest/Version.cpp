@@ -144,7 +144,6 @@ void Version::initialize() {
 #else
   Values["arm"] = "false";
 #endif
-  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();
@@ -162,6 +161,11 @@ void Version::initialize() {
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
+#endif
+#ifdef COVERAGE
+  Values["coverage"] = "true";
+#else
+  Values["coverage"] = "false";
 #endif
 #ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);

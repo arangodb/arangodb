@@ -56,8 +56,6 @@ struct ReplicationOptions {
 
 struct DocumentCleanupHandler {
   void drop(std::unique_ptr<DocumentCore>);
-
-  std::shared_ptr<IDocumentStateShardHandler> shardHandler;
 };
 
 struct DocumentState {

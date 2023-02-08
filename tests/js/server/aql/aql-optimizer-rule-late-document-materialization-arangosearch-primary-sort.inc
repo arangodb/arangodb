@@ -32,36 +32,74 @@
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
 
-  return function (isCluster, newDbName, dbArgs) {
+  return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
     const vn = "UnitTestsView";
     const svn = "SortedTestsView";
     return {
-      setUpAll : function () {
+      setUpAll: function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(newDbName); } catch (err) {}
+        try {
+          db._dropDatabase(newDbName);
+        } catch (err) {
+        }
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
 
-        let c = db._create(cn, { numberOfShards: 3 });
-        let c2 = db._create(cn1, { numberOfShards: 3 });
-
-        db._createView(vn, "arangosearch", {
-          links: {
-            [cn] : { includeAllFields: true, analyzers : [ "identity" ],
-                     fields : { str : { "analyzers" : [ "text_en" ] }}, },
-            [cn1] : { includeAllFields: true, analyzers : [ "identity" ],
-                      fields : { str : { "analyzers" : [ "text_en" ] }}}
-          }});
-        db._createView(svn, "arangosearch", {
-          consolidationIntervalMsec: 5000,
-          primarySort: [{"field": "value", "direction": "asc"}, {"field": "foo", "direction": "desc"}],
-          links: {
-            [cn] : { includeAllFields: true },
-            [cn1] : { includeAllFields: true }
-          }});
+        let c = db._create(cn, {numberOfShards: 3});
+        let c2 = db._create(cn1, {numberOfShards: 3});
+        if (isSearchAlias) {
+          let props = {
+            type: "inverted", includeAllFields: true,
+            fields: [{name: "str", analyzer: "text_en"}]
+          };
+          let i = c.ensureIndex(props);
+          let i1 = c2.ensureIndex(props);
+          db._createView(vn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+          props["primarySort"] = {
+            fields: [{"field": "value", "direction": "asc"}, {
+              "field": "foo",
+              "direction": "desc"
+            }]
+          };
+          props["consolidationIntervalMsec"] = 5000;
+          i = c.ensureIndex(props);
+          i1 = c2.ensureIndex(props);
+          db._createView(svn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+        } else {
+          db._createView(vn, "arangosearch", {
+            links: {
+              [cn]: {
+                includeAllFields: true, analyzers: ["identity"],
+                fields: {str: {"analyzers": ["text_en"]}},
+              },
+              [cn1]: {
+                includeAllFields: true, analyzers: ["identity"],
+                fields: {str: {"analyzers": ["text_en"]}}
+              }
+            }
+          });
+          db._createView(svn, "arangosearch", {
+            consolidationIntervalMsec: 5000,
+            primarySort: [{"field": "value", "direction": "asc"}, {"field": "foo", "direction": "desc"}],
+            links: {
+              [cn]: {includeAllFields: true},
+              [cn1]: {includeAllFields: true}
+            }
+          });
+        }
 
         c.save({ _key: 'c0',  str: 'cat', foo: 'foo0', value: 0 });
         c2.save({_key: 'c_0', str: 'cat', foo: 'foo1', value: 10 });

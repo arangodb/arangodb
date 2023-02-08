@@ -26,7 +26,6 @@
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
-
 #include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidator.h"
@@ -37,12 +36,12 @@
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
+#include "Logger/LogMacros.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
-#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -51,8 +50,7 @@ using namespace arangodb::graph;
 template<class Configuration>
 OneSidedEnumerator<Configuration>::OneSidedEnumerator(
     Provider&& forwardProvider, OneSidedEnumeratorOptions&& options,
-    PathValidatorOptions validatorOptions,
-    arangodb::ResourceMonitor& resourceMonitor)
+    PathValidatorOptions validatorOptions, ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
@@ -121,11 +119,11 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
 
     // Will throw all network errors here
     std::vector<Step*> preparedEnds = std::move(futureEnds.get());
-
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
+  TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
@@ -314,8 +312,9 @@ auto OneSidedEnumerator<Configuration>::searchDone() const -> bool {
 
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
-  if constexpr (std::is_same_v<ResultList, arangodb::graph::enterprise::
-                                               SmartGraphResponse<Provider>>) {
+  if constexpr (std::is_same_v<
+                    ResultList,
+                    graph::enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used
     TRI_ASSERT(false);
   } else {
@@ -406,13 +405,13 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
 #endif
 
 /* SingleServerProvider Section */
-using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using SingleServerProviderStep = graph::SingleServerProviderStep;
 
 #define MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
                                            vertexUniqueness, edgeUniqueness) \
-  template class ::arangodb::graph::OneSidedEnumerator<                      \
+  template class graph::OneSidedEnumerator<                                  \
       configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
-  template class ::arangodb::graph::OneSidedEnumerator<                      \
+  template class graph::OneSidedEnumerator<                                  \
       configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
 
 #define MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, configuration) \
@@ -439,8 +438,7 @@ MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(ClusterProvider<ClusterProviderStep>)
 #ifdef USE_ENTERPRISE
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
-    SingleServerProvider<arangodb::graph::enterprise::SmartGraphStep>)
+    SingleServerProvider<graph::enterprise::SmartGraphStep>)
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
-    arangodb::graph::enterprise::SmartGraphProvider<
-        arangodb::graph::ClusterProviderStep>)
+    graph::enterprise::SmartGraphProvider<graph::ClusterProviderStep>)
 #endif

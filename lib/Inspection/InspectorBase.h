@@ -295,7 +295,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
     template<class ValueType, class... Args>
     Status load(bool& retryDifferentType, Args&&... args) {
-      ValueType read;
+      ValueType read{};
       auto result = _inspector.apply(read);
       if (!result.ok()) {
         retryDifferentType = true;
@@ -422,7 +422,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
   };
 
   template<const char ErrorMsg[], class Func, class... Args>
-  static Status checkInvariant(Func&& func, Args&&... args) {
+  static Status doCheckInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
       if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {

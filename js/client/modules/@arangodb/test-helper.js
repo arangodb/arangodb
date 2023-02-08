@@ -1,5 +1,5 @@
 /*jshint strict: false */
-
+/* global print */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
 // /
@@ -46,6 +46,7 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const isServer = require("@arangodb").isServer;
 
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
@@ -378,6 +379,7 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   let start = internal.time();
   while (true) {
     if (internal.time() - start > timeout) {
+      print(Date() + " Shards were not getting in sync in time, giving up!");
       assertTrue(false, "Shards were not getting in sync in time, giving up!");
       return;
     }
@@ -469,6 +471,16 @@ exports.getEndpointsByType = function (type) {
   return instanceInfo.arangods.filter(isType)
     .map(toEndpoint)
     .map(endpointToURL);
+};
+
+exports.triggerMetrics = function () {
+  let coordinators = exports.getEndpointsByType("coordinator");
+  exports.getRawMetric(coordinators[0], '?mode=write_global');
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    exports.getRawMetric(c, '?mode=trigger_global');
+  }
+  require("internal").sleep(2);
 };
 
 exports.getEndpoints = function (role) {

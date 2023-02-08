@@ -62,6 +62,9 @@
 #include "VocBase/vocbase.h"
 #include "Basics/DownCast.h"
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/str_split.h>
+
 namespace arangodb::transaction {
 class Context;
 }
@@ -91,17 +94,18 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
       break;
     }
 
-    auto parts = basics::StringUtils::split(item, '/');
-    TRI_ASSERT(parts.size() == 2);
+    std::pair<std::string_view, std::string_view> parts =
+        absl::StrSplit(item, '/');
     // look for collection part
-    auto it = _skipRecoveryItems.find(parts[0]);
+    auto it = _skipRecoveryItems.find(parts.first);
     if (it == _skipRecoveryItems.end()) {
       // collection not found, insert new set into map with the index id/name
       _skipRecoveryItems.emplace(
-          parts[0], containers::FlatHashSet<std::string>{parts[1]});
+          parts.first,
+          containers::FlatHashSet<std::string>{std::string{parts.second}});
     } else {
       // collection found. append index/name to existing set
-      it->second.emplace(parts[1]);
+      it->second.emplace(parts.second);
     }
   }
 }
@@ -118,7 +122,7 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value,
-                                           rocksdb::SequenceNumber /*tick*/) {
+                                           rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -153,6 +157,41 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   auto doc = RocksDBValue::data(value);
 
   transaction::StandaloneContext ctx(coll->vocbase());
+  _skipExisted.clear();
+  mustReplay = false;
+  for (auto const& link : links) {
+    if (link.second) {  // link excluded from recovery
+      _skippedIndexes.emplace(link.first->id());
+      continue;
+    }
+    auto apply = [&](auto& impl) {
+      if (tick > impl.recoveryTickHigh()) {
+        mustReplay = true;
+        return;
+      }
+      auto snapshotCookie = _cookies.lazy_emplace(
+          link.first.get(),
+          [&](auto const& ctor) { ctor(link.first.get(), impl.snapshot()); });
+      if (impl.exists(snapshotCookie->second, docId, &tick)) {
+        _skipExisted.emplace(link.first->id());
+      } else {
+        mustReplay = true;
+      }
+    };
+    if (link.first->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      auto& impl =
+          basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
+      apply(impl);
+    } else {
+      TRI_ASSERT(link.first->type() ==
+                 Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
+      auto& impl = basics::downCast<IResearchRocksDBLink>(*(link.first));
+      apply(impl);
+    }
+  }
+  if (!mustReplay) {
+    return;
+  }
 
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -166,18 +205,14 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 
   for (auto const& link : links) {
-    if (link.second) {
-      // link excluded from recovery
-      _skippedIndexes.emplace(link.first->id());
-    } else {
-      // link participates in recovery
+    if (!link.second && !_skipExisted.contains(link.first->id())) {
       if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
-            .insert(trx, nullptr, docId, doc, {}, false);
+            .insertInRecovery(trx, docId, doc, tick);
       } else {
         TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
         basics::downCast<IResearchRocksDBLink>(*(link.first))
-            .insert(trx, nullptr, docId, doc, {}, false);
+            .insertInRecovery(trx, docId, doc, tick);
       }
     }
   }
@@ -192,7 +227,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 // common implementation for DeleteCF / SingleDeleteCF
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id, const rocksdb::Slice& key,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -245,14 +280,13 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     } else {
       // link participates in recovery
       if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        IResearchRocksDBInvertedIndex& impl =
+        auto& impl =
             basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
-        impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
+        impl.removeInRecovery(trx, docId, tick);
       } else {
         TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
-        IResearchLink& impl =
-            basics::downCast<IResearchRocksDBLink>(*(link.first));
-        impl.remove(trx, docId, false);
+        auto& impl = basics::downCast<IResearchRocksDBLink>(*(link.first));
+        impl.removeInRecovery(trx, docId, tick);
       }
     }
   }
@@ -329,8 +363,9 @@ bool IResearchRocksDBRecoveryHelper::lookupLinks(
     if (!mustFail && !_skipRecoveryItems.empty()) {
       if (auto it = _skipRecoveryItems.find(coll.name());
           it != _skipRecoveryItems.end()) {
-        mustFail = it->second.contains(index->name()) ||
-                   it->second.contains(std::to_string(index->id().id()));
+        mustFail =
+            it->second.contains(index->name()) ||
+            it->second.contains(absl::AlphaNum{index->id().id()}.Piece());
       }
     }
     result.emplace_back(std::make_pair(std::move(index), mustFail));

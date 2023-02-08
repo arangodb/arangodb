@@ -139,7 +139,7 @@ struct Collections {
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props,
+                                 velocypack::Slice props,
                                  OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
@@ -148,7 +148,6 @@ struct Collections {
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
       bool allowDropSystem,               // allow dropping system collection
-      double timeout,                     // single-server drop timeout
       bool keepUserRights =
           false  // flag if we want to keep access rights in-place
   );
@@ -158,11 +157,6 @@ struct Collections {
 
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
-
-  typedef std::function<void(velocypack::Slice const&)> DocCallback;
-  /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
-                              DocCallback const& cb);
 
   static arangodb::Result checksum(LogicalCollection& collection,
                                    bool withRevisions, bool withData,
@@ -174,8 +168,7 @@ struct Collections {
 };
 
 #ifdef USE_ENTERPRISE
-Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem,
-                         double singleServerTimeout);
+Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
 }  // namespace methods
 }  // namespace arangodb

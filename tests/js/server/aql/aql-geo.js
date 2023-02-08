@@ -28,20 +28,23 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var disableViewTests = true;
+const disableViewTests = false;
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var errors = require("@arangodb").errors;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const errors = require("@arangodb").errors;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function makePolyInside(lon, lat) {
   // lon and lat are longitude and latitude ranges
-  return {type:"Polygon",
-          coordinates:[[[lon[0], lat[0]], [lon[1], lat[0]],
-                        [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]};
+  return {
+    type: "Polygon",
+    coordinates: [[[lon[0], lat[0]], [lon[1], lat[0]],
+      [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]
+  };
 }
 
 function makePolyOutside(lon, lat) {
@@ -55,7 +58,7 @@ function makePolyOutside(lon, lat) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoSuite () {
+function geoSuite(isSearchAlias, analyzerType) {
 
   let collWithoutIndex = "UnitTestsGeoWithoutIndex";
   let collWithIndex = "UnitTestsGeoWithIndex";
@@ -176,13 +179,24 @@ function geoSuite () {
 
       noIndex = db._create(collWithoutIndex);
       withIndex = db._create(collWithIndex);
-      withIndex.ensureIndex({type:"geo", geoJson: true, fields: ["geo"]});
+      withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
-      let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
-      view = db._createView(viewName, "arangosearch", {
-        links: { UnitTestsGeoWithView: {
-          fields: { geo: {analyzers: ["geo_json"]}}}}});
+      analyzers.save("geo_json", analyzerType, {}, ["frequency", "norm", "position"]);
+      if (isSearchAlias) {
+        let i = db.UnitTestsGeoWithView.ensureIndex({type: "inverted", fields: [{name: "geo", analyzer: "geo_json"}]});
+        view = db._createView(viewName, "search-alias", {
+          indexes: [{collection: "UnitTestsGeoWithView", index: i.name}]
+        });
+      } else {
+        view = db._createView(viewName, "arangosearch", {
+          links: {
+            UnitTestsGeoWithView: {
+              fields: {geo: {analyzers: ["geo_json"]}}
+            }
+          }
+        });
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +208,10 @@ function geoSuite () {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
+/*
+      let analyzers = require("@arangodb/analyzers");
+      analyzers.remove(analyzerType);
+*/
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,7 +1020,8 @@ function geoSuite () {
       multiPoint = {
         type: "MultiPoint",
         "coordinates": [ [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
-                         [ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ] ] };
+          [37.614323, 55.70652], [37.615825, 55.70652]]
+      };
       c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
@@ -1012,6 +1031,51 @@ function geoSuite () {
   };
 }
 
-jsunity.run(geoSuite);
+function arangoSearchVPackGeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false, "geojson"),
+    suite,
+    "_vpack_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasVPackGeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(true, "geojson"),
+    suite,
+    "_vpack_search-alias"
+  );
+  return suite;
+}
+
+function arangoSearchS2GeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false, "geojson-s2"),
+    suite,
+    "_s2_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasS2GeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(true, "geojson-s2"),
+    suite,
+    "_s2_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(arangoSearchVPackGeoSuite);
+jsunity.run(searchAliasVPackGeoSuite);
+/*
+jsunity.run(arangoSearchS2GeoSuite);
+jsunity.run(searchAliasS2GeoSuite);
+*/
 
 return jsunity.done();

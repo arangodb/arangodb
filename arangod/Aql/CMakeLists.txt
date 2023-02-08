@@ -11,7 +11,6 @@ add_library(arango_aql STATIC
   AqlItemBlockInputRange.cpp
   AqlItemBlockManager.cpp
   AqlItemBlockUtils.cpp
-  AqlItemMatrix.cpp
   AqlTransaction.cpp
   AqlValue.cpp
   AqlValueGroup.cpp
@@ -81,7 +80,6 @@ add_library(arango_aql STATIC
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  IResearchViewExecutor.cpp
   IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
   LateMaterializedExpressionContext.cpp
@@ -186,9 +184,6 @@ target_link_libraries(arango_aql
 target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_aql PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 ################################################################################
 ## BISON/FLEX

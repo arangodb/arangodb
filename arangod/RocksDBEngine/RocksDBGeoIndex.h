@@ -63,7 +63,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   }
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
@@ -88,8 +89,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
  private:
   std::string const _typeName;

@@ -25,7 +25,7 @@
 #include <cmath>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -86,7 +86,7 @@ struct HITSComputation
     aggregate<double>(kHubNorm, auth * auth);
 
     // no sender required, the senders have an outgoing edge to us
-    SenderMessage<double> authData(PregelID(), auth);
+    SenderMessage<double> authData(VertexID(), auth);
     for (SenderMessage<double> const* message : messages) {
       if (message->senderId.isValid()) {  // send to incoming Neighbors
         sendMessage(message->senderId, authData);

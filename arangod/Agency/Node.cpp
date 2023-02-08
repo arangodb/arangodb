@@ -25,6 +25,7 @@
 #include "Store.h"
 
 #include "AgencyStrings.h"
+#include "Agency/PathComponent.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -68,6 +69,46 @@ Node::Node(std::string const& name, Store* store)
 
 /// @brief Default dtor
 Node::~Node() = default;
+
+/// @brief Split strings by forward slashes, omitting empty strings,
+/// and ignoring multiple subsequent forward slashes
+std::vector<std::string> Node::split(std::string_view str) {
+  std::vector<std::string> result;
+
+  char const* p = str.data();
+  char const* e = str.data() + str.size();
+
+  // strip leading forward slashes
+  while (p != e && *p == '/') {
+    ++p;
+  }
+
+  // strip trailing forward slashes
+  while (p != e && *(e - 1) == '/') {
+    --e;
+  }
+
+  char const* start = nullptr;
+  while (p != e) {
+    if (*p == '/') {
+      if (start != nullptr) {
+        // had already found something
+        result.emplace_back(start, p - start);
+        start = nullptr;
+      }
+    } else {
+      if (start == nullptr) {
+        start = p;
+      }
+    }
+    ++p;
+  }
+  if (start != nullptr) {
+    result.emplace_back(start, p - start);
+  }
+
+  return result;
+}
 
 /// @brief Get slice to value buffer
 Slice Node::slice() const {
@@ -366,15 +407,20 @@ std::optional<std::reference_wrapper<Node const>> Node::get(
   return *current;
 }
 
+std::optional<std::reference_wrapper<Node const>> Node::get(
+    std::shared_ptr<cluster::paths::Path const> const& path) const {
+  return get(path->vec(cluster::paths::SkipComponents{1}));
+}
+
 /// @brief lh-value at path
-Node& Node::getOrCreate(std::string const& path) {
-  return getOrCreate(Store::split(path));
+Node& Node::getOrCreate(std::string_view path) {
+  return getOrCreate(split(path));
 }
 
 /// @brief rh-value at path
 std::optional<std::reference_wrapper<Node const>> Node::get(
-    std::string const& path) const {
-  return get(Store::split(path));
+    std::string_view path) const {
+  return get(split(path));
 }
 
 // lh-store
@@ -1073,14 +1119,14 @@ std::vector<std::string> Node::exists(
 }
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
-  return exists(Store::split(rel));
+  return exists(split(rel));
 }
 
 bool Node::has(std::vector<std::string> const& rel) const {
   return exists(rel).size() == rel.size();
 }
 
-bool Node::has(std::string const& rel) const { return has(Store::split(rel)); }
+bool Node::has(std::string const& rel) const { return has(split(rel)); }
 
 std::optional<int64_t> Node::getInt() const noexcept {
   if (type() == NODE || !slice().isNumber<int64_t>()) {
@@ -1122,6 +1168,20 @@ bool Node::isString() const {
     return false;
   }
   return slice().isString();
+}
+
+bool Node::isArray() const {
+  if (type() == NODE) {
+    return false;
+  }
+  return _isArray;
+}
+
+bool Node::isObject() const {
+  if (type() == NODE) {
+    return true;
+  }
+  return false;
 }
 
 bool Node::isUInt() const {
@@ -1245,6 +1305,13 @@ std::optional<std::string> Node::getString() const {
     return std::nullopt;
   }
   return slice().copyString();
+}
+
+std::optional<std::string_view> Node::getStringView() const {
+  if (type() == NODE || !slice().isString()) {
+    return std::nullopt;
+  }
+  return slice().stringView();
 }
 
 std::optional<Slice> Node::getArray() const {

@@ -115,7 +115,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsFirstRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+	        global.theInstanceManager = this.instanceManager;
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
@@ -192,7 +192,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+          global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
           if (failurePoints) {
@@ -254,13 +254,15 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
 }
 
 function server_permissions(options) {
-  return new permissionsRunner(options, "server_permissions").run(
-    tu.scanTestPaths(testPaths.server_permissions, options));
+  let testCases = tu.scanTestPaths(testPaths.server_permissions, options);
+  testCases = tu.splitBuckets(options, testCases);
+  return new permissionsRunner(options, "server_permissions").run(testCases);
 }
 
 function server_parameters(options) {
-  return new permissionsRunner(options, "server_parameters").run(
-    tu.scanTestPaths(testPaths.server_parameters, options));
+  let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
+  testCases = tu.splitBuckets(options, testCases);
+  return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 
 function server_secrets(options) {
@@ -311,7 +313,7 @@ function server_secrets(options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['server_permissions'] = server_permissions;
   testFns['server_parameters'] = server_parameters;

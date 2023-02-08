@@ -39,6 +39,8 @@ const supervisionState = require("@arangodb/testutils/cluster-test-helper").supe
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const {getServersByType, deriveTestSuite, getEndpointById, getUrlById} = require('@arangodb/test-helper-common');
 const request = require('@arangodb/request');
+const helper = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -46,6 +48,19 @@ const numDocuments = 1000;
 const dbservers = (function () {
   return getServersByType('dbserver').map((x) => x.id);
 }());
+
+function delaySupervisionFailoverActions(value) {
+  let agents = global.instanceManager.arangods.filter(
+    arangod => arangod.role === "agent").map(
+    arangod => arangod.url);
+  for (let a of agents) {
+    const res = request({url: a + "/_api/agency/config",
+                   method: "PUT",
+                   body: JSON.stringify(
+                     {delayAddFollower: value, delayFailedFollower: value})});
+    assertEqual(200, res.statusCode);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -258,6 +273,29 @@ function MovingShardsSuite({useData, replVersion}) {
     return true;
   }
 
+  function findLeaderShardsForServer(id) {
+    let result = [];
+    for (var i = 0; i <  c.length ; ++i) {
+      global.ArangoClusterInfo.flush();
+      var servers = findCollectionServers(dbn, c[i].name());
+      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+        result.push(c[i].name());
+      }
+    }
+    return result;
+  }
+
+  function waitForShardLeader(id, expectedShards) {
+    helper.waitFor(function () {
+      const shards = findLeaderShardsForServer(id);
+      if (!_.isEqual(shards, expectedShards)) {
+        return Error(`expected shards to be ${expectedShards}, but found ${shards}`);
+      }
+      return true;
+    });
+    return true;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,13 +426,13 @@ function MovingShardsSuite({useData, replVersion}) {
 /// @brief request a dbserver to resign:
 ////////////////////////////////////////////////////////////////////////////////
 
-  function resignLeadership(id) {
+  function resignLeadership(id, undoMoves = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var body = {"server": id};
+    var body = {"server": id, undoMoves};
     var result;
     try {
       result = request({
@@ -587,18 +625,33 @@ function MovingShardsSuite({useData, replVersion}) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var req;
-    try {
-      req = request({
-        method: "POST",
-        url: url + "/_admin/cluster/cancelAgencyJob",
-        body: JSON.stringify({id: id})
-      });
-    } catch (err) {
-      console.error(
-          "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
-      return false;
+    for (let i = 0; i < 10; i++) {
+      try {
+        req = request({
+          method: "POST",
+          url: url + "/_admin/cluster/cancelAgencyJob",
+          body: JSON.stringify({id: id})
+        });
+      } catch (err) {
+        console.error(
+            "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
+        return false;
+      }
+
+      const result = JSON.parse(req.body);
+      if (result.error === false) {
+        return true;
+      } else if (result.code !== 404) {
+        console.error("Failed to cancel job " + id + ": " + JSON.stringify(result));
+        return false;
+      } else {
+        console.log("Job not yet detected by coordinator");
+      }
+
+      wait(1.0);
     }
-    return JSON.parse(req.body).error === false;
+    console.error("Failed to cancel job" + id + ", job not visible to coordinator.");
+    return false;
   }
 
 
@@ -695,6 +748,22 @@ function MovingShardsSuite({useData, replVersion}) {
       wait(1.0);
     }
     return false;
+  }
+
+  function getServerRebootId(server) {
+    return helper.readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
+  }
+
+  function waitForRebootIdChanged(server, oldRebootId) {
+
+    var count = 300;
+    while(--count > 0) {
+      if (getServerRebootId(server) !== oldRebootId) {
+        return;
+      }
+      wait(1.0);
+    }
+    assertTrue(count > 0);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -910,11 +979,51 @@ function MovingShardsSuite({useData, replVersion}) {
     testResignLeadership: function () {
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[0].name());
-      var toResign = servers[1];
+      var toResign = servers[0];
       assertTrue(resignLeadership(toResign));
       assertTrue(testServerNoLeader(toResign));
       assertTrue(waitForSupervision());
       checkCollectionContents();
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resign leadership for a dbserver and wait for restore
+////////////////////////////////////////////////////////////////////////////////
+
+    testResignLeadershipWithUndo: function () {
+      assertTrue(waitForSynchronousReplication(dbn));
+      try {
+        delaySupervisionFailoverActions(120);
+
+        var servers = findCollectionServers(dbn, c[0].name());
+        var toResign = servers[0];
+        const shards = findLeaderShardsForServer(toResign);
+        assertTrue(resignLeadership(toResign, true));
+        assertTrue(testServerNoLeader(toResign));
+        assertTrue(waitForSupervision());
+
+        checkCollectionContents();
+
+        // get server reboot id
+        const rebootId = getServerRebootId(toResign);
+
+        // now suspend that server
+        helper.stopServerWaitFailed(toResign);
+
+        // Wait for the reboot id to be changed.
+        waitForRebootIdChanged(toResign, rebootId);
+
+        // restart the server
+        helper.continueServerWaitOk(toResign);
+
+        // now wait for the server to become leader again for shards
+        assertTrue(waitForShardLeader(toResign, shards));
+        assertTrue(waitForSupervision());
+        checkCollectionContents();
+      } finally {
+        delaySupervisionFailoverActions(0);
+      }
     },
 
 
@@ -1112,10 +1221,10 @@ function MovingShardsSuite({useData, replVersion}) {
       let id = JSON.parse(result.body).id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
+      assertTrue(waitForSupervision());
       var job = queryAgencyJob(result.json.id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
-      assertTrue(waitForSupervision());
       checkCollectionContents();
     },
 
@@ -1235,20 +1344,20 @@ function MovingShardsSuite({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
-/*
-jsunity.run(function MovingShardsSuite_nodata() {
+
+jsunity.run(function MovingShardsSuite_nodata_R1() {
   let derivedSuite = {};
   deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
   return derivedSuite;
 });
 
-jsunity.run(function MovingShardsSuite_data() {
+jsunity.run(function MovingShardsSuite_data_R1() {
   let derivedSuite = {};
   deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
   return derivedSuite;
-});*/
+});
 
-jsunity.run(function MovingShardsSuite_data() {
+jsunity.run(function MovingShardsSuite_data_R2() {
   let derivedSuite = {};
   deriveTestSuite(MovingShardsSuite({useData: true, replVersion: "2"}), derivedSuite, "_data_R2");
   return derivedSuite;

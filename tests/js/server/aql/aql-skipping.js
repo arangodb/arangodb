@@ -33,6 +33,7 @@ const _ = require('lodash');
 const analyzers = require("@arangodb/analyzers");
 const internal = require("internal");
 const jsunity = require("jsunity");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 const db = internal.db;
 
@@ -455,7 +456,7 @@ function aqlSkippingIndexTestsuite () {
 
 }
 
-function aqlSkippingIResearchTestsuite () {
+function aqlSkippingIResearchTestsuite (isSearchAlias) {
   var c;
   var c2;
   var v;
@@ -478,27 +479,44 @@ function aqlSkippingIResearchTestsuite () {
       var ac = db._create("AnotherUnitTestsCollection");
 
       db._dropView("UnitTestsView");
-      v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
-        links: {
-          "UnitTestsCollection": {
-            includeAllFields: true,
-            storeValues: "id",
-            fields: {
-              text: { analyzers: [ "text_en" ] }
+      db._dropView("CompoundView");
+      if (isSearchAlias) {
+        let i = c.ensureIndex({
+          type: "inverted",
+          includeAllFields: true,
+          fields: [{name: "text", analyzer: "text_en"}]
+        });
+        v = db._createView("UnitTestView", "search-alias", {});
+        v.properties({indexes: [{collection: c.name(), index: i.name}]});
+        let i1 = c.ensureIndex({type: "inverted", includeAllFields: true});
+        let i2 = c2.ensureIndex({type: "inverted", includeAllFields: true});
+        v2 = db._createView("CompoundView", "search-alias", {
+          indexes: [
+            {collection: c.name(), index: i1.name},
+            {collection: c2.name(), index: i2.name}]
+        });
+      } else {
+        v = db._createView("UnitTestsView", "arangosearch", {});
+        var meta = {
+          links: {
+            "UnitTestsCollection": {
+              includeAllFields: true,
+              storeValues: "id",
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
             }
           }
-        }
-      };
-      v.properties(meta);
+        };
+        v.properties(meta);
+        v2 = db._createView("CompoundView", "arangosearch",
+          { links : {
+              UnitTestsCollection: { includeAllFields: true },
+              UnitTestsCollection2 : { includeAllFields: true }
+            }}
+        );
+      }
 
-      db._dropView("CompoundView");
-      v2 = db._createView("CompoundView", "arangosearch",
-        { links : {
-          UnitTestsCollection: { includeAllFields: true },
-          UnitTestsCollection2 : { includeAllFields: true }
-        }}
-      );
 
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
@@ -643,6 +661,28 @@ function aqlSkippingIResearchTestsuite () {
 
 jsunity.run(aqlSkippingTestsuite);
 jsunity.run(aqlSkippingIndexTestsuite);
-jsunity.run(aqlSkippingIResearchTestsuite);
+
+function aqlSkippingArangoSearchTestsuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlSkippingIResearchTestsuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function aqlSkippingSearchAliasTestsuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlSkippingIResearchTestsuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(aqlSkippingArangoSearchTestsuite);
+jsunity.run(aqlSkippingSearchAliasTestsuite);
 
 return jsunity.done();

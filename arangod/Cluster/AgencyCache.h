@@ -117,6 +117,10 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   /// @brief Wait to be notified, when a Raft index has arrived.
   [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
 
+  /// @brief Queries the agency for the latest commit index and waits for the
+  /// local cache to reach this index.
+  [[nodiscard]] futures::Future<Result> waitForLatestCommitIndex();
+
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
 

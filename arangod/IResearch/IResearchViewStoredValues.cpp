@@ -23,6 +23,9 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "IResearchViewStoredValues.h"
+#include "IResearchCommon.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
@@ -61,107 +64,103 @@ bool IResearchViewStoredValues::toVelocyPack(
         builder.add(VPackValue(field.first));
       }
     }
-    irs::string_ref encodedCompression =
+    std::string_view encodedCompression =
         columnCompressionToString(column.compression);
-    TRI_ASSERT(!encodedCompression.null());
-    if (ADB_LIKELY(!encodedCompression.null())) {
+    TRI_ASSERT(!irs::IsNull(encodedCompression));
+    if (ADB_LIKELY(!irs::IsNull(encodedCompression))) {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
     }
+#ifdef USE_ENTERPRISE
+    // do not output falses to keep old definitions unchanged
+    if (column.cached) {
+      builder.add(StaticStrings::kCacheField, VPackValue(column.cached));
+    }
+#endif
   }
   return true;
 }
 
 bool IResearchViewStoredValues::buildStoredColumnFromSlice(
-    velocypack::Slice const& columnSlice,
+    velocypack::Slice columnSlice,
     containers::FlatHashSet<std::string>& uniqueColumns,
     std::vector<std::string_view>& fieldNames,
-    irs::type_info::type_id compression) {
-  if (columnSlice.isArray()) {
-    // skip empty column
-    if (columnSlice.length() == 0) {
+    irs::type_info::type_id compression, bool cached) {
+  TRI_ASSERT(columnSlice.isArray() || columnSlice.isString());
+  fieldNames.clear();
+  size_t columnLength = 0;
+  StoredColumn sc;
+  auto addColumn = [&](std::string_view fieldName) {
+    if (fieldName.empty()) {
       return true;
     }
-    fieldNames.clear();
-    size_t columnLength = 0;
-    StoredColumn sc;
+    std::vector<basics::AttributeName> field;
+    try {
+      // no expansions
+      basics::TRI_ParseAttributeString(fieldName, field, false);
+    } catch (...) {
+      return false;
+    }
+    // check field uniqueness
+    auto fieldSize = field.size();
+    size_t i = 0;
+    for (auto& f : sc.fields) {
+      if (f.second.size() == fieldSize) {
+        if (basics::AttributeName::isIdentical(f.second, field, false)) {
+          return true;
+        }
+      } else if (f.second.size() < fieldSize) {
+        if (isPrefix(f.second, field)) {
+          return true;
+        }
+      } else {  // f.second.size() > fieldSize
+        if (isPrefix(field, f.second)) {
+          // take shortest path field (obj.a is better than obj.a.sub_a)
+          columnLength += fieldName.size() - f.second.size();
+          f.first = fieldName;
+          f.second = std::move(field);
+          fieldNames[i] = fieldName;
+          return true;
+        }
+      }
+      ++i;
+    }
+    sc.fields.emplace_back(fieldName, std::move(field));
+    columnLength += fieldName.size() + 1;  // + 1 for FIELDS_DELIMITER
+    fieldNames.emplace_back(fieldName);
+    return true;
+  };
+  if (columnSlice.isArray()) {
     sc.fields.reserve(columnSlice.length());
     for (auto fieldSlice : VPackArrayIterator(columnSlice)) {
-      if (!fieldSlice.isString()) {
+      if (!fieldSlice.isString() || !addColumn(fieldSlice.stringView())) {
         clear();
         return false;
       }
-      auto fieldName = fieldSlice.stringRef();
-      // skip empty field
-      if (fieldName.empty()) {
-        continue;
-      }
-      std::vector<basics::AttributeName> field;
-      try {
-        // no expansions
-        basics::TRI_ParseAttributeString(fieldName, field, false);
-      } catch (...) {
-        clear();
-        return false;
-      }
-      // check field uniqueness
-      auto newField = true;
-      auto fieldSize = field.size();
-      size_t i = 0;
-      for (auto& f : sc.fields) {
-        if (f.second.size() == fieldSize) {
-          if (basics::AttributeName::isIdentical(f.second, field, false)) {
-            newField = false;
-            break;
-          }
-        } else if (f.second.size() < fieldSize) {
-          if (isPrefix(f.second, field)) {
-            newField = false;
-            break;
-          }
-        } else {  // f.second.size() > fieldSize
-          if (isPrefix(field, f.second)) {
-            // take shortest path field (obj.a is better than obj.a.sub_a)
-            columnLength += fieldName.size() - f.second.size();
-            f.first = fieldName;
-            f.second = std::move(field);
-            fieldNames[i] = std::move(fieldName);
-            newField = false;
-            break;
-          }
-        }
-        ++i;
-      }
-      if (!newField) {
-        continue;
-      }
-      // cppcheck-suppress accessMoved
-      sc.fields.emplace_back(fieldName, std::move(field));
-      columnLength += fieldName.size() + 1;  // + 1 for FIELDS_DELIMITER
-      // cppcheck-suppress accessMoved
-      fieldNames.emplace_back(std::move(fieldName));
     }
-    // skip empty column
-    if (fieldNames.empty()) {
-      return true;
-    }
-    // check column uniqueness
-    std::sort(fieldNames.begin(), fieldNames.end());
-    std::string columnName;
-    TRI_ASSERT(columnLength > 1);
-    columnName.reserve(columnLength);
-    for (auto const& fieldName : fieldNames) {
-      columnName += FIELDS_DELIMITER;  // a prefix for EXISTS()
-      columnName += fieldName;
-    }
-    if (!uniqueColumns.emplace(columnName).second) {
-      return true;
-    }
-    sc.name = std::move(columnName);
-    sc.compression = compression;
-    _storedColumns.emplace_back(std::move(sc));
-  } else {
+  } else if (!addColumn(columnSlice.stringView())) {
+    clear();
     return false;
   }
+  // skip empty column
+  if (fieldNames.empty()) {
+    return true;
+  }
+  // check column uniqueness
+  std::sort(fieldNames.begin(), fieldNames.end());
+  std::string columnName;
+  TRI_ASSERT(columnLength > 1);
+  columnName.reserve(columnLength);
+  for (auto const& fieldName : fieldNames) {
+    columnName += FIELDS_DELIMITER;  // a prefix for EXISTS()
+    columnName += fieldName;
+  }
+  if (!uniqueColumns.emplace(columnName).second) {
+    return true;
+  }
+  sc.name = std::move(columnName);
+  sc.compression = compression;
+  sc.cached = cached;
+  _storedColumns.emplace_back(std::move(sc));
   return true;
 }
 
@@ -178,40 +177,53 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
   for (auto columnSlice : VPackArrayIterator(slice)) {
     ++idx;
     if (columnSlice.isObject()) {
-      if (ADB_LIKELY(columnSlice.hasKey(FIELD_COLUMN_PARAM))) {
+      auto data = columnSlice.get(FIELD_COLUMN_PARAM);
+      if (ADB_LIKELY(!data.isNone())) {
         auto compression = getDefaultCompression();
-        if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
-          auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
+        auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
+        if (!compressionKey.isNone()) {
           if (ADB_LIKELY(compressionKey.isString())) {
-            auto decodedCompression = columnCompressionFromString(
-                iresearch::getStringRef(compressionKey));
+            auto decodedCompression =
+                columnCompressionFromString(compressionKey.stringView());
             if (ADB_LIKELY(decodedCompression != nullptr)) {
               compression = decodedCompression;
             } else {
               errorField =
-                  "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+                  absl::StrCat("[", idx, "].", COMPRESSION_COLUMN_PARAM);
               return false;
             }
           } else {
-            errorField =
-                "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+            errorField = absl::StrCat("[", idx, "].", COMPRESSION_COLUMN_PARAM);
             return false;
           }
         }
-        if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                        uniqueColumns, fieldNames,
-                                        compression)) {
-          errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
+        bool cached = false;
+#ifdef USE_ENTERPRISE
+        auto cachedField = columnSlice.get(StaticStrings::kCacheField);
+        if (!cachedField.isNone()) {
+          if (!cachedField.isBool()) {
+            errorField =
+                absl::StrCat("[", idx, "].", StaticStrings::kCacheField);
+            return false;
+          }
+          cached = cachedField.getBool();
+        }
+#endif
+        if (!data.isArray() ||
+            !buildStoredColumnFromSlice(data, uniqueColumns, fieldNames,
+                                        compression, cached)) {
+          errorField = absl::StrCat("[", idx, "].", FIELD_COLUMN_PARAM);
           return false;
         }
       } else {
-        errorField = "[" + std::to_string(idx) + "]";
+        errorField = absl::StrCat("[", idx, "]");
         return false;
       }
     } else {
-      if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
-                                      getDefaultCompression())) {
-        errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
+      if (!(columnSlice.isArray() || columnSlice.isString()) ||
+          !buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
+                                      getDefaultCompression(), false)) {
+        errorField = absl::StrCat("[", idx, "].", FIELD_COLUMN_PARAM);
         return false;
       }
     }

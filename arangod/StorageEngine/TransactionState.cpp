@@ -98,7 +98,7 @@ TransactionCollection* TransactionState::collection(
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(
-    std::string const& name, AccessMode::Type accessType) const {
+    std::string_view name, AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
@@ -413,7 +413,7 @@ Result TransactionState::checkCollectionPermission(
 
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
-void TransactionState::clearQueryCache() {
+void TransactionState::clearQueryCache() const {
   if (_collections.empty()) {
     return;
   }
@@ -505,7 +505,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 }
 
 /// @brief return a reference to the global transaction statistics
-TransactionStatistics& TransactionState::statistics() noexcept {
+TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()

@@ -65,6 +65,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
     "overwriteCollectionPrefix");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
+std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
@@ -234,6 +235,11 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::ContentSecurityPolicy(
+    "content-security-policy");
+std::string const StaticStrings::Pragma("pragma");
+std::string const StaticStrings::Expires("expires");
+std::string const StaticStrings::HSTS("strict-transport-security");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -456,11 +462,6 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
-
-std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
-std::string_view const StaticStrings::ApiLogExternal("/_api/log");
-std::string_view const StaticStrings::ApiReplicatedStateExternal(
-    "/_api/replicated-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");
