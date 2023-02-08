@@ -906,6 +906,8 @@ OperationResult GraphOperations::updateVertex(const std::string& collectionName,
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  // POTENTIAL ISSUE: need GLOBAL_MANAGED hint???
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result tRes = trx.begin();
 
@@ -927,6 +929,8 @@ OperationResult GraphOperations::replaceVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  // POTENTIAL ISSUE: need GLOBAL_MANAGED hint???
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result tRes = trx.begin();
 
@@ -954,6 +958,8 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  // POTENTIAL ISSUE: need GLOBAL_MANAGED hint???
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result res = trx.begin();
 
@@ -1015,6 +1021,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
+  // POTENTIAL ISSUE: need GLOBAL_MANAGED hint???
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();
 
