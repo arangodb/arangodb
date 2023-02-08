@@ -49,6 +49,7 @@ struct DropCollectionGroup {
   agency::CollectionGroupId gid;
 };
 struct AddCollectionToPlan {
+  CollectionID cid;
   agency::CollectionPlanSpecification spec;
 };
 struct AddCollectionGroupToPlan {

@@ -20,14 +20,16 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "CollectionGroupSupervision.h"
+#include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/Utils/EvenDistribution.h"
+#include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Agency/TransactionBuilder.h"
 #include <random>
 
 using namespace arangodb;
@@ -151,6 +153,8 @@ auto checkAssociatedReplicatedLogs(
     if (currentReplicationFactor < expectedReplicationFactor) {
       // add a new server to the replicated log
       // find a server not yet used
+
+      // TODO account for CleanedOutServer, ToBeCleanedOutServers
       auto servers = getHealthyParticipants(health);
       std::erase_if(servers, [&](auto const& server) {
         return log.target.participants.contains(server);
@@ -266,7 +270,7 @@ auto document::supervision::checkCollectionGroup(
           computeShardList(group.logs, group.plan->shardSheaves, shardList);
       agency::CollectionPlanSpecification spec{collection, std::move(shardList),
                                                std::move(mapping)};
-      return AddCollectionToPlan{std::move(spec)};
+      return AddCollectionToPlan{cid, std::move(spec)};
     }
   }
 
@@ -299,12 +303,76 @@ auto document::supervision::checkCollectionGroup(
 
 namespace {
 struct TransactionBuilder {
-  arangodb::agency::envelope env;
+  ag::CollectionGroupId gid;
   DatabaseID const& database;
+  arangodb::agency::envelope env;
 
   template<typename T>
   void operator()(T const&) {
     LOG_DEVEL << typeid(T).name() << " not handled";
+  }
+
+  // TODO do we need preconditions here?
+
+  void operator()(UpdateReplicatedLogConfig const& action) {
+    env = env.write()
+              .emplace_object(basics::StringUtils::concatT(
+                                  "/Target/ReplicatedLogs/", database, "/",
+                                  action.logId, "/config"),
+                              [&](VPackBuilder& builder) {
+                                velocypack::serialize(builder, action.config);
+                              })
+              .end();
+  }
+
+  void operator()(UpdateConvergedVersion const& action) {
+    env = env.write()
+              .emplace_object(basics::StringUtils::concatT(
+                                  "/Current/CollectionGroups/", database, "/",
+                                  gid.id(), "/supervision/targetVersion"),
+                              [&](VPackBuilder& builder) {
+                                velocypack::serialize(builder, action.version);
+                              })
+              .end();
+  }
+
+  void operator()(DropCollectionPlan const& action) {
+    env = env.write()
+              .remove(basics::StringUtils::concatT("/Plan/Collections/",
+                                                   database, "/", action.cid))
+              .remove(basics::StringUtils::concatT("/Plan/CollectionGroups/",
+                                                   database, "/", gid.id(),
+                                                   "/collections/", action.cid))
+              .inc("/Plan/Version")
+              .end();
+  }
+
+  void operator()(AddCollectionToPlan const& action) {
+    env = env.write()
+              .emplace_object(
+                  basics::StringUtils::concatT("/Plan/Collections/", database,
+                                               "/", action.cid),
+                  [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder, action.spec);
+                  })
+              .key(basics::StringUtils::concatT("/Plan/CollectionGroups/",
+                                                database, "/", gid.id(),
+                                                "/collections/", action.cid),
+                   VPackSlice::emptyObjectSlice())
+              .inc("/Plan/Version")
+              .end();
+  }
+
+  void operator()(UpdateCollectionShardMap const& action) {
+    env = env.write()
+              .emplace_object(
+                  basics::StringUtils::concatT("/Plan/Collections/", database,
+                                               "/", action.cid, "/shards"),
+                  [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder, action.mapping);
+                  })
+              .inc("/Plan/Version")
+              .end();
   }
 
   void operator()(AddParticipantToLog const& action) {
@@ -324,6 +392,23 @@ struct TransactionBuilder {
               .end();
   }
 
+  void operator()(AddCollectionGroupToPlan const& action) {
+    auto write = env.write().emplace_object(
+        basics::StringUtils::concatT("/Plan/CollectionGroups/", database, "/",
+                                     action.spec.id.id()),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, action.spec);
+        });
+
+    for (auto const& spec : action.sheaves) {
+      write = write.emplace_object(
+          basics::StringUtils::concatT("/Target/ReplicatedLogs/", database, "/",
+                                       spec.id),
+          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
+    }
+    env = write.end();
+  }
+
   void operator()(NoActionRequired const&) {}
   void operator()(NoActionPossible const&) {}
 };
@@ -335,6 +420,8 @@ auto document::supervision::executeCheckCollectionGroup(
     replicated_log::ParticipantsHealth const& health, UniqueIdProvider& uniqid,
     arangodb::agency::envelope envelope) noexcept
     -> arangodb::agency::envelope {
+  // TODO add agency reports, add last-time-updated
+
   auto action = checkCollectionGroup(group, uniqid, health);
 
   if (std::holds_alternative<NoActionRequired>(action)) {
@@ -347,7 +434,7 @@ auto document::supervision::executeCheckCollectionGroup(
     return envelope;
   }
 
-  TransactionBuilder builder{std::move(envelope), database};
+  TransactionBuilder builder{group.target.id, database, std::move(envelope)};
   std::visit(builder, action);
   return std::move(builder.env);
 }
