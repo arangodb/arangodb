@@ -67,3 +67,8 @@ void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
   // TODO is the correct log index required here?
   guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
 }
+
+auto StateHandleManager::getQuickStatus() const
+    -> replicated_log::LocalStateMachineStatus {
+  return guardedData.getLockedGuard()->stateHandle->getQuickStatus();
+}

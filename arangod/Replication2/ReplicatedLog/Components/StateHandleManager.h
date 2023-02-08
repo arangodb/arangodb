@@ -23,6 +23,7 @@
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Basics/Guarded.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
@@ -38,6 +39,7 @@ struct StateHandleManager : IStateHandleManager {
 
   void acquireSnapshot(ParticipantId const& leader,
                        std::uint64_t version) noexcept override;
+  auto getQuickStatus() const -> replicated_log::LocalStateMachineStatus;
 
  private:
   struct GuardedData {

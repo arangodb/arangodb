@@ -144,6 +144,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   auto [releaseIndex, largestIndexToKeep] = compaction->getIndexes();
   return QuickLogStatus{
       .role = ParticipantRole::kFollower,
+      .localState = stateHandle->getQuickStatus(),
       .term = termInfo->term,
       .local =
           LogStatistics{
