@@ -28,8 +28,13 @@
 #include <variant>
 #include <map>
 
+namespace arangodb::agency {
+struct envelope;
+}
+
 namespace arangodb::replication2::document::supervision {
 
+inline namespace actions {
 struct UpdateReplicatedLogConfig {
   LogId logId;
   agency::LogTargetConfig config;
@@ -66,6 +71,7 @@ struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
 };
+}  // namespace actions
 
 using Action =
     std::variant<NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
@@ -95,5 +101,11 @@ auto checkCollectionGroup(CollectionGroup const& group,
                           UniqueIdProvider& uniqid,
                           replicated_log::ParticipantsHealth const& health)
     -> Action;
+
+auto executeCheckCollectionGroup(
+    DatabaseID const& database, std::string const& logIdString,
+    CollectionGroup const& log,
+    replicated_log::ParticipantsHealth const& health, UniqueIdProvider& uniqid,
+    arangodb::agency::envelope envelope) noexcept -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::document::supervision

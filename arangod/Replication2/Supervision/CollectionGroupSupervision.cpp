@@ -27,13 +27,16 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Agency/TransactionBuilder.h"
 #include <random>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::document::supervision;
+namespace ag = arangodb::replication2::agency;
 namespace {
-auto checkReplicatedLogConverged(agency::Log const& log) -> bool {
+
+auto checkReplicatedLogConverged(ag::Log const& log) -> bool {
   if (not log.current or not log.current->supervision) {
     return false;
   }
@@ -42,10 +45,10 @@ auto checkReplicatedLogConverged(agency::Log const& log) -> bool {
 }
 
 auto createLogConfigFromGroupAttributes(
-    agency::CollectionGroupTargetSpecification::Attributes const& attributes) {
-  return agency::LogTargetConfig{attributes.mutableAttributes.writeConcern,
-                                 attributes.mutableAttributes.replicationFactor,
-                                 attributes.mutableAttributes.waitForSync};
+    ag::CollectionGroupTargetSpecification::Attributes const& attributes) {
+  return ag::LogTargetConfig{attributes.mutableAttributes.writeConcern,
+                             attributes.mutableAttributes.replicationFactor,
+                             attributes.mutableAttributes.waitForSync};
 }
 
 auto getHealthyParticipants(replicated_log::ParticipantsHealth const& health)
@@ -78,7 +81,7 @@ auto computeEvenDistributionForServers(
 }
 
 auto createCollectionGroupTarget(
-    agency::CollectionGroupTargetSpecification const& group,
+    ag::CollectionGroupTargetSpecification const& group,
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
     -> AddCollectionGroupToPlan {
   auto const& attributes = group.attributes;
@@ -88,13 +91,13 @@ auto createCollectionGroupTarget(
       attributes.mutableAttributes.replicationFactor, health);
 
   std::size_t i = 0;
-  std::vector<agency::LogTarget> replicatedLogs;
+  std::vector<ag::LogTarget> replicatedLogs;
   std::generate_n(
       std::back_inserter(replicatedLogs),
       group.attributes.immutableAttributes.numberOfShards, [&] {
         replicated_state::document::DocumentCoreParameters parameters;
 
-        agency::LogTarget target;
+        ag::LogTarget target;
         target.id = LogId{uniqid.next()};
         target.version = 1;
         target.config = createLogConfigFromGroupAttributes(group.attributes);
@@ -111,24 +114,23 @@ auto createCollectionGroupTarget(
         return target;
       });
 
-  agency::CollectionGroupPlanSpecification spec;
+  ag::CollectionGroupPlanSpecification spec;
   spec.attributes = group.attributes;
   spec.id = group.id;
 
   std::transform(
       replicatedLogs.begin(), replicatedLogs.end(),
-      std::back_inserter(spec.shardSheaves),
-      [](agency::LogTarget const& target) {
-        return agency::CollectionGroupPlanSpecification::ShardSheaf{target.id};
+      std::back_inserter(spec.shardSheaves), [](ag::LogTarget const& target) {
+        return ag::CollectionGroupPlanSpecification::ShardSheaf{target.id};
       });
 
   return AddCollectionGroupToPlan{std::move(spec), std::move(replicatedLogs)};
 }
 
 auto checkAssociatedReplicatedLogs(
-    agency::CollectionGroupTargetSpecification const& target,
-    agency::CollectionGroupPlanSpecification const& plan,
-    std::map<LogId, agency::Log> const& logs,
+    ag::CollectionGroupTargetSpecification const& target,
+    ag::CollectionGroupPlanSpecification const& plan,
+    std::map<LogId, ag::Log> const& logs,
     replicated_log::ParticipantsHealth const& health) -> Action {
   // check if replicated logs require an update
   ADB_PROD_ASSERT(plan.shardSheaves.size() ==
@@ -175,7 +177,7 @@ auto checkAssociatedReplicatedLogs(
   return NoActionRequired{};
 }
 
-auto getReplicatedLogLeader(agency::Log const& log)
+auto getReplicatedLogLeader(ag::Log const& log)
     -> std::optional<ParticipantId> {
   if (log.plan and log.plan->currentTerm and log.plan->currentTerm->leader) {
     return log.plan->currentTerm->leader->serverId;
@@ -184,9 +186,8 @@ auto getReplicatedLogLeader(agency::Log const& log)
 }
 
 auto computeShardList(
-    std::map<LogId, agency::Log> const& logs,
-    std::vector<agency::CollectionGroupPlanSpecification::ShardSheaf>
-        shardSheaves,
+    std::map<LogId, ag::Log> const& logs,
+    std::vector<ag::CollectionGroupPlanSpecification::ShardSheaf> shardSheaves,
     std::vector<ShardID> const& shards) -> PlanShardToServerMapping {
   ADB_PROD_ASSERT(logs.size() == shards.size())
       << "logs.size = " << logs.size() << " shards.size = " << shards.size();
@@ -294,4 +295,55 @@ auto document::supervision::checkCollectionGroup(
   }
 
   return NoActionRequired{};
+}
+
+namespace {
+struct TransactionBuilder {
+  arangodb::agency::envelope env;
+  DatabaseID const& database;
+
+  template<typename T>
+  void operator()(T const&) {
+    LOG_DEVEL << typeid(T).name() << " not handled";
+  }
+
+  void operator()(AddParticipantToLog const& action) {
+    env.write().key(basics::StringUtils::concatT(
+                        "/Target/ReplicatedLogs/", database, "/", action.logId,
+                        "/participants/", action.participant),
+                    VPackSlice::emptyObjectSlice());
+  }
+
+  void operator()(RemoveParticipantFromLog const& action) {
+    env.write().remove(basics::StringUtils::concatT(
+        "/Target/ReplicatedLogs/", database, "/", action.logId,
+        "/participants/", action.participant));
+  }
+
+  void operator()(NoActionRequired const&) {}
+  void operator()(NoActionPossible const&) {}
+};
+}  // namespace
+
+auto document::supervision::executeCheckCollectionGroup(
+    DatabaseID const& database, std::string const& logIdString,
+    CollectionGroup const& group,
+    replicated_log::ParticipantsHealth const& health, UniqueIdProvider& uniqid,
+    arangodb::agency::envelope envelope) noexcept
+    -> arangodb::agency::envelope {
+  auto action = checkCollectionGroup(group, uniqid, health);
+
+  if (std::holds_alternative<NoActionRequired>(action)) {
+    return envelope;
+  } else if (std::holds_alternative<NoActionPossible>(action)) {
+    // TODO remove logging later?
+    LOG_TOPIC("33547", WARN, Logger::SUPERVISION)
+        << "no progress possible for collection group " << database << "/"
+        << group.target.id;
+    return envelope;
+  }
+
+  TransactionBuilder builder{std::move(envelope), database};
+  std::visit(builder, action);
+  return std::move(builder.env);
 }

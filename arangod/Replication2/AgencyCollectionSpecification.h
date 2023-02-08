@@ -110,7 +110,8 @@ struct Collection {
   struct ImmutableProperties : public CollectionInternalProperties {
     std::string name{StaticStrings::Empty};
     bool isSystem{false};
-    TRI_col_type_e type{TRI_col_type_e::TRI_COL_TYPE_DOCUMENT};
+    std::underlying_type_t<TRI_col_type_e> type =
+        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
     KeyGeneratorProperties keyOptions{};
     bool isSmart{false};
     bool isDisjoint{false};

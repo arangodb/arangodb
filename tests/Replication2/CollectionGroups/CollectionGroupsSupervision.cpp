@@ -28,6 +28,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::document::supervision;
+namespace ag = arangodb::replication2::agency;
 
 struct FakeUniqueIdProvider : UniqueIdProvider {
   auto next() noexcept -> std::uint64_t override { return ++_next; }
@@ -42,7 +43,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_create_collection_group_plan) {
   constexpr auto numberOfShards = 3;
 
   CollectionGroup group;
-  group.target.id = agency::CollectionGroupId{12};
+  group.target.id = ag::CollectionGroupId{12};
   group.target.version = 1;
   group.target.collections["A"] = {};
   group.target.collections["B"] = {};
@@ -72,7 +73,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   constexpr auto numberOfShards = 3;
 
   CollectionGroup group;
-  group.target.id = agency::CollectionGroupId{12};
+  group.target.id = ag::CollectionGroupId{12};
   group.target.version = 1;
   group.target.collections["A"] = {};
   group.target.collections["B"] = {};
@@ -99,8 +100,8 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   group.planCollections["B"].groupId = group.target.id;
   group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
 
-  auto const currentConfig = agency::LogTargetConfig(3, 3, true);
-  auto const expectedConfig = agency::LogTargetConfig(3, 4, true);
+  auto const currentConfig = ag::LogTargetConfig(3, 3, true);
+  auto const expectedConfig = ag::LogTargetConfig(3, 4, true);
   group.logs[LogId{1}].target.id = LogId{1};
   group.logs[LogId{1}].target.config = currentConfig;
   group.logs[LogId{1}].target.participants["DB1"];

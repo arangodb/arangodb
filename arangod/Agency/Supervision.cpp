@@ -53,6 +53,8 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/Supervision/CollectionGroupSupervision.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
 #include "MoveShard.h"
@@ -1391,15 +1393,16 @@ void Supervision::run() {
 }
 
 std::string Supervision::serverHealthFunctional(Node const& snapshot,
-                                                std::string const& serverName) {
-  std::string const serverStatus(healthPrefix + serverName + "/Status");
+                                                std::string_view serverName) {
+  std::string const serverStatus(
+      basics::StringUtils::concatT(healthPrefix, serverName, "/Status"));
   return (snapshot.has(serverStatus))
              ? snapshot.hasAsString(serverStatus).value()
              : std::string();
 }
 
 // Guarded by caller
-std::string Supervision::serverHealth(std::string const& serverName) {
+std::string Supervision::serverHealth(std::string_view serverName) const {
   _lock.assertLockedByCurrentThread();
   return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
@@ -1797,6 +1800,11 @@ void Supervision::handleJobs() {
   LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
       << "Begin checkUndoLeaderChangeActions";
   checkUndoLeaderChangeActions();
+
+  LOG_TOPIC("13da7", TRACE, Logger::SUPERVISION)
+      << "Begin checkCollectionGroups";
+  checkCollectionGroups();
+  updateSnapshot();  // make collection group write visible
 
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
@@ -2669,7 +2677,7 @@ void Supervision::deleteBrokenIndex(AgentInterface* agent,
 namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
-  inspection::NodeUnsafeLoadInspector<> i{&n, {}};
+  /*inspection::NodeUnsafeLoadInspector<> i{&n, {}};
   T result;
   if (auto status = i.apply(result); !status.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2677,7 +2685,10 @@ auto parseSomethingFromNode(Node const& n) -> T {
         std::string{"Error while reading from Agency node: "} + status.error() +
             "\nPath: " + status.path());
   }
-  return result;
+  return result;*/
+  VPackBuilder builder;
+  n.toBuilder(builder);
+  return deserialize<T>(builder.slice());
 }
 
 template<typename T>
@@ -2718,9 +2729,64 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
   }
 }
 
-}  // namespace
+using namespace replication2::document::supervision;
 
-namespace {
+auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
+                                std::string const& gid)
+    -> std::optional<replication2::document::supervision::CollectionGroup> {
+  auto targetPath =
+      aliases::target()->collectionGroups()->database(dbName)->group(gid);
+  // first check if target exists
+  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+      targetNode.has_value()) {
+    replication2::document::supervision::CollectionGroup spec;
+    spec.target =
+        parseSomethingFromNode<CollectionGroupTargetSpecification>(*targetNode);
+    spec.plan = parseIfExists<CollectionGroupPlanSpecification>(
+        root,
+        aliases::plan()->collectionGroups()->database(dbName)->group(gid)->str(
+            SkipComponents(1)));
+    spec.current = parseIfExists<CollectionGroupCurrentSpecification>(
+        root, basics::StringUtils::concatT("/Current/CollectionGroups/", dbName,
+                                           "/", gid));
+
+    // lookup all target collections
+    for (auto const& [cid, _] : spec.target.collections) {
+      auto coll = parseIfExists<CollectionTargetSpecification>(
+          root, basics::StringUtils::concatT("/Target/Collections/", dbName,
+                                             "/", cid));
+      if (coll.has_value()) {
+        spec.targetCollections[cid] = std::move(*coll);
+      }
+    }
+
+    if (spec.plan) {
+      // lookup all replicated logs
+      for (auto const& logId : spec.plan->shardSheaves) {
+        auto log = parseReplicatedLogAgency(root, dbName,
+                                            to_string(logId.replicatedLog));
+        if (log.has_value()) {
+          spec.logs[logId.replicatedLog] = std::move(*log);
+        }
+      }
+
+      // lookup all plan collections
+      for (auto const& [cid, _] : spec.plan->collections) {
+        auto coll = parseIfExists<CollectionPlanSpecification>(
+            root, basics::StringUtils::concatT("/Plan/Collections/", dbName,
+                                               "/", cid));
+        if (coll.has_value()) {
+          spec.planCollections[cid] = std::move(*coll);
+        }
+      }
+    }
+
+    return std::move(spec);
+  } else {
+    return std::nullopt;
+  }
+}
+
 using namespace replication2::replicated_log;
 
 auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
@@ -2782,7 +2848,68 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
       << dbName << "/" << idString << ": " << err.what();
   return envelope;
 }
+
+auto handleCollectionGroup(Node const& snapshot, Node const& targetNode,
+                           std::string const& dbName,
+                           std::string const& idString,
+                           ParticipantsHealth const& health,
+                           UniqueIdProvider& uniqid,
+                           arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
+  std::optional<replication2::document::supervision::CollectionGroup>
+      maybeGroup;
+  try {
+    maybeGroup = parseCollectionGroupAgency(snapshot, dbName, idString);
+  } catch (std::exception const& err) {
+    LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
+        << "Supervision caught exception while parsing collection group "
+        << dbName << "/" << idString << ": " << err.what();
+    throw;
+  }
+  if (maybeGroup.has_value()) {
+    try {
+      auto& group = *maybeGroup;
+
+      return replication2::document::supervision::executeCheckCollectionGroup(
+          dbName, idString, group, health, uniqid, std::move(envelope));
+    } catch (std::exception const& err) {
+      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+          << "Supervision caught exception while handling collection group "
+          << dbName << "/" << idString << ": " << err.what();
+      throw;
+    }
+  } else {
+    LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
+        << "Supervision could not parse Target node for collection group  "
+        << dbName << "/" << idString;
+    return envelope;
+  }
+} catch (std::exception const& err) {
+  LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
+      << "Supervision caught exception while working with collection group "
+      << dbName << "/" << idString << ": " << err.what();
+  return envelope;
+}
+
 }  // namespace
+
+auto Supervision::collectParticipantsHealth() const -> ParticipantsHealth {
+  std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
+  auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
+  for (auto const& [serverId, node] : dbservers) {
+    bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                             (serverHealth(serverId) == HEALTH_STATUS_BAD);
+
+    auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
+        curServersKnown, serverId, "/", StaticStrings::RebootId));
+    if (rebootID) {
+      info.emplace(serverId,
+                   ParticipantHealth{RebootId{*rebootID}, notIsFailed});
+    }
+  }
+
+  return ParticipantsHealth{info};
+}
 
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
@@ -2797,23 +2924,7 @@ void Supervision::checkReplicatedLogs() {
 
   using namespace replication2::replicated_log;
 
-  ParticipantsHealth participantsHealth = std::invoke([&] {
-    std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
-    auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
-    for (auto const& [serverId, node] : dbservers) {
-      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
-                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
-
-      auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
-          curServersKnown, serverId, "/", StaticStrings::RebootId));
-      if (rebootID) {
-        info.emplace(serverId,
-                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
-      }
-    }
-    return ParticipantsHealth{info};
-  });
-
+  ParticipantsHealth participantsHealth = collectParticipantsHealth();
   velocypack::Builder builder;
   auto envelope = arangodb::agency::envelope::into_builder(builder);
 
@@ -2829,7 +2940,54 @@ void Supervision::checkReplicatedLogs() {
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
-          << "failed to update term in agency. Will retry. "
+          << "failed to update replicated logs in agency. Will retry. "
+          << builder.toJson();
+    }
+  }
+}
+
+void Supervision::checkCollectionGroups() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  // check if Target has replicated logs
+  auto const& targetNode = snapshot().hasAsNode("/Target/CollectionGroups");
+  if (!targetNode) {
+    return;
+  }
+
+  using namespace replication2::replicated_log;
+
+  struct SupervisionUniqueIdProvider : UniqueIdProvider {
+    explicit SupervisionUniqueIdProvider(Supervision* supervision)
+        : _supervision(supervision) {}
+    auto next() noexcept -> std::uint64_t override {
+      return _supervision->_jobId++;
+    }
+    Supervision* _supervision;
+  };
+
+  SupervisionUniqueIdProvider uniqid{this};
+
+  ParticipantsHealth participantsHealth = collectParticipantsHealth();
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
+    for (auto const& [gid, node] : db->children()) {
+      envelope = handleCollectionGroup(snapshot(), *node, dbName, gid,
+                                       participantsHealth, uniqid,
+                                       std::move(envelope));
+    }
+  }
+
+  envelope.done();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("12f36", WARN, Logger::SUPERVISION)
+          << "failed to update collection groups in agency. Will retry. "
           << builder.toJson();
     }
   }
@@ -3285,10 +3443,9 @@ void Supervision::shrinkCluster() {
      * fullfilled we should add a follower to the plan
      * When seeing more servers in Current than replicationFactor we should
      * remove a server.
-     * RemoveServer then should be changed so that it really just kills a server
-     * after a while...
-     * this way we would have implemented changing the replicationFactor and
-     * have an awesome new feature
+     * RemoveServer then should be changed so that it really just kills a
+     *server after a while... this way we would have implemented changing the
+     *replicationFactor and have an awesome new feature
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
@@ -3309,8 +3466,8 @@ void Supervision::shrinkCluster() {
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinitely
-    // for them to recover or for the user to remove them
+    // a state of failed still have data of interest to us! We wait
+    // indefinitely for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers

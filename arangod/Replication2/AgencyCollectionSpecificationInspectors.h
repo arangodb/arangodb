@@ -118,6 +118,17 @@ auto inspect(Inspector& f, CollectionTargetSpecification& x) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, CollectionGroupCurrentSpecification& x) {
+  return f.object(x).fields(f.field("supervision", x.supervision));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             CollectionGroupCurrentSpecification::Supervision& x) {
+  return f.object(x).fields(f.field("targetVersion", x.version));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, CollectionPlanSpecification& x) {
   return f.object(x).fields(
       f.template embedFields<Collection>(x),
