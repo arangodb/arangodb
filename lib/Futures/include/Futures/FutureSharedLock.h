@@ -70,11 +70,12 @@ struct SharedLockGuard {
     }
   }
 
+  explicit SharedLockGuard(SharedLock* lock) : _lock(lock) {}
+
  private:
   template<class>
   friend struct FutureSharedLock;
 
-  explicit SharedLockGuard(SharedLock* lock) : _lock(lock) {}
   SharedLock* _lock = nullptr;
 };
 
@@ -104,6 +105,7 @@ struct FutureSharedLock {
       predState = pred->state.load();
     }
 
+    node->prev = pred;
     if (predState == State::kSharedActiveLeader ||
         predState == State::kSharedActiveFollower ||
         predState == State::kSharedFinished) {
@@ -124,6 +126,7 @@ struct FutureSharedLock {
     if (pred == nullptr) {
       return {SharedLockGuard(node)};
     }
+    node->prev = pred;
     pred->next.store(node);
     return node->promise.getFuture();
   }
@@ -146,15 +149,17 @@ struct FutureSharedLock {
   };
 
  private:
-  void removeNode(std::unique_ptr<Node> node) {
+  void removeNode(std::unique_ptr<Node> nodex) {
+    auto node = nodex.release();
     auto state = node->state.load();
     assert(state == State::kExclusive || state == State::kSharedActiveLeader);
     bool isSharedLeader = state == State::kSharedActiveLeader;
 
   restart:
+    node->finished = true;
     auto next = node->next.load(std::memory_order_relaxed);
     if (next == nullptr) {
-      auto expected = node.get();
+      auto expected = node;  //.get();
       if (_tail.compare_exchange_strong(expected, nullptr)) {
         // no other nodes queued and we just reset tail to nullptr, so the
         // lock is now free again
@@ -185,12 +190,13 @@ struct FutureSharedLock {
       if (state == State::kSharedFinished) {
         // next node finished before we could make it leader -> we take over
         // ownership
-        node.reset(next);
+        // node.reset(next);
+        node = next;
         goto restart;
       }
     }
 
-    node.reset();
+    // node.reset();
 
     state = next->state.load();
     assert(state == State::kExclusive || state == State::kSharedBlocked);
@@ -232,6 +238,7 @@ struct FutureSharedLock {
 
   void scheduleNode(Node* node) {
     assert(node != nullptr);
+    node->scheduled = true;
     _scheduler.queue(
         [node]() { node->promise.setValue(SharedLockGuard(node)); });
   }
@@ -248,7 +255,10 @@ struct FutureSharedLock {
     FutureSharedLock& lock;
     Promise<SharedLockGuard> promise;
     std::atomic<Node*> next{nullptr};
+    Node* prev{nullptr};
     std::atomic<State> state;
+    bool finished{false};
+    bool scheduled{false};
 
     void unlock() noexcept override {
       auto s = state.load();

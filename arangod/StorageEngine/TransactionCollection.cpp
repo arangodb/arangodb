@@ -58,7 +58,8 @@ bool TransactionCollection::isLocked() const {
     return false;
   }
   auto res = _lockType > AccessMode::Type::NONE;
-  TRI_ASSERT(res == _lock.isLocked() ||
+  TRI_ASSERT(_transaction->isCoordinator() ||  // this only holds on db servers
+             res == _lock.isLocked() ||
              // read access does not require lock
              (_lockType == AccessMode::Type::READ && !_lock.isLocked()));
   return res;

@@ -1976,6 +1976,13 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
                                       : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
+namespace {
+struct SharedLockMock : arangodb::futures::SharedLock {
+  void unlock() noexcept override {}
+};
+SharedLockMock sharedLockMock;
+}  // namespace
+
 arangodb::Result TransactionCollectionMock::doLock(
     arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
@@ -1983,6 +1990,7 @@ arangodb::Result TransactionCollectionMock::doLock(
   }
 
   _lockType = type;
+  _lock = arangodb::futures::SharedLockGuard{&sharedLockMock};
 
   return {};
 }
