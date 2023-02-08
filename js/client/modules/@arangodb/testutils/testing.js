@@ -165,7 +165,7 @@ let optionsDocumentation = [
 const isSan = (
   global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
   global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-  internal.coverage
+  global.ARANGODB_CLIENT_VERSION(true).gcov === 'true'
 );
 const optionsDefaults = {
   'dumpAgencyOnError': true,

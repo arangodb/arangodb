@@ -250,7 +250,7 @@ function IndexSuite() {
 
       collection.drop();
 
-      if (internal.coverage || internal.valgrind) {
+      if (global.ARANGODB_CLIENT_VERSION(true).gcov === 'true') {
         internal.wait(2, false);
       }
       try {
