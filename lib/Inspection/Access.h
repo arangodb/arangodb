@@ -188,7 +188,7 @@ struct OptionalAccess {
   template<class Inspector>
   [[nodiscard]] static Status apply(Inspector& f, T& val) {
     if constexpr (Inspector::isLoading) {
-      if (f.slice().isNull()) {
+      if (f.isNull()) {
         val.reset();
         return {};
       } else {
@@ -301,10 +301,9 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
   template<class Inspector>
   static auto apply(Inspector& f, std::monostate&) {
     if constexpr (Inspector::isLoading) {
-      if (!f.slice().isEmptyObject()) {
-        return Status{"Expected empty object"};
-      }
-      return Status{};
+      return f.beginObject()                      //
+             | [&]() { return f.applyFields(); }  //
+             | [&]() { return f.endObject(); };
     } else {
       return f.beginObject()  //
              | [&]() { return f.endObject(); };

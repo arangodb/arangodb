@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -46,28 +47,14 @@ function randomTestSuite() {
   const n = 20000; // vertices
   const m = 300000; // edges
   
-  let checkStatus = function(key) {
-    let i = 10000;
-    do {
-      internal.sleep(0.2);
-      let stats = pregel.status(key);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== 'storing') {
-        break;
-      }
-    } while (i-- >= 0);
-    if (i === 0) {
-      assertTrue(false, "timeout in pregel execution");
-    }
-  };
-  
-  let checkCancel = function(key) {
-    checkStatus(key);
-    pregel.cancel(key);
+  let checkCancel = function(pid) {
+    pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+    pregel.cancel(pid);
     let i = 10000;
     do {
       try {
-        let stats = pregel.status(key);
-        if (stats.state === "canceled") {
+        let stats = pregel.status(pid);
+        if (pregelTestHelpers.runCanceled(pid)) {
           break;
         }
       } catch (err) {
@@ -157,19 +144,10 @@ function randomTestSuite() {
 
     testPageRankRandom: function () {
       var pid = pregel.start("pagerank", graphName, { threshold: 0.0000001, resultField: "result", store: true });
-      var i = 10000;
-      do {
-        internal.sleep(0.2);
-        var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-          assertEqual(stats.vertexCount, n, stats);
-          assertEqual(stats.edgeCount, m * 2, stats);
-          break;
-        }
-      } while (i-- >= 0);
-      if (i === 0) {
-        assertTrue(false, "timeout in pregel execution");
-      }
+      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+
+      assertEqual(stats.vertexCount, n, stats);
+      assertEqual(stats.edgeCount, m * 2, stats);
     },
 
     testPageRankRandomMMap: function () {
@@ -178,19 +156,10 @@ function randomTestSuite() {
         store: true, useMemoryMaps: true
       };
       var pid = pregel.start("pagerank", graphName, opts);
-      var i = 10000;
-      do {
-        internal.sleep(0.2);
-        var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-          assertEqual(stats.vertexCount, n, stats);
-          assertEqual(stats.edgeCount, m * 2, stats);
-          break;
-        }
-      } while (i-- >= 0);
-      if (i === 0) {
-        assertTrue(false, "timeout in pregel execution");
-      }
+      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+
+      assertEqual(stats.vertexCount, n, stats);
+      assertEqual(stats.edgeCount, m * 2, stats);
     },
 
     testHITS: function () {
@@ -199,31 +168,22 @@ function randomTestSuite() {
         store: true
       };
       var pid = pregel.start("hits", graphName, opts);
-      var i = 10000;
-      do {
-        internal.sleep(0.2);
-        var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-          assertEqual(stats.vertexCount, n, stats);
-          assertEqual(stats.edgeCount, m * 2, stats);
-          break;
-        }
-      } while (i-- >= 0);
-      if (i === 0) {
-        assertTrue(false, "timeout in pregel execution");
-      }
+      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+
+      assertEqual(stats.vertexCount, n, stats);
+      assertEqual(stats.edgeCount, m * 2, stats);
     },
 
     testStatusWithNumericId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
-      assertTrue(typeof key === "string");
-      checkStatus(Number(key));
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      assertTrue(typeof pid === "string");
+      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     },
     
     testStatusWithStringId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
-      assertTrue(typeof key === "string");
-      checkStatus(key);
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      assertTrue(typeof pid === "string");
+      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     },
     
     testCancelWithNumericId: function () {
@@ -238,79 +198,69 @@ function randomTestSuite() {
       checkCancel(key);
     },
     
-    testGarbageCollectionForJob: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
-      assertTrue(typeof key === "string");
+    test_garbage_collects_job: function () {
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
+      assertTrue(typeof pid === "string");
           
-      let stats = pregel.status(key);
+      let stats = pregel.status(pid);
       assertTrue(stats.hasOwnProperty('id'));
-      assertEqual(stats.id, key);
+      assertEqual(stats.id, pid);
       assertEqual("_system", stats.database);
       assertEqual("hits", stats.algorithm);
       assertTrue(stats.hasOwnProperty('created'));
       assertTrue(stats.hasOwnProperty('ttl'));
       assertEqual(15, stats.ttl);
 
-      let i = 1000;
-      do {
-        stats = pregel.status(key);
-        if (stats.state === "done") {
-          break;
-        }
-        internal.sleep(0.2);
-      } while (i-- >= 0);
-      assertEqual("done", stats.state);
+      stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
-      assertTrue(i > 0, "timeout in pregel execution");
 
       // wait for garbage collection
-      i = 1000;
+      let i = 1000;
       do {
         try {
-          stats = pregel.status(key);
-          assertEqual("done", stats.state);
+          stats = pregel.status(pid);
+          assertEqual(pregelTestHelpers.runFinishedSuccessfully(stats), stats.state);
         } catch (err) {
-          // fine.
+          // run was garbage collected and therefore does not exist anymore
           break;
         }
         internal.sleep(0.2);
       } while (i-- >= 0);
       assertTrue(i > 0, "timeout in pregel execution");
     },
-    
-    testAllJobsStatus: function () {
-      const initialIds = pregel.status().map((job) => job.id);
 
-      let ourJobs = [];
+    test_garbage_collects_all_jobs: function () {
+      let allNewRuns = [];
+
       for (let i = 0; i < 5; ++i) {
-        let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
-        assertTrue(typeof key === "string");
-        ourJobs.push(key);
+        let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
+				allNewRuns.push(pid);
+        assertTrue(typeof pid === "string");
       }
-          
+
+      // helper function
+      const unique = function (value, index, self) {
+        return self.indexOf(value) === index;
+      };
       // wait for garbage collection
       let i = 1000;
-      let found;
+      let runningNewRuns = [];
       do {
-        let stats = pregel.status();
-        found = [];
-        stats.forEach((job) => {
-          if (initialIds.indexOf(job.id) === -1) {
-            assertEqual(5, job.ttl);
-            assertEqual("_system", job.database);
-            assertEqual("hits", job.algorithm);
-            found.push(job.id);
-          }
-        });
-
-        if (found.length === 0) {
-          break;
-        }
         internal.sleep(0.2);
-      } while (i-- >= 0);
-      assertTrue(i > 0, "timeout in pregel execution");
-      assertEqual(0, found.length);
+        let allStats = pregel.status();
+        runningNewRuns = allStats.map((job) => job.id).filter((pid) => allNewRuns.includes(pid)).filter(unique);
+        runningNewRuns.forEach((pid) => {
+          const mostRecentStatsForRun = allStats.filter((job) => job.id === pid).pop();
+          assertEqual(5, mostRecentStatsForRun.ttl);
+          assertEqual("_system", mostRecentStatsForRun.database);
+          assertEqual("hits", mostRecentStatsForRun.algorithm);
+        });
+        if (i-- === 0) {
+          assertTrue(false, "timeout in pregel execution: not everything was garbage collected");
+          return;
+				}
+      } while (runningNewRuns.length > 0);
     },
 
   };

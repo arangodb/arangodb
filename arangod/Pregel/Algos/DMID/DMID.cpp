@@ -178,7 +178,7 @@ struct DMIDComputation
   void superstep1(MessageIterator<DMIDMessage> const& messages) {
     float weightedInDegree = 0.0;
     /** vertices that need a reply containing this vertexs weighted indegree */
-    std::unordered_set<PregelID> predecessors;
+    std::unordered_set<VertexID> predecessors;
 
     for (DMIDMessage const* message : messages) {
       /**
@@ -195,7 +195,7 @@ struct DMIDComputation
 
     // send weighted degree to all predecessors
     DMIDMessage message(pregelId(), weightedInDegree);
-    for (PregelID const& pid : predecessors) {
+    for (VertexID const& pid : predecessors) {
       sendMessage(pid, message);
     }
   }
@@ -266,7 +266,7 @@ struct DMIDComputation
      */
     /** (corresponds to vector matrix multiplication R^1xN * R^NxN) */
     double newEntryDA = 0.0;
-    curDA->forEach([&](PregelID const& _id, double entry) {
+    curDA->forEach([&](VertexID const& _id, double entry) {
       auto const& it = vertexState->disCol.find(_id);
       if (it != vertexState->disCol.end()) {  // sparse vector in the original
         newEntryDA += entry * it->second;
@@ -318,7 +318,7 @@ struct DMIDComputation
     VertexSumAggregator const* vecLS =
         (VertexSumAggregator*)getReadAggregator(LS_AGG);
     for (DMIDMessage const* message : messages) {
-      PregelID senderID = message->senderId;
+      VertexID senderID = message->senderId;
       /** Weight= weightedInDegree */
 
       float senderWeight = message->weight;
@@ -373,7 +373,7 @@ struct DMIDComputation
     float maxInfValue = 0;
 
     /** Set of possible local leader for this vertex. Contains VertexID's */
-    std::set<PregelID> leaderSet;
+    std::set<VertexID> leaderSet;
 
     /** Find possible local leader */
     for (DMIDMessage const* message : messages) {
@@ -394,7 +394,7 @@ struct DMIDComputation
     double leaderInit = 1.0 / leaderSet.size();
     VertexSumAggregator* vecFD =
         (VertexSumAggregator*)getWriteAggregator(FD_AGG);
-    for (PregelID const& _id : leaderSet) {
+    for (VertexID const& _id : leaderSet) {
       vecFD->aggregate(_id.shard, _id.key, leaderInit);
     }
   }
@@ -473,7 +473,7 @@ struct DMIDComputation
      * specific communities
      */
     for (DMIDMessage const* message : messages) {
-      PregelID const leaderID = message->leaderId;
+      VertexID const leaderID = message->leaderId;
       /**
        * send a message back with the same double entry if this vertex is
        * part of this specific community
@@ -505,7 +505,7 @@ struct DMIDComputation
     if (it == vertexState->membershipDegree.end()) {  // no
       //! vertex.getValue().getMembershipDegree().containsKey(vertexID)
       /** counts per communities the number of successors which are member */
-      std::map<PregelID, float> membershipCounter;
+      std::map<VertexID, float> membershipCounter;
       // double previousCount = 0.0;
 
       for (DMIDMessage const* message : messages) {
@@ -514,7 +514,7 @@ struct DMIDComputation
          * member of
          */
         // Long leaderID = ((long) msg.getValue());
-        PregelID const& leaderID = message->leaderId;
+        VertexID const& leaderID = message->leaderId;
         // .containsKey(leaderID)
         if (membershipCounter.find(leaderID) != membershipCounter.end()) {
           /** increase count by 1 */
@@ -566,9 +566,9 @@ struct DMIDComputation
     VertexSumAggregator const* vecGL =
         (VertexSumAggregator*)getReadAggregator(GL_AGG);
     // DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
-    // std::map<PregelID, float> newMemDeg;
+    // std::map<VertexID, float> newMemDeg;
 
-    vecGL->forEach([&](PregelID const& _id, double entry) {
+    vecGL->forEach([&](VertexID const& _id, double entry) {
       if (entry != 0.0) {
         /** is entry _id a global leader?*/
         if (_id == this->pregelId()) {
@@ -620,13 +620,13 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            DMIDValue const* ptr) const override {
     if (ptr->membershipDegree.size() > 0) {
-      std::vector<std::pair<PregelID, float>> communities;
-      for (std::pair<PregelID, float> pair : ptr->membershipDegree) {
+      std::vector<std::pair<VertexID, float>> communities;
+      for (std::pair<VertexID, float> pair : ptr->membershipDegree) {
         communities.push_back(pair);
       }
       std::sort(
           communities.begin(), communities.end(),
-          [ptr](std::pair<PregelID, float> a, std::pair<PregelID, float> b) {
+          [ptr](std::pair<VertexID, float> a, std::pair<VertexID, float> b) {
             return ptr->membershipDegree.at(a.first) >
                    ptr->membershipDegree.at(b.first);
           });
@@ -650,7 +650,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         b.close();
         /*unsigned i = _maxCommunities;
         b.add(_resultField, VPackValue(VPackValueType::Object));
-        for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+        for (std::pair<VertexID, float> const& pair : ptr->membershipDegree) {
           b.add(pair.first.key, VPackValue(pair.second));
           if (--i == 0) {
             break;
@@ -735,14 +735,14 @@ struct DMIDMasterContext : public MasterContext {
 
         LOG_TOPIC("db510", INFO, Logger::PREGEL)
             << "Aggregator DA at step: " << globalSuperstep();
-        convergedDA->forEach([&](PregelID const& _id, double entry) {
+        convergedDA->forEach([&](VertexID const& _id, double entry) {
           LOG_TOPIC("df98d", INFO, Logger::PREGEL) << _id.key;
         });
       }
       if (globalSuperstep() == RW_ITERATIONBOUND + 6) {
         VertexSumAggregator* leadershipVector =
             getAggregator<VertexSumAggregator>(LS_AGG);
-        leadershipVector->forEach([&](PregelID const& _id, double entry) {
+        leadershipVector->forEach([&](VertexID const& _id, double entry) {
           LOG_TOPIC("c82d2", INFO, Logger::PREGEL)
               << "Aggregator LS:" << _id.key;
         });
@@ -762,7 +762,7 @@ struct DMIDMasterContext : public MasterContext {
     double averageFD = 0.0;
     int numLocalLeader = 0;
     /** get averageFollower degree */
-    vecFD->forEach([&](PregelID const& _id, double entry) {
+    vecFD->forEach([&](VertexID const& _id, double entry) {
       averageFD += entry;
       if (entry != 0) {
         numLocalLeader++;
@@ -773,7 +773,7 @@ struct DMIDMasterContext : public MasterContext {
       averageFD = (double)averageFD / numLocalLeader;
     }
     /** set flag for globalLeader */
-    vecFD->forEach([&](PregelID const& _id, double entry) {
+    vecFD->forEach([&](VertexID const& _id, double entry) {
       if (entry > averageFD) {
         initGL->aggregate(_id.shard, _id.key, 1.0);
         LOG_TOPIC("a3665", INFO, Logger::PREGEL) << "Global Leader " << _id.key;
