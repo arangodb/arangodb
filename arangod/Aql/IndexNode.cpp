@@ -543,7 +543,7 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
-  if (_outSearchDocVar && _outSearchDocVar != _outVariable) {
+  if (_outSearchDocVar && _outSearchDocVar != _outNonMaterializedDocId) {
     vars.emplace_back(_outSearchDocVar);
   }
 

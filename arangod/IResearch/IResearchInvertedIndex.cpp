@@ -833,6 +833,14 @@ Result IResearchInvertedIndex::init(
                                errField, "': ", definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
+  {
+    _coveredFields = _meta._sort.fields();
+    for (auto const& column : _meta._storedValues.columns()) {
+      for (auto const& fields : column.fields) {
+        _coveredFields.push_back(fields.second);
+      }
+    }
+  }
   auto& cf =
       index().collection().vocbase().server().getFeature<ClusterFeature>();
   if (cf.isEnabled() && ServerState::instance()->isDBServer()) {
@@ -1004,21 +1012,21 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
       if (opts.numIndexesTotal > 1) {
-        return std::make_unique<IResearchInvertedIndexIterator<false>>(
+        return std::make_unique<IResearchInvertedIndexIterator<true>>(
             monitor, collection, &state, trx, node, &_meta, reference,
             mutableConditionIdx);
       } else {
-        return std::make_unique<IResearchInvertedIndexIterator<true>>(
+        return std::make_unique<IResearchInvertedIndexIterator<false>>(
             monitor, collection, &state, trx, node, &_meta, reference,
             mutableConditionIdx);
       }
     } else {
       if (opts.numIndexesTotal > 1) {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
+        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
             monitor, collection, &state, trx, node, &_meta, reference,
             mutableConditionIdx);
       } else {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
+        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
             monitor, collection, &state, trx, node, &_meta, reference,
             mutableConditionIdx);
       }
