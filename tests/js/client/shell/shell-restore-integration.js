@@ -37,7 +37,6 @@ const isCluster = require("internal").isCluster();
 const validatorJson = {
   "message": "",
   "level": "new",
-  "type": "json",
   "rule": {
     "additionalProperties": true,
     "properties": {
