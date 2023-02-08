@@ -1,6 +1,10 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* BTS-1193: Fix for schema update. When removing a field and then inserting a
+  new field into the schema, previously, both old and new schema would be
+  merged, meaning it would maintain the old field and add the new one.
+
 * BTS-266: When starting up a cluster without `--cluster.force-one-shard`,
   creating a database and then restarting the cluster with the startup option
   `--cluster.force-one-shard` set to true, when the formerly created database
