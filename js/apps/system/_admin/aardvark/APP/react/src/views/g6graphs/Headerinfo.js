@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dropdown, Space, Menu, Tag, PageHeader, Tabs, Button, Descriptions, Tooltip } from 'antd';
+import { Dropdown, Space, Menu, Tag, PageHeader, Button, Descriptions, Tooltip } from 'antd';
 import { RollbackOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
@@ -20,15 +20,16 @@ import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
+import VisGraphLayoutSelector from "./VisGraphLayoutSelector";
 import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
 import LoadingSpinner from './LoadingSpinner.js';
+import AccordionView from './components/Accordion/Accordion';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onVisGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const { TabPane } = Tabs;
 
   const enterFullscreen = (element) => {
     if(element.requestFullscreen) {
@@ -90,8 +91,111 @@ const screenshotMenu = (
   </Menu>
 );
 
+  const AccordionGraphContent = () => {
+    return (
+      <>
+        <ParameterNodeStart
+          nodes={graphData.nodes}
+          onNodeSelect={(node) => onDocumentSelect(node)}
+        />
+        <br />
+        <GraphLayoutSelector
+          onGraphLayoutChange={(layout) => {
+            onGraphLayoutChange(layout);
+          }}
+        />
+        <VisGraphLayoutSelector
+          onVisGraphLayoutChange={(layout) => {
+            console.log("VisGraphLayoutSelector recieved the layout: ", layout);
+            onVisGraphLayoutChange(layout);
+          }}
+        />
+        <ParameterDepth />
+        <ParameterLimit />
+      </>)
+  };
+
+  const AccordionNodesContent = () => {
+    return (
+      <>
+        <ParameterNodeLabel />
+        <br />
+        <ParameterNodeColor />
+        <br />
+        <ParameterNodeLabelByCollection graphData={graphData} />
+        <br />
+        <ParameterNodeColorByCollection />
+        <br />
+        <ParameterNodeColorAttribute nodesColorAttributes={nodesColorAttributes} />
+        <br />
+        <ParameterNodeSizeByEdges />
+        <br />
+        <ParameterNodeSize />
+      </>)
+  };
+
+  const AccordionEdgesContent = () => {
+    return (
+      <>
+        <ParameterEdgeLabel />
+        <br />
+        <ParameterEdgeColor />
+        <br />
+        <ParameterEdgeLabelByCollection />
+        <br />
+        <ParameterEdgeColorByCollection />
+        <br />
+        <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
+        <br />
+        <EdgeStyleSelector
+          onEdgeStyleChange={(typeModel) => {
+            onEdgeStyleChanged(typeModel);
+          }}
+        />
+      </>)
+  };
+
   return (
     <>
+      <div style={{ 'background': '#404a53' }}>
+        <div style={{ 'padding': '24px' }}>
+          <ButtonSave
+            graphName={graphName}
+            onGraphDataLoaded={(newGraphData, responseTimesObject) => {
+              onGraphDataLoaded(newGraphData, responseTimesObject)}
+            }
+            onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
+          />
+        </div>
+        <AccordionView
+          allowMultipleOpen
+          accordionConfig={[
+            {
+              index: 0,
+              content: <div><AccordionGraphContent /></div>,
+              label: "Graph",
+              testID: "accordionItem0",
+              defaultActive: true
+            },
+            {
+              index: 1,
+              content: (
+                <div><AccordionNodesContent /></div>
+              ),
+              label: "Nodes",
+              testID: "accordionItem1"
+            },
+            {
+              index: 2,
+              content: (
+                <div><AccordionEdgesContent /></div>
+              ),
+              label: "Edges",
+              testID: "accordionItem2"
+            }
+          ]}
+        />
+      </div>
       <HelpModal
         shouldShow={showHelpModal}
         onRequestClose={() => {
@@ -139,100 +243,6 @@ const screenshotMenu = (
           </>
         ]}
         ghost={false}
-        footer={
-          <Tabs defaultActiveKey="1" type="card" size="small" tabBarExtraContent={menuActionButtons}>
-            <TabPane
-              tab={
-                <span style={{ 'color': '#2ecc71' }}>
-                  <ShareAltOutlined />
-                  Graph
-                </span>
-              }
-              key="1"
-            >
-              <ParameterNodeStart
-                nodes={graphData.nodes}
-                onNodeSelect={(node) => onDocumentSelect(node)}
-              />
-              <br />
-              <GraphLayoutSelector
-                onGraphLayoutChange={(layout) => {
-                  onGraphLayoutChange(layout);
-                }}
-              />
-              <ParameterDepth />
-              <ParameterLimit />
-            </TabPane>
-            <TabPane
-              tab={
-                <span style={{ 'color': '#2ecc71' }}>
-                  <NodeExpandOutlined />
-                  Nodes
-                </span>
-              }
-              key="2"
-            >
-              <ParameterNodeLabel />
-              <br />
-              <ParameterNodeColor />
-              <br />
-              <ParameterNodeLabelByCollection graphData={graphData} />
-              <br />
-              <ParameterNodeColorByCollection />
-              <br />
-              <ParameterNodeColorAttribute nodesColorAttributes={nodesColorAttributes} />
-              <br />
-              <ParameterNodeSizeByEdges />
-              <br />
-              <ParameterNodeSize />
-            </TabPane>
-            <TabPane
-              tab={
-                <span style={{ 'color': '#2ecc71' }}>
-                  <NodeIndexOutlined />
-                  Edges
-                </span>
-              }
-              key="3"
-            >
-              <ParameterEdgeLabel />
-              <br />
-              <ParameterEdgeColor />
-              <br />
-              <ParameterEdgeLabelByCollection />
-              <br />
-              <ParameterEdgeColorByCollection />
-              <br />
-              <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
-              <br />
-              <EdgeStyleSelector
-                onEdgeStyleChange={(typeModel) => {
-                  onEdgeStyleChanged(typeModel);
-                }}
-              />
-            </TabPane>
-            <TabPane
-              tab={
-                <span style={{ 'color': '#2ecc71' }}>
-                  <SearchOutlined />
-                  Search
-                </span>
-              }
-              key="4"
-            >
-              <SearchNodes
-                nodes={graphData.nodes}
-                graphData={graphData}
-                onNodeSelect={(previousSearchedNode, node) => onNodeSearched(previousSearchedNode, node)}
-              />
-              <SearchEdges
-                edges={graphData.edges}
-                graphData={graphData}
-                onEdgeSelect={(previousSearchedEdge, edge) => onEdgeSearched(previousSearchedEdge, edge)}
-              />
-            </TabPane>
-          </Tabs>
-        }
       >
         <Content>{renderContent()}</Content>
       </PageHeader>
