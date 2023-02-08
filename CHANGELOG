@@ -1,3 +1,12 @@
+v3.9.9 (XXXX-XX-XX)
+-------------------
+
+* Made all transactions used by the gharial API on coordinators marked
+  "globally managed". This fixes an issue where transaction conflicts
+  could lead to a silent out of sync situation between a leader shard
+  and its followers.
+
+
 v3.9.8 (2023-01-23)
 -------------------
 
