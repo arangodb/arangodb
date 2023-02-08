@@ -106,37 +106,37 @@ auto DocumentFollowerState::applyEntries(
                   std::make_shared<velocypack::Builder>(doc.data.slice());
               auto const& collectionId = data.core->getCollectionId();
               auto res = self->_shardHandler->createLocalShard(
-                  self->shardId, collectionId, collectionProperties);
+                  doc.shardId, collectionId, collectionProperties);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
-                    << "Failed to create shard " << self->shardId
-                    << " of collection " << self->shardId
+                    << "Failed to create shard " << doc.shardId
+                    << " of collection " << collectionId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("d82d5", TRACE, self->loggerContext)
-                  << "Created local shard " << self->shardId
-                  << " of collection " << collectionId;
+                  << "Created local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = data.core->getCollectionId();
-              auto res = self->_shardHandler->dropLocalShard(self->shardId,
+              auto res = self->_shardHandler->dropLocalShard(doc.shardId,
                                                              collectionId);
               if (res.fail()) {
                 LOG_CTX("8c7a0", FATAL, self->loggerContext)
-                    << "Failed to drop shard " << self->shardId
+                    << "Failed to drop shard " << doc.shardId
                     << " of collection " << collectionId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("cdc44", TRACE, self->loggerContext)
-                  << "Dropped local shard " << self->shardId
-                  << " of collection " << collectionId;
+                  << "Dropped local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else {
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
                 LOG_CTX("1b08f", FATAL, self->loggerContext)
                     << "Failed to apply entry " << entry->first
-                    << " to local shard " << self->shardId
+                    << " to local shard " << doc.shardId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
