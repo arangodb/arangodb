@@ -43,18 +43,3 @@ void MeasureTimeGuard::fire() {
 }
 
 MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
-
-GaugeScopedCounter::GaugeScopedCounter(
-    metrics::Gauge<std::uint64_t>& metric) noexcept
-    : _metric(&metric) {
-  _metric->fetch_add(1);
-}
-
-GaugeScopedCounter::~GaugeScopedCounter() { fire(); }
-
-void GaugeScopedCounter::fire() noexcept {
-  if (_metric != nullptr) {
-    _metric->fetch_sub(1);
-    _metric.reset();
-  }
-}

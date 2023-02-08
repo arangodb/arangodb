@@ -47,22 +47,32 @@ struct MeasureTimeGuard {
       _histogram;
 };
 
+template<typename N>
 struct GaugeScopedCounter {
-  explicit GaugeScopedCounter(metrics::Gauge<std::uint64_t>&) noexcept;
+  explicit GaugeScopedCounter(metrics::Gauge<N>& metric) noexcept
+      : _metric(&metric) {
+    _metric->fetch_add(1);
+  }
+
   GaugeScopedCounter(GaugeScopedCounter const&) = delete;
   GaugeScopedCounter(GaugeScopedCounter&&) noexcept = default;
   GaugeScopedCounter& operator=(GaugeScopedCounter const&) = delete;
   GaugeScopedCounter& operator=(GaugeScopedCounter&&) noexcept = default;
-  ~GaugeScopedCounter();
+  ~GaugeScopedCounter() { fire(); }
 
-  void fire() noexcept;
+  void fire() noexcept {
+    if (_metric != nullptr) {
+      _metric->fetch_sub(1);
+      _metric.reset();
+    }
+  }
 
  private:
   struct noop {
     template<typename T>
     void operator()(T*) {}
   };
-  std::unique_ptr<metrics::Gauge<std::uint64_t>, noop> _metric;
+  std::unique_ptr<metrics::Gauge<N>, noop> _metric;
 };
 
 }  // namespace arangodb::replication2
