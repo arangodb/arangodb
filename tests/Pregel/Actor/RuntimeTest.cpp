@@ -59,7 +59,7 @@ class ActorRuntimeTest : public testing::Test {
   }
 
   std::shared_ptr<T> scheduler;
-  size_t number_of_threads = 5;
+  size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
 TYPED_TEST_SUITE(ActorRuntimeTest, SchedulerTypes);
@@ -266,7 +266,8 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
                     FinishingActor::Message{FinishingFinish{}});
 
   this->scheduler->stop();
-  ASSERT_TRUE(runtime->actors.find(finishing_actor)->get()->finishedAndIdle());
+  ASSERT_TRUE(
+      runtime->actors.find(finishing_actor)->get()->isFinishedAndIdle());
 }
 
 TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
@@ -346,4 +347,38 @@ TYPED_TEST(ActorRuntimeTest,
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
+}
+
+TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<ThreadPoolScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<Runtime<ThreadPoolScheduler, EmptyExternalDispatcher>>(
+          serverID, "RuntimeTest", scheduler, dispatcher);
+  scheduler->start(128);
+  size_t actor_count = 128;
+
+  for (size_t i = 0; i < actor_count; i++) {
+    runtime->template spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  }
+
+  // send from actor i to actor i+1 a message with content i
+  for (size_t i = 0; i < actor_count; i++) {
+    runtime->dispatch(
+        ActorPID{.server = serverID, .id = ActorID{(i + 1) % actor_count}},
+        ActorPID{.server = serverID, .id = ActorID{i}},
+        TrivialActor::Message{TrivialMessage{std::to_string(i)}});
+  }
+
+  // wait for actor to work off all messages
+  while (not runtime->areAllActorsIdle()) {
+  }
+
+  scheduler->stop();
+  ASSERT_EQ(runtime->actors.size(), actor_count);
+  for (size_t i = 0; i < actor_count; i++) {
+    ASSERT_EQ(runtime->template getActorStateByID<TrivialActor>(ActorID{i}),
+              (TrivialState{.state = std::to_string(i), .called = 2}));
+  }
 }

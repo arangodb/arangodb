@@ -29,13 +29,12 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include "CrashHandler/CrashHandler.h"
-#include "Assertions/ProdAssert.h"
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Actor/Actor.h"
 #include "Actor/ActorList.h"
 #include "Actor/ActorPID.h"
+#include "Actor/Assert.h"
 
 namespace arangodb::pregel::actor {
 
@@ -90,8 +89,8 @@ struct Runtime
     if (actorBase.has_value()) {
       auto* actor =
           dynamic_cast<Actor<Runtime, ActorConfig>*>(actorBase->get());
-      if (actor != nullptr && actor->state != nullptr) {
-        return *actor->state;
+      if (actor != nullptr) {
+        return actor->getState();
       }
     }
     return std::nullopt;
@@ -116,7 +115,7 @@ struct Runtime
     } else {
       auto error = ActorError{ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
-      ADB_PROD_ASSERT(payload.ok());
+      ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
     }
   }
@@ -134,7 +133,7 @@ struct Runtime
   // TODO call this function regularly
   auto garbageCollect() {
     actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-      return actor->finishedAndIdle();
+      return actor->isFinishedAndIdle();
     });
   }
 
@@ -184,7 +183,7 @@ struct Runtime
   auto dispatchExternally(ActorPID sender, ActorPID receiver,
                           ActorMessage const& message) -> void {
     auto payload = inspection::serializeWithErrorT(message);
-    ADB_PROD_ASSERT(payload.ok());
+    ACTOR_ASSERT(payload.ok());
     (*externalDispatcher)(sender, receiver, payload.get());
   }
 };

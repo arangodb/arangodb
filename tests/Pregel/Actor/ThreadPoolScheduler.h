@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <vector>
 #include <thread>
 #include <functional>
 
-struct ThreadPoolScheduler {
+struct ThreadPoolScheduler : std::enable_shared_from_this<ThreadPoolScheduler> {
  private:
   std::vector<std::thread> threads;
   std::queue<std::function<void()>> jobs;
@@ -41,8 +42,9 @@ struct ThreadPoolScheduler {
       std::function<void()> job;
       {
         std::unique_lock lock(queue_mutex);
-        mutex_condition.wait(
-            lock, [this] { return !jobs.empty() || should_terminate; });
+        mutex_condition.wait(lock, [self = this->shared_from_this()] {
+          return !self->jobs.empty() || self->should_terminate;
+        });
         // all jobs need to be completed before thread ends loop execution
         if (should_terminate && jobs.empty()) {
           return;
@@ -58,7 +60,8 @@ struct ThreadPoolScheduler {
   auto start(size_t number_of_threads) -> void {
     threads.resize(number_of_threads);
     for (size_t i = 0; i < number_of_threads; i++) {
-      threads[i] = std::thread([this]() { loop(); });
+      threads[i] =
+          std::thread([self = this->shared_from_this()]() { self->loop(); });
     }
   }
 

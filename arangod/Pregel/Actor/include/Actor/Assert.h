@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -19,26 +19,17 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Markus Pfeiffer
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/ActorPID.h"
-#include "Actor/Message.h"
-
-namespace arangodb::pregel::actor {
-
-struct ActorBase {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
-      -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish() -> void = 0;
-  virtual auto isFinishedAndIdle() -> bool = 0;
-  virtual auto isIdle() -> bool = 0;
-};
-
-}  // namespace arangodb::pregel::actor
+#ifdef STANDALONE
+#define ACTOR_ASSERT(expr) \
+  if (not expr) {          \
+    std::abort();          \
+  }
+#else
+#include "CrashHandler/CrashHandler.h"
+#include "Assertions/ProdAssert.h"
+#define ACTOR_ASSERT(expr) ADB_PROD_ASSERT(expr);
+#endif

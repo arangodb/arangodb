@@ -33,7 +33,7 @@ struct ActorID {
 
   auto operator<=>(ActorID const& other) const = default;
 };
-template<class Inspector>
+template<typename Inspector>
 auto inspect(Inspector& f, ActorID& x) {
   if constexpr (Inspector::isLoading) {
     auto v = size_t{0};

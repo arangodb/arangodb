@@ -24,13 +24,15 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <type_traits>
 
-#include "ActorBase.h"
-#include "HandlerBase.h"
-#include "Message.h"
-#include "MPSCQueue.h"
+#include "Actor/ActorBase.h"
+#include "Actor/Assert.h"
+#include "Actor/HandlerBase.h"
+#include "Actor/Message.h"
+#include "Actor/MPSCQueue.h"
 
 namespace arangodb::pregel::actor {
 
@@ -115,13 +117,13 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
       auto error =
           ActorError{UnknownMessage{.sender = sender, .receiver = pid}};
       auto payload = inspection::serializeWithErrorT(error);
-      ADB_PROD_ASSERT(payload.ok());
+      ACTOR_ASSERT(payload.ok());
       runtime->dispatch(pid, sender, payload.get());
     }
   }
 
   auto finish() -> void override { finished.store(true); }
-  auto finishedAndIdle() -> bool override {
+  auto isFinishedAndIdle() -> bool override {
     return finished.load() and idle.load();
   }
 
@@ -129,8 +131,16 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   auto serialize() -> velocypack::SharedSlice override {
     auto res = inspection::serializeWithErrorT(*this);
-    ADB_PROD_ASSERT(res.ok());
+    ACTOR_ASSERT(res.ok());
     return res.get();
+  }
+
+  auto getState() -> std::optional<typename Config::State> {
+    auto s = state.get();
+    if (s == nullptr) {
+      return std::nullopt;
+    }
+    return *s;
   }
 
   template<typename R, typename C, typename Inspector>
@@ -232,8 +242,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   std::shared_ptr<Runtime> runtime;
   // tunable parameter: maximal number of processed messages per work() call
   std::size_t batchSize{16};
-
- public:
   std::unique_ptr<typename Config::State> state;
 };
 

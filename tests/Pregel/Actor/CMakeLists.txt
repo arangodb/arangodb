@@ -7,7 +7,7 @@ add_library(arango_tests_actor OBJECT
 target_include_directories(arango_tests_actor PRIVATE
   ${PROJECT_SOURCE_DIR}/lib)
 target_link_libraries(arango_tests_actor PRIVATE
-  arango_actor
+  arango_actor_standalone
   gtest
   velocypack_utils)
 

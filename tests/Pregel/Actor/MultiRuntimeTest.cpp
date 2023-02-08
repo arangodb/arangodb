@@ -50,7 +50,6 @@ struct MockExternalDispatcher {
       : runtimes(runtimes) {}
   auto operator()(ActorPID sender, ActorPID receiver,
                   arangodb::velocypack::SharedSlice msg) -> void {
-    // a timeout error would go here
     auto receiving_runtime = runtimes.find(receiver.server);
     if (receiving_runtime != std::end(runtimes)) {
       receiving_runtime->second->receive(sender, receiver, msg);
@@ -79,7 +78,7 @@ class ActorMultiRuntimeTest : public testing::Test {
   };
 
   std::shared_ptr<T> scheduler;
-  size_t number_of_threads = 5;
+  size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
 TYPED_TEST_SUITE(ActorMultiRuntimeTest, SchedulerTypes);

@@ -58,7 +58,7 @@ class ActorTest : public testing::Test {
   }
 
   std::shared_ptr<T> scheduler;
-  size_t number_of_threads = 5;
+  size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
 TYPED_TEST_SUITE(ActorTest, SchedulerTypes);
@@ -94,11 +94,11 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(*actor->state, (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(actor->getState(), (TrivialState{.state = "", .called = 0}));
 
   auto message = MessagePayload<TrivialMessages>(TrivialMessage{"Hello"});
   actor->process(ActorPID{.server = "A", .id = {5}}, message);
-  ASSERT_EQ(*actor->state, (TrivialState{.state = "Hello", .called = 1}));
+  ASSERT_EQ(actor->getState(), (TrivialState{.state = "Hello", .called = 1}));
 }
 
 TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
@@ -109,13 +109,13 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(*actor->state, (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(actor->getState(), (TrivialState{.state = "", .called = 0}));
 
   auto message = TrivialMessages{TrivialMessage{"Hello"}};
   actor->process(ActorPID{.server = "A", .id = {5}},
                  arangodb::inspection::serializeWithErrorT(message).get());
 
-  ASSERT_EQ(*actor->state, (TrivialState{.state = "Hello", .called = 1}));
+  ASSERT_EQ(actor->getState(), (TrivialState{.state = "Hello", .called = 1}));
 }
 
 TEST(ActorTest, sets_itself_to_finish) {
@@ -126,11 +126,11 @@ TEST(ActorTest, sets_itself_to_finish) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_FALSE(actor->finishedAndIdle());
+  ASSERT_FALSE(actor->isFinishedAndIdle());
 
   actor->finish();
 
-  ASSERT_TRUE(actor->finishedAndIdle());
+  ASSERT_TRUE(actor->isFinishedAndIdle());
 }
 
 TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
@@ -150,7 +150,7 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
 
   this->scheduler->stop();
   // actor did not receive message
-  ASSERT_EQ(*actor->state, (TrivialState{}));
+  ASSERT_EQ(actor->getState(), (TrivialState{}));
 }
 
 TYPED_TEST(ActorTest, finished_actor_works_on_all_remaining_messages_in_queue) {
@@ -177,7 +177,7 @@ TYPED_TEST(ActorTest, finished_actor_works_on_all_remaining_messages_in_queue) {
   while (not actor->isIdle()) {
   }
   this->scheduler->stop();
-  ASSERT_EQ(*actor->state,
+  ASSERT_EQ(actor->getState(),
             (TrivialState{.state = std::string(sent_message_count, 'A'),
                           .called = sent_message_count}));
 }
