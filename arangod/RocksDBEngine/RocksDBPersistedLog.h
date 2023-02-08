@@ -122,9 +122,9 @@ struct WriteBatchSizeScale {
     return {scale_t::kSupplySmallestBucket, 2, 0, 1024, 16};
   }
 };
-DECLARE_GAUGE(arangodb_replication2_rocksdb_num_persistor_worker, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_rocksdb_num_persistor_worker, std::size_t,
               "Number of threads running in the log persistor");
-DECLARE_GAUGE(arangodb_replication2_rocksdb_queue_length, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_rocksdb_queue_length, std::size_t,
               "Number of replicated log storage operations queued");
 DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_batch_size,
                   WriteBatchSizeScale,
