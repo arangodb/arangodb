@@ -1,9 +1,10 @@
 devel
 -----
 
-* Made all transactions used by the gharial API on coordinators "El Cheapo".
-  This fixes an issue where transaction conflicts could lead to a silent
-  out of sync situation between a leader shard and its followers.
+* Made all transactions used by the gharial API on coordinators marked
+  "globally managed". This fixes an issue where transaction conflicts
+  could lead to a silent out of sync situation between a leader shard
+  and its followers.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
