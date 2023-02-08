@@ -5,6 +5,19 @@ v3.10.4 (XXXX-XX-XX)
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
 
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
+* Set the cache_oblivious option of jemalloc to `false` by default. This helps
+  to save 4096 bytes of RAM for every allocation which is at least 16384 bytes
+  large. This is particularly beneficial for the RocksDB buffer cache.
+
+* Added startup option `--javascript.user-defined-functions`.
+  This option controls whether JavaScript user-defined functions (UDFs) can be
+  used in AQL queries. The option defaults to `true`. The option can be set to
+  `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
 * Allowing enabling/disabling supervision maintenance mode also via followers in
   active failover mode. Previously the supervision maintenance mode could only
   be enabled/disabled by making a call to the active failover leader.
