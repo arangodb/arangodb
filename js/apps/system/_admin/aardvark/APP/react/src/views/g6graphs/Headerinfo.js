@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Dropdown, Space, Menu, Tag, PageHeader, Button, Descriptions, Tooltip } from 'antd';
-import { RollbackOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
+import ToolTip from '../../components/arango/tootip';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
@@ -25,6 +24,7 @@ import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
 import LoadingSpinner from './LoadingSpinner.js';
 import AccordionView from './components/Accordion/Accordion';
+import { IconButton } from "../../components/arango/buttons";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onVisGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
@@ -43,53 +43,11 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
 
   const renderContent = (column = 2) => (
     <>
-      <Descriptions size="small" column={column}>
-        <Descriptions.Item label="Response time">
-          <span>{responseDuration}</span>ms
-        </Descriptions.Item>
-      </Descriptions>
-      <Tag color="cyan">{graphData.nodes.length} nodes</Tag>
-      <Tag color="magenta">{graphData.edges.length} edges</Tag>
+      Response time: <span>{responseDuration}</span>ms<br />
+      {graphData.nodes.length} nodes (to be Tags)<br />
+      {graphData.edges.length} edges (to be Tags)
     </>
   );
-
-  const Content = ({ children, extra }) => (
-    <div className="content">
-      <div className="main">{children}</div>
-      <div className="extra">{extra}</div>
-    </div>
-  );
-
-  const menuActionButtons = <>
-    <Space>
-      <ButtonSave
-        graphName={graphName}
-        onGraphDataLoaded={(newGraphData, responseTimesObject) => {
-          onGraphDataLoaded(newGraphData, responseTimesObject)}
-        }
-        onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
-      />
-    </Space>
-  </>;
-
-const screenshotMenu = (
-  <Menu className='graphReactViewContainer'>
-    <Tooltip placement="left" title={"Screenshot of the visible graph"} overlayClassName='graph-border-box' >
-      <Menu.Item onClick={() => {
-        onDownloadScreenshot();
-      }} className='graphReactViewContainer'>
-        Download visible graph
-      </Menu.Item>
-    </Tooltip>
-    <Tooltip placement="left" title={"Screenshot of the full graph"} overlayClassName='graph-border-box' >
-      <Menu.Item onClick={() => {
-        onDownloadFullScreenshot();
-      }} className='graphReactViewContainer'>
-        Download full graph
-      </Menu.Item>
-    </Tooltip>
-  </Menu>
-);
 
   const AccordionGraphContent = () => {
     return (
@@ -203,49 +161,52 @@ const screenshotMenu = (
         }}
       >
       </HelpModal>
-      <PageHeader
-        id="headerinfo"
-        className="site-page-header-responsive"
-        onBack={() => window.history.back()}
-        title={graphName}
-        subTitle=""
-        extra={[
-          <>
-            <Dropdown overlayClassName='graphReactViewContainer screenshot-button' overlay={screenshotMenu} placement="bottomRight">
-              <Button key="2"><DownloadOutlined /></Button>
-            </Dropdown>
+      <div id="page-header-temp">
+        <h2>{graphName}</h2>
+        <IconButton icon={'plus-circle'} onClick={() => console.log("clicked")} style={{
+          background: 'transparent',
+          border: '1px solid #333',
+          //color: 'white',
+          paddingLeft: 0,
+          paddingTop: 0
+        }}><i class="fa fa-download" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
+        </IconButton>
 
-            <Tooltip placement="left" title={"Enter full screen"} overlayClassName='graph-border-box' >
-              <Button key="3"
-                onClick={() => {
-                  const elem = document.getElementById("graph-card");
-                  enterFullscreen(elem);
-                  }}>
-                    <FullscreenOutlined />
-              </Button>
-            </Tooltip>
+        <ToolTip
+          title={"Enter full screen"}
+          setArrow={true}
+        >
+          <button
+            onClick={() => {
+              const elem = document.getElementById("graph-card");
+              enterFullscreen(elem);
+            }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
+          </button>
+        </ToolTip>
 
-            <Tooltip placement="left" title={"Switch to the old graph viewer"} overlayClassName='graph-border-box' >
-              <Button key="4"
-                onClick={() => {
-                  window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
-                }}><RollbackOutlined />
-              </Button>
-            </Tooltip>
+        <ToolTip
+          title={"Switch to the old graph viewer"}
+          setArrow={true}
+        >
+          <button
+            onClick={() => {
+              window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+            }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
+          </button>
+        </ToolTip>
 
-            <Tooltip placement="left" title={"Get instructions and support on how to use the graph viewer"} overlayClassName='graph-border-box' >
-              <Button key="5"
-                onClick={() => {
-                  setShowHelpModal(true);
-                }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
-              </Button>
-            </Tooltip>
-          </>
-        ]}
-        ghost={false}
-      >
-        <Content>{renderContent()}</Content>
-      </PageHeader>
+        <ToolTip
+          title={"Get instructions and support on how to use the graph viewer"}
+          setArrow={true}
+        >
+          <button
+            onClick={() => {
+              setShowHelpModal(true);
+            }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
+          </button>
+        </ToolTip>
+        <div id="content">{renderContent()}</div>
+      </div>
       {isLoadingData ? <LoadingSpinner /> : null}
     </>
   );
