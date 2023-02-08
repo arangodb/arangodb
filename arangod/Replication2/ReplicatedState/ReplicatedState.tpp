@@ -1045,8 +1045,9 @@ auto ReplicatedState<S>::createStateHandle(
       return manager.updateCommitIndex(index);
     }
     void dropEntries() override { return manager.dropEntries(); }
-    [[nodiscard]] auto getQuickStatus() const
-        -> replicated_log::LocalStateMachineStatus override {
+    // MSVC chokes on trailing return type notation here
+    [[nodiscard]] replicated_log::LocalStateMachineStatus getQuickStatus()
+        const override {
       return manager.getQuickStatus();
     }
 
