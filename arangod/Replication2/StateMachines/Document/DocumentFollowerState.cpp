@@ -115,8 +115,8 @@ auto DocumentFollowerState::applyEntries(
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("d82d5", TRACE, self->loggerContext)
-                  << "Created local shard " << doc.shardId
-                  << " of collection " << collectionId;
+                  << "Created local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = data.core->getCollectionId();
               auto res = self->_shardHandler->dropLocalShard(doc.shardId,
@@ -129,8 +129,8 @@ auto DocumentFollowerState::applyEntries(
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("cdc44", TRACE, self->loggerContext)
-                  << "Dropped local shard " << doc.shardId
-                  << " of collection " << collectionId;
+                  << "Dropped local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else {
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
