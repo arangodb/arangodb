@@ -1060,14 +1060,12 @@ void HeartbeatThread::runSingleServer() {
         }
 
         LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
-            << "Starting replication from " << endpoint;
+            << "starting replication initial sync from leader " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._jwt = af->tokenCache().jwtToken();
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT)
-            << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         config._idleMinWaitTime = 250 * 1000;       // 250ms
@@ -1380,13 +1378,18 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
+      CreateDatabaseInfo info(server(), ExecContext::current());
+      // set strict validation for database options to false.
+      // we don't want the heartbeat thread to fail here in case some
+      // invalid settings are present
+      info.strictValidation(false);
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
       if (infoResult.fail()) {
         LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
-            << "In agency database plan" << infoResult.errorMessage();
+            << "in agency database plan for database " << options.value.toJson()
+            << ": " << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
 

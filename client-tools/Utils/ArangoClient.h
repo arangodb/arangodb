@@ -51,7 +51,7 @@ class ArangoGlobalContext;
 using namespace application_features;
 
 template<typename... T>
-using ArangoClientFeatures = TypeList<
+using ArangoClientFeaturesList = TypeList<
     // Phases
     CommunicationFeaturePhase, GreetingsFeaturePhase,
     // Features

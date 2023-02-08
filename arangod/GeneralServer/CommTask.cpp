@@ -257,6 +257,7 @@ CommTask::Flow CommTask::prepareExecution(
       // the following paths are allowed on followers
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
+          !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
@@ -544,6 +545,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();

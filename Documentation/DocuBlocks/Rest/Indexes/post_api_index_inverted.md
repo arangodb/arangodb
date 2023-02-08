@@ -25,7 +25,7 @@ attribute path in the `name` property), or a mix of both.
 
 @RESTSTRUCT{name,post_api_index_inverted_fields,string,required,}
 An attribute path. The `.` character denotes sub-attributes.
-You can expand one array with `[*]`.
+You can expand one array attribute with `[*]`.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_fields,string,optional,}
 The name of an Analyzer to use for this field.
@@ -84,6 +84,17 @@ all elements are searched for a match.
 
 Default: the value defined by the top-level `trackListPositions` option.
 
+@RESTSTRUCT{cache,post_api_index_inverted_fields,boolean,optional,}
+Enable this option to always cache the field normalization values in memory
+for this specific field. This can improve the performance of scoring and
+ranking queries.
+
+Normalization values are computed for fields which are processed with Analyzers
+that have the `"norm"` feature enabled. These values are used to score fairer if
+the same tokens occur repeatedly, to emphasize these documents less.
+
+Default: the value defined by the top-level `cache` option.
+
 @RESTSTRUCT{nested,post_api_index_inverted_fields,array,optional,post_api_index_inverted_nested}
 Index the specified sub-objects that are stored in an array. Other than with the
 `fields` property, the values get indexed in a way that lets you query for
@@ -126,6 +137,13 @@ You cannot use an array expansion if `searchField` is enabled.
 
 Default: the value defined by the top-level `searchField` option.
 
+@RESTSTRUCT{cache,post_api_index_inverted_nested,boolean,optional,}
+Enable this option to always cache the field normalization values in memory
+for this specific nested field. This can improve the performance of scoring and
+ranking queries.
+
+Default: the value defined by the top-level `cache` option.
+
 @RESTSTRUCT{nested,post_api_index_inverted_nested,array,optional,object}
 You can recursively index sub-objects. See the above description of the
 `nested` option.
@@ -145,11 +163,43 @@ You cannot use an array expansion if `searchField` is enabled.
 
 Default: `false`
 
+@RESTBODYPARAM{cache,boolean,optional,}
+Enable this option to always cache the field normalization values in memory
+for all fields by default. This can improve the performance of scoring and
+ranking queries.
+
+Normalization values are computed for fields which are processed with Analyzers
+that have the `"norm"` feature enabled. These values are used to score fairer if
+the same tokens occur repeatedly, to emphasize these documents less.
+
+Default: `false`
+
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
-The optional `storedValues` attribute can contain an array of paths to additional 
-attributes to store in the index. These additional attributes cannot be used for
-index lookups or for sorting, but they can be used for projections. This allows an
-index to fully cover more queries and avoid extra document lookups.
+The optional `storedValues` attribute can contain an array of objects with paths
+to additional attributes to store in the index. These additional attributes
+cannot be used for index lookups or for sorting, but they can be used for
+projections. This allows an index to fully cover more queries and avoid extra
+document lookups.
+
+You may use the following shorthand notations on index creation instead of
+an array of objects. The default compression and cache settings are used in
+this case:
+
+- An array of strings, like `["attr1", "attr2"]`, to place each attribute into
+  a separate column of the index (introduced in v3.10.3).
+
+- An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
+  attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
+  to place each attribute into a separate column. You can also mix it with the
+  the full form:
+  
+  ```json
+  [
+    ["attr1"],
+    ["attr2", "attr3"],
+    { "fields": ["attr4", "attr5"], "cache": true }
+  ]
+  ```
 
 @RESTSTRUCT{fields,post_api_index_inverted_storedvalues,array,required,string}
 A list of attribute paths. The `.` character denotes sub-attributes.
@@ -158,6 +208,12 @@ A list of attribute paths. The `.` character denotes sub-attributes.
 Defines how to compress the attribute values. Possible values:
 - `"lz4"` (default): use LZ4 fast compression.
 - `"none"`: disable compression to trade space for speed.
+
+@RESTSTRUCT{cache,post_api_index_inverted_storedvalues,boolean,optional,}
+Enable this option to always cache stored values in memory. This can improve the
+query performance if stored values are involved.
+
+Default: `false`
 
 @RESTBODYPARAM{primarySort,object,optional,post_api_index_inverted_primarysort}
 You can define a primary sort order to enable an AQL optimization. If a query
@@ -180,6 +236,18 @@ The sorting direction. Possible values:
 Defines how to compress the primary sort data. Possible values:
 - `"lz4"` (default): use LZ4 fast compression.
 - `"none"`: disable compression to trade space for speed.
+
+@RESTSTRUCT{cache,post_api_index_inverted_primarysort,boolean,optional,}
+Enable this option to always cache the primary sort columns in memory. This can
+improve the performance of queries that utilize the primary sort order.
+
+Default: `false`
+
+@RESTBODYPARAM{primaryKeyCache,boolean,optional,}
+Enable this option to always cache the primary key column in memory. This can
+improve the performance of queries that return many documents.
+
+Default: `false`
 
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the

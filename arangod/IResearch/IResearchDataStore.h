@@ -65,37 +65,22 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   LinkLock _linkLock;  // should be first field to destroy last
   irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
+  bool _wasCommit = false;
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
       : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
-    if (_removals.empty()) {
-      return;  // nothing to do
+    if (!_wasCommit) {
+      _removals.clear();
+      _ctx.reset();
     }
-    try {
-      // hold references even after transaction
-      auto filter =
-          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
-      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
-    } catch (std::exception const& e) {
-      LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals: "
-          << e.what();
-    } catch (...) {
-      LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals";
-    }
+    TRI_ASSERT(_removals.empty());
   }
 
   void remove(StorageEngine& engine, LocalDocumentId const& value,
               bool nested) {
     _ctx.remove(_removals.emplace(engine, value, nested));
-  }
-
-  void reset() noexcept {
-    _removals.clear();
-    _ctx.reset();
   }
 };
 
@@ -169,6 +154,7 @@ class IResearchDataStore {
   /// @note arangodb::Index override
   //////////////////////////////////////////////////////////////////////////////
   LogicalCollection& collection() const noexcept { return _collection; }
+  StorageEngine* engine() const noexcept { return _engine; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
 
@@ -201,12 +187,19 @@ class IResearchDataStore {
   [[nodiscard]] virtual AnalyzerPool::ptr findAnalyzer(
       AnalyzerPool const& analyzer) const = 0;
 
+  auto recoveryTickHigh() const noexcept {
+    return _dataStore._recoveryTickHigh;
+  }
+
+  bool exists(Snapshot const& snapshot, LocalDocumentId documentId, bool nested,
+              uint64_t const* recoveryTick) const;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested);
+                bool nested, uint64_t const* recoveryTick);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -215,7 +208,8 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   template<typename FieldIteratorType, typename MetaType>
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc, MetaType const& meta);
+                velocypack::Slice doc, MetaType const& meta,
+                uint64_t const* recoveryTick);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties
@@ -303,7 +297,8 @@ class IResearchDataStore {
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
-    TRI_voc_tick_t _recoveryTick{0};
+    uint64_t _recoveryTickLow{0};
+    uint64_t _recoveryTickHigh{0};
     // data store is in recovery
     std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
@@ -378,7 +373,8 @@ class IResearchDataStore {
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -446,7 +442,7 @@ class IResearchDataStore {
 
   virtual irs::comparer const* getComparator() const noexcept = 0;
 
-  StorageEngine* _engine;
+  StorageEngine* _engine{nullptr};
 
   // the feature where async jobs were registered (nullptr == no jobs
   // registered)
@@ -467,33 +463,47 @@ class IResearchDataStore {
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
-  // protected by _commitMutex
-  TRI_voc_tick_t _lastCommittedTick;
-  size_t _cleanupIntervalCount;
-
   bool _hasNestedFields{false};
+
+  // protected by _commitMutex
+  bool _commitStageOne{false};
+  uint64_t _lastCommittedTickOne{0};
+  uint64_t _lastCommittedTickTwo{0};
+
+  size_t _cleanupIntervalCount{0};
 
   // prevents data store sequential commits
   std::mutex _commitMutex;
 
+  irs::format::ptr _format;
+
   // for insert(...)/remove(...)
-  std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;
+  TransactionState::BeforeCommitCallback _beforeCommitCallback;
+  TransactionState::AfterCommitCallback _afterCommitCallback;
 
-  metrics::Gauge<uint64_t>* _numFailedCommits;
-  metrics::Gauge<uint64_t>* _numFailedCleanups;
-  metrics::Gauge<uint64_t>* _numFailedConsolidations;
+  metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
+  metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
+  metrics::Gauge<uint64_t>* _numFailedConsolidations{nullptr};
 
-  std::atomic_uint64_t _commitTimeNum;
-  metrics::Gauge<uint64_t>* _avgCommitTimeMs;
+  std::atomic_uint64_t _commitTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
-  std::atomic_uint64_t _cleanupTimeNum;
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  std::atomic_uint64_t _cleanupTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
-  std::atomic_uint64_t _consolidationTimeNum;
-  metrics::Gauge<uint64_t>* _avgConsolidationTimeMs;
+  std::atomic_uint64_t _consolidationTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
 
-  metrics::Guard<Stats>* _metricStats;
+  metrics::Guard<Stats>* _metricStats{nullptr};
+
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+  // auxiliary tools to test fail-cases with transactions commit order
+  std::mutex _t3FailureSync;
+  std::vector<uint64_t> _t3Candidates;
+  uint64_t _t3PreCommit{0};
+  uint64_t _t3NumFlushRegistered{0};
+  bool _t3CommitSignal{false};
+#endif
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

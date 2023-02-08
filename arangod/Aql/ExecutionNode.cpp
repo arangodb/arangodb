@@ -1778,9 +1778,13 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  auto const estimatedNrItems =
+  auto estimatedNrItems =
       collection()->count(&trx, transaction::CountType::TryCache);
-  if (!doCount()) {
+  if (_random) {
+    // we retrieve at most one random document from the collection.
+    // so the estimate is at most 1
+    estimatedNrItems = 1;
+  } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
     estimate.estimatedNrItems *= estimatedNrItems;
@@ -2073,7 +2077,7 @@ void CalculationNode::doToVelocyPack(VPackBuilder& nodes,
                 nodes.add(
                     "cacheable",
                     VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-                nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+                nodes.add("usesV8", VPackValue(node->willUseV8()));
                 // deprecated
                 nodes.add("canRunOnDBServer",
                           VPackValue(func->hasFlag(

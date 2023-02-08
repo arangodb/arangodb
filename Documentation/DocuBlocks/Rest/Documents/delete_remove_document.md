@@ -6,7 +6,7 @@
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-Name of the *collection* in which the document is to be deleted.
+Name of the `collection` in which the document is to be deleted.
 
 @RESTURLPARAM{key,string,required}
 The document key.
@@ -18,55 +18,61 @@ Wait until deletion operation has been synced to disk.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Return additionally the complete previous revision of the changed
-document under the attribute *old* in the result.
+document under the attribute `old` in the result.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data
-will be returned for the removed document. This option can be used to
-save some network traffic.
+If set to `true`, an empty object is returned as response if the document operation
+succeeds. No meta-data is returned for the deleted document. If the
+operation raises an error, an error object is returned.
+
+You can use this option to save network traffic.
+
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete an existing entry from the in-memory edge cache and refill it
+with another edge if an edge document is removed.
 
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}
 You can conditionally remove a document based on a target revision id by
-using the *if-match* HTTP header.
+using the `if-match` HTTP header.
 
 @RESTDESCRIPTION
-If *silent* is not set to *true*, the body of the response contains a JSON
+If `silent` is not set to `true`, the body of the response contains a JSON
 object with the information about the identifier and the revision. The attribute
-*_id* contains the known *document-id* of the removed document, *_key*
+`_id` contains the known *document ID* of the removed document, `_key`
 contains the key which uniquely identifies a document in a given collection,
-and the attribute *_rev* contains the document revision.
+and the attribute `_rev` contains the document revision.
 
-If the *waitForSync* parameter is not specified or set to *false*,
-then the collection's default *waitForSync* behavior is applied.
-The *waitForSync* query parameter cannot be used to disable
-synchronization for collections that have a default *waitForSync*
-value of *true*.
+If the `waitForSync` parameter is not specified or set to `false`,
+then the collection's default `waitForSync` behavior is applied.
+The `waitForSync` query parameter cannot be used to disable
+synchronization for collections that have a default `waitForSync`
+value of `true`.
 
-If the query parameter *returnOld* is *true*, then
+If the query parameter `returnOld` is `true`, then
 the complete previous revision of the document
-is returned under the *old* attribute in the result.
+is returned under the `old` attribute in the result.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
 is returned if the document was removed successfully and
-*waitForSync* was *true*.
+`waitForSync` was `true`.
 
 @RESTRETURNCODE{202}
 is returned if the document was removed successfully and
-*waitForSync* was *false*.
+`waitForSync` was `false`.
 
 @RESTRETURNCODE{404}
 is returned if the collection or the document was not found.
 The response body contains an error document in this case.
 
 @RESTRETURNCODE{412}
-is returned if a "If-Match" header or *rev* is given and the found
-document has a different version. The response will also contain the found
-document's current revision in the *_rev* attribute. Additionally, the
-attributes *_id* and *_key* will be returned.
+is returned if a "If-Match" header or `rev` is given and the found
+document has a different version. The response also contain the found
+document's current revision in the `_rev` attribute. Additionally, the
+attributes `_id` and `_key` are returned.
 
 @EXAMPLES
 

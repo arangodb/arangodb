@@ -125,7 +125,7 @@ struct Collections {
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props,
+                                 velocypack::Slice props,
                                  OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,

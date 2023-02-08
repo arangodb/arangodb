@@ -488,8 +488,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
 
   auto colGuard = scopeGuard([&]() noexcept { vocbase.release(); });
 
-  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
-
   RocksDBBuilderIndex::Locker locker(this);
   if (!locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
@@ -498,7 +496,58 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
   auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
 
-  // Step 1. Create new index object
+  {
+    // Step 1. Check for existing matching index
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
+    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
+      // We already have this index.
+      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        // special handling for TTL indexes
+        // if there is exactly the same index present, we return it
+        if (!existingIdx->matchesDefinition(info)) {
+          // if there is another TTL index already, we make things abort here
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "there can only be one ttl index per collection");
+        }
+      }
+      // same index already exists. return it
+      created = false;
+      return existingIdx;
+    }
+
+    auto const id = helpers::extractId(info);
+    auto const name = helpers::extractName(info);
+
+    // check all existing indexes for id/new conflicts
+    for (auto const& other : _indexes) {
+      if (other->id() == id || other->name() == name) {
+        // definition shares an identifier with an existing index with a
+        // different definition
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        VPackBuilder builder;
+        other->toVelocyPack(
+            builder, static_cast<std::underlying_type<Index::Serialize>::type>(
+                         Index::Serialize::Basics));
+        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
+            << "attempted to create index '" << info.toJson()
+            << "' but found conflicting index '" << builder.slice().toJson()
+            << "'";
+#endif
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                       "duplicate value for `" +
+                                           StaticStrings::IndexId + "` or `" +
+                                           StaticStrings::IndexName + "`");
+      }
+    }
+  }
+
+  // TODO(MBkkt) it's probably needed here on step 2 before step 5,
+  //  because arangosearch links connected with views in prepareIndexFromSlice
+  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
+
+  // Step 2. Create new index object
   std::shared_ptr<Index> newIdx;
   try {
     newIdx = engine.indexFactory().prepareIndexFromSlice(
@@ -520,50 +569,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
       TRI_ASSERT(false);
     }
   });
-
-  {
-    // Step 2. Check for existing matching index
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-
-    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
-      // We already have this index.
-      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        // special handling for TTL indexes
-        // if there is exactly the same index present, we return it
-        if (!existingIdx->matchesDefinition(info)) {
-          // if there is another TTL index already, we make things abort here
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "there can only be one ttl index per collection");
-        }
-      }
-      // same index already exists. return it
-      created = false;
-      return existingIdx;
-    }
-
-    // check all existing indexes for id/new conflicts
-    for (auto const& other : _indexes) {
-      if (other->id() == newIdx->id() || other->name() == newIdx->name()) {
-        // definition shares an identifier with an existing index with a
-        // different definition
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        VPackBuilder builder;
-        other->toVelocyPack(
-            builder, static_cast<std::underlying_type<Index::Serialize>::type>(
-                         Index::Serialize::Basics));
-        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
-            << "attempted to create index '" << info.toJson()
-            << "' but found conflicting index '" << builder.slice().toJson()
-            << "'";
-#endif
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                       "duplicate value for `" +
-                                           StaticStrings::IndexId + "` or `" +
-                                           StaticStrings::IndexName + "`");
-      }
-    }
-  }
 
   // until here we have been completely read only.
   // modifications start now...
@@ -636,6 +641,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
     // always (re-)lock to avoid inconsistencies
     locker.lock();
 
+    syncIndexOnCreate(*newIdx);
+
     inventoryLocker.lock();
 
     // Step 5. register in index list
@@ -650,8 +657,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
-
-    syncIndexOnCreate(*newIdx);
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
@@ -1561,10 +1566,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
       if (res.fail()) {
         if (needReversal && !state->isSingleOperation()) {
-          ::reverseIdxOps(_indexes, it,
-                          [mthds, trx, &documentId, &doc](RocksDBIndex* rIdx) {
-                            return rIdx->remove(*trx, mthds, documentId, doc);
-                          });
+          ::reverseIdxOps(
+              _indexes, it,
+              [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rIdx) {
+                return rIdx->remove(*trx, mthds, documentId, doc, options);
+              });
         }
         break;
       }
@@ -1583,7 +1589,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId documentId,
                                          VPackSlice doc,
-                                         OperationOptions const& /*options*/,
+                                         OperationOptions const& options,
                                          RevisionId revisionId) const {
   savepoint.prepareOperation(revisionId);
 
@@ -1649,7 +1655,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       }
 
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-      res = rIdx->remove(*trx, mthds, documentId, doc);
+      res = rIdx->remove(*trx, mthds, documentId, doc, options);
       needReversal = needReversal || rIdx->needsReversal();
       if (res.fail()) {
         if (needReversal && !trx->isSingleOperationTransaction()) {

@@ -77,9 +77,11 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
+    applyBeforeCommitCallbacks();
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
+    applyAfterCommitCallbacks();
     return Result{};
   }
 
@@ -96,6 +98,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
       arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing
     return {};
+  }
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return 0;
   }
 
   [[nodiscard]] bool hasFailedOperations() const override { return false; }

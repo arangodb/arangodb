@@ -61,6 +61,8 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
+  RocksDBEngine/RocksDBIndexCacheRefillFeature.cpp
+  RocksDBEngine/RocksDBIndexCacheRefillThread.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBIterators.cpp
   RocksDBEngine/RocksDBKey.cpp

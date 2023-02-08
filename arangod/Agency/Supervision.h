@@ -52,7 +52,8 @@ struct check_t {
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
 void enforceReplicationFunctional(Node const& snapshot, uint64_t& jobId,
-                                  std::shared_ptr<VPackBuilder> envelope);
+                                  std::shared_ptr<VPackBuilder> envelope,
+                                  uint64_t delayAddFollower = 0);
 
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
@@ -118,6 +119,14 @@ class Supervision : public arangodb::Thread {
                                    std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
 
+  void setDelayAddFollower(uint64_t d) noexcept { _delayAddFollower = d; }
+
+  void setDelayFailedFollower(uint64_t d) noexcept { _delayFailedFollower = d; }
+
+  void setFailedLeaderAddsFollower(bool b) noexcept {
+    _failedLeaderAddsFollower = b;
+  }
+
   /// @brief notifies the supervision and triggers a new run
   void notify() noexcept;
 
@@ -145,6 +154,9 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
+
+  /// @brief Check undo-leader-change-actions
+  void checkUndoLeaderChangeActions();
 
   /// @brief Check for orphaned index creations, which have been successfully
   /// built
@@ -194,20 +206,8 @@ class Supervision : public arangodb::Thread {
   void enforceReplication();
 
  private:
-  /// @brief Move shard from one db server to other db server
-  bool moveShard(std::string const& from, std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool replicateShard(std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool removeShard(std::string const& from);
-
   /// @brief Check machines in agency
   std::vector<check_t> check(std::string const&);
-
-  // @brief Check shards in agency
-  std::vector<check_t> checkShards();
 
   /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
@@ -284,6 +284,9 @@ class Supervision : public arangodb::Thread {
   double _frequency;
   double _gracePeriod;
   double _okThreshold;
+  uint64_t _delayAddFollower;
+  uint64_t _delayFailedFollower;
+  bool _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;

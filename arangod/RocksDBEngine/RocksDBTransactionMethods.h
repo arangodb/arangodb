@@ -47,7 +47,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
  public:
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
       : _state(state) {}
-  virtual ~RocksDBTransactionMethods() = default;
+  ~RocksDBTransactionMethods() override = default;
 
   virtual Result beginTransaction() = 0;
 
@@ -75,6 +75,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual rocksdb::SequenceNumber GetSequenceNumber() const noexcept = 0;
 
   virtual bool hasOperations() const noexcept = 0;
+
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
 
   virtual uint64_t numOperations() const noexcept = 0;
 

@@ -780,12 +780,14 @@ const char* NODE_VIEW_META_STORED = "metaStored";
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort) {
   if (needSort) {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_SORT};
-    meta.primarySort.toVelocyPack(node);
+    VPackObjectBuilder objectScope{&node, NODE_VIEW_META_SORT};
+    [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
+    TRI_ASSERT(result);
   }
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
-    meta.storedValues.toVelocyPack(node);
+    [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
+    TRI_ASSERT(result);
   }
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
@@ -1752,9 +1754,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     if (options().forceSync &&
         trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot use waitForSync with "
-                                     "views and transactions");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "cannot use waitForSync with view and streaming or js transaction");
     }
 
     auto const viewName = this->view() ? this->view()->name() : "";
@@ -1911,7 +1913,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto reader = createSnapshot(engine);
-  if (reader->size() == 0) {
+  if (reader->live_docs_count() == 0) {
     return createNoResultsExecutor(engine);
   }
 
@@ -2155,6 +2157,10 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
     }
   }
   return uniqueVariables;
+}
+
+bool IResearchViewNode::isBuilding() const {
+  return _view && _view->isBuilding();
 }
 
 }  // namespace arangodb::iresearch

@@ -43,6 +43,30 @@ const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
   "id": "9999997",
   "isUnicode": true
 }, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
+const validatorJson = {
+  "message": "",
+  "level": "new",
+  "type": "json",
+  "rule": {
+    "additionalProperties": true,
+    "properties": {
+      "value1": {
+        "type": "integer"
+      },
+      "value2": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value1",
+      "value2"
+    ],
+    "type": "object"
+  }
+};
 
 function createCollectionFiles(path, cn) {
   let fn = fs.join(path, cn + ".structure.json");
@@ -83,7 +107,7 @@ function restoreIntegrationSuite() {
 
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
-  let addConnectionArgs = function(args) {
+  let addConnectionArgs = function (args) {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
@@ -95,7 +119,7 @@ function restoreIntegrationSuite() {
     args.push(arango.connectedUser());
   };
 
-  let runRestore = function(path, args, rc) {
+  let runRestore = function (path, args, rc) {
     args.push('--input-directory');
     args.push(path);
     addConnectionArgs(args);
@@ -107,11 +131,11 @@ function restoreIntegrationSuite() {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
       db._databases().forEach((database) => {
         if (database !== "_system") {
@@ -120,7 +144,7 @@ function restoreIntegrationSuite() {
       });
     },
 
-    testRestoreAutoIncrementKeyGenerator: function() {
+    testRestoreAutoIncrementKeyGenerator: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -164,7 +188,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestorePaddedKeyGenerator: function() {
+    testRestorePaddedKeyGenerator: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -204,7 +228,53 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithRepeatedDocuments: function() {
+    testRestoreWithSchema: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            schema: validatorJson,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 1000; ++i) {
+          data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc"}});
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0);
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(doc.value1, i);
+          assertEqual(doc.value2, "abc");
+        }
+        const colProperties = db[cn].properties();
+        assertTrue(colProperties.hasOwnProperty("schema"));
+        const schema = colProperties.schema;
+        assertEqual(schema, validatorJson);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
+    },
+
+    testRestoreWithRepeatedDocuments: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -246,7 +316,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreInsertRemove: function() {
+    testRestoreInsertRemove: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -303,7 +373,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithComputedValues: function() {
+    testRestoreWithComputedValues: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -336,7 +406,10 @@ function restoreIntegrationSuite() {
 
         let data = [];
         for (let i = 0; i < 1000; ++i) {
-          data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc", value3: i + "+abc", value4: "abc " + i}});
+          data.push({
+            type: 2300,
+            data: {_key: "test" + i, value1: i, value2: "abc", value3: i + "+abc", value4: "abc " + i}
+          });
         }
 
         fn = fs.join(path, cn + ".data.json");
@@ -363,7 +436,7 @@ function restoreIntegrationSuite() {
     },
 
 
-    testRestoreWithLineBreaksInData: function() {
+    testRestoreWithLineBreaksInData: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -403,7 +476,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithEnvelopesWithDumpJsonFile: function() {
+    testRestoreWithEnvelopesWithDumpJsonFile: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -448,7 +521,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithEnvelopesNoDumpJsonFile: function() {
+    testRestoreWithEnvelopesNoDumpJsonFile: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -488,7 +561,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithAllDatabasesUnicodeNoCollections: function() {
+    testRestoreWithAllDatabasesUnicodeNoCollections: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let args = ['--all-databases', 'true', '--create-database', 'true'];
@@ -522,7 +595,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithSomeAlreadyExistingDatabasesUnicodeNoCollections: function() {
+    testRestoreWithSomeAlreadyExistingDatabasesUnicodeNoCollections: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let args = ['--all-databases', 'true', '--create-database', 'true'];
@@ -560,7 +633,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreCollectionDatabasesUnicode: function() {
+    testRestoreCollectionDatabasesUnicode: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       try {
@@ -591,7 +664,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreCollectionWithAllDatabasesUnicode: function() {
+    testRestoreCollectionWithAllDatabasesUnicode: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       try {
@@ -624,7 +697,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithoutEnvelopesWithDumpJsonFile: function() {
+    testRestoreWithoutEnvelopesWithDumpJsonFile: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -669,7 +742,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithoutEnvelopesNoDumpJsonFile: function() {
+    testRestoreWithoutEnvelopesNoDumpJsonFile: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -709,7 +782,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithoutUsesRevisions: function() {
+    testRestoreWithoutUsesRevisions: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -738,7 +811,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithUsesRevisionsFalse: function() {
+    testRestoreWithUsesRevisionsFalse: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -768,7 +841,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreWithUsesRevisionsTrue: function() {
+    testRestoreWithUsesRevisionsTrue: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -798,7 +871,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreNumericGloballyUniqueId: function() {
+    testRestoreNumericGloballyUniqueId: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -827,7 +900,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreIndexesOldFormat: function() {
+    testRestoreIndexesOldFormat: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -878,7 +951,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreIndexesOldFormatGeo1: function() {
+    testRestoreIndexesOldFormatGeo1: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -915,7 +988,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreIndexesOldFormatGeo2: function() {
+    testRestoreIndexesOldFormatGeo2: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -952,7 +1025,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreIndexesFulltextLengthZero: function() {
+    testRestoreIndexesFulltextLengthZero: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -989,7 +1062,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreIndexesNewFormat: function() {
+    testRestoreIndexesNewFormat: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1038,7 +1111,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEdgeIndexOldFormat: function() {
+    testRestoreEdgeIndexOldFormat: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1097,7 +1170,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEdgeIndexWrongCollectionType: function() {
+    testRestoreEdgeIndexWrongCollectionType: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1140,7 +1213,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEdgeIndexNewFormat: function() {
+    testRestoreEdgeIndexNewFormat: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1190,7 +1263,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreRegressionDistributeShardsLike: function() {
+    testRestoreRegressionDistributeShardsLike: function () {
       const collectionsJson = [
         {"parameters": {"name": "Comment_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
         {"parameters": {"name": "Comment_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
@@ -1251,7 +1324,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEnableRevisionTreesTrue: function() {
+    testRestoreEnableRevisionTreesTrue: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1280,7 +1353,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEnableRevisionTreesFalse1: function() {
+    testRestoreEnableRevisionTreesFalse1: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1310,7 +1383,7 @@ function restoreIntegrationSuite() {
       }
     },
 
-    testRestoreEnableRevisionTreesFalse2: function() {
+    testRestoreEnableRevisionTreesFalse2: function () {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);

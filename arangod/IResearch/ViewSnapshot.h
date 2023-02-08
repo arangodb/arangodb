@@ -54,7 +54,9 @@ class ViewSnapshot : public irs::index_reader {
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
 
-  bool hasNestedFields() const noexcept { return _hasNestedFields; }
+  [[nodiscard]] bool hasNestedFields() const noexcept {
+    return _hasNestedFields;
+  }
 
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
     return _live_docs_count;

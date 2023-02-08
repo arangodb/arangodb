@@ -615,6 +615,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _resultBuilder.clear();
       _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
     }
+
+    if (_resetInternals) {
+      _iterator.reset();
+    }
   }
 
  private:
@@ -904,6 +908,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             }
             options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
           });
+      TRI_ASSERT(_mustSeek);
     }
 
     TRI_ASSERT(_iterator != nullptr);
@@ -1727,7 +1732,8 @@ Result RocksDBVPackIndex::update(
 Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice doc) {
+                                 velocypack::Slice doc,
+                                 OperationOptions const& /*options*/) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
@@ -2027,11 +2033,15 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     VPackSlice expandedSlice = expandedSearchValues->slice();
 
     VPackArrayIterator values(expandedSlice);
+    VPackValueLength numIterators = expandedSlice.length();
     std::vector<std::unique_ptr<IndexIterator>> iterators;
-    iterators.reserve(values.size());
+    iterators.reserve(numIterators);
     for (VPackSlice val : values) {
       iterators.emplace_back(
           buildIterator(trx, val, opts, readOwnWrites, format));
+      if (numIterators >= 50) {
+        iterators.back()->setResetInternals();
+      }
     }
 
     if (!opts.ascending) {

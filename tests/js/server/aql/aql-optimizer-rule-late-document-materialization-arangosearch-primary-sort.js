@@ -35,16 +35,27 @@ const base = require("fs").join(require('internal').pathForTesting('server'),
 const ArangoResearchLateMaterializationTestSuite = require("internal").load(base);
 const isCluster = require("internal").isCluster();
 
-function lateDocumentMaterializationArangoSearchPrimarySortRuleTestSuite () {
+function lateDocumentMaterializationArangoSearchPrimarySortRuleTestSuite() {
   let suite = {};
   deriveTestSuite(
-    ArangoResearchLateMaterializationTestSuite(isCluster, "UnitTestsDB", {}),
+    ArangoResearchLateMaterializationTestSuite(false, isCluster, "UnitTestsDB", {}),
     suite,
-    "_NonOneShard"
+    "_arangosearch_NonOneShard"
+  );
+  return suite;
+}
+
+function lateDocumentMaterializationSearchAliasPrimarySortRuleTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    ArangoResearchLateMaterializationTestSuite(true, isCluster, "UnitTestsDB", {}),
+    suite,
+    "_search-alias_NonOneShard"
   );
   return suite;
 }
 
 jsunity.run(lateDocumentMaterializationArangoSearchPrimarySortRuleTestSuite);
+jsunity.run(lateDocumentMaterializationSearchAliasPrimarySortRuleTestSuite);
 
 return jsunity.done();

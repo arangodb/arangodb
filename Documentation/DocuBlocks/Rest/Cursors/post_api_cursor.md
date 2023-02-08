@@ -83,7 +83,7 @@ that read data which are known to be outside of the hot set. By setting the opti
 to *false*, data read by the query will not make it into the RocksDB block cache if
 not already in there, thus leaving more room for the actual hot set.
 
-@RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
+@RESTSTRUCT{maxNumberOfPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
 @RESTSTRUCT{maxNodesPerCallstack,post_api_cursor_opts,integer,optional,int64}
@@ -140,6 +140,45 @@ stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
 will fail before it returns results in case of a conflict.
 
+@RESTSTRUCT{spillOverThresholdMemoryUsage,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the amount of memory used (in bytes) exceeds the specified value.
+This is used for decreasing the memory usage during the query execution.
+
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: 128MB.
+
+**Note**:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
+
+@RESTSTRUCT{spillOverThresholdNumRows,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the number of rows produced by the query exceeds the specified value.
+This is used for decreasing the memory usage during the query execution. In a
+query that iterates over a collection that contains documents, each row is a
+document, and in a query that iterates over temporary values 
+(i.e. `FOR i IN 1..100`), each row is one of such temporary values.
+
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: `5000000` rows.
+
+**Note**:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
+
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
 
@@ -150,35 +189,54 @@ a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. Ther
 also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTSTRUCT{profile,post_api_cursor_opts,integer,optional,}
-If set to *true* or *1*, then the additional query profiling information will be returned
-in the sub-attribute *profile* of the *extra* return attribute, if the query result
-is not served from the query cache. Set to *2* the query will include execution stats
-per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
-Additionally the query plan is returned in the sub-attribute *extra.plan*.
+If set to `true` or `1`, then the additional query profiling information is returned
+in the `profile` sub-attribute of the `extra` return attribute, unless the query result
+is served from the query cache. If set to `2`, the query includes execution stats
+per query plan node in `stats.nodes` sub-attribute of the `extra` return attribute.
+Additionally, the query plan is returned in the `extra.plan` sub-attribute.
 
 @RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,number,optional,double}
-This *Enterprise Edition* parameter allows to configure how long a DB-Server will have time
+This *Enterprise Edition* parameter allows to configure how long a DB-Server has time
 to bring the SatelliteCollections involved in the query into sync.
-The default value is *60.0* (seconds). When the max time has been reached the query
-will be stopped.
+The default value is `60.0` seconds. When the maximal time is reached, the query
+is stopped.
 
 @RESTSTRUCT{maxRuntime,post_api_cursor_opts,number,optional,double}
-The query has to be executed within the given runtime or it will be killed.
-The value is specified in seconds. The default value is *0.0* (no timeout).
+The query has to be executed within the given runtime or it is killed.
+The value is specified in seconds. The default value is `0.0` (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
-Transaction size limit in bytes.
+The transaction size limit in bytes.
 
 @RESTSTRUCT{intermediateCommitSize,post_api_cursor_opts,integer,optional,int64}
-Maximum total size of operations after which an intermediate commit is performed
+The maximum total size of operations after which an intermediate commit is performed
 automatically.
 
 @RESTSTRUCT{intermediateCommitCount,post_api_cursor_opts,integer,optional,int64}
-Maximum number of operations after which an intermediate commit is performed
+The maximum number of operations after which an intermediate commit is performed
 automatically.
 
 @RESTSTRUCT{skipInaccessibleCollections,post_api_cursor_opts,boolean,optional,}
-AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
+Let AQL queries (especially graph traversals) treat collection to which a user
+has no access rights for as if these collections are empty. Instead of returning a
+forbidden access error, your queries execute normally. This is intended to help
+with certain use-cases: A graph contains several collections and different users
+execute AQL queries on that graph. You can naturally limit the accessible
+results by changing the access rights of users on collections.
+
+This feature is only available in the Enterprise Edition.
+
+@RESTSTRUCT{allowDirtyReads,post_api_cursor_opts,boolean,optional,}
+If you set this option to `true` and execute the query against a cluster
+deployment, then the Coordinator is allowed to read from any shard replica and
+not only from the leader.
+
+You may observe data inconsistencies (dirty reads) when reading from followers,
+namely obsolete revisions of documents because changes have not yet been
+replicated to the follower, as well as changes to documents before they are
+officially committed on the leader.
+
+This feature is only available in the Enterprise Edition.
 
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
@@ -191,87 +249,102 @@ the body of the POST request.
 is returned if the result set can be created by the server.
 
 @RESTREPLYBODY{error,boolean,required,}
-A flag to indicate that an error occurred (*false* in this case)
+A flag to indicate that an error occurred (`false` in this case).
 
 @RESTREPLYBODY{code,integer,required,integer}
-the HTTP status code
+The HTTP status code.
 
 @RESTREPLYBODY{result,array,optional,}
-an array of result documents (might be empty if query has no results)
+An array of result documents (might be empty if query has no results).
 
 @RESTREPLYBODY{hasMore,boolean,required,}
 A boolean indicator whether there are more results
-available for the cursor on the server
+available for the cursor on the server.
 
 @RESTREPLYBODY{count,integer,optional,int64}
-the total number of result documents available (only
-available if the query was executed with the *count* attribute set)
+The total number of result documents available (only
+available if the query was executed with the `count` attribute set).
 
-@RESTREPLYBODY{id,string,required,string}
-id of temporary cursor created on the server (optional, see above)
+@RESTREPLYBODY{id,string,optional,string}
+The ID of a temporary cursor created on the server for fetching more result batches.
 
 @RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
 An optional JSON object with extra information about the query result.
 
+@RESTSTRUCT{warnings,post_api_cursor_extra,array,required,post_api_cursor_extra_warnings}
+A list of query warnings.
+
+@RESTSTRUCT{code,post_api_cursor_extra_warnings,integer,required,}
+An error code.
+
+@RESTSTRUCT{message,post_api_cursor_extra_warnings,string,required,}
+A description of the problem.
+
 @RESTSTRUCT{stats,post_api_cursor_extra,object,required,post_api_cursor_extra_stats}
 An object with query statistics.
 
-@RESTSTRUCT{writesExecuted,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{writesExecuted,post_api_cursor_extra_stats,integer,required,}
 The total number of data-modification operations successfully executed.
 
-@RESTSTRUCT{writesIgnored,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{writesIgnored,post_api_cursor_extra_stats,integer,required,}
 The total number of data-modification operations that were unsuccessful,
-but have been ignored because of query option `ignoreErrors`.
+but have been ignored because of the `ignoreErrors` query option.
 
-@RESTSTRUCT{scannedFull,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{scannedFull,post_api_cursor_extra_stats,integer,required,}
 The total number of documents iterated over when scanning a collection 
-without an index. Documents scanned by subqueries will be included in the result, but
-operations triggered by built-in or user-defined AQL functions will not.
+without an index. Documents scanned by subqueries are included in the result, but
+operations triggered by built-in or user-defined AQL functions are not.
 
-@RESTSTRUCT{scannedIndex,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{scannedIndex,post_api_cursor_extra_stats,integer,required,}
 The total number of documents iterated over when scanning a collection using
-an index. Documents scanned by subqueries will be included in the result, but operations
-triggered by built-in or user-defined AQL functions will not.
+an index. Documents scanned by subqueries are included in the result, but operations
+triggered by built-in or user-defined AQL functions are not.
 
-@RESTSTRUCT{cursorsCreated,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{cursorsCreated,post_api_cursor_extra_stats,integer,required,}
 The total number of cursor objects created during query execution. Cursor
 objects are created for index lookups.
 
-@RESTSTRUCT{cursorsRearmed,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{cursorsRearmed,post_api_cursor_extra_stats,integer,required,}
 The total number of times an existing cursor object was repurposed.
 Repurposing an existing cursor object is normally more efficient compared to destroying an
 existing cursor object and creating a new one from scratch.
 
-@RESTSTRUCT{cacheHits,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{cacheHits,post_api_cursor_extra_stats,integer,required,}
 The total number of index entries read from in-memory caches for indexes
-of type edge or persistent. This value will only be non-zero when reading from indexes
+of type edge or persistent. This value is only non-zero when reading from indexes
 that have an in-memory cache enabled, and when the query allows using the in-memory
 cache (i.e. using equality lookups on all index attributes).
 
-@RESTSTRUCT{cacheMisses,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{cacheMisses,post_api_cursor_extra_stats,integer,required,}
 The total number of cache read attempts for index entries that could not
-be served from in-memory caches for indexes of type edge or persistent. This value will
-only be non-zero when reading from indexes that have an in-memory cache enabled, the
+be served from in-memory caches for indexes of type edge or persistent. This value
+is only non-zero when reading from indexes that have an in-memory cache enabled, the
 query allows using the in-memory cache (i.e. using equality lookups on all index attributes)
 and the looked up values are not present in the cache.
 
-@RESTSTRUCT{filtered,post_api_cursor_extra_stats,number,required,}
-The total number of documents that were removed after executing a filter condition
-in a `FilterNode` or another node that post-filters data. 
-Note that `IndexNode`s can also filter documents by selecting only the required index range 
+@RESTSTRUCT{filtered,post_api_cursor_extra_stats,integer,required,}
+The total number of documents removed after executing a filter condition
+in a `FilterNode` or another node that post-filters data. Note that nodes of the
+`IndexNode` type can also filter documents by selecting only the required index range 
 from a collection, and the `filtered` value only indicates how much filtering was done by a
-post filter in the `IndexNode` itself or following `FilterNode`s. 
-`EnumerateCollectionNode`s and `TraversalNode`s can also apply filter conditions and can
-reported the number of filtered documents.
+post filter in the `IndexNode` itself or following `FilterNode` nodes.
+Nodes of the `EnumerateCollectionNode` and `TraversalNode` types can also apply
+filter conditions and can report the number of filtered documents.
 
-@RESTSTRUCT{fullCount,post_api_cursor_extra_stats,number,optional,}
+@RESTSTRUCT{httpRequests,post_api_cursor_extra_stats,integer,required,}
+The total number of cluster-internal HTTP requests performed.
+
+@RESTSTRUCT{fullCount,post_api_cursor_extra_stats,integer,optional,}
 The total number of documents that matched the search condition if the query's
-final top-level `LIMIT` statement were not present.
+final top-level `LIMIT` operation were not present.
 This attribute may only be returned if the `fullCount` option was set when starting the 
-query and will only contain a sensible value if the query contained a `LIMIT` operation on
+query and only contains a sensible value if the query contains a `LIMIT` operation on
 the top level.
 
-@RESTSTRUCT{peakMemoryUsage,post_api_cursor_extra_stats,number,required,}
+@RESTSTRUCT{executionTime,post_api_cursor_extra_stats,number,required,}
+The query execution time (wall-clock time) in seconds.
+
+@RESTSTRUCT{peakMemoryUsage,post_api_cursor_extra_stats,integer,required,}
 The maximum memory usage of the query while it was running. In a cluster,
 the memory accounting is done per shard, and the memory usage reported is the peak
 memory usage value from the individual shards.
@@ -280,19 +353,74 @@ high level, not including any memory allocator overhead nor any memory used for 
 results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
 calls).
 
-@RESTSTRUCT{nodes,post_api_cursor_extra_stats,number,optional,}
-When the query was executed with the `profile` option set to at least `2`,
-then this value contains runtime statistics per query execution node. This field contains the
-node id (in `id`), the number of calls to this node (`calls`), and the number of items returned
-by this node (`items`). Items are the temporary results returned at this stage. You can correlate
-this statistics with the `plan` returned in `extra`. For a human readable output you can execute
+@RESTSTRUCT{nodes,post_api_cursor_extra_stats,array,optional,post_api_cursor_extra_stats_nodes}
+When the query is executed with the `profile` option set to at least `2`,
+then this attribute contains runtime statistics per query execution node.
+For a human readable output, you can execute
 `db._profileQuery(<query>, <bind-vars>)` in arangosh.
 
+@RESTSTRUCT{id,post_api_cursor_extra_stats_nodes,integer,required,}
+The execution node ID to correlate the statistics with the `plan` returned in
+the `extra` attribute.
+
+@RESTSTRUCT{calls,post_api_cursor_extra_stats_nodes,integer,required,}
+The number of calls to this node.
+
+@RESTSTRUCT{items,post_api_cursor_extra_stats_nodes,integer,required,}
+The number of items returned by this node. Items are the temporary results
+returned at this stage.
+
+@RESTSTRUCT{runtime,post_api_cursor_extra_stats_nodes,number,required,}
+The execution time of this node in seconds.
+
+@RESTSTRUCT{profile,post_api_cursor_extra,object,optional,post_api_cursor_extra_profile}
+The duration of the different query execution phases in seconds.
+
+@RESTSTRUCT{initializing,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{parsing,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{optimizing ast,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{loading collections,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{instantiating plan,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{optimizing plan,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{executing,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{finalizing,post_api_cursor_extra_profile,number,required,}
+
+@RESTSTRUCT{plan,post_api_cursor_extra,object,optional,post_api_cursor_extra_plan}
+The execution plan.
+
+@RESTSTRUCT{nodes,post_api_cursor_extra_plan,array,required,object}
+A nested list of the execution plan nodes.
+
+@RESTSTRUCT{rules,post_api_cursor_extra_plan,array,required,string}
+A list with the names of the applied optimizer rules.
+
+@RESTSTRUCT{collections,post_api_cursor_extra_plan,array,required,post_api_cursor_extra_plan_collections}
+A list of the collections involved in the query. The list only includes the
+collections that can statically be determined at query compile time.
+
+@RESTSTRUCT{name,post_api_cursor_extra_plan_collections,string,required,}
+The collection name.
+
+@RESTSTRUCT{type,post_api_cursor_extra_plan_collections,string,required,}
+How the collection is used. Can be `"read"`, `"write"`, or `"exclusive"`.
+
+@RESTSTRUCT{variables,post_api_cursor_extra_plan,array,required,object}
+All of the query variables, including user-created and internal ones.
+
+@RESTSTRUCT{estimatedCost,post_api_cursor_extra_plan,integer,required,}
+The estimated cost of the query.
+
+@RESTSTRUCT{estimatedNrItems,post_api_cursor_extra_plan,integer,required,}
+The estimated number of results.
+
+@RESTSTRUCT{isModificationQuery,post_api_cursor_extra_plan,boolean,required,}
+Whether the query contains write operations.
+
 @RESTREPLYBODY{cached,boolean,required,}
-a boolean flag indicating whether the query result was served
+A boolean flag indicating whether the query result was served
 from the query cache or not. If the query result is served from the query
-cache, the *extra* return attribute will not contain any *stats* sub-attribute
-and no *profile* sub-attribute.
+cache, the `extra` return attribute will not contain any `stats` sub-attribute
+and no `profile` sub-attribute.
 
 @RESTRETURNCODE{400}
 is returned if the JSON representation is malformed or the query specification is

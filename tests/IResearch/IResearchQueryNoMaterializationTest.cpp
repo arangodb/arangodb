@@ -21,27 +21,188 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <velocypack/Iterator.h>
+
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "IResearchQueryCommon.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Iterator.h>
-
+namespace arangodb::tests {
 namespace {
 
-static const char* collectionName1 = "collection_1";
-static const char* collectionName2 = "collection_2";
+class QueryTestMulti
+    : public ::testing::TestWithParam<
+          std::tuple<arangodb::ViewType, arangodb::iresearch::LinkVersion>>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
+ private:
+  TRI_vocbase_t* _vocbase{nullptr};
 
-static const char* viewName = "view";
+ protected:
+  arangodb::tests::mocks::MockAqlServer server;
 
-class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
+  virtual arangodb::ViewType type() const { return std::get<0>(GetParam()); }
+
+  QueryTestMulti() : server{false} {
+    arangodb::tests::init(true);
+
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.startFeatures();
+
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
+
+    std::shared_ptr<arangodb::LogicalCollection> unused;
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(
+        *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
+    unused = nullptr;
+
+    auto res = analyzers.emplace(
+        result, "testVocbase::test_analyzer", "TestAnalyzer",
+        VPackParser::fromJson("\"abc\"")->slice(),
+        arangodb::iresearch::Features(
+            {}, irs::IndexFeatures::FREQ |
+                    irs::IndexFeatures::POS));  // required for PHRASE
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
+        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result, "testVocbase::text_en", "text",
+        VPackParser::fromJson(
+            "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
+            ->slice(),
+        arangodb::iresearch::Features{
+            arangodb::iresearch::FieldFeatures::NORM,
+            irs::IndexFeatures::FREQ |
+                irs::IndexFeatures::POS});  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    auto sysVocbase =
+        server.getFeature<arangodb::SystemDatabaseFeature>().use();
+    arangodb::methods::Collections::createSystem(
+        *sysVocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
+    unused = nullptr;
+
+    res =
+        analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
+                          VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::iresearch::Features{
+                              irs::IndexFeatures::FREQ |
+                              irs::IndexFeatures::POS});  // required for PHRASE
+
+    res = analyzers.emplace(
+        result, "_system::ngram_test_analyzer13", "ngram",
+        VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
+        arangodb::iresearch::Features{
+            irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS});  // required for PHRASE
+
+    res = analyzers.emplace(
+        result, "_system::ngram_test_analyzer2", "ngram",
+        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
+        arangodb::iresearch::Features{
+            irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS});  // required for PHRASE
+
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
+        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
+    // register fake non-deterministic function in order to suppress
+    // optimizations
+    functions.add(arangodb::aql::Function{
+        "_NONDETERM_", ".",
+        arangodb::aql::Function::makeFlags(
+            // fake non-deterministic
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
+           arangodb::aql::VPackFunctionParametersView params) {
+          TRI_ASSERT(!params.empty());
+          return params[0];
+        }});
+
+    // register fake non-deterministic function in order to suppress
+    // optimizations
+    functions.add(arangodb::aql::Function{
+        "_FORWARD_", ".",
+        arangodb::aql::Function::makeFlags(
+            // fake deterministic
+            arangodb::aql::Function::Flags::Deterministic,
+            arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
+           arangodb::aql::VPackFunctionParametersView params) {
+          TRI_ASSERT(!params.empty());
+          return params[0];
+        }});
+
+    // external function names must be registred in upper-case
+    // user defined functions have ':' in the external function name
+    // function arguments string format:
+    // requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
+    arangodb::aql::Function customScorer(
+        "CUSTOMSCORER", ".|+",
+        arangodb::aql::Function::makeFlags(
+            arangodb::aql::Function::Flags::Deterministic,
+            arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        nullptr);
+    arangodb::iresearch::addFunction(functions, customScorer);
+
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
+  }
+
+  TRI_vocbase_t& vocbase() {
+    TRI_ASSERT(_vocbase != nullptr);
+    return *_vocbase;
+  }
+
+  arangodb::iresearch::LinkVersion linkVersion() const noexcept {
+    return std::get<1>(GetParam());
+  }
+
+  arangodb::iresearch::LinkVersion version() const noexcept {
+    return std::get<1>(GetParam());
+  }
+};
+
+constexpr const char* collectionName1 = "collection_1";
+constexpr const char* collectionName2 = "collection_2";
+constexpr const char* viewName = "view";
+
+class QueryNoMaterialization : public QueryTestMulti {
  protected:
   void addLinkToCollection(
       std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
@@ -99,9 +260,34 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       logicalCollection2 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
+
+    auto createIndexes = [&](int index, std::string_view addition) {
+      bool created = false;
+      auto createJson = VPackParser::fromJson(absl::Substitute(
+          R"({ "name": "index_$0", "type": "inverted",
+               "version": $1, $2
+               "includeAllFields": true })",
+          index, version(), addition));
+      logicalCollection1->createIndex(createJson->slice(), created);
+      ASSERT_TRUE(created);
+      created = false;
+      logicalCollection2->createIndex(createJson->slice(), created);
+      ASSERT_TRUE(created);
+    };
+
+    auto addIndexes = [](auto& view, int index) {
+      auto const viewDefinition = absl::Substitute(R"({ "indexes": [
+        { "collection": "collection_1", "index": "index_$0"},
+        { "collection": "collection_2", "index": "index_$0"}
+      ]})",
+                                                   index);
+      auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
+      auto r = view.properties(updateJson->slice(), true, true);
+      EXPECT_TRUE(r.ok()) << r.errorMessage();
+    };
+
     // create view
-    std::shared_ptr<arangodb::iresearch::IResearchView> view;
-    {
+    if (type() == ViewType::kArangoSearch) {
       auto createJson =
           VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName +
                                 "\", \
@@ -109,16 +295,27 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}, {\"field\": \"boo\", \"direction\": \"desc\"}], \
            \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
         }");
-      view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+      auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
           vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view);
 
       // add links to collections
       addLinkToCollection(view);
+    } else {
+      auto createJson = VPackParser::fromJson(
+          "{\"name\": \"view\", \"type\": \"search-alias\" }");
+      auto view = std::dynamic_pointer_cast<iresearch::Search>(
+          vocbase().createView(createJson->slice(), false));
+      ASSERT_FALSE(!view);
+      createIndexes(1, R"("primarySort": {"fields": [
+                            {"field": "value", "direction": "asc"},
+                            {"field": "foo",   "direction": "desc"},
+                            {"field": "boo",   "direction": "desc"}]},
+                          "storedValues": [{"fields":["str"], "compression":"none"}, ["value"], ["_id"], ["str", "value"], ["exist"]],)");
+      addIndexes(*view, 1);
     }
-
-    std::shared_ptr<arangodb::iresearch::IResearchView> view2;
-    {
+    // create view2
+    if (type() == ViewType::kArangoSearch) {
       auto createJson =
           VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName +
                                 "2\", \
@@ -126,12 +323,24 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}], \
            \"storedValues\": [] \
         }");
-      view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice(), false));
+      auto view2 =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+              vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view2);
 
       // add links to collections
       addLinkToCollection(view2);
+    } else {
+      auto createJson = VPackParser::fromJson(
+          "{\"name\": \"view2\", \"type\": \"search-alias\" }");
+      auto view = std::dynamic_pointer_cast<iresearch::Search>(
+          vocbase().createView(createJson->slice(), false));
+      ASSERT_FALSE(!view);
+      createIndexes(
+          2,
+          R"("primarySort": {"fields": [{"field": "value", "direction": "asc"}]},
+                          "storedValues": [],)");
+      addIndexes(*view, 2);
     }
 
     // populate view with the data
@@ -191,26 +400,16 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       }
 
       EXPECT_TRUE(trx.commit().ok());
-
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
-                      *logicalCollection1, *view)
-                      ->commit()
-                      .ok());
-
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
-                      *logicalCollection2, *view)
-                      ->commit()
-                      .ok());
-
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
-                      *logicalCollection1, *view2)
-                      ->commit()
-                      .ok());
-
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
-                      *logicalCollection2, *view2)
-                      ->commit()
-                      .ok());
+      EXPECT_TRUE(
+          (arangodb::tests::executeQuery(vocbase(),
+                                         "FOR d IN view SEARCH 1 ==1 OPTIONS "
+                                         "{ waitForSync: true } RETURN d")
+               .result.ok()));  // commit
+      EXPECT_TRUE(
+          (arangodb::tests::executeQuery(vocbase(),
+                                         "FOR d IN view2 SEARCH 1 ==1 OPTIONS "
+                                         "{ waitForSync: true } RETURN d")
+               .result.ok()));  // commit
     }
   }
 
@@ -305,13 +504,11 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
   }
 };
 
-}  // namespace
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriority) {
+TEST_P(QueryNoMaterialization, sortColumnPriority) {
   auto const queryString =
       std::string("FOR d IN ") + viewName +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value RETURN d.value";
@@ -324,7 +521,7 @@ TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriority) {
       {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
+TEST_P(QueryNoMaterialization, sortColumnPriorityViewsSubquery) {
   // this checks proper stored variables buffer resizing uring optimization
   auto const queryString =
       std::string("FOR c IN ") + viewName +
@@ -362,7 +559,7 @@ TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
   EXPECT_EQ(expectedValue, expectedValues.end());
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
+TEST_P(QueryNoMaterialization, maxMatchColumnPriority) {
   auto const queryString = std::string("FOR d IN ") + viewName +
                            " FILTER d.str == 'cat' SORT d.value RETURN d.value";
 
@@ -373,7 +570,7 @@ TEST_P(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
   executeAndCheck(queryString, expectedValues, 1, {{3, 0}, {3, 1}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
+TEST_P(QueryNoMaterialization, sortAndStoredValues) {
   auto const queryString =
       std::string("FOR d IN ") + viewName + " SORT d._id RETURN d.foo";
 
@@ -387,7 +584,7 @@ TEST_P(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
       {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 1}, {2, 0}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, fieldExistence) {
+TEST_P(QueryNoMaterialization, fieldExistence) {
   auto const queryString =
       std::string("FOR d IN ") + viewName +
       " SEARCH EXISTS(d.exist) SORT d.value RETURN d.value";
@@ -400,7 +597,7 @@ TEST_P(IResearchQueryNoMaterializationTest, fieldExistence) {
       {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, storedFieldExistence) {
+TEST_P(QueryNoMaterialization, storedFieldExistence) {
   auto const queryString =
       std::string("FOR d IN ") + viewName +
       " SEARCH EXISTS(d.exist) SORT d.value RETURN d.exist";
@@ -414,7 +611,7 @@ TEST_P(IResearchQueryNoMaterializationTest, storedFieldExistence) {
       {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}, {4, 0}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, emptyField) {
+TEST_P(QueryNoMaterialization, emptyField) {
   auto const queryString = std::string("FOR d IN ") + viewName +
                            " SORT d.exist DESC LIMIT 1 RETURN d.exist";
 
@@ -423,7 +620,7 @@ TEST_P(IResearchQueryNoMaterializationTest, emptyField) {
   executeAndCheck(queryString, expectedValues, 1, {{4, 0}});
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
+TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"str\": \"abc\", \"value\": 10 }");
@@ -584,8 +781,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   }
 }
 
-TEST_P(IResearchQueryNoMaterializationTest,
-       testStoredValuesRecordWithCompression) {
+TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"str\": \"abc\", \"value\": 10 }");
@@ -746,7 +942,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
   }
 }
 
-TEST_P(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
+TEST_P(QueryNoMaterialization, matchSortButNotEnoughAttributes) {
   auto const queryString =
       std::string("FOR d IN ") + viewName +
       " SEARCH d.value IN [1, 2, 11, 12] FILTER d.boo == '12312' SORT d.boo "
@@ -777,5 +973,14 @@ TEST_P(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   EXPECT_TRUE(found);
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryNoMaterializationTest,
-                        IResearchQueryNoMaterializationTest, GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(
+    IResearch, QueryNoMaterialization,
+    testing::Values(std::tuple{ViewType::kArangoSearch,
+                               arangodb::iresearch::LinkVersion::MIN},
+                    std::tuple{ViewType::kArangoSearch,
+                               arangodb::iresearch::LinkVersion::MAX},
+                    std::tuple{ViewType::kSearchAlias,
+                               arangodb::iresearch::LinkVersion::MAX}));
+
+}  // namespace
+}  // namespace arangodb::tests

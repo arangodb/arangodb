@@ -40,6 +40,8 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <atomic>
+
 namespace arangodb::iresearch {
 
 class IResearchView;
@@ -157,19 +159,19 @@ class IResearchLink : public IResearchDataStore {
   /// this call, false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
-  /// params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
-
   std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
   std::string getCollectionName() const;
   std::string const& getShardName() const noexcept;
 
-  bool hasNested() const noexcept;
+  auto const& meta() const noexcept { return _meta; }
+
+  void setBuilding(bool building) noexcept {
+    _isBuilding.store(building, std::memory_order_relaxed);
+  }
+  [[nodiscard]] bool isBuilding() const noexcept {
+    return _isBuilding.load(std::memory_order_relaxed);
+  }
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +205,8 @@ class IResearchLink : public IResearchDataStore {
   std::string _viewGuid;
 
   VPackComparer<IResearchViewSort> _comparer;
+
+  std::atomic_bool _isBuilding{false};
 };
 
 }  // namespace arangodb::iresearch

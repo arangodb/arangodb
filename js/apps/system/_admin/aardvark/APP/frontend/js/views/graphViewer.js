@@ -575,6 +575,23 @@
       this.fetchGraph();
     },
 
+    checkAndSetGraphConfig: function (data) {
+      // This method check whether we do have stored visual properties already available
+      // in our database.
+
+      // combinedName: Variable which uses a database and graph-name bound unique id to store its properties.
+      const combinedName = frontendConfig.db + '_' + this.name;
+
+      const dataAsJson = data.toJSON();
+      if (dataAsJson.result && dataAsJson.result.graphs) {
+        if (data.toJSON().result.graphs[combinedName]) {
+          this.graphConfig = data.toJSON().result.graphs[combinedName];
+        }
+      } else {
+        this.graphConfig = null;
+      }
+    },
+
     fetchGraph: function (toFocus) {
       var self = this;
       // arangoHelper.buildGraphSubNav(self.name, 'Content');
@@ -621,7 +638,7 @@
               self.renderGraph(data, toFocus);
             } else {
               if (data.settings) {
-                if (data.settings.startVertex && self.graphConfig.startNode === undefined) {
+                if (data.settings.startVertex && (!self.graphConfig || self.graphConfig.startNode === undefined)) {
                   if (self.tmpStartNode === undefined) {
                     self.tmpStartNode = data.settings.startVertex._id;
                   }
@@ -667,9 +684,11 @@
       if (self.graphConfig === undefined || self.graphConfig === null) {
         self.userConfig.fetch({
           success: function (data) {
-            var combinedName = frontendConfig.db + '_' + self.name;
             try {
-              self.graphConfig = data.toJSON().graphs[combinedName];
+              self.checkAndSetGraphConfig(data);
+              // TODO: Method getGraphSettings() needs a refactor.
+              // Flow currently works, but it is hardly maintainable.
+              // Additional info, e.g. check inner usage of "checkAndSetGraphConfig" there.
               self.getGraphSettings(continueFetchGraph);
 
               if (self.graphConfig === undefined || self.graphConfig === null) {
@@ -1228,7 +1247,6 @@
     },
 
     updateColors: function (nodes, edges, ncolor, ecolor, origin) {
-      var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
 
       if (ncolor) {
@@ -1241,7 +1259,7 @@
       this.userConfig.fetch({
         success: function (data) {
           if (nodes === true) {
-            self.graphConfig = data.toJSON().graphs[combinedName];
+            self.checkAndSetGraphConfig(data);
             try {
               self.currentGraph.graph.nodes().forEach(function (n) {
                 if (origin) {
@@ -1738,8 +1756,7 @@
 
       this.userConfig.fetch({
         success: function (data) {
-          var combinedName = frontendConfig.db + '_' + self.name;
-          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.checkAndSetGraphConfig(data);
 
           // init settings view
           if (self.graphSettingsView) {
@@ -1763,7 +1780,7 @@
             self.graphSettingsView.setDefaults(true, true);
             self.userConfig.fetch({
               success: function (data) {
-                self.graphConfig = data.toJSON().graphs[combinedName];
+                self.checkAndSetGraphConfig(data);
                 continueFunction();
               }
             });

@@ -62,6 +62,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <absl/cleanup/cleanup.h>
 #include <atomic>
 
 using namespace arangodb::application_features;
@@ -635,6 +636,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
     }
+    auto helpersCleanup = absl::Cleanup{[&]() noexcept {
+      for (auto& helper : engine.recoveryHelpers()) {
+        helper->unprepare();
+      }
+    }};
 
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();
@@ -647,8 +653,14 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     auto latestSequenceNumber = db->GetLatestSequenceNumber();
 
     if (engine.dbExisted()) {
+      size_t filesActive = 0;
       size_t filesInArchive = 0;
       try {
+        // number of active log files
+        std::string active = db->GetOptions().wal_dir;
+        filesActive = TRI_FilesDirectory(active.c_str()).size();
+
+        // number of log files in the archive
         std::string archive = basics::FileUtils::buildFilename(
             db->GetOptions().wal_dir, "archive");
         filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
@@ -662,6 +674,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
              "number "
           << recoveryStartSequence
           << ", latest sequence number: " << latestSequenceNumber
+          << ", active log files: " << filesActive
           << ", files in archive: " << filesInArchive;
     }
 

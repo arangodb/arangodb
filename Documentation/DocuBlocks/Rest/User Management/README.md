@@ -498,8 +498,8 @@ modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Replaces the data of an existing user. You need server access level
-*Administrate* in order to execute this REST call. Additionally, a user can
-change his/her own data.
+*Administrate* in order to execute this REST call. Additionally, users can
+change their own data.
 
 @RESTRETURNCODES
 
@@ -562,8 +562,8 @@ modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Partially updates the data of an existing user. You need server access level
-*Administrate* in order to execute this REST call. Additionally, a user can
-change his/her own data.
+*Administrate* in order to execute this REST call. Additionally, users can
+change their own data.
 
 @RESTRETURNCODES
 

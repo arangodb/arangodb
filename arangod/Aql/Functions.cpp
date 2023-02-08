@@ -88,6 +88,8 @@
 #include "utils/ngram_match_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
+#include <absl/strings/str_cat.h>
+
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -894,6 +896,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
     if (ignoreError) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ||
           res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD ||
           res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }
@@ -1130,6 +1134,12 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
+    if (isolate == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "no V8 context available when executing call to function ", AFN));
+    }
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
 
@@ -6975,7 +6985,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
       AqlValueMaterializer materializer(vopts);
       VPackSlice idSlice = materializer.slice(id, false);
       builder->openArray();
-      for (auto const& next : VPackArrayIterator(idSlice)) {
+      for (auto next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;

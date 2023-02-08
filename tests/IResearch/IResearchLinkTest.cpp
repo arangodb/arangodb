@@ -221,7 +221,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* impl =
+        dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ("1_3simd", impl->format());
 
@@ -295,7 +296,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* impl =
+        dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ("1_4simd", impl->format());
 
@@ -677,11 +679,13 @@ TEST_F(IResearchLinkTest, test_drop) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link0.get()) == *logicalView)));
+    EXPECT_TRUE(
+        (true == (*dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(
+                      link0.get()) == *logicalView)));
     EXPECT_TRUE((link0->drop().ok()));
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link0.get()) == *logicalView)));
+    EXPECT_TRUE(
+        (true == (*dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(
+                      link0.get()) == *logicalView)));
 
     // collection not in view after
     {
@@ -787,11 +791,13 @@ TEST_F(IResearchLinkTest, test_unload) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link.get()) == *logicalView)));
+    EXPECT_TRUE(
+        (true == (*dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(
+                      link.get()) == *logicalView)));
     link->unload();
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link.get()) == *logicalView)));
+    EXPECT_TRUE(
+        (true == (*dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(
+                      link.get()) == *logicalView)));
 
     // collection in view after unload
     {
@@ -883,7 +889,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
         kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_EQ(
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
         l->format());
@@ -950,7 +956,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
         kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_EQ(
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX),
         l->format());
@@ -1018,7 +1024,7 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1036,7 +1042,7 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1051,9 +1057,10 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), false).ok()));
+    EXPECT_TRUE(
+        (l->remove(trx, arangodb::LocalDocumentId(2), false, nullptr).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1129,7 +1136,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1147,7 +1154,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1235,7 +1242,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1253,7 +1260,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1348,7 +1355,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1366,7 +1373,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1459,7 +1466,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1477,7 +1484,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1587,7 +1594,7 @@ TEST_F(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1605,7 +1612,7 @@ TEST_F(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -2293,8 +2300,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     _view.reset();
   }
 
-  arangodb::iresearch::IResearchLink* getLink() {
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(_link.get());
+  arangodb::iresearch::IResearchLinkMock* getLink() {
+    auto* l =
+        dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(_link.get());
     EXPECT_NE(l, nullptr);
     return l;
   }
@@ -2346,7 +2354,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin), false).ok());
+      EXPECT_TRUE(
+          l->remove(trx, arangodb::LocalDocumentId(begin), false, nullptr)
+              .ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
