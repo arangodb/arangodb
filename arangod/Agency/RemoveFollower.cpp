@@ -193,7 +193,7 @@ bool RemoveFollower::start(bool&) {
   std::unordered_map<std::string, int>
       overview;  // get an overview over the servers
                  // -1 : not "GOOD", can be in sync, or leader, or not
-                 // >=0: number of servers for which it is in sync or confirmed
+                 // >=0: number of shards for which it is in sync or confirmed
                  // leader
   bool leaderBad = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
@@ -231,11 +231,9 @@ bool RemoveFollower::start(bool&) {
                  });
 
   size_t inSyncCount = 0;
-  size_t notGoodCount = 0;
   for (auto const& pair : overview) {
-    if (pair.second == -1) {
-      ++notGoodCount;
-    } else if (static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
+    if (pair.second >= 0 &&
+        static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
       ++inSyncCount;
     }
   }
