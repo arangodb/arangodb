@@ -397,26 +397,20 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   return INVALID;
 }
 
-const date::sys_info localizeTimePoint(
-    std::string& timezone,
-    tp_sys_clock_ms& localTimePoint
-) {
+const date::sys_info localizeTimePoint(std::string& timezone,
+                                       tp_sys_clock_ms& localTimePoint) {
   auto const utc = floor<milliseconds>(localTimePoint);
   auto const zoned = date::make_zoned(timezone, utc);
-  localTimePoint = tp_sys_clock_ms{
-      zoned.get_local_time().time_since_epoch()};
+  localTimePoint = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
   return zoned.get_info();
 }
 
-const date::sys_info unlocalizeTimePoint(
-    std::string& timezone,
-    tp_sys_clock_ms& utcTimePoint
-) {
+const date::sys_info unlocalizeTimePoint(std::string& timezone,
+                                         tp_sys_clock_ms& utcTimePoint) {
   auto const local = date::local_time<milliseconds>{
       floor<milliseconds>(utcTimePoint).time_since_epoch()};
   auto const zoned = date::make_zoned(timezone, local);
-  utcTimePoint = tp_sys_clock_ms{
-      zoned.get_sys_time().time_since_epoch()};
+  utcTimePoint = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
   return zoned.get_info();
 }
 
@@ -513,7 +507,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   }
 
   if (timezone != "UTC") {
-    ::unlocalizeTimePoint(timezone,resTime);
+    ::unlocalizeTimePoint(timezone, resTime);
   }
 
   return ::timeAqlValue(expressionContext, AFN, resTime);
@@ -559,7 +553,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
   }
 
   if (timezone != "UTC") {
-    ::localizeTimePoint(timezone,resTime);
+    ::localizeTimePoint(timezone, resTime);
   }
 
   return ::timeAqlValue(expressionContext, AFN, resTime);
@@ -4141,9 +4135,9 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     showDetail = detailParam.slice().getBoolean();
   }
 
-  std::string timezone = timezoneParam.slice().copyString();
+  std::string inputTimezone = timezoneParam.slice().copyString();
   // converts tp_local to tp_utc
-  auto const info = ::unlocalizeTimePoint(timezone,tp_local);
+  auto const info = ::unlocalizeTimePoint(inputTimezone, tp_local);
   AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_local);
 
   AqlValueGuard aqlUtcGuard(aqlUtc, true);
@@ -4235,22 +4229,22 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
   AqlValue const& parameter1 = extractFunctionParameterValue(parameters, 1);
 
   auto const isTimezoned = parameters.size() == 4 ||
-                     ( parameters.size() == 3 && parameter1.isString());
-  auto const timezoneParameterIndex = parameters.size() == 4 ? 3: 2;
-  std::string timezone = "UTC";
+                           (parameters.size() == 3 && parameter1.isString());
+  auto const timezoneParameterIndex = parameters.size() == 4 ? 3 : 2;
+  std::string inputTimezone = "UTC";
 
   if (isTimezoned) {
     AqlValue const timezoneParam =
-        extractFunctionParameterValue(parameters,timezoneParameterIndex);
+        extractFunctionParameterValue(parameters, timezoneParameterIndex);
 
     if (!timezoneParam.isString()) {  // timezone type must be string
       registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
-    timezone = timezoneParam.slice().copyString();
+    inputTimezone = timezoneParam.slice().copyString();
 
-    ::localizeTimePoint(timezone,tp);
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   if ((parameters.size() == 3 && !isTimezoned) || parameters.size() == 4) {
@@ -4267,10 +4261,9 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     }
 
     // Numbers and Strings can both be sliced
-    return ::addOrSubtractUnitFromTimestamp(expressionContext, tp,
-                                            durationUnit.slice(),
-                                            durationType.slice(), AFN, false,
-                                            timezone);
+    return ::addOrSubtractUnitFromTimestamp(
+        expressionContext, tp, durationUnit.slice(), durationType.slice(), AFN,
+        false, inputTimezone);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -4279,8 +4272,8 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(
-        expressionContext, tp, isoDuration.slice().stringView(), AFN,
-        false, timezone);
+        expressionContext, tp, isoDuration.slice().stringView(), AFN, false,
+        inputTimezone);
   }
 }
 
@@ -4303,22 +4296,22 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
   AqlValue const& parameter1 = extractFunctionParameterValue(parameters, 1);
 
   auto const isTimezoned = parameters.size() == 4 ||
-                           ( parameters.size() == 3 && parameter1.isString());
-  auto const timezoneParameterIndex = parameters.size() == 4 ? 3: 2;
-  std::string timezone = "UTC";
+                           (parameters.size() == 3 && parameter1.isString());
+  auto const timezoneParameterIndex = parameters.size() == 4 ? 3 : 2;
+  std::string inputTimezone = "UTC";
 
   if (isTimezoned) {
     AqlValue const timezoneParam =
-        extractFunctionParameterValue(parameters,timezoneParameterIndex);
+        extractFunctionParameterValue(parameters, timezoneParameterIndex);
 
     if (!timezoneParam.isString()) {  // timezone type must be string
       registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
-    timezone = timezoneParam.slice().copyString();
+    inputTimezone = timezoneParam.slice().copyString();
 
-    ::localizeTimePoint(timezone,tp);
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   if ((parameters.size() == 3 && !isTimezoned) || parameters.size() == 4) {
@@ -4335,10 +4328,9 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     // Numbers and Strings can both be sliced
-    return ::addOrSubtractUnitFromTimestamp(expressionContext, tp,
-                                            durationUnit.slice(),
-                                            durationType.slice(), AFN, true,
-                                            timezone);
+    return ::addOrSubtractUnitFromTimestamp(
+        expressionContext, tp, durationUnit.slice(), durationType.slice(), AFN,
+        true, inputTimezone);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -4348,7 +4340,7 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
 
     return ::addOrSubtractIsoDurationFromTimestamp(
         expressionContext, tp, isoDuration.slice().stringView(), AFN, true,
-        timezone);
+        inputTimezone);
   }
 }
 
