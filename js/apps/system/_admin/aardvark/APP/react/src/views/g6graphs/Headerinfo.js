@@ -44,14 +44,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
     }
   }
 
-  const renderContent = (column = 2) => (
-    <>
-      Response time: <span>{responseDuration}</span>ms<br />
-      {graphData.nodes.length} nodes (to be Tags)<br />
-      {graphData.edges.length} edges (to be Tags)
-    </>
-  );
-
   const AccordionGraphContent = () => {
     return (
       <>
@@ -226,7 +218,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
             }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
           </button>
         </ToolTip>
-        <div id="content">{renderContent()}</div>
       </div>
       {isLoadingData ? <LoadingSpinner /> : null}
     </>

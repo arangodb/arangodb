@@ -7,6 +7,8 @@ import styles from './graphview.module.css';
 import './graphview.menu.css';
 import './visgraphstyles.css'
 import VisNetwork from './VisNetwork';
+import Tag from "../../components/pure-css/form/Tag";
+import GraphInfo from './components/pure-css/form/GraphInfo';
 export class GraphView extends React.Component {
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -707,6 +709,10 @@ export class GraphView extends React.Component {
             graphName={this.props.graphName}
             options={{}}
           />
+          <GraphInfo>
+            <Tag label={`${this.props.visGraphData.nodes.length} nodes`}/><Tag label={`${this.props.visGraphData.edges.length} edges`}/><Tag style='transparent' label={`Response time: ${this.props.responseDuration}ms`}/>
+          </GraphInfo>
+          <hr/>
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
     </>;
