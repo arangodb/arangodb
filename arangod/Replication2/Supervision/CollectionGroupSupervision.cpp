@@ -82,57 +82,138 @@ auto computeEvenDistributionForServers(
   return distribution;
 }
 
+auto getReplicatedLogLeader(ag::Log const& log)
+    -> std::optional<ParticipantId> {
+  if (log.plan and log.plan->currentTerm and log.plan->currentTerm->leader) {
+    return log.plan->currentTerm->leader->serverId;
+  }
+  return std::nullopt;
+}
+
+auto computeShardList(
+    std::unordered_map<LogId, ag::Log> const& logs,
+    std::vector<ag::CollectionGroupPlanSpecification::ShardSheaf> shardSheaves,
+    std::vector<ShardID> const& shards) -> PlanShardToServerMapping {
+  ADB_PROD_ASSERT(logs.size() == shards.size())
+      << "logs.size = " << logs.size() << " shards.size = " << shards.size();
+  PlanShardToServerMapping mapping;
+  for (std::size_t i = 0; i < shards.size(); i++) {
+    ResponsibleServerList servers;
+    auto const& log = logs.at(shardSheaves[i].replicatedLog);
+    for (auto const& [pid, flags] : log.target.participants) {
+      servers.servers.push_back(pid);
+    }
+
+    auto leader = getReplicatedLogLeader(log);
+
+    // sort by name, but leader in front
+    std::sort(servers.servers.begin(), servers.servers.end(),
+              [&](auto const& left, auto const& right) {
+                // returns true if left < right
+                if (left == leader) {
+                  return true;
+                }
+                return left < right;
+              });
+    mapping.shards[shards[i]] = std::move(servers);
+  }
+
+  return mapping;
+}
+
+auto createCollectionPlanSpec(
+    ag::CollectionGroupTargetSpecification const& target,
+    std::vector<ag::CollectionGroupPlanSpecification::ShardSheaf> const&
+        shardSheaves,
+    ag::CollectionTargetSpecification const& collection,
+    std::unordered_map<LogId, ag::Log> const& logs, UniqueIdProvider& uniqid)
+    -> ag::CollectionPlanSpecification {
+  std::vector<ShardID> shardList;
+  std::generate_n(std::back_inserter(shardList),
+                  target.attributes.immutableAttributes.numberOfShards, [&] {
+                    return basics::StringUtils::concatT("s", uniqid.next());
+                  });
+
+  auto mapping = computeShardList(logs, shardSheaves, shardList);
+  return ag::CollectionPlanSpecification{collection, std::move(shardList),
+                                         std::move(mapping)};
+}
+
 auto createCollectionGroupTarget(
-    ag::CollectionGroupTargetSpecification const& group,
+    DatabaseID const& database, CollectionGroup const& group,
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
     -> AddCollectionGroupToPlan {
-  auto const& attributes = group.attributes;
+  auto const& attributes = group.target.attributes;
 
   auto distribution = computeEvenDistributionForServers(
       attributes.immutableAttributes.numberOfShards,
       attributes.mutableAttributes.replicationFactor, health);
 
   std::size_t i = 0;
-  std::vector<ag::LogTarget> replicatedLogs;
-  std::generate_n(
-      std::back_inserter(replicatedLogs),
-      group.attributes.immutableAttributes.numberOfShards, [&] {
-        replicated_state::document::DocumentCoreParameters parameters;
+  std::unordered_map<LogId, ag::LogTarget> replicatedLogs;
+  for (std::size_t k = 0;
+       k < group.target.attributes.immutableAttributes.numberOfShards; k++) {
+    // TODO fill core parameters here
 
-        ag::LogTarget target;
-        target.id = LogId{uniqid.next()};
-        target.version = 1;
-        target.config = createLogConfigFromGroupAttributes(group.attributes);
-        target.properties.implementation.type = "document";
-        target.properties.implementation.parameters =
-            velocypack::serialize(parameters);
+    ag::LogTarget target;
+    target.id = LogId{uniqid.next()};
+    target.version = 1;
+    target.config = createLogConfigFromGroupAttributes(group.target.attributes);
+    target.properties.implementation.type = "document";
 
-        auto participants = distribution.getServersForShardIndex(i++);
-        target.leader = participants.getLeader();
-        for (auto const& p : participants.servers) {
-          target.participants.emplace(p, ParticipantFlags{});
-        }
+    auto participants = distribution.getServersForShardIndex(i++);
+    target.leader = participants.getLeader();
+    for (auto const& p : participants.servers) {
+      target.participants.emplace(p, ParticipantFlags{});
+    }
 
-        return target;
-      });
+    replicatedLogs[target.id] = std::move(target);
+  }
 
   ag::CollectionGroupPlanSpecification spec;
-  spec.attributes = group.attributes;
-  spec.id = group.id;
+  spec.attributes = group.target.attributes;
+  spec.id = group.target.id;
 
   std::transform(
       replicatedLogs.begin(), replicatedLogs.end(),
-      std::back_inserter(spec.shardSheaves), [](ag::LogTarget const& target) {
-        return ag::CollectionGroupPlanSpecification::ShardSheaf{target.id};
+      std::back_inserter(spec.shardSheaves), [](auto const& target) {
+        return ag::CollectionGroupPlanSpecification::ShardSheaf{target.first};
       });
 
-  return AddCollectionGroupToPlan{std::move(spec), std::move(replicatedLogs)};
+  // TODO hack - remove this once we have more shards per collection group
+  std::unordered_map<CollectionID, ag::CollectionPlanSpecification> collections;
+  for (auto const& [cid, collection] : group.target.collections) {
+    std::vector<ShardID> shardList;
+    std::generate_n(std::back_inserter(shardList),
+                    attributes.immutableAttributes.numberOfShards, [&] {
+                      return basics::StringUtils::concatT("s", uniqid.next());
+                    });
+
+    collections[cid] = ag::CollectionPlanSpecification{
+        group.targetCollections.at(cid), std::move(shardList), {}};
+    spec.collections[cid];
+  }
+  int j = 0;
+  for (auto& sheafId : spec.shardSheaves) {
+    auto& log = replicatedLogs[sheafId.replicatedLog];
+    replicated_state::document::DocumentCoreParameters parameters;
+    parameters.databaseName = database;
+    parameters.collectionId = collections.begin()->first;
+    parameters.shardId = collections.begin()->second.shardList[j];
+
+    j++;
+    log.properties.implementation.parameters =
+        velocypack::serialize(parameters);
+  }
+
+  return AddCollectionGroupToPlan{std::move(spec), std::move(replicatedLogs),
+                                  std::move(collections)};
 }
 
 auto checkAssociatedReplicatedLogs(
     ag::CollectionGroupTargetSpecification const& target,
     ag::CollectionGroupPlanSpecification const& plan,
-    std::map<LogId, ag::Log> const& logs,
+    std::unordered_map<LogId, ag::Log> const& logs,
     replicated_log::ParticipantsHealth const& health) -> Action {
   // check if replicated logs require an update
   ADB_PROD_ASSERT(plan.shardSheaves.size() ==
@@ -181,45 +262,6 @@ auto checkAssociatedReplicatedLogs(
   return NoActionRequired{};
 }
 
-auto getReplicatedLogLeader(ag::Log const& log)
-    -> std::optional<ParticipantId> {
-  if (log.plan and log.plan->currentTerm and log.plan->currentTerm->leader) {
-    return log.plan->currentTerm->leader->serverId;
-  }
-  return std::nullopt;
-}
-
-auto computeShardList(
-    std::map<LogId, ag::Log> const& logs,
-    std::vector<ag::CollectionGroupPlanSpecification::ShardSheaf> shardSheaves,
-    std::vector<ShardID> const& shards) -> PlanShardToServerMapping {
-  ADB_PROD_ASSERT(logs.size() == shards.size())
-      << "logs.size = " << logs.size() << " shards.size = " << shards.size();
-  PlanShardToServerMapping mapping;
-  for (std::size_t i = 0; i < shards.size(); i++) {
-    ResponsibleServerList servers;
-    auto const& log = logs.at(shardSheaves[i].replicatedLog);
-    for (auto const& [pid, flags] : log.target.participants) {
-      servers.servers.push_back(pid);
-    }
-
-    auto leader = getReplicatedLogLeader(log);
-
-    // sort by name, but leader in front
-    std::sort(servers.servers.begin(), servers.servers.end(),
-              [&](auto const& left, auto const& right) {
-                // returns true if left < right
-                if (left == leader) {
-                  return true;
-                }
-                return left < right;
-              });
-    mapping.shards[shards[i]] = std::move(servers);
-  }
-
-  return mapping;
-}
-
 auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
   if (not group.current or
       group.current->supervision.version != group.target.version) {
@@ -239,11 +281,12 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
 }  // namespace
 
 auto document::supervision::checkCollectionGroup(
-    CollectionGroup const& group, UniqueIdProvider& uniqid,
-    replicated_log::ParticipantsHealth const& health) -> Action {
+    DatabaseID const& database, CollectionGroup const& group,
+    UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
+    -> Action {
   if (not group.plan.has_value()) {
     // create collection group in plan
-    return createCollectionGroupTarget(group.target, uniqid, health);
+    return createCollectionGroupTarget(database, group, uniqid, health);
   }
 
   // check replicated logs
@@ -258,18 +301,10 @@ auto document::supervision::checkCollectionGroup(
     ADB_PROD_ASSERT(group.target.collections.contains(cid));
 
     if (not group.planCollections.contains(cid)) {
-      ADB_PROD_ASSERT(group.plan->collections.contains(cid));
-
-      std::vector<ShardID> shardList;
-      std::generate_n(
-          std::back_inserter(shardList),
-          group.target.attributes.immutableAttributes.numberOfShards,
-          [&] { return basics::StringUtils::concatT("s", uniqid.next()); });
-
-      auto mapping =
-          computeShardList(group.logs, group.plan->shardSheaves, shardList);
-      agency::CollectionPlanSpecification spec{collection, std::move(shardList),
-                                               std::move(mapping)};
+      ADB_PROD_ASSERT(not group.plan->collections.contains(cid));
+      auto spec =
+          createCollectionPlanSpec(group.target, group.plan->shardSheaves,
+                                   collection, group.logs, uniqid);
       return AddCollectionToPlan{cid, std::move(spec)};
     }
   }
@@ -313,12 +348,13 @@ struct TransactionBuilder {
   }
 
   // TODO do we need preconditions here?
+  // TODO use agency paths
 
   void operator()(UpdateReplicatedLogConfig const& action) {
     env = env.write()
               .emplace_object(basics::StringUtils::concatT(
-                                  "/Target/ReplicatedLogs/", database, "/",
-                                  action.logId, "/config"),
+                                  "/arango/Target/ReplicatedLogs/", database,
+                                  "/", action.logId, "/config"),
                               [&](VPackBuilder& builder) {
                                 velocypack::serialize(builder, action.config);
                               })
@@ -328,8 +364,8 @@ struct TransactionBuilder {
   void operator()(UpdateConvergedVersion const& action) {
     env = env.write()
               .emplace_object(basics::StringUtils::concatT(
-                                  "/Current/CollectionGroups/", database, "/",
-                                  gid.id(), "/supervision/targetVersion"),
+                                  "/arango/Current/CollectionGroups/", database,
+                                  "/", gid.id(), "/supervision/targetVersion"),
                               [&](VPackBuilder& builder) {
                                 velocypack::serialize(builder, action.version);
                               })
@@ -338,48 +374,49 @@ struct TransactionBuilder {
 
   void operator()(DropCollectionPlan const& action) {
     env = env.write()
-              .remove(basics::StringUtils::concatT("/Plan/Collections/",
+              .remove(basics::StringUtils::concatT("/arango/Plan/Collections/",
                                                    database, "/", action.cid))
-              .remove(basics::StringUtils::concatT("/Plan/CollectionGroups/",
-                                                   database, "/", gid.id(),
-                                                   "/collections/", action.cid))
-              .inc("/Plan/Version")
+              .remove(basics::StringUtils::concatT(
+                  "/arango/Plan/CollectionGroups/", database, "/", gid.id(),
+                  "/collections/", action.cid))
+              .inc("/arango/Plan/Version")
               .end();
   }
 
   void operator()(AddCollectionToPlan const& action) {
     env = env.write()
               .emplace_object(
-                  basics::StringUtils::concatT("/Plan/Collections/", database,
-                                               "/", action.cid),
+                  basics::StringUtils::concatT("/arango/Plan/Collections/",
+                                               database, "/", action.cid),
                   [&](VPackBuilder& builder) {
                     velocypack::serialize(builder, action.spec);
                   })
-              .key(basics::StringUtils::concatT("/Plan/CollectionGroups/",
-                                                database, "/", gid.id(),
-                                                "/collections/", action.cid),
+              .key(basics::StringUtils::concatT(
+                       "/arango/Plan/CollectionGroups/", database, "/",
+                       gid.id(), "/collections/", action.cid),
                    VPackSlice::emptyObjectSlice())
-              .inc("/Plan/Version")
+              .inc("/arango/Plan/Version")
               .end();
   }
 
   void operator()(UpdateCollectionShardMap const& action) {
     env = env.write()
               .emplace_object(
-                  basics::StringUtils::concatT("/Plan/Collections/", database,
-                                               "/", action.cid, "/shards"),
+                  basics::StringUtils::concatT("/arango/Plan/Collections/",
+                                               database, "/", action.cid,
+                                               "/shards"),
                   [&](VPackBuilder& builder) {
-                    velocypack::serialize(builder, action.mapping);
+                    velocypack::serialize(builder, action.mapping.shards);
                   })
-              .inc("/Plan/Version")
+              .inc("/arango/Plan/Version")
               .end();
   }
 
   void operator()(AddParticipantToLog const& action) {
     env = env.write()
               .key(basics::StringUtils::concatT(
-                       "/Target/ReplicatedLogs/", database, "/", action.logId,
-                       "/participants/", action.participant),
+                       "/arango/Target/ReplicatedLogs/", database, "/",
+                       action.logId, "/participants/", action.participant),
                    VPackSlice::emptyObjectSlice())
               .end();
   }
@@ -387,24 +424,35 @@ struct TransactionBuilder {
   void operator()(RemoveParticipantFromLog const& action) {
     env = env.write()
               .remove(basics::StringUtils::concatT(
-                  "/Target/ReplicatedLogs/", database, "/", action.logId,
+                  "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
                   "/participants/", action.participant))
               .end();
   }
 
   void operator()(AddCollectionGroupToPlan const& action) {
     auto write = env.write().emplace_object(
-        basics::StringUtils::concatT("/Plan/CollectionGroups/", database, "/",
-                                     action.spec.id.id()),
+        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
+                                     "/", action.spec.id.id()),
         [&](VPackBuilder& builder) {
           velocypack::serialize(builder, action.spec);
         });
 
-    for (auto const& spec : action.sheaves) {
+    for (auto const& [id, spec] : action.sheaves) {
       write = write.emplace_object(
-          basics::StringUtils::concatT("/Target/ReplicatedLogs/", database, "/",
-                                       spec.id),
-          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
+          basics::StringUtils::concatT("/arango/Target/ReplicatedLogs/",
+                                       database, "/", id),
+          [&spec = spec](VPackBuilder& builder) {
+            velocypack::serialize(builder, spec);
+          });
+    }
+
+    for (auto const& [cid, spec] : action.collections) {
+      write = write.emplace_object(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", cid),
+          [&spec = spec](VPackBuilder& builder) {
+            velocypack::serialize(builder, spec);
+          });
     }
     env = write.end();
   }
@@ -422,7 +470,7 @@ auto document::supervision::executeCheckCollectionGroup(
     -> arangodb::agency::envelope {
   // TODO add agency reports, add last-time-updated
 
-  auto action = checkCollectionGroup(group, uniqid, health);
+  auto action = checkCollectionGroup(database, group, uniqid, health);
 
   if (std::holds_alternative<NoActionRequired>(action)) {
     return envelope;

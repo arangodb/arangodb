@@ -54,7 +54,9 @@ struct AddCollectionToPlan {
 };
 struct AddCollectionGroupToPlan {
   agency::CollectionGroupPlanSpecification spec;
-  std::vector<agency::LogTarget> sheaves;
+  std::unordered_map<LogId, agency::LogTarget> sheaves;
+  std::unordered_map<CollectionID, agency::CollectionPlanSpecification>
+      collections;
 };
 struct UpdateCollectionShardMap {
   CollectionID cid;
@@ -86,10 +88,12 @@ struct CollectionGroup {
   std::optional<agency::CollectionGroupPlanSpecification> plan;
   std::optional<agency::CollectionGroupCurrentSpecification> current;
 
-  std::map<LogId, agency::Log> logs;
-  std::map<arangodb::CollectionID, agency::CollectionTargetSpecification>
+  std::unordered_map<LogId, agency::Log> logs;
+  std::unordered_map<arangodb::CollectionID,
+                     agency::CollectionTargetSpecification>
       targetCollections;
-  std::map<arangodb::CollectionID, agency::CollectionPlanSpecification>
+  std::unordered_map<arangodb::CollectionID,
+                     agency::CollectionPlanSpecification>
       planCollections;
 };
 
@@ -98,7 +102,8 @@ struct UniqueIdProvider {
   [[nodiscard]] virtual auto next() noexcept -> std::uint64_t = 0;
 };
 
-auto checkCollectionGroup(CollectionGroup const& group,
+auto checkCollectionGroup(DatabaseID const& database,
+                          CollectionGroup const& group,
                           UniqueIdProvider& uniqid,
                           replicated_log::ParticipantsHealth const& health)
     -> Action;

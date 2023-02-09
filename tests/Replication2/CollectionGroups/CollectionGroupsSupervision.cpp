@@ -30,6 +30,7 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::document::supervision;
 namespace ag = arangodb::replication2::agency;
 
+
 struct FakeUniqueIdProvider : UniqueIdProvider {
   auto next() noexcept -> std::uint64_t override { return ++_next; }
   std::uint64_t _next{0};
@@ -37,6 +38,7 @@ struct FakeUniqueIdProvider : UniqueIdProvider {
 
 struct CollectionGroupsSupervisionTest : ::testing::Test {
   FakeUniqueIdProvider uniqid;
+  const std::string database = "foobar";
 };
 
 TEST_F(CollectionGroupsSupervisionTest, check_create_collection_group_plan) {
@@ -59,7 +61,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_create_collection_group_plan) {
   health.update("DB2", RebootId{11}, true);
   health.update("DB3", RebootId{110}, true);
 
-  auto result = checkCollectionGroup(group, uniqid, health);
+  auto result = checkCollectionGroup(database, group, uniqid, health);
   ASSERT_TRUE(std::holds_alternative<AddCollectionGroupToPlan>(result))
       << result.index();
 
@@ -130,7 +132,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   // do this three times for each replicated log
   for (int i = 0; i < 3; i++) {
     // first we expect a config update
-    auto result = checkCollectionGroup(group, uniqid, health);
+    auto result = checkCollectionGroup(database, group, uniqid, health);
     ASSERT_TRUE(std::holds_alternative<UpdateReplicatedLogConfig>(result))
         << i << " " << result.index();
     auto const& action = std::get<UpdateReplicatedLogConfig>(result);
@@ -140,7 +142,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
     group.logs[action.logId].target.config = action.config;
 
     // next action should be an add server action
-    auto result2 = checkCollectionGroup(group, uniqid, health);
+    auto result2 = checkCollectionGroup(database, group, uniqid, health);
     ASSERT_TRUE(std::holds_alternative<AddParticipantToLog>(result2))
         << i << " " << result2.index();
     auto const& action2 = std::get<AddParticipantToLog>(result2);
@@ -152,7 +154,7 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   // now we expect updates of the deprecated shard maps
   // TODO remove this part of the test later
   for (int i = 0; i < 2; i++) {  // two collections
-    auto result = checkCollectionGroup(group, uniqid, health);
+    auto result = checkCollectionGroup(database, group, uniqid, health);
     ASSERT_TRUE(std::holds_alternative<UpdateCollectionShardMap>(result))
         << result.index() << " " << i;
     auto const& action = std::get<UpdateCollectionShardMap>(result);
