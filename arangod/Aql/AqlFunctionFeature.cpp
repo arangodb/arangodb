@@ -457,7 +457,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_QUARTER", ".", flags, &functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", flags, &functions::DateDaysInMonth});
   add({"DATE_ADD", ".,.|.,.", flags, &functions::DateAdd});
-  add({"DATE_SUBTRACT", ".,.|.", flags, &functions::DateSubtract});
+  add({"DATE_SUBTRACT", ".,.|.,.", flags, &functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", flags, &functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", flags, &functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &functions::DateFormat});
