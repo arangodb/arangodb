@@ -235,7 +235,7 @@ function IndexSuite() {
     testGetIndexUnloaded: function() {
       var idx = collection.ensureIndex({type: "persistent", fields: ["test"]});
 
-      Helper.waitUnload(collection);
+      helper.waitUnload(collection);
 
       assertEqual(idx.id, collection.index(idx.id).id);
       assertEqual(idx.id, collection.getIndexes()[1].id);

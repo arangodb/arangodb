@@ -140,7 +140,7 @@ exports.getEndpointsByType = function (type) {
     .map(endpointToURL);
 };
 
-exports.Helper = {
+exports.helper = {
   process: function (file, processor) {
     internal.processCsvFile(file, function (raw_row, index) {
       if (index !== 0) {

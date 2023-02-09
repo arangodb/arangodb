@@ -187,11 +187,7 @@ function recovery (options) {
     status: true
   };
 
-  let useEncryption = false;
-
-  if (isEnterprise()) {
-    useEncryption = true;
-  }
+  let useEncryption = isEnterprise();
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 

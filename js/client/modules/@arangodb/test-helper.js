@@ -1,7 +1,7 @@
 /*jshint strict: false */
 /* global print */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
+// / @brief helper for JavaScript Tests
 // /
 // / @file
 // /
@@ -29,7 +29,7 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
@@ -52,7 +52,7 @@ const isServer = require("@arangodb").isServer;
 
 exports.isEnterprise = isEnterprise;
 exports.versionHas = versionHas;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
