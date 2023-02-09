@@ -181,10 +181,7 @@ function restoreIntegrationSuite() {
           lastValue = newLastValue;
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -221,10 +218,7 @@ function restoreIntegrationSuite() {
           lastValue = newLastValue;
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -267,10 +261,7 @@ function restoreIntegrationSuite() {
         const schema = colProperties.schema;
         assertEqual(schema, validatorJson);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -309,10 +300,7 @@ function restoreIntegrationSuite() {
           assertTrue(doc.overwrite);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -366,10 +354,7 @@ function restoreIntegrationSuite() {
           assertFalse(doc.hasOwnProperty('overwrite'));
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -428,10 +413,7 @@ function restoreIntegrationSuite() {
           assertEqual(doc.value4, doc.value2 + " " + doc.value1);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -469,10 +451,7 @@ function restoreIntegrationSuite() {
           assertEqual(i, doc.value);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -554,10 +533,7 @@ function restoreIntegrationSuite() {
           assertEqual(i, doc.value);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -735,10 +711,7 @@ function restoreIntegrationSuite() {
           assertEqual(i, doc.value);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -775,10 +748,7 @@ function restoreIntegrationSuite() {
           assertEqual(i, doc.value);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -804,10 +774,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertTrue(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -834,10 +801,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertFalse(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -864,10 +828,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertTrue(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -893,10 +854,7 @@ function restoreIntegrationSuite() {
         let c = db._collection(cn);
         assertNotEqual("123456789012", c.properties().globallyUniqueId);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -944,10 +902,7 @@ function restoreIntegrationSuite() {
         let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 42 RETURN doc").toArray();
         assertEqual(100, result.length);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -981,10 +936,7 @@ function restoreIntegrationSuite() {
         assertEqual(["loc"], indexes[1].fields);
         assertFalse(indexes[1].geoJson);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1018,10 +970,7 @@ function restoreIntegrationSuite() {
         assertEqual(["a", "b"], indexes[1].fields);
         assertFalse(indexes[1].geoJson);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1055,10 +1004,7 @@ function restoreIntegrationSuite() {
         assertEqual(["text"], indexes[1].fields);
         assertEqual(indexes[1].minLength, 1);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1104,10 +1050,7 @@ function restoreIntegrationSuite() {
         let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 42 RETURN doc").toArray();
         assertEqual(100, result.length);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1163,10 +1106,7 @@ function restoreIntegrationSuite() {
         let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 42 RETURN doc").toArray();
         assertEqual(100, result.length);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1206,10 +1146,7 @@ function restoreIntegrationSuite() {
           assertEqual("test" + i, c.document("test" + i)._key);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1256,10 +1193,7 @@ function restoreIntegrationSuite() {
           assertEqual("test" + i, outEdges[0]._key);
         }
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1346,10 +1280,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertTrue(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1376,10 +1307,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertTrue(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -1407,10 +1335,7 @@ function restoreIntegrationSuite() {
         assertTrue(props.hasOwnProperty("syncByRevision"));
         assertFalse(props.syncByRevision);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
   };
