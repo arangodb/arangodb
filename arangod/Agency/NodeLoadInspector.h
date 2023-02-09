@@ -138,6 +138,11 @@ struct NodeLoadInspectorImpl
     }
   }
 
+  [[nodiscard]] Status::Success value(velocypack::Builder& v) {
+    _node->toBuilder(v);
+    return {};
+  }
+
   [[nodiscard]] Status value(bool& v) {
     if (auto value = _node->getBool(); value) {
       v = std::move(*value);
