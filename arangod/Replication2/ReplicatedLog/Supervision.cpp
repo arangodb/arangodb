@@ -33,6 +33,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

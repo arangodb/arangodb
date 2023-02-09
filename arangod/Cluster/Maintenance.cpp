@@ -24,6 +24,7 @@
 
 #include "Maintenance.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"

@@ -61,13 +61,8 @@ inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
   return paths::target()->collectionGroups()->database(std::string{databaseName});
 }
 
-inline auto pathCollectionInCurrent(std::string_view databaseName) {
-  return paths::current()->collections()->database(std::string{databaseName});
-}
-
-inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
-  return paths::current()->replicatedLogs()->database(
-      std::string{databaseName});
+inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
+  return paths::current()->collectionGroups()->database(std::string{databaseName});
 }
 
 }  // namespace
@@ -86,88 +81,38 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
     std::string_view databaseName, bool waitForSyncReplication) const {
   auto report = std::make_shared<CurrentWatcher>();
 
-  // One callback per collection
-  report->reserve(_collectionPlanEntries.size());
-  auto const baseCollectionPath = pathCollectionInCurrent(databaseName);
-  auto const baseStatePath = pathReplicatedLogInCurrent(databaseName);
-  for (auto const& entry : _collectionPlanEntries) {
-    if (entry.requiresCurrentWatcher()) {
-      // Add Shards Watcher
-      auto expectedShards = entry.getShardMapping();
-      {
-        // Add the Watcher for Collection Shards
-        auto cid = entry.getCID();
-        auto const collectionPath = baseCollectionPath->collection(cid);
-        auto callback = [cid, expectedShards, waitForSyncReplication,
-                         report](VPackSlice result) -> bool {
-          if (report->hasReported(cid)) {
-            // This collection has already reported
-            return true;
-          }
-          CurrentCollectionEntry state;
-          auto status = velocypack::deserializeWithStatus(result, state);
-          // We ignore parsing errors here, only react on positive case
-          if (status.ok()) {
-            if (state.haveAllShardsReported(expectedShards.shards.size())) {
-              if (state.hasError()) {
-                // At least on shard has reported an error.
-                report->addReport(
-                    cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                                state.createErrorReport()});
-                return true;
-              } else if (!waitForSyncReplication ||
-                         state.doExpectedServersMatch(expectedShards)) {
-                // All servers reported back without error.
-                // If waitForSyncReplication is requested full server lists
-                // match Let us return done!
-                report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
-                return true;
-              }
-            }
-          }
-          // TODO: Maybe we want to do trace-logging if current cannot be
-          // parsed?
+  auto const baseStatePath = pathCollectionGroupInCurrent(databaseName);
 
-          return true;
-        };
-        // Note we use SkipComponents here, as callbacks to not have "arangod"
-        // as prefix.
-        report->addWatchPath(
-            collectionPath->str(arangodb::cluster::paths::SkipComponents(1)),
-            cid, callback);
-      }
-    }
-  }
-
+  // One callback per New and one per Existing Group
+  report->reserve(_collectionGroups.newGroups.size() +
+                  _collectionGroups.additionsToGroup.size());
   for (auto const& group : _collectionGroups.newGroups) {
-    for (auto const& shardSheaf : group.shardSheaves) {
-      auto const& logId = shardSheaf.replicatedLog;
-
-      auto const statePath = baseStatePath->log(logId)->supervision();
-      auto callback = [report,
-                       id = to_string(logId)](velocypack::Slice slice) -> bool {
-        if (report->hasReported(id)) {
-          // This replicatedLog has already reported
-          return true;
-        }
-        if (slice.isNone()) {
-          return false;
-        }
-
-        auto supervision = velocypack::deserialize<
-            replication2::agency::LogCurrentSupervision>(slice);
-        if (supervision.targetVersion.has_value() &&
-            supervision.targetVersion >= 1) {
-          // Right now there cannot be any error on replicated states.
-          // SO if they show up in correct version we just take them.
-          report->addReport(id, TRI_ERROR_NO_ERROR);
-        }
+    auto gid = std::to_string(group.id.id());
+    auto const groupPath = baseStatePath->group(gid)->supervision();
+    auto callback = [report, gid, version = group.version.value()](
+                        velocypack::Slice slice) -> bool {
+      if (report->hasReported(gid)) {
+        // This replicatedLog has already reported
         return true;
-      };
-      report->addWatchPath(
-          statePath->str(arangodb::cluster::paths::SkipComponents(1)),
-          to_string(logId), callback);
-    }
+      }
+      if (slice.isNone()) {
+        return false;
+      }
+
+      auto supervision = velocypack::deserialize<
+          replication2::agency::CollectionGroupCurrentSpecification::
+              Supervision>(slice);
+      if (supervision.version.has_value() &&
+          supervision.version.value() >= version) {
+        // Right now there cannot be any error on replicated states.
+        // SO if they show up in correct version we just take them.
+        report->addReport(gid, TRI_ERROR_NO_ERROR);
+      }
+      return true;
+    };
+    report->addWatchPath(
+        groupPath->str(arangodb::cluster::paths::SkipComponents(1)),
+        std::move(gid), callback);
   }
 
   return report;

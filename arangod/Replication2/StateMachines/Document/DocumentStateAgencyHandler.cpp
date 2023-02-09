@@ -25,11 +25,11 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
-
-#include "Basics/StaticStrings.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
