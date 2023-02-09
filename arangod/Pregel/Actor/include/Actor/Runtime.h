@@ -130,10 +130,9 @@ struct Runtime
     }
   }
 
-  // TODO call this function regularly
-  auto garbageCollect() {
-    actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-      return actor->isFinishedAndIdle();
+  auto areAllActorsIdle() -> bool {
+    return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
+      return actor->isIdle();
     });
   }
 
@@ -144,9 +143,10 @@ struct Runtime
     }
   }
 
-  auto areAllActorsIdle() -> bool {
-    return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
-      return actor->isIdle();
+  // TODO call this function regularly
+  auto garbageCollect() {
+    actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
+      return actor->isFinishedAndIdle();
     });
   }
 

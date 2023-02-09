@@ -30,6 +30,11 @@
 
 namespace arangodb::pregel::actor {
 
+template<typename F>
+concept Predicate = requires(F fn, std::shared_ptr<ActorBase> const& actor) {
+  { fn(actor) } -> std::same_as<bool>;
+};
+
 struct ActorList {
  private:
   struct ActorMap : std::unordered_map<ActorID, std::shared_ptr<ActorBase>> {};
@@ -64,18 +69,19 @@ struct ActorList {
     actors.doUnderLock([id](ActorMap& map) { map.erase(id); });
   }
 
-  auto removeIf(
-      std::function<bool(std::shared_ptr<ActorBase> const&)> deletable)
-      -> void {
-    actors.doUnderLock([&deletable](ActorMap& map) {
-      std::erase_if(map, [&deletable](const auto& item) {
+  template<Predicate F>
+  auto removeIf(F&& isDeletable) -> void {
+    actors.doUnderLock([&isDeletable](ActorMap& map) {
+      std::erase_if(map, [&isDeletable](const auto& item) {
         auto& [_, actor] = item;
-        return deletable(actor);
+        return isDeletable(actor);
       });
     });
   }
 
-  auto apply(std::function<void(std::shared_ptr<ActorBase>&)> fn) -> void {
+  template<typename F>
+  requires requires(F fn, std::shared_ptr<ActorBase>& actor) { {fn(actor)}; }
+  auto apply(F&& fn) -> void {
     actors.doUnderLock([&fn](ActorMap& map) {
       for (auto&& [_, actor] : map) {
         fn(actor);
@@ -83,11 +89,11 @@ struct ActorList {
     });
   }
 
-  auto checkAll(std::function<bool(std::shared_ptr<ActorBase> const&)> fn) const
-      -> bool {
-    return actors.doUnderLock([&fn](ActorMap const& map) {
+  template<Predicate F>
+  auto checkAll(F&& check) const -> bool {
+    return actors.doUnderLock([&check](ActorMap const& map) {
       for (auto const& [_, actor] : map) {
-        if (not fn(actor)) {
+        if (not check(actor)) {
           return false;
         }
       }
