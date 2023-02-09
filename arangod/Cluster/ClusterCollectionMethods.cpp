@@ -50,9 +50,106 @@ using namespace arangodb;
 
 namespace {
 
-template<class WriterType>
+auto reactToPreconditions(AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
+  // We ordered the creation of collection, if this was not
+  // successful we may try again, if it was, we continue with next
+  // step.
+  if (res.fail()) {
+    if (GeneralResponse::responseCode(network::fuerteStatusToArangoErrorCode(
+            res.statusCode())) == rest::ResponseCode::PRECONDITION_FAILED) {
+      // If the precondition failed,
+      // we can retry o the next Plan version
+      return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED};
+    }
+    return res.asResult();
+  }
+
+  // extract raft index
+  auto slice = res.slice().get("results");
+  TRI_ASSERT(slice.isArray());
+  TRI_ASSERT(!slice.isEmptyArray());
+  return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
+}
+
+auto waitForOperationRoundtrip(ClusterInfo& ci) {
+  return [&ci](ResultT<uint64_t>&& agencyRaftIndex) -> Result {
+    // Got the Plan version while building.
+    // Let us wait for it
+    if (agencyRaftIndex.fail()) {
+      return agencyRaftIndex.result();
+    }
+    return ci.waitForPlan(agencyRaftIndex.get()).get();
+  };
+}
+
+auto waitForCurrentToCatchUp(
+    ArangodServer& server, std::shared_ptr<CurrentWatcher>& callbackInfos,
+    std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>&
+        callbackList,
+    double pollInterval) {
+  return [&server, &callbackInfos, &callbackList, pollInterval](Result&& res) {
+    // We waited on the buildingPlan to be loaded in the local cache
+    // Now let us watch for CURRENT to check if all requried changes
+    // ahve been applied
+    if (res.fail()) {
+      // TODO: TRIGGER_CLEANUP
+      return res;
+    }
+
+    TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // NOTE: LOGID was 98bca before, duplicate from below
+    LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
+        << "createCollectionCoordinator, Plan changed, waiting for "
+           "success...";
+
+    // Now "busy-loop"
+    while (!server.isStopping()) {
+      auto maybeFinalResult = callbackInfos->getResultIfAllReported();
+      if (maybeFinalResult.has_value()) {
+        // We have a final result. we are complete
+        return maybeFinalResult.value();
+      }
+
+      // We do not have a final result. Let's wait for more input
+      // Wait for the next incomplete callback
+      for (auto& [cb, cid] : callbackList) {
+        if (!callbackInfos->hasReported(cid)) {
+          // We do not have result for this collection, wait for it.
+          bool gotTimeout;
+          {
+            // This one has not responded, wait for it.
+            CONDITION_LOCKER(locker, cb->_cv);
+            gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
+          }
+          if (gotTimeout) {
+            // We got woken up by waittime, not by  callback.
+            // Let us check if we skipped other callbacks as well
+            for (auto& [cb2, cid2] : callbackList) {
+              if (callbackInfos->hasReported(cid2)) {
+                // Only re check those where we have not yet found a
+                // result.
+                cb2->refetchAndUpdate(true, false);
+              }
+            }
+          }
+          // Break the callback loop,
+          // continue on the check if we completed loop
+          break;
+        }
+      }
+    }
+
+    // If we get here we are not allowed to retry.
+    // The loop above does not contain a break
+    TRI_ASSERT(server.isStopping());
+    return Result{TRI_ERROR_SHUTTING_DOWN};
+  };
+}
+
 Result impl(ClusterInfo& ci, ArangodServer& server,
-            std::string_view databaseName, WriterType& writer,
+            std::string_view databaseName, PlanCollectionToAgencyWriter& writer,
             bool waitForSyncReplication) {
   AgencyComm ac(server);
   double pollInterval = ci.getPollInterval();
@@ -108,23 +205,13 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     }
     callbackInfos->clearCallbacks();
 
-    if constexpr (std::is_same_v<WriterType, TargetCollectionAgencyWriter>) {
-      using namespace std::chrono_literals;
-      AsyncAgencyComm aac;
-      // TODO do we need to handle Error message (thenError?)
-
-      // TODO INFO: AFAIK this waiting chain is different with the TARGET
-      // based architecture on the agency. So right now it is teomprary to
-      // mimic the original behaviour.
-
-      bool shouldUndo = false;
+    // Then send the transaction
+    auto res = ac.sendTransactionWithFailover(buildingTransaction.get());
+    if (res.successful()) {
+      // Collections ordered
       // Prepare do undo if something fails now
       auto undoCreationGuard = scopeGuard([&writer, &databaseName, &ci, &server,
-                                           &ac, &shouldUndo]() noexcept {
-        if (!shouldUndo) {
-          // This is a flag to disable the guard.
-          return;
-        }
+                                           &ac]() noexcept {
         try {
           auto undoTrx = writer.prepareUndoTransaction(databaseName);
 
@@ -166,404 +253,209 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           }
 
         } catch (std::exception const& ex) {
-          // NOTE Increased LOGID by one, duplicate from below
-          LOG_TOPIC("57487", ERR, Logger::CLUSTER)
+          LOG_TOPIC("57486", ERR, Logger::CLUSTER)
               << "Failed to delete collection during rollback: " << ex.what();
         } catch (...) {
           // Just we do not crash, no one knowingly throws non exceptions.
         }
       });
 
-      auto future =
-          aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
-              .thenValue([&shouldUndo](
-                             AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
-                // We ordered the creation of collection, if this was not
-                // successful we may try again, if it was, we continue with next
-                // step.
-                if (res.fail()) {
-                  if (GeneralResponse::responseCode(
-                          network::fuerteStatusToArangoErrorCode(
-                              res.statusCode())) ==
-                      rest::ResponseCode::PRECONDITION_FAILED) {
-                    // If the precondition failed,
-                    // we can retry o the next Plan version
-                    return {
-                        TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED};
-                  }
-                  return res.asResult();
+      // Let us wait until we have locally seen the plan
+      // TODO: Why? Can we just skip this?
+      if (VPackSlice resultsSlice = res.slice().get("results");
+          resultsSlice.length() > 0) {
+        Result r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        if (r.fail()) {
+          return r;
+        }
+
+        TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
+            << "createCollectionCoordinator, Plan changed, waiting for "
+               "success...";
+
+        // Now "busy-loop"
+        while (!server.isStopping()) {
+          auto maybeFinalResult = callbackInfos->getResultIfAllReported();
+          if (maybeFinalResult.has_value()) {
+            // We have a final result. we are complete
+            auto const& finalResult = maybeFinalResult.value();
+            if (finalResult.fail()) {
+              // Oh noes, something bad has happend.
+              // Abort
+              return finalResult;
+            }
+
+            // Collection Creation worked.
+            LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
+                << "createCollectionCoordinator, collections ok, removing "
+                   "isBuilding...";
+
+            // Let us remove the isBuilding flags.
+            auto removeIsBuilding =
+                writer.prepareCompletedTransaction(databaseName);
+
+            // This is a best effort, in the worst case the collection stays,
+            // but will be cleaned out by deleteCollectionGuard respectively
+            // the supervision. This removes *all* isBuilding flags from all
+            // collections. This is important so that the creation of all
+            // collections is atomic, and the deleteCollectionGuard relies on
+            // it, too.
+            auto removeBuildingResult =
+                ac.sendTransactionWithFailover(removeIsBuilding);
+
+            LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
+                << "createCollectionCoordinator, isBuilding removed, waiting "
+                   "for new "
+                   "Plan...";
+
+            TRI_IF_FAILURE(
+                "ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+              removeBuildingResult.set(rest::ResponseCode::PRECONDITION_FAILED,
+                                       "Failed to mark collection ready");
+            }
+
+            if (removeBuildingResult.successful()) {
+              // We do not want to undo from here, cancel the guard
+              undoCreationGuard.cancel();
+
+              // Wait for Plan to updated
+              // TODO: Why?
+              if (resultsSlice = removeBuildingResult.slice().get("results");
+                  resultsSlice.length() > 0) {
+                r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+                if (r.fail()) {
+                  return r;
                 }
-                // We have changed the plan, if something bad happens on the
-                // way, trigger the UndoGuard.
-                shouldUndo = true;
-
-                // extract raft index
-                auto slice = res.slice().get("results");
-                TRI_ASSERT(slice.isArray());
-                TRI_ASSERT(!slice.isEmptyArray());
-                return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
-              })
-              .thenValue(
-                  [&ci](ResultT<uint64_t>&& buildingPlanversion) -> Result {
-                    // Got the Plan version while building.
-                    // Let us wait for it
-                    if (buildingPlanversion.fail()) {
-                      return buildingPlanversion.result();
-                    }
-                    // TODO: Is this step actually necessary?
-                    // We are mostly intrested in the current here.
-                    return ci.waitForPlan(buildingPlanversion.get()).get();
-                  })
-              .thenValue([&server, &callbackInfos, &callbackList,
-                          &pollInterval](Result&& res) {
-                // We waited on the buildingPlan to be loaded in the local cache
-                // Now let us watch for CURRENT to check if all requried changes
-                // ahve been applied
-                if (res.fail()) {
-                  // TODO: TRIGGER_CLEANUP
-                  return res;
-                }
-
-                TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                // NOTE: LOGID was 98bca before, deplicate from below
-                LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
-                    << "createCollectionCoordinator, Plan changed, waiting for "
-                       "success...";
-
-                // Now "busy-loop"
-                while (!server.isStopping()) {
-                  auto maybeFinalResult =
-                      callbackInfos->getResultIfAllReported();
-                  if (maybeFinalResult.has_value()) {
-                    // We have a final result. we are complete
-                    return maybeFinalResult.value();
-                  }
-
-                  // We do not have a final result. Let's wait for more input
-                  // Wait for the next incomplete callback
-                  for (auto& [cb, cid] : callbackList) {
-                    if (!callbackInfos->hasReported(cid)) {
-                      // We do not have result for this collection, wait for it.
-                      bool gotTimeout;
-                      {
-                        // This one has not responded, wait for it.
-                        CONDITION_LOCKER(locker, cb->_cv);
-                        gotTimeout =
-                            cb->executeByCallbackOrTimeout(pollInterval);
-                      }
-                      if (gotTimeout) {
-                        // We got woken up by waittime, not by  callback.
-                        // Let us check if we skipped other callbacks as well
-                        for (auto& [cb2, cid2] : callbackList) {
-                          if (callbackInfos->hasReported(cid2)) {
-                            // Only re check those where we have not yet found a
-                            // result.
-                            cb2->refetchAndUpdate(true, false);
-                          }
-                        }
-                      }
-                      // Break the callback loop,
-                      // continue on the check if we completed loop
-                      break;
-                    }
-                  }
-                }
-
-                // If we get here we are not allowed to retry.
-                // The loop above does not contain a break
-                TRI_ASSERT(server.isStopping());
-                return Result{TRI_ERROR_SHUTTING_DOWN};
-              })
-              .thenValue([&ac, &ci, &writer, &databaseName, &collectionNames,
-                          &shouldUndo](Result&& res) -> Result {
-                // All changes have been applied, next step drop the
-                // isBuildingFlags
-                if (res.fail()) {
-                  // Oh noes, something bad has happened.
-                  // Abort
-                  return res;
-                }
-
-                // Collection Creation worked.
-                // NOTE: LOGID was 98bcb before, duplicate from below
-                LOG_TOPIC("98bcd", DEBUG, Logger::CLUSTER)
-                    << "createCollectionCoordinator, collections ok, removing "
-                       "isBuilding...";
-
-                // TODO: This piece can be made asynchronous as well.
-                // Right now we use the Synchronous Agency here.
-
-                // Let us remove the isBuilding flags.
-                auto removeIsBuilding =
-                    writer.prepareCompletedTransaction(databaseName);
-
-                // This is a best effort, in the worst case the collection
-                // stays, but will be cleaned out by deleteCollectionGuard
-                // respectively the supervision. This removes *all* isBuilding
-                // flags from all collections. This is important so that the
-                // creation of all collections is atomic, and the
-                // deleteCollectionGuard relies on it, too.
-                auto removeBuildingResult =
-                    ac.sendTransactionWithFailover(removeIsBuilding);
-
-                // NOTE: LOGID was 98bcc before, duplicate from below
-                LOG_TOPIC("98bce", DEBUG, Logger::CLUSTER)
-                    << "createCollectionCoordinator, isBuilding removed, "
-                       "waiting "
-                       "for new "
-                       "Plan...";
-
-                TRI_IF_FAILURE(
-                    "ClusterInfo::"
-                    "createCollectionsCoordinatorRemoveIsBuilding") {
-                  removeBuildingResult.set(
-                      rest::ResponseCode::PRECONDITION_FAILED,
-                      "Failed to mark collection ready");
-                }
-
-                if (removeBuildingResult.successful()) {
-                  // We do not want to undo from here, cancel the guard
-                  shouldUndo = false;
-
-                  // Wait for Plan to updated
-                  // TODO: Why?
-                  if (VPackSlice resultsSlice =
-                          removeBuildingResult.slice().get("results");
-                      resultsSlice.length() > 0) {
-                    auto r =
-                        ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
-                            .get();
-                    if (r.fail()) {
-                      return r;
-                    }
-                    // NOTE: LogID was 98764 before, duplicate from below
-                    LOG_TOPIC("98766", DEBUG, Logger::CLUSTER)
-                        << "Finished createCollectionsCoordinator for "
-                        << collectionNames.size() << " collections in database "
-                        << databaseName
-                        << " first collection name: " << collectionNames[0]
-                        << " result: " << TRI_ERROR_NO_ERROR;
-                    return TRI_ERROR_NO_ERROR;
-                  }
-                  TRI_ASSERT(false);
-                  return TRI_ERROR_INTERNAL;
-
-                } else {
-                  // NOTE: Increased LOGID by one, deplicate from below
-                  LOG_TOPIC("98676", WARN, Logger::CLUSTER)
-                      << "Failed createCollectionsCoordinator for "
-                      << collectionNames.size() << " collections in database "
-                      << databaseName
-                      << " first collection name: " << collectionNames[0]
-                      << " result: " << removeBuildingResult;
-                  return {
-                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                      "A cluster backend which was required for the operation "
-                      "could not be reached"};
-                }
-              });
-      // Wait synchronously here.
-      // We cannot easily return the future as the callbacks capture local
-      // variables.
-      Result finalResult = future.get();
-      if (finalResult.isNot(
-              TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
-        // If we do not end up in the special preconditionFailed phase, we have
-        // to report here If necessary the return will trigger the undo guard.
-        // Otherwise this will now either return success or non-retryable error.
-        return finalResult;
-      }
-    } else {
-      // Then send the transaction
-      auto res = ac.sendTransactionWithFailover(buildingTransaction.get());
-      if (res.successful()) {
-        // Collections ordered
-        // Prepare do undo if something fails now
-        auto undoCreationGuard =
-            scopeGuard([&writer, &databaseName, &ci, &server, &ac]() noexcept {
-              try {
-                auto undoTrx = writer.prepareUndoTransaction(databaseName);
-
-                // Retry loop to remove the collection
-                using namespace std::chrono;
-                using namespace std::chrono_literals;
-                auto const begin = steady_clock::now();
-                // After a shutdown, the supervision will clean the collections
-                // either due to the coordinator going into FAIL, or due to it
-                // changing its rebootId. Otherwise we must under no
-                // circumstance give up here, because noone else will clean this
-                // up.
-                while (!server.isStopping()) {
-                  auto res = ac.sendTransactionWithFailover(undoTrx);
-                  // If the collections were removed (res.ok()), we may abort.
-                  // If we run into precondition failed, the collections were
-                  // successfully created, so we're fine too.
-                  if (res.successful()) {
-                    if (VPackSlice resultsSlice = res.slice().get("results");
-                        resultsSlice.length() > 0) {
-                      // Wait for updated plan to be loaded
-                      [[maybe_unused]] Result r =
-                          ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
-                              .get();
-                    }
-                    return;
-                  } else if (res.httpCode() ==
-                             rest::ResponseCode::PRECONDITION_FAILED) {
-                    return;
-                  }
-
-                  // exponential backoff, just to be safe,
-                  auto const durationSinceStart = steady_clock::now() - begin;
-                  auto constexpr maxWaitTime = 2min;
-                  auto const waitTime =
-                      std::min<std::common_type_t<decltype(durationSinceStart),
-                                                  decltype(maxWaitTime)>>(
-                          durationSinceStart, maxWaitTime);
-                  std::this_thread::sleep_for(waitTime);
-                }
-
-              } catch (std::exception const& ex) {
-                LOG_TOPIC("57486", ERR, Logger::CLUSTER)
-                    << "Failed to delete collection during rollback: "
-                    << ex.what();
-              } catch (...) {
-                // Just we do not crash, no one knowingly throws non exceptions.
-              }
-            });
-
-        // Let us wait until we have locally seen the plan
-        // TODO: Why? Can we just skip this?
-        if (VPackSlice resultsSlice = res.slice().get("results");
-            resultsSlice.length() > 0) {
-          Result r =
-              ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-          if (r.fail()) {
-            return r;
-          }
-
-          TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
-              << "createCollectionCoordinator, Plan changed, waiting for "
-                 "success...";
-
-          // Now "busy-loop"
-          while (!server.isStopping()) {
-            auto maybeFinalResult = callbackInfos->getResultIfAllReported();
-            if (maybeFinalResult.has_value()) {
-              // We have a final result. we are complete
-              auto const& finalResult = maybeFinalResult.value();
-              if (finalResult.fail()) {
-                // Oh noes, something bad has happend.
-                // Abort
-                return finalResult;
-              }
-
-              // Collection Creation worked.
-              LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
-                  << "createCollectionCoordinator, collections ok, removing "
-                     "isBuilding...";
-
-              // Let us remove the isBuilding flags.
-              auto removeIsBuilding =
-                  writer.prepareCompletedTransaction(databaseName);
-
-              // This is a best effort, in the worst case the collection stays,
-              // but will be cleaned out by deleteCollectionGuard respectively
-              // the supervision. This removes *all* isBuilding flags from all
-              // collections. This is important so that the creation of all
-              // collections is atomic, and the deleteCollectionGuard relies on
-              // it, too.
-              auto removeBuildingResult =
-                  ac.sendTransactionWithFailover(removeIsBuilding);
-
-              LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
-                  << "createCollectionCoordinator, isBuilding removed, waiting "
-                     "for new "
-                     "Plan...";
-
-              TRI_IF_FAILURE(
-                  "ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
-                removeBuildingResult.set(
-                    rest::ResponseCode::PRECONDITION_FAILED,
-                    "Failed to mark collection ready");
-              }
-
-              if (removeBuildingResult.successful()) {
-                // We do not want to undo from here, cancel the guard
-                undoCreationGuard.cancel();
-
-                // Wait for Plan to updated
-                // TODO: Why?
-                if (resultsSlice = removeBuildingResult.slice().get("results");
-                    resultsSlice.length() > 0) {
-                  r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
-                          .get();
-                  if (r.fail()) {
-                    return r;
-                  }
-                  LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
-                      << "Finished createCollectionsCoordinator for "
-                      << collectionNames.size() << " collections in database "
-                      << databaseName
-                      << " first collection name: " << collectionNames[0]
-                      << " result: " << TRI_ERROR_NO_ERROR;
-                  return TRI_ERROR_NO_ERROR;
-                }
-
-              } else {
-                LOG_TOPIC("98675", WARN, Logger::CLUSTER)
-                    << "Failed createCollectionsCoordinator for "
+                LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
+                    << "Finished createCollectionsCoordinator for "
                     << collectionNames.size() << " collections in database "
                     << databaseName
                     << " first collection name: " << collectionNames[0]
-                    << " result: " << removeBuildingResult;
-                return {
-                    TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                    "A cluster backend which was required for the operation "
-                    "could not be reached"};
+                    << " result: " << TRI_ERROR_NO_ERROR;
+                return TRI_ERROR_NO_ERROR;
               }
-            }
-            // We do not have a final result. Let's wait for more input
-            // Wait for the next incomplete callback
-            for (auto& [cb, cid] : callbackList) {
-              if (!callbackInfos->hasReported(cid)) {
-                // We do not have result for this collection, wait for it.
-                bool gotTimeout;
-                {
-                  // This one has not responded, wait for it.
-                  CONDITION_LOCKER(locker, cb->_cv);
-                  gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
-                }
-                if (gotTimeout) {
-                  // We got woken up by waittime, not by  callback.
-                  // Let us check if we skipped other callbacks as well
-                  for (auto& [cb2, cid2] : callbackList) {
-                    if (callbackInfos->hasReported(cid2)) {
-                      // Only re check those where we have not yet found a
-                      // result.
-                      cb2->refetchAndUpdate(true, false);
-                    }
-                  }
-                }
-                // Break the callback loop,
-                // continue on the check if we completed loop
-                break;
-              }
+
+            } else {
+              LOG_TOPIC("98675", WARN, Logger::CLUSTER)
+                  << "Failed createCollectionsCoordinator for "
+                  << collectionNames.size() << " collections in database "
+                  << databaseName
+                  << " first collection name: " << collectionNames[0]
+                  << " result: " << removeBuildingResult;
+              return {TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "A cluster backend which was required for the operation "
+                      "could not be reached"};
             }
           }
-          // If we get here we are not allowed to retry.
-          // The loop above does not contain a break
-          TRI_ASSERT(server.isStopping());
-          return Result{TRI_ERROR_SHUTTING_DOWN};
+          // We do not have a final result. Let's wait for more input
+          // Wait for the next incomplete callback
+          for (auto& [cb, cid] : callbackList) {
+            if (!callbackInfos->hasReported(cid)) {
+              // We do not have result for this collection, wait for it.
+              bool gotTimeout;
+              {
+                // This one has not responded, wait for it.
+                CONDITION_LOCKER(locker, cb->_cv);
+                gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
+              }
+              if (gotTimeout) {
+                // We got woken up by waittime, not by  callback.
+                // Let us check if we skipped other callbacks as well
+                for (auto& [cb2, cid2] : callbackList) {
+                  if (callbackInfos->hasReported(cid2)) {
+                    // Only re check those where we have not yet found a
+                    // result.
+                    cb2->refetchAndUpdate(true, false);
+                  }
+                }
+              }
+              // Break the callback loop,
+              // continue on the check if we completed loop
+              break;
+            }
+          }
         }
-      } else {
-        // TODO: Clean this up should not return DEBUG here
-        return {TRI_ERROR_DEBUG, res.errorMessage()};
+        // If we get here we are not allowed to retry.
+        // The loop above does not contain a break
+        TRI_ASSERT(server.isStopping());
+        return Result{TRI_ERROR_SHUTTING_DOWN};
       }
+    } else {
+      // TODO: Clean this up should not return DEBUG here
+      return {TRI_ERROR_DEBUG, res.errorMessage()};
+    }
+  }
+}
+
+Result impl(ClusterInfo& ci, ArangodServer& server,
+            std::string_view databaseName, TargetCollectionAgencyWriter& writer,
+            bool waitForSyncReplication) {
+  AgencyComm ac(server);
+  double pollInterval = ci.getPollInterval();
+  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+
+  // TODO Timeout?
+  std::vector<std::string> collectionNames = writer.collectionNames();
+  while (true) {
+    auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
+    if (buildingTransaction.fail()) {
+      return buildingTransaction.result();
+    }
+    auto callbackInfos =
+        writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
+
+    std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
+        callbackList;
+    auto unregisterCallbacksGuard =
+        scopeGuard([&callbackList, &callbackRegistry]() noexcept {
+          try {
+            for (auto& [cb, _] : callbackList) {
+              callbackRegistry.unregisterCallback(cb);
+            }
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+                << "Failed to unregister agency callback: " << ex.what();
+          } catch (...) {
+            // Should never be thrown, we only throw exceptions
+          }
+        });
+
+    // First register all callbacks
+    for (auto const& [path, identifier, cb] :
+         callbackInfos->getCallbackInfos()) {
+      auto agencyCallback =
+          std::make_shared<AgencyCallback>(server, path, cb, true, false);
+      Result r = callbackRegistry.registerCallback(agencyCallback);
+      if (r.fail()) {
+        return r;
+      }
+      callbackList.emplace_back(
+          std::make_pair(std::move(agencyCallback), identifier));
+    }
+    callbackInfos->clearCallbacks();
+    using namespace std::chrono_literals;
+    AsyncAgencyComm aac;
+    // TODO do we need to handle Error message (thenError?)
+
+    auto future =
+        aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
+            .thenValue(::reactToPreconditions)
+            .thenValue(waitForOperationRoundtrip(ci))
+            .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
+                                               callbackList, pollInterval));
+    // Wait synchronously here.
+    // We cannot easily return the future as the callbacks capture local
+    // variables.
+    Result finalResult = future.get();
+    if (finalResult.isNot(
+            TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
+      // If we do not end up in the special preconditionFailed phase, we have
+      // to report here If necessary the return will trigger the undo guard.
+      // Otherwise this will now either return success or non-retryable error.
+      return finalResult;
     }
   }
 }
