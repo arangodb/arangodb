@@ -212,11 +212,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     ActorPID sender;
     std::unique_ptr<MessageOrError<typename Config::Message>> payload;
   };
-  template<typename Inspector>
-  auto inspect(Inspector& f, InternalMessage& x) {
-    return f.object(x).fiels(f.field("sender", x.sender),
-                             f.field("payload", x.payload));
-  }
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
     // don't add new messages when actor is finished
