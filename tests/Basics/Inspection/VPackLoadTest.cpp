@@ -255,6 +255,89 @@ TEST_F(VPackLoadInspectorTest, load_tuples) {
   EXPECT_EQ(expected.array2, t.array2);
 }
 
+TEST_F(VPackLoadInspectorTest, load_slice) {
+  {
+    builder.openObject();
+    builder.add(VPackValue("dummy"));
+    builder.openObject();
+    builder.add("i", VPackValue(42));
+    builder.add("b", VPackValue(true));
+    builder.add("s", VPackValue("foobar"));
+    builder.close();
+    builder.close();
+    VPackLoadInspector inspector{builder};
+
+    velocypack::SharedSlice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(slice.isObject());
+    slice = slice["dummy"];
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(42, slice["i"].getInt());
+    EXPECT_EQ(true, slice["b"].getBoolean());
+    EXPECT_EQ("foobar", slice["s"].stringView());
+  }
+
+  {
+    builder.clear();
+    builder.add(VPackValue("foobar"));
+    VPackLoadInspector inspector{builder};
+
+    velocypack::SharedSlice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
+
+  {
+    builder.clear();
+    builder.add(VPackValue("foobar"));
+    inspection::VPackUnsafeLoadInspector<> inspector{builder};
+
+    velocypack::Slice slice;
+    auto result = inspector.apply(slice);
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
+}
+
+TEST_F(VPackLoadInspectorTest, load_builder) {
+  {
+    builder.openObject();
+    builder.add(VPackValue("dummy"));
+    builder.openObject();
+    builder.add("i", VPackValue(42));
+    builder.add("b", VPackValue(true));
+    builder.add("s", VPackValue("foobar"));
+    builder.close();
+    builder.close();
+    VPackLoadInspector inspector{builder};
+
+    velocypack::Builder builder;
+    auto result = inspector.apply(builder);
+    ASSERT_TRUE(result.ok());
+    auto slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    slice = slice["dummy"];
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(42, slice["i"].getInt());
+    EXPECT_EQ(true, slice["b"].getBoolean());
+    EXPECT_EQ("foobar", slice["s"].stringView());
+  }
+
+  {
+    builder.clear();
+    builder.add(VPackValue("foobar"));
+    inspection::VPackUnsafeLoadInspector<> inspector{builder};
+
+    velocypack::Builder builder;
+    auto result = inspector.apply(builder);
+    auto slice = builder.slice();
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
+}
+
 TEST_F(VPackLoadInspectorTest, load_optional) {
   builder.openObject();
   builder.add("y", VPackValue("blubb"));
