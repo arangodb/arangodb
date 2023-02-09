@@ -29,7 +29,7 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
-const { Helper, versionHas } = require("@arangodb/test-helper");
+const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
 const cn = "UnitTestsCollection";
