@@ -224,8 +224,8 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     // only push work to scheduler if actor is idle (meaning no work is waiting
     // on the scheduler and no work is currently processed in work())
     // and set idle to false
-    auto isIdle = true;
-    if (idle.compare_exchange_strong(isIdle, false)) {
+    auto isIdle = idle.load();
+    if (isIdle and idle.compare_exchange_strong(isIdle, false)) {
       kick();
     }
   }

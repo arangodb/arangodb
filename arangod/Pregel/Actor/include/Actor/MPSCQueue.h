@@ -41,24 +41,24 @@ struct MPSCQueue {
     std::atomic<Node*> next{nullptr};
   };
 
-  MPSCQueue() : stub{}, head(&stub), tail(&stub) {}
+  MPSCQueue() noexcept : stub{}, head(&stub), tail(&stub) {}
   MPSCQueue(MPSCQueue const&) = delete;
   MPSCQueue(MPSCQueue&&) = delete;
   MPSCQueue& operator=(MPSCQueue const&) = delete;
   MPSCQueue& operator=(MPSCQueue&&) = delete;
 
-  auto push_internal(Node* value) -> void {
+  auto push_internal(Node* value) noexcept -> void {
     value->next.store(nullptr);
     auto prev = head.exchange(value);
     prev->next.store(value);
   }
 
-  auto push(std::unique_ptr<T> value) -> void {
+  auto push(std::unique_ptr<T> value) noexcept -> void {
     auto ptr = value.release();
     push_internal(ptr);
   }
 
-  auto empty() -> bool {
+  auto empty() noexcept -> bool {
     // We read first tail and then head, because
     auto currentTail = tail.load();
     auto currentHead = head.load();
@@ -66,7 +66,7 @@ struct MPSCQueue {
     return currentHead == currentTail;
   }
 
-  [[nodiscard]] auto pop() -> std::unique_ptr<T> {
+  [[nodiscard]] auto pop() noexcept -> std::unique_ptr<T> {
     auto current = tail.load();
     auto next = current->next.load();
 
@@ -121,7 +121,7 @@ struct MPSCQueue {
     return nullptr;
   }
 
-  auto flush() -> void {
+  auto flush() noexcept -> void {
     auto node = pop();
     while (node != nullptr) {
       auto ptr = node.release();
@@ -130,7 +130,7 @@ struct MPSCQueue {
     }
   }
 
-  ~MPSCQueue() { flush(); }
+  ~MPSCQueue() noexcept { flush(); }
 
  private:
   Node stub{};

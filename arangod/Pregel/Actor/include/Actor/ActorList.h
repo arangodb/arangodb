@@ -77,7 +77,7 @@ struct ActorList {
 
   auto apply(std::function<void(std::shared_ptr<ActorBase>&)> fn) -> void {
     actors.doUnderLock([&fn](ActorMap& map) {
-      for (auto&& [id, actor] : map) {
+      for (auto&& [_, actor] : map) {
         fn(actor);
       }
     });
@@ -86,18 +86,20 @@ struct ActorList {
   auto checkAll(std::function<bool(std::shared_ptr<ActorBase> const&)> fn) const
       -> bool {
     return actors.doUnderLock([&fn](ActorMap const& map) {
-      bool result = true;
-      for (auto const& [id, actor] : map) {
-        result = result and fn(actor);
+      for (auto const& [_, actor] : map) {
+        if (not fn(actor)) {
+          return false;
+        }
       }
-      return result;
+      return true;
     });
   }
 
   auto allIDs() const -> std::vector<ActorID> {
     return actors.doUnderLock([](ActorMap const& map) {
       auto res = std::vector<ActorID>{};
-      for (auto& [id, _] : map) {
+      res.reserve(map.size());
+      for (auto const& [id, _] : map) {
         res.push_back(id);
       }
       return res;
@@ -111,20 +113,21 @@ struct ActorList {
   template<typename Inspector>
   friend auto inspect(Inspector& f, ActorInfo& x);
   template<typename Inspector>
-  friend auto inspect(Inspector& f, ActorMap& x);
+  friend auto inspect(Inspector& f, ActorMap const& x);
   template<typename Inspector>
-  friend auto inspect(Inspector& f, ActorList& x);
+  friend auto inspect(Inspector& f, ActorList const& x);
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorList::ActorInfo& x) {
   return f.object(x).fields(f.field("id", x.id), f.field("type", x.type));
 }
 template<typename Inspector>
-auto inspect(Inspector& f, ActorList::ActorMap& x) {
+auto inspect(Inspector& f, ActorList::ActorMap const& x) {
   if constexpr (Inspector::isLoading) {
     return inspection::Status{};
   } else {
     auto actorInfos = std::vector<ActorList::ActorInfo>{};
+    actorInfos.reserve(x.size());
     for (auto const& [id, actor] : x) {
       actorInfos.emplace_back(
           ActorList::ActorInfo{.id = id, .type = actor->typeName()});
@@ -133,7 +136,7 @@ auto inspect(Inspector& f, ActorList::ActorMap& x) {
   }
 }
 template<typename Inspector>
-auto inspect(Inspector& f, ActorList& x) {
+auto inspect(Inspector& f, ActorList const& x) {
   if constexpr (Inspector::isLoading) {
     return inspection::Status{};
   } else {

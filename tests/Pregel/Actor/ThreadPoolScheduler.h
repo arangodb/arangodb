@@ -26,61 +26,56 @@
 #include <mutex>
 #include <queue>
 #include <vector>
-#include <thread>
 #include <functional>
+#include "Basics/ThreadGuard.h"
 
-struct ThreadPoolScheduler : std::enable_shared_from_this<ThreadPoolScheduler> {
+struct ThreadPoolScheduler {
  private:
-  std::vector<std::thread> threads;
+  arangodb::ThreadGuard threads;
   std::queue<std::function<void()>> jobs;
   std::mutex queue_mutex;
   std::condition_variable mutex_condition;
   bool should_terminate = false;
 
   auto loop() -> void {
+    std::unique_lock lock(queue_mutex);
+    std::function<void()> job;
     while (true) {
-      std::function<void()> job;
-      {
-        std::unique_lock lock(queue_mutex);
-        mutex_condition.wait(lock, [self = this->shared_from_this()] {
-          return !self->jobs.empty() || self->should_terminate;
-        });
-        // all jobs need to be completed before thread ends loop execution
-        if (should_terminate && jobs.empty()) {
-          return;
-        }
+      while (not jobs.empty()) {
         job = std::move(jobs.front());
         jobs.pop();
+        lock.unlock();
+        job();
+        lock.lock();
       }
-      job();
+      if (should_terminate) {
+        return;
+      }
+      mutex_condition.wait(lock);
     }
   }
 
  public:
   auto start(size_t number_of_threads) -> void {
-    threads.resize(number_of_threads);
     for (size_t i = 0; i < number_of_threads; i++) {
-      threads[i] =
-          std::thread([self = this->shared_from_this()]() { self->loop(); });
+      threads.emplace([this]() { loop(); });
     }
   }
 
   auto stop() -> void {
     {
-      std::unique_lock lock(queue_mutex);
+      std::lock_guard lock{queue_mutex};
       should_terminate = true;
     }
     mutex_condition.notify_all();
-    for (auto& active_thread : threads) {
-      active_thread.join();
-    }
-    threads.clear();
+
+    threads.joinAll();
   }
 
   auto operator()(std::function<void()> job) -> void {
     {
       std::unique_lock lock(queue_mutex);
-      jobs.push(job);
+      jobs.push(std::move(job));
     }
     mutex_condition.notify_one();
   }
