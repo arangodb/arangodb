@@ -24,12 +24,15 @@ import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
 import LoadingSpinner from './LoadingSpinner.js';
 import AccordionView from './components/Accordion/Accordion';
+import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onVisGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  const [open, toggleDrawer] = useState(false);
 
   const enterFullscreen = (element) => {
     if(element.requestFullscreen) {
@@ -115,45 +118,63 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
 
   return (
     <>
-      <div style={{ 'background': '#404a53' }}>
-        <div style={{ 'padding': '24px' }}>
-          <ButtonSave
-            graphName={graphName}
-            onGraphDataLoaded={(newGraphData, responseTimesObject) => {
-              onGraphDataLoaded(newGraphData, responseTimesObject)}
-            }
-            onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
+      <Drawer
+        position="right"
+        open={open}
+        onClose={() => {
+          console.log("closed");
+        }}
+        onOpen={() => {
+          console.log("open");
+        }}
+      >
+        <div style={{ 'background': '#404a53' }}>
+          <div style={{ 'padding': '24px' }}>
+            <ButtonSave
+              graphName={graphName}
+              onGraphDataLoaded={(newGraphData, responseTimesObject) => {
+                onGraphDataLoaded(newGraphData, responseTimesObject)}
+              }
+              onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
+            />
+          </div>
+          <AccordionView
+            allowMultipleOpen
+            accordionConfig={[
+              {
+                index: 0,
+                content: <div><AccordionGraphContent /></div>,
+                label: "Graph",
+                testID: "accordionItem0",
+                defaultActive: true
+              },
+              {
+                index: 1,
+                content: (
+                  <div><AccordionNodesContent /></div>
+                ),
+                label: "Nodes",
+                testID: "accordionItem1"
+              },
+              {
+                index: 2,
+                content: (
+                  <div><AccordionEdgesContent /></div>
+                ),
+                label: "Edges",
+                testID: "accordionItem2"
+              }
+            ]}
           />
         </div>
-        <AccordionView
-          allowMultipleOpen
-          accordionConfig={[
-            {
-              index: 0,
-              content: <div><AccordionGraphContent /></div>,
-              label: "Graph",
-              testID: "accordionItem0",
-              defaultActive: true
-            },
-            {
-              index: 1,
-              content: (
-                <div><AccordionNodesContent /></div>
-              ),
-              label: "Nodes",
-              testID: "accordionItem1"
-            },
-            {
-              index: 2,
-              content: (
-                <div><AccordionEdgesContent /></div>
-              ),
-              label: "Edges",
-              testID: "accordionItem2"
-            }
-          ]}
-        />
-      </div>
+      </Drawer>
+      <IconButton icon={'bars'} onClick={() => toggleDrawer(!open)} style={{
+          background: '#2ECC71',
+          color: 'white',
+          paddingLeft: 8,
+          paddingTop: 6
+        }}>Settings
+        </IconButton>
       <HelpModal
         shouldShow={showHelpModal}
         onRequestClose={() => {

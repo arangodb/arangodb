@@ -1,0 +1,26 @@
+.side-drawer {
+    width: 0;
+    background-color: gray;
+    position: absolute;
+    margin: 0;
+    text-align: left;
+  
+    -webkit-transition: all 0.2s ease-out;
+    -moz-transition: all 0.2s ease-out;
+    -o-transition: all 0.2s ease-out;
+    transition: all 0.2s ease-out;
+  }
+  
+  .side-drawer.left {
+    left: 0;
+  }
+  
+  .side-drawer.right {
+    right: 0;
+  }
+  
+  .side-drawer.open {
+    width: 400px;
+    z-index: 1;
+  }
+  
