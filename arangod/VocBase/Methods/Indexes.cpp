@@ -740,6 +740,7 @@ Result Indexes::drop(LogicalCollection* collection,
                                         collection->vocbase(), false),
                                     *collection, AccessMode::Type::EXCLUSIVE,
                                     trxOpts);
+    trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     Result res = trx.begin();
 
     if (!res.ok()) {
