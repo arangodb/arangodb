@@ -305,7 +305,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   extractResults() {
-    if (this.fn !== undefined) {
+    if (this.fn !== undefined && fs.exists(this.fn)) {
       fs.remove(this.fn);
     }
     if (this.instanceManager === null) {
