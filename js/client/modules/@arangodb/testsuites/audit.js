@@ -38,6 +38,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
 const base64Encode = require('internal').base64Encode;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -108,11 +109,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
 
   // only enable them in Enterprise Edition
   let version = {};
-  if (global.ARANGODB_CLIENT_VERSION) {
-    version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version['enterprise-version']) {
-      opts['skipAudit'] = false;
-    }
+  if (isEnterprise()) {
+    opts['skipAudit'] = false;
   }
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

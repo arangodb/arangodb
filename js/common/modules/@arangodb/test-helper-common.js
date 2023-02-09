@@ -36,6 +36,22 @@ const fs = require('fs');
 
 let instanceInfo = null;
 
+exports.versionHas = function (attribute) {
+  if (global.hasOwnProperty('ARANGODB_CLIENT_VERSION')) {
+    return global.ARANGODB_CLIENT_VERSION(true)[attribute] === 'true';
+  } else {
+    return db._version(true)[attribute] === 'true';
+  }
+};
+
+exports.isEnterprise = function () {
+  if (global.hasOwnProperty('ARANGODB_CLIENT_VERSION')) {
+    return global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version');
+  } else {
+    return db._version(true).hasOwnProperty('enterprise-version');
+  }
+};
+
 exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
   try {
     db._executeTransaction(trx);

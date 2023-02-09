@@ -42,9 +42,13 @@ const {
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;

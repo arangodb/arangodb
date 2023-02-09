@@ -36,6 +36,8 @@ const {
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
@@ -48,6 +50,8 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
