@@ -5,10 +5,12 @@ import { Card } from 'antd';
 import { Headerinfo } from './Headerinfo';
 import styles from './graphview.module.css';
 import './graphview.menu.css';
+import './visgraphstyles.css'
+import VisNetwork from './VisNetwork';
 export class GraphView extends React.Component {
 
   shouldComponentUpdate(nextProps, nextState) {
-    if (this.props.data === nextProps.data) {
+    if (this.props.visGraphData === nextProps.visGraphData) {
       return false;
     } else {
       return true;
@@ -89,6 +91,7 @@ export class GraphView extends React.Component {
         linkDistance: 150,
         maxIteration: 0,
         center: [Math.floor(container.clientWidth/2), 400],
+        //center: [400, 400],
       },
       modes: {
         default: [
@@ -659,6 +662,16 @@ export class GraphView extends React.Component {
     });
   }
 
+  changeVisGraphLayoutFromUi = (layout) => {
+    /*
+    this.graph.updateLayout({
+      type: layout,
+      preventOverlap: true,
+    });
+    */
+   console.log("WUHUUU Changed VisGraphLayout in GraphView: ", layout);
+  }
+
   render() {
     return <>
       <Headerinfo
@@ -680,6 +693,7 @@ export class GraphView extends React.Component {
         onEdgeSearched={(previousSearchedEdge, edge) => this.highlightEdge(previousSearchedEdge, edge)}
         onEdgeStyleChanged={(edgeStyle) => this.changeEdgeStyleFromUi(edgeStyle)}
         onGraphLayoutChange={(layout) => this.changeGraphLayoutFromUi(layout)}
+        onVisGraphLayoutChange={(layout) => this.changeVisGraphLayoutFromUi(layout)}
         onGraphDataLoaded={(newGraphData, responseTimesObject) => {
           this.props.onGraphDataLoaded({newGraphData, responseTimesObject})}}
       />
@@ -688,6 +702,11 @@ export class GraphView extends React.Component {
           id="graph-card"
           bodyStyle={{ 'minHeight': '400px', 'height': '100%', 'backgroundColor': '#f2f2f2' }}
         >
+          <VisNetwork
+            graphData={this.props.visGraphData}
+            graphName={this.props.graphName}
+            options={{}}
+          />
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
     </>;
