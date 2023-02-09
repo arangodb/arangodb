@@ -268,16 +268,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
               _index->cachedValueCollection(cacheValueCollection);
           TRI_ASSERT(cacheValueCollection != nullptr);
           _idBuilder.clear();
-          // collection name
-          _idBuilder.append(cacheValueCollection->data(),
-                            cacheValueCollection->size());
-          // key including forward slash
-          _idBuilder.append(v.data(), v.size());
-          // make string_view point to temporary buffer
-          // TODO: improve performance
-          _idBuilder2.clear();
-          _idBuilder2.add(VPackValue(_idBuilder));
-          fromTo = _idBuilder2.slice();
+          // collection name  and  key including forward slash
+          _idBuilder.add(VPackValueString2Parts(*cacheValueCollection, v));
+          fromTo = _idBuilder.slice();
         }
         std::forward<F>(cb)(docId, fromTo);
 
@@ -346,16 +339,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                       _index->cachedValueCollection(cacheValueCollection);
                   TRI_ASSERT(cacheValueCollection != nullptr);
                   _idBuilder.clear();
-                  // collection name
-                  _idBuilder.append(cacheValueCollection->data(),
-                                    cacheValueCollection->size());
-                  // key including forward slash
-                  _idBuilder.append(v.data(), v.size());
-                  // make string_view point to temporary buffer
-                  // TODO: improve performance
-                  _idBuilder2.clear();
-                  _idBuilder2.add(VPackValue(_idBuilder));
-                  fromTo = _idBuilder2.slice();
+                  // collection name  and  key including forward slash
+                  _idBuilder.add(
+                      VPackValueString2Parts(*cacheValueCollection, v));
+                  fromTo = _idBuilder.slice();
                 }
 
                 std::forward<F>(cb)(docId, fromTo);
@@ -496,9 +483,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   RocksDBKeyBounds _bounds;
   // used to build temporary _from/_to values from compressed values
-  std::string _idBuilder;
-  // TODO: fix this
-  velocypack::Builder _idBuilder2;
+  velocypack::Builder _idBuilder;
 
   // the following values are required for correct batch handling
   velocypack::Builder _builder;
