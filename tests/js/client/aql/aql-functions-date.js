@@ -1674,7 +1674,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateAddInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
 
@@ -1694,12 +1694,6 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
-
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
@@ -1707,6 +1701,16 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', {})");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1780,7 +1784,9 @@ function ahuacatlDateFunctionsTestSuite () {
         [ [1430931674000, 365, "days"], "2016-05-05T17:01:14.000Z" ], /* leap year */
         [ [60123, 7, "days"], "1970-01-08T00:01:00.123Z" ],
         [ [1, -1, "f"], "1970-01-01T00:00:00.000Z" ],
-        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ],
+        [ ["2023-03-25T23:00:00.000Z", 1, 'd', 'Europe/Berlin'], "2023-03-26T22:00:00.000Z" ], // timezoned
+        [ [1679785200000, 1, 'd', 'Europe/Berlin'], "2023-03-26T22:00:00.000Z" ] // timezoned
       ];
 
       values.forEach(function (value) {
@@ -1799,7 +1805,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateSubtractInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1)");
 
@@ -1819,12 +1825,6 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, '')");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), '', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), '1', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 'one', 'year')");
-
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), null, 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), false, 'year')");
@@ -1832,6 +1832,16 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), [], 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), {}, 'year')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', {})");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1906,7 +1916,9 @@ function ahuacatlDateFunctionsTestSuite () {
         [ [1430931674000, 365, "days"], "2014-05-06T17:01:14.000Z" ], /* leap year */
         [ [60123, 7, "days"], "1969-12-25T00:01:00.123Z" ],
         [ [1, -1, "f"], "1970-01-01T00:00:00.002Z" ],
-        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ],
+        [ ["2023-03-26T22:00:00.000Z", 1, 'd', 'Europe/Berlin'], "2023-03-25T23:00:00.000Z" ], // timezoned
+        [ [1679868000000, 1, 'd', 'Europe/Berlin'], "2023-03-25T23:00:00.000Z" ] // timezoned
       ];
 
       values.forEach(function (value) {
