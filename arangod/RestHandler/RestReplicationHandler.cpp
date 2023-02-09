@@ -1456,6 +1456,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result res = trx.begin();
 
