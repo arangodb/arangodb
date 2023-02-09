@@ -104,14 +104,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['audit_server'] = auditLog(true);
   testFns['audit_client'] = auditLog(false);
 
-  // turn off test by default.
-  opts['skipAudit'] = true;
-
   // only enable them in Enterprise Edition
-  let version = {};
-  if (isEnterprise()) {
-    opts['skipAudit'] = false;
-  }
+  opts['skipAudit'] = !isEnterprise();
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

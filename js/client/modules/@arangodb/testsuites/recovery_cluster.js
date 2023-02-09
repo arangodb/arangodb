@@ -254,10 +254,7 @@ function recovery (options) {
   let results = {
     status: true
   };
-  let useEncryption = false;
-  if (isEnterprise()){
-    useEncryption = true;
-  }
+  let useEncryption = isEnterprise();
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options
                                        // At the moment only view-tests supported by cluster recovery tests:

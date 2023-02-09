@@ -90,10 +90,6 @@ function driver (options) {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
       }
-      let enterprise = 'false';
-      if (isEnterprise()) {
-        enterprise = 'true';
-      }
       let m = this.instanceManager.url.split(host_re);
       
       let args = [
@@ -105,7 +101,7 @@ function driver (options) {
         '--auth', false,
         '--username', 'root',
         '--password', '',
-        enterprise?'--enterprise':'--no-enterprise',
+        (isEnterprise())? '--enterprise' : '--no-enterprise',
         '--deployment-mode', topology
         
       ];

@@ -494,13 +494,8 @@ exports.setup = function(testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['ldapfirstldap'] = authenticationLdapFirstLdap;
   testFns['ldapsecondldap'] = authenticationLdapSecondLdap;
 
-  // turn off ldap tests by default.
-  opts['skipLdap'] = true;
-
   // only enable them in Enterprise Edition
-  if (isEnterprise()) {
-    opts['skipLdap'] = false;
-  }
+  opts['skipLdap'] = !isEnterprise();
 
   for (var attrname in functionsDocumentation) {
     fnDocs[attrname] = functionsDocumentation[attrname];

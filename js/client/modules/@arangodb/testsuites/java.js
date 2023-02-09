@@ -89,10 +89,7 @@ function javaDriver (options) {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
       }
-      let enterprise = 'false';
-      if (isEnterprise()) {
-        enterprise = 'true';
-      }
+
       // strip i.e. http:// from the URL to conform with what the driver expects:
       let rx = /.*:\/\//gi;
       let args = [
@@ -100,7 +97,7 @@ function javaDriver (options) {
         '-Dgroups=api',
         '-Dtest.useProvidedDeployment=true',
         '-Dtest.arangodb.version='+ db._version(),
-        '-Dtest.arangodb.isEnterprise=' + enterprise,
+        '-Dtest.arangodb.isEnterprise=' + isEnterprise()? 'true' : 'false',
         '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
         '-Dtest.arangodb.authentication=root:',
         '-Dtest.arangodb.topology=' + topology,

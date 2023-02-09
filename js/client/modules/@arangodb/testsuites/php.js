@@ -49,7 +49,6 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
-const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -87,10 +86,6 @@ function phpDriver (options) {
       } else {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
-      }
-      let enterprise = 'false';
-      if (isEnterprise()) {
-        enterprise = 'true';
       }
       let m = this.instanceManager.url.split(host_re);
       process.env['ARANGO_ROOT_PASSWORD'] = '';
