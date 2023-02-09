@@ -490,6 +490,19 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
+const date::sys_info localizeTimePoint(
+    AqlValue const& timezoneParam,
+    tp_sys_clock_ms& utcTimePoint
+) {
+  std::string const tz = timezoneParam.slice().copyString();
+  auto const local = date::local_time<milliseconds>{
+      floor<milliseconds>(utcTimePoint).time_since_epoch()};
+  auto const zoned = date::make_zoned(tz, local);
+  utcTimePoint = tp_sys_clock_ms{
+      zoned.get_sys_time().time_since_epoch()};
+  return zoned.get_info();
+}
+
 AqlValue addOrSubtractIsoDurationFromTimestamp(
     ExpressionContext* expressionContext, tp_sys_clock_ms const& tp,
     std::string_view duration, char const* AFN, bool isSubtract) {
@@ -4106,13 +4119,9 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     showDetail = detailParam.slice().getBoolean();
   }
 
-  std::string const tz = timeZoneParam.slice().copyString();
-  auto const local = date::local_time<milliseconds>{
-      floor<milliseconds>(tp_local).time_since_epoch()};
-  auto const zoned = date::make_zoned(tz, local);
-  auto const info = zoned.get_info();
-  auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
-  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
+  // converts tp_local to tp_utc
+  auto const info = ::localizeTimePoint(timeZoneParam,tp_local);
+  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_local);
 
   AqlValueGuard aqlUtcGuard(aqlUtc, true);
 
@@ -4195,10 +4204,30 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  // size == 4 unit / unit type / timezone
   // size == 3 unit / unit type
+  // size == 3 iso duration / timezone
   // size == 2 iso duration
 
-  if (parameters.size() == 3) {
+  AqlValue const& parameter1 = extractFunctionParameterValue(parameters, 1);
+
+  auto const isTimeZoned = parameters.size() == 4 ||
+                     ( parameters.size() == 3 && parameter1.isString());
+
+  if (isTimeZoned) {
+    AqlValue const& timezoneParam =
+        extractFunctionParameterValue(parameters,
+                                      parameters.size() == 4 ? 4: 3);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    ::localizeTimePoint(timezoneParam,tp);
+  }
+
+  if ((parameters.size() == 3 && isTimeZoned) || parameters.size() == 4) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
       registerInvalidArgumentWarning(expressionContext, AFN);
