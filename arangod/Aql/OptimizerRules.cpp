@@ -8029,9 +8029,9 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+    if (false && (node->getType() == ExecutionNode::SCATTER ||
+                  node->getType() == ExecutionNode::GATHER ||
+                  node->getType() == ExecutionNode::DISTRIBUTE)) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -8049,7 +8049,7 @@ struct ParallelizableFinder final
     // write operations of type REMOVE, REPLACE and UPDATE
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
-    if (node->isModificationNode() &&
+    if (false && node->isModificationNode() &&
         (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
                                  node->getType() != ExecutionNode::REPLACE &&
                                  node->getType() != ExecutionNode::UPDATE))) {
@@ -8415,8 +8415,8 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
-      !plan->contains(EN::SCATTER)) {
+  if (!nodes.empty() || (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
+                         !plan->contains(EN::SCATTER))) {
     TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
     bool parallelizeWrites = vocbase.server()
                                  .getFeature<OptimizerRulesFeature>()
