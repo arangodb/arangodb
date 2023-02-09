@@ -520,7 +520,9 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
     }
-    fs.removeDirectoryRecursive(this.rootDir, true);
+    if (fs.exists(this.rootDir)) {
+      fs.removeDirectoryRecursive(this.rootDir, true);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
