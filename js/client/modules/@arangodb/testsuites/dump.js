@@ -115,10 +115,11 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
       if (this.im1 != null) {
-        this.im1.destructor();
+        print('santoeuh')
+        this.im1.destructor(this.results.failed === 0);
       }
       if (this.im2 != null) {
-        this.im2.destructor();
+        this.im2.destructor(this.results.failed === 0);
       }
       [this.keyDir,
        this.otherKeyDir,
@@ -314,7 +315,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     print(CYAN + 'Shutting down...' + RESET);
     this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor(this.results.failed === 0);
+    this.instanceManager.destructor(false);
     print(CYAN + 'done.' + RESET);
 
     print();
