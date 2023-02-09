@@ -105,6 +105,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreOldConfig = false;
     this.afterServerStart = afterServerStart;
     this.instanceManager = null;
+    this.im1 = null;
+    this.im2 = null;
     this.keyDir = null;
     this.otherKeyDir = null;
   }
@@ -112,6 +114,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   destructor(cleanup) {
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
+      if (this.im1 != null) {
+        this.im1.destructor();
+      }
+      if (this.im2 != null) {
+        this.im2.destructor();
+      }
       [this.keyDir,
        this.otherKeyDir,
        this.dumpConfig.getOutputDirectory()].forEach(dir => {
@@ -220,7 +228,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   startFirstInstance() {
-    this.instanceManager = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
+    this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -248,7 +256,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.instanceManager.destructor(false); // must not cleanup!
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
+      this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
       this.instanceManager.prepareInstance();
       this.instanceManager.launchTcpDump("");
       if (!this.instanceManager.launchInstance()) {
