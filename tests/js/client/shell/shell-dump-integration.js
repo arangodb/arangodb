@@ -84,19 +84,14 @@ function dumpIntegrationSuite() {
     args.push(arango.connectedUser());
   };
 
-  let runDump = function (path, args, rc) {
-    try {
-      fs.removeDirectory(path);
-    } catch (err) {
-    }
-
+  let runDump = function (path, args, expectRc) {
     args.push('--output-directory');
     args.push(path);
     addConnectionArgs(args);
 
     let actualRc = internal.executeExternalAndWait(arangodump, args);
     assertTrue(actualRc.hasOwnProperty("exit"));
-    assertEqual(rc, actualRc.exit);
+    assertEqual(expectRc, actualRc.exit);
     return fs.listTree(path);
   };
 
@@ -358,10 +353,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn + "WithSchema");
         checkDataFile(tree, path, false, false, false, cn + "WithSchema");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -374,10 +366,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn + "ComputedValues");
         checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, cn + "ComputedValues");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -390,10 +379,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn + "ComputedValues");
         checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, cn + "ComputedValues");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -418,10 +404,7 @@ function dumpIntegrationSuite() {
         let data = fs.readFileSync(file).toString();
         assertEqual(shardCounts[shards[0]] + 1, data.split('\n').length);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -446,10 +429,7 @@ function dumpIntegrationSuite() {
         let data = fs.readFileSync(file).toString();
         assertEqual(shardCounts[shards[0]] + shardCounts[shards[1]] + 1, data.split('\n').length);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -472,10 +452,7 @@ function dumpIntegrationSuite() {
         }
         assertEqual(lastValue, data.parameters.keyOptions.lastValue);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -496,10 +473,7 @@ function dumpIntegrationSuite() {
         assertEqual(lastValue, data.parameters.keyOptions.lastValue);
 
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -513,10 +487,7 @@ function dumpIntegrationSuite() {
           checkDumpJsonFile(name, path, db._id());
           checkCollections(tree, path);
         } finally {
-          try {
-            fs.removeDirectory(path);
-          } catch (err) {
-          }
+          fs.removeDirectoryRecursive(path, true);
         }
       });
     },
@@ -552,11 +523,7 @@ function dumpIntegrationSuite() {
         checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
         checkCollections(tree, path, db._id());
       } finally {
-        try {
-          fs.removeDirectory(path);
-          db._useDatabase("_system");
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -597,11 +564,7 @@ function dumpIntegrationSuite() {
         checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
         checkCollections(tree, path, db._id());
       } finally {
-        try {
-          fs.removeDirectory(path);
-          db._useDatabase("_system");
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -622,10 +585,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, false, cn);
         checkDataFile(tree, path, false, true, false, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -646,10 +606,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, false, cn);
         checkDataFile(tree, path, false, false, false, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -669,10 +626,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn);
         checkDataFile(tree, path, false, true, true, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -692,10 +646,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn);
         checkDataFile(tree, path, false, false, true, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -716,10 +667,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, false, cn);
         checkDataFile(tree, path, false, true, false, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -734,10 +682,7 @@ function dumpIntegrationSuite() {
         // this is expected to have an exit code of 1
         runDump(path, args, 1 /*exit code*/);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -757,10 +702,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn);
         checkDataFile(tree, path, true, false, true, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -780,10 +722,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn);
         checkDataFile(tree, path, false, false, true, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -811,10 +750,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, false, cn);
         checkDataFile(tree, path, false, true, false, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -840,10 +776,7 @@ function dumpIntegrationSuite() {
         args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
         runDump(path, args, 1 /*exit code*/);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -865,10 +798,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn + "Other");
         checkDataFile(tree, path, true, false, true, cn + "Other");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -879,10 +809,7 @@ function dumpIntegrationSuite() {
         let tree = runDump(path, args, 1);
         checkEncryption(tree, path, "none");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -893,10 +820,7 @@ function dumpIntegrationSuite() {
         let tree = runDump(path, args, 1);
         checkEncryption(tree, path, "none");
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
 
@@ -909,10 +833,7 @@ function dumpIntegrationSuite() {
         checkStructureFile(tree, path, true, cn);
         checkDataFile(tree, path, true, false, true, cn);
       } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+        fs.removeDirectoryRecursive(path, true);
       }
     },
   };
