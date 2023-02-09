@@ -117,7 +117,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       if (this.im1 !== null) {
         this.im1.destructor(this.results.failed === 0);
       }
-      if (this.im2 != null) {
+      if (this.im2 !== null) {
         this.im2.destructor(this.results.failed === 0);
       }
       [this.keyDir,
