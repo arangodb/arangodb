@@ -861,7 +861,7 @@ class instance {
     let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
-      fs.write(fs.join(this.options.testOutputDirectory, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+      fs.write(fs.join(this.options.testOutputDirectory, 'agencydump', fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     } else {
       print(agencyReply);
     }

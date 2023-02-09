@@ -528,6 +528,21 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    const dumpdir = fs.join(this.options.testOutputDirectory, 'agencydump');
+    const zipfn = fs.join(this.options.testOutputDirectory, 'agencydump.zip');
+    if (fs.exists(dumpdir)) {
+      if (fs.isFile(zipfn)) {
+        fs.remove(zipfn);
+      };
+      fs.list(dumpdir).forEach(file => {
+        const fn = fs.join(dumpdir, file);
+        if (fs.isFile(fn)) {
+          fs.remove(fn);
+        }
+      });
+    } else {
+      fs.makeDirectory(dumpdir);
+    }
     this.arangods.forEach((arangod) => {
       if (arangod.isAgent()) {
         if (!arangod.checkArangoAlive()) {
@@ -542,6 +557,18 @@ class instanceManager {
         }
       }
     });
+    let zipfiles = [];
+    fs.list(dumpdir).forEach(file => {
+      const fn = fs.join(dumpdir, file);
+      if (fs.isFile(fn)) {
+        zipfiles.push(file);
+      }
+    });
+    fs.zipFile(zipfn, dumpdir, zipfiles);
+    zipfiles.forEach(file => {
+      fs.remove(fs.join(dumpdir, file));
+    });
+    fs.removeDirectory(dumpdir);
   }
 
   checkUptime () {
