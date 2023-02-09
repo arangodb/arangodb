@@ -119,7 +119,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    auto doc = DocumentLogEntry{std::string(self->shardId),
+    auto doc = DocumentLogEntry{"",  // this affects all shards
                                 OperationType::kAbortAllOngoingTrx,
                                 {},
                                 TransactionId{0}};
@@ -147,6 +147,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              OperationType operation,
                                              TransactionId transactionId,
+                                             ShardID shard,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
   if (_isResigning.load()) {
@@ -168,9 +169,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   auto const& stream = getStream();
-  auto entry =
-      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
-                       transactionId.asFollowerTransactionId()};
+  auto entry = DocumentLogEntry{shard, operation, std::move(payload),
+                                transactionId.asFollowerTransactionId()};
 
   // Insert and emplace must happen atomically
   auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {

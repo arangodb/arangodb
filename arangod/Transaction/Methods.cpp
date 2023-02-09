@@ -2635,7 +2635,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       leaderState->replicateOperation(
           body.sharedSlice(),
           replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(),
+          state()->id(), trxColl->collectionName(),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return OperationResult(Result{e.code(), e.what()}, options);
@@ -3131,7 +3131,7 @@ Future<Result> Methods::replicateOperations(
           replicationData.sharedSlice(),
           replication2::replicated_state::document::fromDocumentOperation(
               operation),
-          state()->id(),
+          state()->id(), rtc.collectionName(),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return Result{e.code(), e.what()};

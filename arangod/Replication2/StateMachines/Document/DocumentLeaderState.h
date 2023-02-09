@@ -54,7 +54,8 @@ struct DocumentLeaderState
 
   auto replicateOperation(velocypack::SharedSlice payload,
                           OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+                          ShardID shard, ReplicationOptions opts)
+      -> futures::Future<LogIndex>;
 
   std::size_t getActiveTransactionsCount() const noexcept {
     return _activeTransactions.getLockedGuard()->size();
