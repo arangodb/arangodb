@@ -115,7 +115,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
       if (this.im1 != null) {
-        print('santoeuh')
         this.im1.destructor(this.results.failed === 0);
       }
       if (this.im2 != null) {
