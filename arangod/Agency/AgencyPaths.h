@@ -2493,6 +2493,83 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       std::shared_ptr<CollectionGroups const> collectionGroups() const {
         return CollectionGroups::make_shared(shared_from_this());
       }
+
+      class Collections
+          : public StaticComponent<Collections, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "Collections";
+        }
+
+        using BaseType::StaticComponent;
+
+        class Database
+            : public DynamicComponent<Database, Collections, DatabaseID> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+
+          class Collection
+              : public DynamicComponent<Collection, Database, CollectionID> {
+           public:
+            char const* component() const noexcept { return value().c_str(); }
+
+            using BaseType::DynamicComponent;
+          };
+
+          std::shared_ptr<Collection const> collection(std::string value) const {
+            return Collection::make_shared(shared_from_this(), std::move(value));
+          }
+        };
+
+        std::shared_ptr<Database const> database(DatabaseID name) const {
+          return Database::make_shared(shared_from_this(), std::move(name));
+        }
+      };
+
+      std::shared_ptr<Collections const> collections() const {
+        return Collections::make_shared(shared_from_this());
+      }
+
+      class CollectionNames
+          : public StaticComponent<CollectionNames, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "CollectionNames";
+        }
+
+        using BaseType::StaticComponent;
+
+        class Database
+            : public DynamicComponent<Database, CollectionNames, DatabaseID> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+
+          class Collection
+              : public DynamicComponent<Collection, Database, CollectionID> {
+           public:
+            char const* component() const noexcept { return value().c_str(); }
+
+            using BaseType::DynamicComponent;
+          };
+
+          std::shared_ptr<Collection const> collection(std::string value) const {
+            return Collection::make_shared(shared_from_this(), std::move(value));
+          }
+        };
+
+        std::shared_ptr<Database const> database(DatabaseID name) const {
+          return Database::make_shared(shared_from_this(), std::move(name));
+        }
+      };
+
+      std::shared_ptr<CollectionNames const> collectionNames() const {
+        return CollectionNames::make_shared(shared_from_this());
+      }
+
     };
 
     std::shared_ptr<Target const> target() const {
