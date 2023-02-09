@@ -1171,11 +1171,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize shape, custom options
@@ -1196,11 +1199,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize centroid
@@ -1340,11 +1346,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolygon) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize centroid
@@ -1418,11 +1427,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize shape, custom options
@@ -1443,11 +1455,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize centroid
@@ -1619,11 +1634,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize shape, custom options
@@ -1644,11 +1662,14 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     ASSERT_FALSE(terms.empty());
 
     auto begin = terms.begin();
-    for (; a.next(); ++begin) {
+    auto end = terms.end();
+    for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
       ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
-    ASSERT_EQ(begin, terms.end());
+    ASSERT_EQ(begin, end);
+    while (a.next()) {  // centroid terms
+    }
   }
 
   // tokenize centroid
@@ -1674,7 +1695,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     ASSERT_EQ(begin, terms.end());
   }
 
-  // tokenize custom options
+  // tokenize centroid, custom options
   {
     GeoVPackAnalyzer::Options opts;
     opts.options.maxCells = 1000;

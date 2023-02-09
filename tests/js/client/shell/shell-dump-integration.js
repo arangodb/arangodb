@@ -34,7 +34,30 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
-
+const validatorJson = {
+  "message": "",
+  "level": "new",
+  "type": "json",
+  "rule": {
+    "additionalProperties": true,
+    "properties": {
+      "value1": {
+        "type": "integer"
+      },
+      "value2": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value1",
+      "value2"
+    ],
+    "type": "object"
+  }
+};
 
 function checkDumpJsonFile(dbName, path, id) {
   let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
@@ -49,7 +72,7 @@ function dumpIntegrationSuite() {
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
-  let addConnectionArgs = function(args) {
+  let addConnectionArgs = function (args) {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
@@ -61,7 +84,7 @@ function dumpIntegrationSuite() {
     args.push(arango.connectedUser());
   };
 
-  let runDump = function(path, args, rc) {
+  let runDump = function (path, args, rc) {
     try {
       fs.removeDirectory(path);
     } catch (err) {
@@ -77,13 +100,13 @@ function dumpIntegrationSuite() {
     return fs.listTree(path);
   };
 
-  let checkEncryption = function(tree, path, expected) {
+  let checkEncryption = function (tree, path, expected) {
     assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
     let data = fs.readFileSync(fs.join(path, "ENCRYPTION")).toString();
     assertEqual(expected, data);
   };
 
-  let structureFile = function(path, cn) {
+  let structureFile = function (path, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
@@ -93,7 +116,7 @@ function dumpIntegrationSuite() {
     return structure;
   };
 
-  let checkStructureFile = function(tree, path, readable, cn, subdir = "") {
+  let checkStructureFile = function (tree, path, readable, cn, subdir = "") {
     let structurePath = path;
     if (subdir !== "") {
       structurePath = fs.join(path, subdir);
@@ -108,6 +131,11 @@ function dumpIntegrationSuite() {
     if (readable) {
       let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
       assertEqual(cn, data.parameters.name);
+      if (cn.endsWith("WithSchema")) {
+        assertTrue(data.parameters.hasOwnProperty("schema"));
+        const schema = data.parameters.schema;
+        assertEqual(schema, validatorJson);
+      }
     } else {
       try {
         // cannot read encrypted file
@@ -120,7 +148,7 @@ function dumpIntegrationSuite() {
     }
   };
 
-  let checkCollections = function(tree, path, subdir = "") {
+  let checkCollections = function (tree, path, subdir = "") {
     db._collections().forEach((collectionObj) => {
       const collectionName = collectionObj.name();
       if (!collectionName.startsWith("_")) {
@@ -129,11 +157,11 @@ function dumpIntegrationSuite() {
     });
   };
 
-  let checkDataFileForCollectionWithComputedValues = function(tree, path, compressed, envelopes, readable, cn) {
+  let checkDataFileForCollectionWithComputedValues = function (tree, path, compressed, envelopes, readable, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-    let checkData = function(data, envelopes) {
+    let checkData = function (data, envelopes) {
       assertEqual(1000, data.length);
-      data.forEach(function(line) {
+      data.forEach(function (line) {
         line = JSON.parse(line);
         if (envelopes) {
           assertEqual(2300, line.type);
@@ -189,11 +217,11 @@ function dumpIntegrationSuite() {
     }
   };
 
-  let checkDataFile = function(tree, path, compressed, envelopes, readable, cn) {
+  let checkDataFile = function (tree, path, compressed, envelopes, readable, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-    let checkData = function(data, envelopes) {
+    let checkData = function (data, envelopes) {
       assertEqual(1000, data.length);
-      data.forEach(function(line) {
+      data.forEach(function (line) {
         line = JSON.parse(line);
         if (envelopes) {
           assertEqual(2300, line.type);
@@ -239,7 +267,7 @@ function dumpIntegrationSuite() {
 
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
 
 
       dbs.forEach((name) => {
@@ -296,11 +324,16 @@ function dumpIntegrationSuite() {
           docs.push({value1: "test" + i, value2: "abc", value4: false});
         }
         c.insert(docs);
-
+        c = db._create(cn + "WithSchema", {schema: validatorJson, numberOfShards: numShards});
+        docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({value1: i, value2: "abc"});
+        }
+        c.insert(docs);
       });
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._useDatabase("_system");
       dbs.forEach((name) => {
         if (name === "_system") {
@@ -309,13 +342,30 @@ function dumpIntegrationSuite() {
           db._drop(cn + "Padded");
           db._drop(cn + "AutoIncrement");
           db._drop(cn + "ComputedValues");
+          db._drop(cn + "WithSchema");
         } else {
           db._dropDatabase(name);
         }
       });
     },
 
-    testDumpForCollectionWithComputedValuesUncompressed: function() {
+    testDumpForCollectionWithSchema: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + "WithSchema", '--compress-output', 'false'];
+        let tree = runDump(path, args, 0);
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn + "WithSchema");
+        checkDataFile(tree, path, false, false, false, cn + "WithSchema");
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
+    },
+
+    testDumpForCollectionWithComputedValuesUncompressed: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn + "ComputedValues", '--compress-output', 'false'];
@@ -331,7 +381,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpForCollectionWithComputedValuesCompressed: function() {
+    testDumpForCollectionWithComputedValuesCompressed: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn + "ComputedValues", '--compress-output', 'true'];
@@ -347,7 +397,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOnlyOneShard: function() {
+    testDumpOnlyOneShard: function () {
       if (!isCluster) {
         return;
       }
@@ -375,7 +425,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOnlyTwoShards: function() {
+    testDumpOnlyTwoShards: function () {
       if (!isCluster) {
         return;
       }
@@ -403,7 +453,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpAutoIncrementKeyGenerator: function() {
+    testDumpAutoIncrementKeyGenerator: function () {
 
       let path = fs.getTempFile();
       try {
@@ -429,7 +479,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpPaddedKeyGenerator: function() {
+    testDumpPaddedKeyGenerator: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn + 'Padded', '--dump-data', 'false'];
@@ -453,7 +503,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpSingleDatabase: function() {
+    testDumpSingleDatabase: function () {
       dbs.forEach((name) => {
         let path = fs.getTempFile();
         db._useDatabase(name);
@@ -471,7 +521,7 @@ function dumpIntegrationSuite() {
       });
     },
 
-    testDumpAllDatabases: function() {
+    testDumpAllDatabases: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--all-databases', 'true'];
@@ -510,7 +560,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpAllDatabasesWithOverwrite: function() {
+    testDumpAllDatabasesWithOverwrite: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--all-databases', 'true'];
@@ -555,7 +605,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpCompressedEncryptedWithEnvelope: function() {
+    testDumpCompressedEncryptedWithEnvelope: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -579,7 +629,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpCompressedEncryptedNoEnvelope: function() {
+    testDumpCompressedEncryptedNoEnvelope: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -603,7 +653,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteUncompressedWithEnvelope: function() {
+    testDumpOverwriteUncompressedWithEnvelope: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
@@ -626,7 +676,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteUncompressedNoEnvelope: function() {
+    testDumpOverwriteUncompressedNoEnvelope: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
@@ -649,7 +699,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpCompressedEncrypted: function() {
+    testDumpCompressedEncrypted: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -673,7 +723,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteDisabled: function() {
+    testDumpOverwriteDisabled: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn];
@@ -691,7 +741,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteCompressed: function() {
+    testDumpOverwriteCompressed: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'true', '--collection', cn];
@@ -714,7 +764,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteUncompressed: function() {
+    testDumpOverwriteUncompressed: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'false', '--collection', cn];
@@ -737,7 +787,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteEncrypted: function() {
+    testDumpOverwriteEncrypted: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -768,7 +818,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteCompressedWithEncrypted: function() {
+    testDumpOverwriteCompressedWithEncrypted: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -797,7 +847,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOverwriteOtherCompressed: function() {
+    testDumpOverwriteOtherCompressed: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'true', '--collection', cn];
@@ -822,7 +872,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpJustOneInvalidCollection: function() {
+    testDumpJustOneInvalidCollection: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', 'foobarbaz'];
@@ -836,7 +886,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpJustInvalidCollections: function() {
+    testDumpJustInvalidCollections: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
@@ -850,7 +900,7 @@ function dumpIntegrationSuite() {
       }
     },
 
-    testDumpOneValidCollection: function() {
+    testDumpOneValidCollection: function () {
       let path = fs.getTempFile();
       try {
         let args = ['--compress-output', 'true', '--collection', cn, '--collection', 'knarzknarzknarz'];

@@ -1,6 +1,45 @@
 devel
 -----
 
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
+* BTS-1193: Fix for schema update. When removing a field and then inserting a 
+  new field into the schema, previously, both old and new schema would be 
+  merged, meaning it would maintain the old field and add the new one. 
+
+* Added startup option `--javascript.user-defined-functions`. 
+  This option controls whether JavaScript user-defined functions (UDFs) can
+  be used in AQL queries. The option defaults to `true`. The option can be
+  set to `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
+* Allowing enabling/disabling supervision maintenance mode also via followers
+  in active failover mode. Previously the supervision maintenance mode could
+  only be enabled/disabled by making a call to the active failover leader.
+
+* Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries with geo index which do not use
+  GEO_DISTANCE.
+
+* Fix bug in hotbackup download/restore to make sure no data is mixed up
+  between servers. This fixes a bug introduced in 3.10.
+
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+  creating a database and then restarting the cluster with the startup option
+  `--cluster.force-one-shard` set to true, when the formerly created database
+  has more than one shard, but the flag is set to true, this could lead to 
+  arangosearch's analyzers to use optimizations that should not be used if not 
+  in a single shard mode. For this not to happen, the verification of the 
+  parameter being true as a condition to run optimizations was removed. 
+
 * Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
 
 * Log information about follower state/apply progress in supervision job that

@@ -87,8 +87,6 @@ ClusterFeature::~ClusterFeature() {
     // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     shutdownAgencyCache();
-
-    AgencyCommHelper::shutdown();
   }
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.

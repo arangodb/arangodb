@@ -149,7 +149,7 @@ class GeoJsonAnalyzerBase : public GeoAnalyzer {
   explicit GeoJsonAnalyzerBase(irs::type_info const& type,
                                OptionsBase const& options);
 
-  bool resetImpl(std::string_view value, bool legacy, bool legacyCovering);
+  bool resetImpl(std::string_view value, bool legacy);
 
   geo::ShapeContainer _shape;
   std::vector<S2Point> _cache;
