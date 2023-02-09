@@ -30,7 +30,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::document::supervision;
 namespace ag = arangodb::replication2::agency;
 
-
 struct FakeUniqueIdProvider : UniqueIdProvider {
   auto next() noexcept -> std::uint64_t override { return ++_next; }
   std::uint64_t _next{0};
