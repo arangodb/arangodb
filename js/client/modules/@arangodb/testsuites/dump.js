@@ -966,6 +966,7 @@ function hotBackup (options) {
 
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
   if (!helper.startFirstInstance()) {
+      helper.destructor(false);
     return helper.extractResults();
   }
 
@@ -991,6 +992,7 @@ function hotBackup (options) {
       !helper.restoreHotBackup() ||
       !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
       !helper.tearDown(tearDownFile)) {
+      helper.destructor(true);
     return helper.extractResults();
   }
 
@@ -1000,6 +1002,7 @@ function hotBackup (options) {
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
         !helper.testRestoreOld(oldTestFile)) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -1012,6 +1015,7 @@ function hotBackup (options) {
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -1019,6 +1023,7 @@ function hotBackup (options) {
   if (options.cleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
+  helper.destructor(true);
   return helper.extractResults();
 }
 
