@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -224,10 +224,9 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
         [&](TRI_vocbase_t& vocbase) -> void {
           if (full) {
             auto lvl = user.configuredDBAuthLevel(vocbase.name());
-            std::string str = convertFromAuthLevel(lvl);
             velocypack::ObjectBuilder b(&data, vocbase.name(), true);
 
-            data.add("permission", VPackValue(str));
+            data.add("permission", VPackValue(convertFromAuthLevel(lvl)));
 
             velocypack::ObjectBuilder b2(&data, "collections", true);
 

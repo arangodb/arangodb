@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +80,7 @@ bool DropCollection::first() {
       if (found.ok()) {
         TRI_ASSERT(coll);
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
-            << "Dropping local collection " + shard;
+            << "Dropping local collection " << shard;
         result(Collections::drop(*coll, false));
 
         // it is safe here to clear our replication failure statistics even

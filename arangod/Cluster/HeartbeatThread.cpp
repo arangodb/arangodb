@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1053,14 +1053,12 @@ void HeartbeatThread::runSingleServer() {
         }
 
         LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
-            << "Starting replication from " << endpoint;
+            << "starting replication initial sync from leader " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._jwt = af->tokenCache().jwtToken();
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT)
-            << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         config._idleMinWaitTime = 250 * 1000;       // 250ms

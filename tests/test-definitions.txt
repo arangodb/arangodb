@@ -154,7 +154,7 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+chaos !windows full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
