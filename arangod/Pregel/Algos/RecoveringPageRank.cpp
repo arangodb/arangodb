@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,6 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 static std::string const kStep = "step";
 static std::string const kRank = "rank";
-static std::string const kFailedCount = "failedCount";
 static std::string const kNonFailedCount = "nonfailedCount";
 static std::string const kScale = "scale";
 
