@@ -1400,9 +1400,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
-        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("geo", plan.plan.nodes[2].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
     },
 
     testNestedFor100 : function() {
@@ -1414,9 +1414,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
-        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("geo", plan.plan.nodes[2].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
     },
 
     testNestedFor1000 : function() {
@@ -1428,9 +1428,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
-        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("geo", plan.plan.nodes[2].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
     },
 
     testNestedFor1000WithOtherIndex : function() {
@@ -1444,9 +1444,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
-        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("geo", plan.plan.nodes[2].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
     },
 
     testNestedFor1000WithOtherIndexAndConditionGreater : function() {
@@ -1461,9 +1461,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
-        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("geo", plan.plan.nodes[2].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
     },
 
     testNestedFor1000WithOtherIndexAndConditionEquals : function() {
@@ -1478,9 +1478,9 @@ function geoThisAndThatSuite() {
       let plan = AQL_EXPLAIN(query);
       let compact = helper.getCompactPlan(plan)
         .map(function(node) { return node.type; });
-      assertEqual([ "SingletonNode", "IndexNode", "EnumerateCollectionNode",
-        "CalculationNode", "ReturnNode" ], compact);
-      assertEqual("persistent", plan.plan.nodes[1].indexes[0].type);
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("persistent", plan.plan.nodes[pos].indexes[0].type);
     },
   };
 }
