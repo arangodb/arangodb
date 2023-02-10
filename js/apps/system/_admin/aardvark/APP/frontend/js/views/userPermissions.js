@@ -259,6 +259,7 @@
         }
       });
     },
+
     finishRender: function (permissions, open, error) {
       // sort permission databases
       var sortedArr = _.pairs(permissions);
@@ -282,6 +283,7 @@
           }
         };
       });
+
       $(this.el).html(this.template.render({
         permissions: newObj
       }));
