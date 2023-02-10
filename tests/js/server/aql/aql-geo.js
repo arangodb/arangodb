@@ -208,7 +208,7 @@ function geoSuite(isSearchAlias, analyzerType) {
       withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
-      let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+      analyzers.save("geo_json", analyzerType, {}, ["frequency", "norm", "position"]);
 
       withIndex.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       withView.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
@@ -232,7 +232,6 @@ function geoSuite(isSearchAlias, analyzerType) {
       withView.ensureIndex(commonInvertedIndexMeta);
       withIndex.ensureIndex(commonInvertedIndexMeta);
 
-      analyzers.save("geo_json", analyzerType, {}, ["frequency", "norm", "position"]);
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
