@@ -2,7 +2,7 @@
 /*global arango, db, assertTrue, assertFalse, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
+// / @brief helper for JavaScript Tests
 // /
 // / @file
 // /
@@ -29,15 +29,25 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
+<<<<<<< HEAD
 const { 
   Helper,
+=======
+const {
+  helper,
+>>>>>>> c07f2fbb9fd (properly handle the covearge switch via cmake (#18065))
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+<<<<<<< HEAD
   getInstanceInfo
+=======
+  versionHas,
+  isEnterprise,
+>>>>>>> c07f2fbb9fd (properly handle the covearge switch via cmake (#18065))
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -51,7 +61,9 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
-exports.Helper = Helper;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;

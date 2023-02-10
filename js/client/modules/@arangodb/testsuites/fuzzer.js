@@ -31,6 +31,7 @@ const functionsDocumentation = {
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 
 const testPaths = {
   'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
@@ -42,8 +43,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellFuzzer(options) {
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+  if (!versionHas('failure-tests')) {
     return {
       recovery: {
         status: false,
