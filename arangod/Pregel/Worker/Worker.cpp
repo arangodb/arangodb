@@ -120,8 +120,7 @@ Worker<V, E, M>::~Worker() {
   _writeCache = nullptr;
 
   _feature.metrics()->pregelWorkersNumber->fetch_sub(1);
-  _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(
-      _graphStore->allocatedSize());
+  _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(0);
 }
 
 template<typename V, typename E, typename M>
