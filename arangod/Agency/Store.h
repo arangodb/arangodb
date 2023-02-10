@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -163,7 +163,9 @@ class Store {
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
-  static std::vector<std::string> split(std::string_view str);
+  static std::vector<std::string> split(std::string_view str) {
+    return Node::split(str);
+  }
 
   using AgencyTriggerCallback =
       std::function<void(std::string_view path, VPackSlice trx)>;

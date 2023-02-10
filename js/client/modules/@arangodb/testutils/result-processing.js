@@ -992,7 +992,7 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
 
 }
 

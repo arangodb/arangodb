@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,7 +145,7 @@ void ArrayOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardIDs()[shard],
+        pool, "shard:" + this->_config->globalShardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -261,7 +261,7 @@ void CombiningOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardIDs()[shard],
+        pool, "shard:" + this->_config->globalShardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 

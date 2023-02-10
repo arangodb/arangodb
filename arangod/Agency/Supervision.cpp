@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "Agency/NodeLoadInspector.h"
 #include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -2668,8 +2669,15 @@ void Supervision::deleteBrokenIndex(AgentInterface* agent,
 namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
-  auto builder = n.toBuilder();
-  return velocypack::deserialize<T>(builder.slice());
+  inspection::NodeUnsafeLoadInspector<> i{&n, {}};
+  T result;
+  if (auto status = i.apply(result); !status.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while reading from Agency node: "} + status.error() +
+            "\nPath: " + status.path());
+  }
+  return result;
 }
 
 template<typename T>
@@ -3339,8 +3347,6 @@ bool Supervision::start(Agent* agent) {
       _agent->config().supervisionFailedLeaderAddsFollower();
   return start();
 }
-
-static std::string const syncLatest = "/Sync/LatestID";
 
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +88,7 @@ std::string QueryParams::toString() const {
     " incl: ", t(minInclusive),
     " maxDistance: ", maxDistance,
     " incl: ", t(maxInclusive),
+    " distanceRestricted: ", t(distanceRestricted),
     " sorted: ", t(sorted),
     " ascending: ", t(ascending),
     " origin: ", origin.lng().degrees(), " , ", origin.lat().degrees(),
