@@ -44,14 +44,19 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
 
-struct MockScheduler {
-  auto operator()(auto fn) { fn(); };
+struct PregelScheduler {
+  auto operator()(auto fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+  }
 };
 
 class Conductor;
@@ -160,7 +165,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<PregelMetrics> _metrics;
 
  public:
-  std::shared_ptr<actor::Runtime<MockScheduler, ArangoExternalDispatcher>>
+  std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 };
 
