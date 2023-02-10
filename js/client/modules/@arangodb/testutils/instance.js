@@ -512,14 +512,21 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
     }
-    fs.removeDirectoryRecursive(this.rootDir, true);
+    if (fs.exists(this.rootDir)) {
+      fs.removeDirectoryRecursive(this.rootDir, true);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
 
-  readAssertLogLines () {
+  readAssertLogLines (expectAsserts) {
+    if (!fs.exists(this.logFile)) {
+      if (fs.exists(this.rootDir)) {
+        print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
+      }
+      return;
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.

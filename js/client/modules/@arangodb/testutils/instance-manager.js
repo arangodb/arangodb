@@ -100,6 +100,7 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.expectAsserts = false;
   }
 
   destructor(cleanup) {
@@ -279,6 +280,9 @@ class instanceManager {
     }
   }
 
+  nonfatalAssertSearch() {
+    this.expectAsserts = true;
+  }
   launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
@@ -764,6 +768,12 @@ class instanceManager {
         stack: ex.stack
       };
     }
+  }
+
+  detectShouldBeRunning() {
+    let ret = true;
+    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
+    return ret;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
