@@ -38,6 +38,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -108,6 +110,9 @@ bool CreateCollection::first() {
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
+  std::string from;
+  _description.get("from", from);
+
   LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "'";
@@ -118,6 +123,35 @@ bool CreateCollection::first() {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
+
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        from == "maintenance") {
+      // special case for replication 2 on the leader
+      LOG_DEVEL << shard << " " << collection << " " << properties().toJson();
+      // TODO use collection group instead
+      auto logId = LogicalCollection::shardIdToStateId(shard);
+      if (auto gid = props.get("groupId"); gid.isNumber()) {
+        logId = replication2::LogId{gid.getUInt()};
+      }
+      LOG_DEVEL << "using replicated log " << logId;
+      auto state = vocbase.getReplicatedStateById(logId);
+      if (state.ok()) {
+        auto leaderState = std::dynamic_pointer_cast<
+            replication2::replicated_state::document::DocumentLeaderState>(
+            state.get()->getLeader());
+        if (leaderState != nullptr) {
+          leaderState->createShard(
+              shard, collection,
+              velocypack::SharedSlice(_description.properties()->bufferRef()));
+        } else {
+          LOG_DEVEL << "leader state not yet ready " << logId;
+        }
+      } else {
+        LOG_DEVEL << "replicated log " << logId << " not yet ready";
+      }
+
+      return false;
+    }
 
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
