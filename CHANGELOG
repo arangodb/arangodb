@@ -1,6 +1,11 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of a new optimizer rule
+  and wrong cost estimations for execution plans.
+
 * BTS-1193: Fix for schema update. When removing a field and then inserting a
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
