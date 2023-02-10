@@ -36,6 +36,7 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
+struct IDatabaseSnapshot;
 
 /*
  * Unique ID used to identify a snapshot between the leader and the follower.
@@ -234,7 +235,7 @@ class Snapshot {
                                                       1024};  // 16MB
 
   explicit Snapshot(SnapshotId id, ShardID shardId,
-                    std::unique_ptr<ICollectionReader> reader);
+                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
 
   Snapshot(Snapshot const&) = delete;
   Snapshot(Snapshot&&) = delete;
@@ -248,6 +249,7 @@ class Snapshot {
 
  private:
   SnapshotId _id;
+  std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
   std::unique_ptr<ICollectionReader> _reader;
   SnapshotState _state;
   SnapshotStatistics _statistics;

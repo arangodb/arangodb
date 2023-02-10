@@ -47,9 +47,10 @@ auto to_string(SnapshotId snapshotId) -> std::string {
 }
 
 Snapshot::Snapshot(SnapshotId id, ShardID shardId,
-                   std::unique_ptr<ICollectionReader> reader)
+                   std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
     : _id(id),
-      _reader{std::move(reader)},
+      _databaseSnapshot{std::move(databaseSnapshot)},
+      _reader{_databaseSnapshot->createCollectionReader(shardId)},
       _state{state::Ongoing{}},
       _statistics{std::move(shardId), _reader->getDocCount()} {}
 

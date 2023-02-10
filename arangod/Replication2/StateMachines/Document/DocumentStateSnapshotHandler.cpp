@@ -26,24 +26,29 @@
 
 namespace arangodb::replication2::replicated_state::document {
 DocumentStateSnapshotHandler::DocumentStateSnapshotHandler(
-    std::unique_ptr<ICollectionReaderFactory> collectionReaderFactory)
-    : _collectionReaderFactory(std::move(collectionReaderFactory)) {}
+    std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory)
+    : _databaseSnapshotFactory(std::move(databaseSnapshotFactory)) {}
 
 auto DocumentStateSnapshotHandler::create(std::string_view shardId)
     -> ResultT<std::weak_ptr<Snapshot>> {
-  auto readerRes = _collectionReaderFactory->createCollectionReader(shardId);
-  if (readerRes.fail()) {
-    return ResultT<std::weak_ptr<Snapshot>>::error(readerRes.result());
+  try {
+    auto snapshot = _databaseSnapshotFactory->createSnapshot();
+
+    auto id = SnapshotId::create();
+    auto emplacement = _snapshots.emplace(
+        id, std::make_shared<Snapshot>(id, std::string{shardId},
+                                       std::move(snapshot)));
+    TRI_ASSERT(emplacement.second);
+    return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
+  } catch (basics::Exception const& ex) {
+    return ResultT<std::weak_ptr<Snapshot>>::error(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return ResultT<std::weak_ptr<Snapshot>>::error(TRI_ERROR_INTERNAL,
+                                                   ex.what());
+  } catch (...) {
+    return ResultT<std::weak_ptr<Snapshot>>::error(TRI_ERROR_INTERNAL,
+                                                   "unknown exception");
   }
-
-  auto reader = std::move(readerRes.get());
-  auto id = SnapshotId::create();
-  auto emplacement = _snapshots.emplace(
-      id,
-      std::make_shared<Snapshot>(id, std::string{shardId}, std::move(reader)));
-  TRI_ASSERT(emplacement.second);
-
-  return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
 }
 
 auto DocumentStateSnapshotHandler::find(SnapshotId const& id)

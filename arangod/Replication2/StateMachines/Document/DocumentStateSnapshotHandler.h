@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 #include <string_view>
@@ -30,7 +31,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
-struct ICollectionReaderFactory;
+struct IDatabaseSnapshot;
+struct IDatabaseSnapshotFactory;
 
 /*
  * Manages snapshots on the leader.
@@ -49,7 +51,7 @@ struct IDocumentStateSnapshotHandler {
 class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
  public:
   explicit DocumentStateSnapshotHandler(
-      std::unique_ptr<ICollectionReaderFactory> collectionReaderFactory);
+      std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory);
 
   // Create a new snapshot
   auto create(std::string_view shardId)
@@ -68,7 +70,7 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
   void clearInactiveSnapshots() override;
 
  private:
-  std::unique_ptr<ICollectionReaderFactory> _collectionReaderFactory;
+  std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
   std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document
