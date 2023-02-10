@@ -397,16 +397,16 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   return INVALID;
 }
 
-const date::sys_info localizeTimePoint(std::string& timezone,
-                                       tp_sys_clock_ms& localTimePoint) {
+date::sys_info localizeTimePoint(std::string& timezone,
+                                 tp_sys_clock_ms& localTimePoint) {
   auto const utc = floor<milliseconds>(localTimePoint);
   auto const zoned = date::make_zoned(timezone, utc);
   localTimePoint = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
   return zoned.get_info();
 }
 
-const date::sys_info unlocalizeTimePoint(std::string& timezone,
-                                         tp_sys_clock_ms& utcTimePoint) {
+date::sys_info unlocalizeTimePoint(std::string& timezone,
+                                   tp_sys_clock_ms& utcTimePoint) {
   auto const local = date::local_time<milliseconds>{
       floor<milliseconds>(utcTimePoint).time_since_epoch()};
   auto const zoned = date::make_zoned(timezone, local);
@@ -553,7 +553,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
   }
 
   if (timezone != "UTC") {
-    ::localizeTimePoint(timezone, resTime);
+    ::unlocalizeTimePoint(timezone, resTime);
   }
 
   return ::timeAqlValue(expressionContext, AFN, resTime);
@@ -3741,6 +3741,20 @@ AqlValue functions::DateDayOfWeek(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::weekday wd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintUInt(wd.c_encoding()));
@@ -3756,6 +3770,20 @@ AqlValue functions::DateYear(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   // Not the library has operator (int) implemented...
   int64_t year = static_cast<int64_t>((int)ymd.year());
@@ -3772,6 +3800,20 @@ AqlValue functions::DateMonth(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
@@ -3787,6 +3829,19 @@ AqlValue functions::DateDay(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto ymd = date::year_month_day(floor<date::days>(tp));
@@ -3806,6 +3861,19 @@ AqlValue functions::DateHour(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
@@ -3820,6 +3888,19 @@ AqlValue functions::DateMinute(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto day_time = date::make_time(tp - floor<date::days>(tp));
@@ -3869,6 +3950,19 @@ AqlValue functions::DateDayOfYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   auto yyyy = date::year{ymd.year()};
   // we construct the date with the first day in the year:
@@ -3890,6 +3984,19 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
@@ -3905,6 +4012,19 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
@@ -3932,6 +4052,19 @@ AqlValue functions::DateLeapYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::year_month_day ymd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
@@ -3946,6 +4079,19 @@ AqlValue functions::DateQuarter(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   date::year_month_day ymd{floor<date::days>(tp)};
@@ -3967,6 +4113,19 @@ AqlValue functions::DateDaysInMonth(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto ymd = date::year_month_day{floor<date::days>(tp)};
