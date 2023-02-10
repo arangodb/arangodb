@@ -277,7 +277,15 @@ function printRules(rules, stats) {
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
