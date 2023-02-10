@@ -63,7 +63,8 @@ auto inspect(Inspector& f, CollectionGroup::Collection& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroupTargetSpecification& x) {
-  return f.object(x).fields(f.template embedFields<CollectionGroup>(x));
+  return f.object(x).fields(f.template embedFields<CollectionGroup>(x),
+                            f.field("version", x.version));
 }
 
 template<class Inspector>
@@ -136,7 +137,7 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
       /* NOTE: shardsR2 is a temporary key. We plan to replace it by shards
          before release, which right now is occupied */
       f.field("shardsR2", x.shardList),
-      f.field("shards", x.deprecatedShardMap));
+      f.template embedFields(x.deprecatedShardMap));
 }
 
 }  // namespace arangodb::replication2::agency
