@@ -104,13 +104,41 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreOldConfig = false;
     this.afterServerStart = afterServerStart;
     this.instanceManager = null;
+    this.im1 = null;
+    this.im2 = null;
     this.keyDir = null;
     this.otherKeyDir = null;
   }
 
   destructor(cleanup) {
+    if (this.fn !== undefined && fs.exists(this.fn)) {
+      fs.remove(this.fn);
+    }
+    if (this.instanceManager === null) {
+      print(RED + 'no instance running. Nothing to stop!' + RESET);
+      return this.results;
+    }
+    print(CYAN + 'Shutting down...' + RESET);
+    if (this.im1.detectShouldBeRunning()) {
+      this.im1.reconnect();
+    }
+    this.results['shutdown'] = this.im1.shutdownInstance();
+
+    if (this.im2 !== null) {
+      if (this.im2.detectShouldBeRunning()) {
+        this.im2.reconnect();
+      }
+      this.results['shutdown'] &= this.im2.shutdownInstance();
+    }
+    print(CYAN + 'done.' + RESET);
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
+      if (this.im1 !== null) {
+        this.im1.destructor(this.results.failed === 0);
+      }
+      if (this.im2 !== null) {
+        this.im2.destructor(this.results.failed === 0);
+      }
       [this.keyDir,
        this.otherKeyDir,
        this.dumpConfig.getOutputDirectory()].forEach(dir => {
@@ -219,7 +247,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   startFirstInstance() {
-    this.instanceManager = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
+    let rootDir = fs.join(fs.getTempPath(), '1');
+    this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which, rootDir);
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -243,11 +272,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
-      this.results['shutdown'] = this.instanceManager.shutdownInstance();
-      this.instanceManager.destructor(false); // must not cleanup!
+      let rootDir = fs.join(fs.getTempPath(), '2');
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
+      this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which, rootDir);
       this.instanceManager.prepareInstance();
       this.instanceManager.launchTcpDump("");
       if (!this.instanceManager.launchInstance()) {
@@ -296,18 +324,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   extractResults() {
-    if (this.fn !== undefined) {
-      fs.remove(this.fn);
-    }
-    if (this.instanceManager === null) {
-      print(RED + 'no instance running. Nothing to stop!' + RESET);
-      return this.results;
-    }
-    print(CYAN + 'Shutting down...' + RESET);
-    this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor(this.results.failed === 0);
-    print(CYAN + 'done.' + RESET);
-
     print();
     return this.results;
   }
@@ -933,6 +949,7 @@ function hotBackup (options) {
 
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
   if (!helper.startFirstInstance()) {
+      helper.destructor(false);
     return helper.extractResults();
   }
 
@@ -958,6 +975,7 @@ function hotBackup (options) {
       !helper.restoreHotBackup() ||
       !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
       !helper.tearDown(tearDownFile)) {
+      helper.destructor(true);
     return helper.extractResults();
   }
 
@@ -967,6 +985,7 @@ function hotBackup (options) {
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
         !helper.testRestoreOld(oldTestFile)) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -979,6 +998,7 @@ function hotBackup (options) {
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -986,6 +1006,7 @@ function hotBackup (options) {
   if (options.cleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
+  helper.destructor(true);
   return helper.extractResults();
 }
 
