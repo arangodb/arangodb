@@ -83,7 +83,9 @@
       'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
-      'click #sortByHistory': 'toggleSortByHistory',
+      'click #sortName': 'sortName',
+      'click #sortDateAdded': 'sortDateAdded',
+      'click #sortDateModified': 'sortDateModified',
       'click #createNewQuery': 'createAQL',
       'click #saveCurrentQuery': 'addAQL',
       'click #updateCurrentQuery': 'updateAQL',
@@ -106,6 +108,11 @@
       'click #arangoMyQueriesTable #runQuery': 'selectAndRunQueryFromTable',
       'change #querySearchInput': 'restrictToSearchPhrase',
       'keydown #querySearchInput': 'restrictToSearchPhraseKey',
+      'click #sortOptionsToggle': 'toggleSortOptions',
+    },
+    toggleSortOptions: function () {
+      $('#sortOptionsToggle').toggleClass('activated');
+      $('#sortOptionsDropdown').slideToggle(200);
     },
     restrictToSearchPhraseKey: function (event) {
       if (
@@ -166,7 +173,7 @@
       this.aqlEditor.setValue('', 1);
     },
 
-    toggleSortByHistory: function () {
+    sortDateAdded: function () {
       this.sortByHistory = !this.sortByHistory;
       this.updateQueryTable();
       this.resize();
@@ -367,7 +374,8 @@
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
         'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer',
-        'searchQueryByNameContainer'
+        'searchQueryByNameContainer',
+        'sortOptionsToggle'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -930,7 +938,7 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
-      
+      arangoHelper.setCheckboxStatus('#sortOptionsDropdownInner');
       $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
@@ -1522,8 +1530,8 @@
       this.myQueriesTableDesc.rows = this.customQueries;
       
       // Reverse order: Last added query shall be displayed first
-      self.customQueries.reverse();
-
+      // console.log({customQueries: self.customQueries, table: this.myQueriesTableDesc})
+      // self.customQueries.reverse();
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1537,21 +1545,12 @@
         delete k.value;
       });
 
-      function compare (a, b) {
-        var x;
-        if (a.name < b.name) {
-          x = -1;
-        } else if (a.name > b.name) {
-          x = 1;
-        } else {
-          x = 0;
-        }
-        return x;
-      }
+     
 
-      if(!this.sortByHistory) {
-        this.myQueriesTableDesc.rows.sort(compare);
-      }
+      // if(!this.sortByHistory) {
+      //   self.customQueries.sort(compare);
+      // }
+      this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
 
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
@@ -1570,7 +1569,23 @@
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
-
+    sortRows: function(rows) { 
+      function compare (a, b) {
+        var x;
+        if (a.name < b.name) {
+          x = -1;
+        } else if (a.name > b.name) {
+          x = 1;
+        } else {
+          x = 0;
+        }
+        return x;
+      }
+      if (this.sortByHistory) {
+        return rows.reverse()
+      }
+      return rows.sort(compare);
+    },
     filterRows: function(rows) {
       var searchPhrase = this.collection.searchOptions.searchPhrase;
       if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {

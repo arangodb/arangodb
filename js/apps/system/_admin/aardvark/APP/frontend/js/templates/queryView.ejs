@@ -9,6 +9,9 @@
             Sort by history
           </label>
         </div>
+        <a id="sortOptionsToggle" class="headerButton" style="display: none; float: right;">
+          <span class="icon_arangodb_settings2" style="margin: 0; padding: 0;" title="Settings"></span>
+        </a>
         <div id="searchQueryByNameContainer" style="float: right; margin-left: 8px; display: none;">
           <input id="querySearchInput" className="search-input" style="width: 120px; padding: 3px 6px;" type="text" placeholder="Search..." />
         </div>
@@ -21,6 +24,46 @@
         <span id="querySpotlight" class="action"><i class="fa fa-magic"></i></span>
         <div class="styled-select">
           <select id="querySize" class="query-size"></select>
+        </div>
+      </div>
+
+      <div id="sortOptionsDropdown" class="headerDropdown">
+        <div id="sortOptionsDropdownInner" class="dropdownInner">
+          <ul>
+            <li class="nav-header">Sorting</li>
+
+            <li><a href="#">
+              <label class="checkbox checkboxLabel">
+                <input class="css-checkbox" type="checkbox" id="sortName">
+                <i class="fa css-round-label"></i>
+                Sort by name
+              </label>
+            </a></li>
+
+            <li><a href="#">
+              <label class="checkbox checkboxLabel">
+                <input class="css-checkbox" type="checkbox" id="sortDateAdded">
+                <i class="fa css-round-label"></i>
+                Sort by created date
+              </label>
+            </a></li>
+
+            <li><a href="#">
+              <label class="checkbox checkboxLabel">
+                <input class="css-checkbox" type="checkbox" id="sortDateModified">
+                <i class="fa css-round-label"></i>
+                Sort by modified date
+              </label>
+            </a></li>
+
+            <li><a href="#">
+              <label class="checkbox checkboxLabel">
+                <input class="css-checkbox" type="checkbox" id="sortOrder">
+                <i class="fa"></i>
+                Sort descending
+              </label>
+            </a></li>
+          </ul>
         </div>
       </div>
     </div>
