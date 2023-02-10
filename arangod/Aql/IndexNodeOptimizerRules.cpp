@@ -122,6 +122,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
       auto& indexes = indexNode->getIndexes();
       TRI_ASSERT(!indexes.empty());
       if (indexes.size() != 1) {
+        // When enabling this please consider how inverted index would 
+        // operate together with persistent as first produces
+        // SearchDocs but latter LocalDocumentIds. Usage of
+        // two separate variables might be the simplest solution
         continue;  // several indexes are not supported
       }
       auto& index = indexes.front();
@@ -326,9 +330,8 @@ void arangodb::aql::lateDocumentMaterializationRule(
 
         // we could apply late materialization
         // 1. We need to notify index node - it should not materialize
-        // documents, but produce only localDocIds
-        // if there is at least one invertedIndex and other indexes we will need
-        // additional variable to handle snapshot transferring.
+        // documents, but produce only localDocIds or SearchDocs
+        // in case of inverted index
         Variable const* searchDocVar{nullptr};
         auto const& indexes = indexNode->getIndexes();
         for (auto const& idx : indexes) {
