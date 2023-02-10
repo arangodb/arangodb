@@ -7512,7 +7512,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
-    if (info && info.collectionNodeToReplace == node && !plan->hasForcedIndexHints()) {
+    if (info && info.collectionNodeToReplace == node &&
+        !plan->hasForcedIndexHints()) {
       if (applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
