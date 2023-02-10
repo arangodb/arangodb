@@ -76,24 +76,6 @@ class GraphStore final {
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
-  auto allocatedSize() -> size_t {
-    auto total = size_t{0};
-
-    for (auto&& vb : _vertices) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _vertexKeys) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _edges) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _edgeKeys) {
-      total += vb->capacity();
-    }
-    return total;
-  }
-
   GraphStoreStatus status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
@@ -111,34 +93,24 @@ class GraphStore final {
   RangeIterator<Vertex<V, E>> vertexIterator();
   /// j and j are the first and last index of vertex segments
   RangeIterator<Vertex<V, E>> vertexIterator(size_t i, size_t j);
-  RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>,
                     std::function<void()> const& statusUpdateCallback);
 
  private:
-  void loadVertices(ShardID const& vertexShard,
+  auto loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards,
-                    std::function<void()> const& statusUpdateCallback);
+                    std::function<void()> const& statusUpdateCallback)
+      -> std::vector<Vertex<V, E>>;
   void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
-                 ShardID const& edgeShard, std::string const& documentID,
-                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                 ShardID const& edgeShard, std::string_view documentID,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
   void storeVertices(std::vector<ShardID> const& globalShards,
                      RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
                      std::function<void()> const& statusUpdateCallback);
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
-
-  constexpr size_t vertexSegmentSize() const {
-    return 64 * 1024 * 1024 / sizeof(Vertex<V, E>);
-  }
-
-  constexpr size_t edgeSegmentSize() const {
-    return 64 * 1024 * 1024 / sizeof(Edge<E>);
-  }
 
  private:
   PregelFeature& _feature;

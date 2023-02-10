@@ -136,7 +136,7 @@ class WorkerConfig {
       ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
-  VertexID documentIdToPregel(std::string const& documentID) const;
+  VertexID documentIdToPregel(std::string_view documentID) const;
 
  private:
   ExecutionNumber _executionNumber{};
