@@ -120,8 +120,15 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       return this.results;
     }
     print(CYAN + 'Shutting down...' + RESET);
+    if (this.im1.detectShouldBeRunning()) {
+      this.im1.reconnect();
+    }
     this.results['shutdown'] = this.im1.shutdownInstance();
+
     if (this.im2 !== null) {
+      if (this.im2.detectShouldBeRunning()) {
+        this.im2.reconnect();
+      }
       this.results['shutdown'] &= this.im2.shutdownInstance();
     }
     print(CYAN + 'done.' + RESET);
@@ -267,8 +274,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
       let rootDir = fs.join(fs.getTempPath(), '2');
-      this.results['shutdown'] = this.instanceManager.shutdownInstance();
-      this.instanceManager.destructor(false); // must not cleanup!
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
       this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which, rootDir);
