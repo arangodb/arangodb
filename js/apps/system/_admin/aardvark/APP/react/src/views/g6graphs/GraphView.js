@@ -1,7 +1,6 @@
 import React from 'react';
 import G6 from '@antv/g6';
 import ReactDOM from 'react-dom';
-import { Card } from 'antd';
 import { Headerinfo } from './Headerinfo';
 import styles from './graphview.module.css';
 import './graphview.menu.css';
@@ -699,22 +698,20 @@ export class GraphView extends React.Component {
         onGraphDataLoaded={(newGraphData, responseTimesObject) => {
           this.props.onGraphDataLoaded({newGraphData, responseTimesObject})}}
       />
-      <Card
-          title={null}
-          id="graph-card"
-          bodyStyle={{ 'minHeight': '400px', 'height': '100%', 'backgroundColor': '#f2f2f2' }}
-        >
-          <VisNetwork
-            graphData={this.props.visGraphData}
-            graphName={this.props.graphName}
-            options={{}}
-          />
-          <GraphInfo>
-            <Tag label={`${this.props.visGraphData.nodes.length} nodes`}/><Tag label={`${this.props.visGraphData.edges.length} edges`}/><Tag style='transparent' label={`Response time: ${this.props.responseDuration}ms`}/>
-          </GraphInfo>
-          <hr/>
-          <div ref={this.ref} className={styles.graphContainer}> </div>
-      </Card>
+
+      <VisNetwork
+        graphData={this.props.visGraphData}
+        graphName={this.props.graphName}
+        options={{}}
+      />
+
+      <GraphInfo>
+        <Tag label={`${this.props.visGraphData.nodes.length} nodes`}/><Tag label={`${this.props.visGraphData.edges.length} edges`}/><Tag style='transparent' label={`Response time: ${this.props.responseDuration}ms`}/>
+      </GraphInfo>
+
+      <hr/>
+
+      <div ref={this.ref} className={styles.graphContainer}> </div>
     </>;
   }
 }
