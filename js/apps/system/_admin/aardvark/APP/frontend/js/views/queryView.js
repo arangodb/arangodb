@@ -1572,7 +1572,8 @@
     },
 
     filterRows: function(rows) {
-      if (this.collection.searchOptions.searchPhrase) {
+      var searchPhrase = this.collection.searchOptions.searchPhrase
+      if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {
         return rows.filter(row => {
           return row.name.includes(this.collection.searchOptions.searchPhrase);
         })
