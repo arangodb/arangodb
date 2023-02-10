@@ -81,6 +81,8 @@
 
 #include <absl/strings/str_cat.h>
 
+#include "Logger/LogMacros.h"
+
 namespace {
 
 bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
@@ -7510,7 +7512,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
-    if (info && info.collectionNodeToReplace == node) {
+    if (info && info.collectionNodeToReplace == node && !plan->hasForcedIndexHints()) {
       if (applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }

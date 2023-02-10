@@ -32,6 +32,7 @@ const internal = require("internal");
 const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
+const analyzers = require("@arangodb/analyzers");
 
 function indexHintSuite() {
   const getIndexNames = function (query) {
@@ -42,6 +43,9 @@ function indexHintSuite() {
   };
 
   const cn = 'UnitTestsIndexHints';
+  const cn2 = 'TestCollectionWithGeoIndex';
+  const invertedIdxName = 'inverted1';
+  const geoIdxName = 'geo1';
   let collection;
   let defaultEqualityIndex;
   let alternateEqualityIndex;
@@ -69,10 +73,23 @@ function indexHintSuite() {
       alternateEqualityIndex = 'skip_a';
       defaultSortingIndex = 'hash_a';
       alternateSortingIndex = 'skip_a_b';
+
+      internal.db._drop(cn2);
+      collection = internal.db._create(cn2);
+      collection.ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: geoIdxName});
+      analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+      const commonInvertedIndexMeta = {type: "inverted", name: invertedIdxName, includeAllFields: true, fields:[
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          "name_1",
+          {"name": "geo", "analyzer": "geo_json"}
+        ]};
+      collection.ensureIndex(commonInvertedIndexMeta);
+      collection.insert({geo: { type: "Point", coordinates: [50, 50] } });
     },
 
     tearDownAll: function () {
       internal.db._drop(cn);
+      internal.db._drop(cn2);
     },
 
     testFilterNoHint: function () {
@@ -451,7 +468,27 @@ function indexHintSuite() {
             assertNotEqual(indexHint[1].indexOf(node.indexes[0].name), -1);
         });
       });
-    }
+    },
+
+    testForceAnotherIndexWithGeoPresent: function () {
+      const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName}", forceIndexHint: true, waitForSync: true} 
+      FILTER GEO_DISTANCE([50, 50], d.geo) < 5000 
+      RETURN d._key`;
+      const usedIndexes = getIndexNames(query);
+      assertEqual(usedIndexes.length, 1);
+      assertEqual(usedIndexes[0].length, 1);
+      assertEqual(usedIndexes[0][0], invertedIdxName);
+    },
+
+    testAnotherIndexHintNoForceWithGeoPresent: function () {
+      const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName}", waitForSync: true} 
+      FILTER GEO_DISTANCE([50, 50], d.geo) < 5000 
+      RETURN d._key`;
+      const usedIndexes = getIndexNames(query);
+      assertEqual(usedIndexes.length, 1);
+      assertEqual(usedIndexes[0].length, 1);
+      assertEqual(usedIndexes[0][0], geoIdxName);
+    },
   };
 }
 
