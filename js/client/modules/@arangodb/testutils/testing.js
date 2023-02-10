@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -162,11 +163,7 @@ let optionsDocumentation = [
   ''
 ];
 
-const isSan = (
-  global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-  global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-  internal.coverage
-);
+const isSan = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,

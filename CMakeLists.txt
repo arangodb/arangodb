@@ -202,6 +202,13 @@ if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif ()
 
+# enable code coverage
+option(USE_COVERAGE "enable gcov code coverage" OFF)
+if (USE_COVERAGE)
+  add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
+  add_definitions("-DUSE_COVERAGE=1")
+endif ()
+
 # enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
