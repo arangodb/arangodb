@@ -1,6 +1,11 @@
 devel
 -----
 
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of a new optimizer rule
+  and wrong cost estimations for execution plans.
+
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
 * BTS-1193: Fix for schema update. When removing a field and then inserting a 

@@ -1780,7 +1780,9 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
-  estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  estimate.estimatedCost += estimate.estimatedNrItems *
+                                (_random ? 1.005 : (hasFilter() ? 2.0 : 1.0)) +
+                            1.0;
 
   return estimate;
 }
