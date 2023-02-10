@@ -235,7 +235,7 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
     try {
       return leader
           ->replicateOperation(velocypack::SharedSlice{}, operation,
-                               _transaction->id(), options)
+                               _transaction->id(), collectionName(), options)
           .thenValue([state = _transaction->shared_from_this(),
                       this](auto&& res) -> Result {
             return _rocksMethods->triggerIntermediateCommit();
