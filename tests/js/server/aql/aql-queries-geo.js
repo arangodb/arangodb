@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
@@ -1358,7 +1358,36 @@ function geoLegacyComparison() {
                                  RETURN d._key`, {}, false);
       assertEqual(0, b.length);
     },
+  };
+}
 
+function geoThisAndThatSuite() {
+
+  let coll;
+
+  const cn = "UnitTestsAhuacatlGeoThisAndThat";
+
+  return {
+    setUp : function() {
+      db._drop(cn);
+      coll = db._create(cn);
+      coll.ensureIndex({type:"geo", fields:["geo"], geoJson: true});
+    },
+
+    tearDown : function() {
+      db._drop(cn);
+    },
+
+    testNestedFor : function() {
+      let query = `FOR e IN ${cn}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(d.geo, e.geo)
+                       RETURN {d: d._key, e: e._key}`;
+      let compact = helper.getCompactPlan(AQL_EXPLAIN(query))
+        .map(function(node) { return node.type; });
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode",
+        "IndexNode", "CalculationNode", "ReturnNode" ], compact);
+    },
   };
 }
 
@@ -1368,5 +1397,6 @@ jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
 jsunity.run(geoFunctionsTestSuite);
 jsunity.run(geoLegacyComparison);
+jsunity.run(geoThisAndThatSuite);
 
 return jsunity.done();
