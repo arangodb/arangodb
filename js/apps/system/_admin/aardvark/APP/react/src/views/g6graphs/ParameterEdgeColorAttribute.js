@@ -10,10 +10,11 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
   const newUrlParameters = { ...urlParameters };
   
   return (
-    <div>
+    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Edge color attribute'}
         value={edgeColorAttribute}
+        style={'graphviewer'}
         width={'300px'}
         onChange={(e) => {
           setEdgeColorAttribute(e.target.value);
@@ -26,7 +27,7 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
         title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
       </ToolTip>
     </div>
   );

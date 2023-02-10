@@ -10,12 +10,12 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <>
-      <div>
+      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
           label={'Node color attribute'}
           value={nodeColorAttribute}
-          width={'300px'}
+          style={'graphviewer'}
+          width={'200px'}
           onChange={(e) => {
             setNodeColorAttribute(e.target.value);
             newUrlParameters.nodeColorAttribute = e.target.value;
@@ -27,10 +27,9 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
           title={"If an attribute is given, nodes will be colorized by the attribute. This setting ignores default node color if set."}
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
       </div>
-    </>
   );
 };
 

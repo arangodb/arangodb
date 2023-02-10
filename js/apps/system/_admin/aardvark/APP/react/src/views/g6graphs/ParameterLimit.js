@@ -11,10 +11,11 @@ const ParameterLimit = () => {
 
   return (
     <>
-      <form>
+      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
           label={'Limit'}
           value={limit}
+          style={'graphviewer'}
           width={'60px'}
           onChange={(e) => {
             setLimit(+e.target.value);
@@ -26,9 +27,9 @@ const ParameterLimit = () => {
           title={"Limit nodes count. If empty or zero, no limit is set."}
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
-      </form>
+      </div>
     </>
   );
 };

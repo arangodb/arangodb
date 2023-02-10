@@ -10,11 +10,12 @@ const ParameterNodeSize = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{ marginBottom: '20px' }}>
+    <div style={{ 'marginTop': '24px', 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Sizing attribute'}
         value={nodeSize}
-        width={'300px'}
+        style={'graphviewer'}
+        width={'200px'}
         onChange={(e) => {
           setNodeSize(e.target.value);
           newUrlParameters.nodeSize = e.target.value;
@@ -26,7 +27,7 @@ const ParameterNodeSize = () => {
         title={"If an attribute is given, nodes will be sized by the attribute."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
       </ToolTip>
     </div>
   );

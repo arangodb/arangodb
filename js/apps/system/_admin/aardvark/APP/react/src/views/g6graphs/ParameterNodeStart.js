@@ -10,11 +10,12 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{'marginTop': '24px'}}>
+    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Start node'}
         value={urlParameters.nodeStart}
-        width={'500px'}
+        style={'graphviewer'}
+        width={'200px'}
         onChange={(e) => {
           setNodeStart(e.target.value);
           newUrlParameters.nodeStart = e.target.value;
@@ -25,7 +26,7 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
         title={"A valid node ID or a space-separated list of IDs. If empty, a random node will be chosen."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
       </ToolTip>
     </div>
   );

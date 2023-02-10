@@ -11,10 +11,11 @@ const ParameterDepth = () => {
 
   return (
     <>
-      <form>
+      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
             label={'Depth'}
             value={depth}
+            style={'graphviewer'}
             width={'60px'}
             onChange={(e) => {
               setDepth(+e.target.value);
@@ -26,9 +27,9 @@ const ParameterDepth = () => {
           title={"Search depth, starting from your start node."}
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
-      </form>
+      </div>
     </>
   );
 };

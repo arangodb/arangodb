@@ -8,7 +8,7 @@ type StyledTextinputProps = {
   [key: string]: any;
 };
 
-const StyledTextinput = styled.input.attrs(({ type, width, height, disabled, ...rest }: StyledTextinputProps) => ({
+const StyledTextinput = styled.input.attrs(({ type, width, height, disabled, style, ...rest }: StyledTextinputProps) => ({
   type,
   ...rest
 }))`
@@ -34,11 +34,12 @@ type TextinputProps = {
   id?: string;
   label?: ReactNode;
   disabled?: boolean;
+  style?: string;
   width?: string;
   height?: string;
 } & StyledTextinputProps;
 
-const Textinput = ({ id, label, disabled, width, height, ...rest }: TextinputProps) => {
+const Textinput = ({ id, label, disabled, style, width, height, ...rest }: TextinputProps) => {
   const [thisId, setThisId] = useState(id || uniqueId('textinput-'));
 
   useEffect(() => {
@@ -47,6 +48,13 @@ const Textinput = ({ id, label, disabled, width, height, ...rest }: TextinputPro
     }
   }, [id]);
 
+
+  if (style === "graphviewer") {
+    return <>
+      {label ? <div style={{ 'color': '#ffffff', 'width': '150px' }}>{label}</div> : null}
+      <StyledTextinput id={thisId} disabled={disabled} width={width} height={height} {...rest} />
+    </>;
+  }
 
   return <>
     {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}

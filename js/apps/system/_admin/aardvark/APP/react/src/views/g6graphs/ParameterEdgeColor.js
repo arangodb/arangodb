@@ -13,11 +13,12 @@ const ParameterEdgeColor = () => {
   }
 
   return (
-    <div>
+    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Default edge color'}
         type={'color'}
         value={calculatedEdgeColor}
+        style={'graphviewer'}
         width={'60px'}
         height={'30px'}
         onChange={(e) => {

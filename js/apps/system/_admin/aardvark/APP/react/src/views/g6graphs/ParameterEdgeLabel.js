@@ -10,11 +10,12 @@ const ParameterEdgeLabel = () => {
   const newUrlParameters = { ...urlParameters };  
   
   return (
-    <div style={{'marginTop': '24px'}}>
+    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Edge label'}
         value={edgeLabel}
-        width={'300px'}
+        style={'graphviewer'}
+        width={'200px'}
         onChange={(e) => {
           setEdgeLabel(e.target.value);
           newUrlParameters.edgeLabel = e.target.value;
@@ -25,7 +26,7 @@ const ParameterEdgeLabel = () => {
         title={"Enter a valid edge attribute to be used as an edge label."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
       </ToolTip>
     </div>
   );
