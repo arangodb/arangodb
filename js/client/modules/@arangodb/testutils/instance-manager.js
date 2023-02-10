@@ -772,7 +772,7 @@ class instanceManager {
 
   detectShouldBeRunning() {
     let ret = true;
-    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null} );
+    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
     return ret;
   }
 
