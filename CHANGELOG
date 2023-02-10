@@ -1,6 +1,12 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
 * BTS-1193: Fix for schema update. When removing a field and then inserting a
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
