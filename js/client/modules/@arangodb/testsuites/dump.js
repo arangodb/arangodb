@@ -228,7 +228,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   startFirstInstance() {
-    this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
+    let rootDir = fs.join(fs.getTempPath(), '1');
+    this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which, rootDir);
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -252,11 +253,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
+      let rootDir = fs.join(fs.getTempPath(), '2');
       this.results['shutdown'] = this.instanceManager.shutdownInstance();
       this.instanceManager.destructor(false); // must not cleanup!
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
+      this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which, rootDir);
       this.instanceManager.prepareInstance();
       this.instanceManager.launchTcpDump("");
       if (!this.instanceManager.launchInstance()) {
