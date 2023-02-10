@@ -2,6 +2,8 @@
 
 #include "Actor/ActorPID.h"
 #include "Actor/Message.h"
+#include "CrashHandler/CrashHandler.h"
+#include "Assertions/ProdAssert.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
@@ -50,10 +52,7 @@ struct ArangoExternalDispatcher {
                        .receiver = receiver,
                        .payload = velocypack::Builder(msg.slice())};
     auto serialized = inspection::serializeWithErrorT(networkMessage);
-    if (not serialized.ok()) {
-      fmt::print(stderr, "Error serializing ActorNotFound");
-      std::abort();
-    }
+    ADB_PROD_ASSERT(serialized.ok());
     auto builder = velocypack::Builder(serialized.get().slice());
     return network::sendRequestRetry(
         this->connectionPool,
@@ -73,17 +72,14 @@ struct ArangoExternalDispatcher {
             auto error = actor::ActorError{actor::NetworkError{
                 .message = (std::string)out.errorMessage()}};
             auto payload = inspection::serializeWithErrorT(error);
-            if (!payload.ok()) {
-              fmt::print("Error serializing NetworkError");
-              std::abort();
-            }
+            ADB_PROD_ASSERT(payload.ok());
             send(receiver, sender, payload.get())
                 .thenValue([](auto&& result) -> void {
                   // if sending the error does also not work, we just print the
                   // error
                   auto out = errorHandling(result);
                   if (out.fail()) {
-                    LOG_DEVEL
+                    LOG_TOPIC("ae1e9", INFO, Logger::PREGEL)
                         << fmt::format("Error in network communication: {}",
                                        out.errorMessage());
                   }

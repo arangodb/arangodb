@@ -27,7 +27,6 @@
 #include "Actor/HandlerBase.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Logger/LogMacros.h"
 #include "fmt/core.h"
 
 namespace arangodb::pregel {
@@ -43,7 +42,8 @@ auto inspect(Inspector& f, WorkerState& x) {
 template<typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
   auto operator()(WorkerStart start) -> std::unique_ptr<WorkerState> {
-    LOG_DEVEL << fmt::format("Worker Actor {} started", this->self);
+    LOG_TOPIC("cd696", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} started", this->self);
     // TODO when we get a message with a conductor PID
     // this->state->conductor = start.conductor;
     // this->template dispatch<ConductorMessages>(this->state->conductor,
@@ -53,28 +53,29 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
 
   auto operator()(actor::UnknownMessage unknown)
       -> std::unique_ptr<WorkerState> {
-    LOG_DEVEL << fmt::format("Worker Actor: Error - sent unknown message to {}",
-                             unknown.receiver);
+    LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<WorkerState> {
-    LOG_DEVEL << fmt::format(
+    LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - recieving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(actor::NetworkError notFound)
       -> std::unique_ptr<WorkerState> {
-    LOG_DEVEL << fmt::format("Worker Actor: Error - network error {}",
-                             notFound.message);
+    LOG_TOPIC("7915", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<WorkerState> {
-    LOG_DEVEL << "Worker Actor: Got unhandled message";
-    LOG_DEVEL << fmt::format("{}", rest);
+    LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
+        << "Worker Actor: Got unhandled message";
+    LOG_TOPIC("f5bac", INFO, Logger::PREGEL) << fmt::format("{}", rest);
     return std::move(this->state);
   }
 };

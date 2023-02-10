@@ -26,7 +26,6 @@
 #include "Actor/HandlerBase.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Logger/LogMacros.h"
 #include "fmt/core.h"
 
 namespace arangodb::pregel {
@@ -40,42 +39,45 @@ auto inspect(Inspector& f, ConductorState& x) {
 template<typename Runtime>
 struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
   auto operator()(ConductorStart start) -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << fmt::format("Conductor Actor {} started", this->self);
+    LOG_TOPIC("56db0", INFO, Logger::PREGEL)
+        << fmt::format("Conductor Actor {} started", this->self);
     // TODO call State::initializeWorkers in here
     // and then spawn actors from here
     return std::move(this->state);
   }
 
   auto operator()(WorkerCreated start) -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << "Conductor Actor: Worker was created";
+    LOG_TOPIC("17915", INFO, Logger::PREGEL)
+        << "Conductor Actor: Worker was created";
     return std::move(this->state);
   }
 
   auto operator()(actor::UnknownMessage unknown)
       -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << fmt::format(
-        "Conductor Actor: Error - sent unknown message to {}",
-        unknown.receiver);
+    LOG_TOPIC("d1791", INFO, Logger::PREGEL)
+        << fmt::format("Conductor Actor: Error - sent unknown message to {}",
+                       unknown.receiver);
     return std::move(this->state);
   }
 
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << fmt::format(
-        "Conductor Actor: Error - recieving actor {} not found",
-        notFound.actor);
+    LOG_TOPIC("ea585", INFO, Logger::PREGEL)
+        << fmt::format("Conductor Actor: Error - recieving actor {} not found",
+                       notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(actor::NetworkError notFound)
       -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << fmt::format("Conductor Actor: Error - network error {}",
-                             notFound.message);
+    LOG_TOPIC("866d8", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<ConductorState> {
-    LOG_DEVEL << "Conductor Actor: Got unhandled message";
+    LOG_TOPIC("7ae0f", INFO, Logger::PREGEL)
+        << "Conductor Actor: Got unhandled message";
     return std::move(this->state);
   }
 };

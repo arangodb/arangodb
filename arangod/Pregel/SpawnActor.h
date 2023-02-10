@@ -28,7 +28,6 @@
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/SpawnMessages.h"
-#include "Logger/LogMacros.h"
 #include "fmt/core.h"
 
 namespace arangodb::pregel {
@@ -42,18 +41,21 @@ auto inspect(Inspector& f, SpawnState& x) {
 template<typename Runtime>
 struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
   auto operator()(SpawnStart start) -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << fmt::format("Spawn Actor {} started", this->self);
+    LOG_TOPIC("4a414", INFO, Logger::PREGEL)
+        << fmt::format("Spawn Actor {} started", this->self);
     return std::move(this->state);
   }
 
   auto operator()(SpawnConductor msg) -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << "Spawn Actor: Spawn conductor actor";
+    LOG_TOPIC("ed212", INFO, Logger::PREGEL)
+        << "Spawn Actor: Spawn conductor actor";
     this->template spawn<ConductorActor>(ConductorState{}, ConductorStart{});
     return std::move(this->state);
   }
 
   auto operator()(SpawnWorker msg) -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << "Spawn Actor: Spawn worker actor";
+    LOG_TOPIC("2452c", INFO, Logger::PREGEL)
+        << "Spawn Actor: Spawn worker actor";
     this->template spawn<WorkerActor>(
         WorkerState{}, WorkerStart{});  //.conductor = msg.conductor});
     return std::move(this->state);
@@ -61,26 +63,27 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
 
   auto operator()(actor::UnknownMessage unknown)
       -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << fmt::format("Spawn Actor: Error - sent unknown message to {}",
-                             unknown.receiver);
+    LOG_TOPIC("7b602", INFO, Logger::PREGEL) << fmt::format(
+        "Spawn Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << fmt::format(
+    LOG_TOPIC("03156", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - recieving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(actor::NetworkError notFound) -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << fmt::format("Spawn Actor: Error - network error {}",
-                             notFound.message);
+    LOG_TOPIC("a87b3", INFO, Logger::PREGEL) << fmt::format(
+        "Spawn Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<SpawnState> {
-    LOG_DEVEL << "Spawn Actor: Got unhandled message";
+    LOG_TOPIC("89d72", INFO, Logger::PREGEL)
+        << "Spawn Actor: Got unhandled message";
     return std::move(this->state);
   }
 };
