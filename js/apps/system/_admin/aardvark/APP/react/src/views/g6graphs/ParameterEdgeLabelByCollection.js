@@ -21,7 +21,7 @@ const ParameterEdgeLabelByCollection = () => {
           newUrlParameters.edgeLabelByCollection = newEdgeLabelByCollection;
           setUrlParameters(newUrlParameters);
         }}
-        style={'graphviewer'}
+        template={'graphviewer'}
       />
       <ToolTip
         title={"Adds a collection name to the edge label."}

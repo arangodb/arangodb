@@ -14,7 +14,7 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
       <Textinput
         label={'Start node'}
         value={urlParameters.nodeStart}
-        style={'graphviewer'}
+        template={'graphviewer'}
         width={'200px'}
         onChange={(e) => {
           setNodeStart(e.target.value);

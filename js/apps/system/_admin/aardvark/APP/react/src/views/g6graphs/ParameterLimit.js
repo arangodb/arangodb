@@ -11,11 +11,11 @@ const ParameterLimit = () => {
 
   return (
     <>
-      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+      <div style={{ 'marginTop': '24px', 'marginBottom': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
           label={'Limit'}
           value={limit}
-          style={'graphviewer'}
+          template={'graphviewer'}
           width={'60px'}
           onChange={(e) => {
             setLimit(+e.target.value);

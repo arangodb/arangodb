@@ -14,7 +14,7 @@ const ParameterEdgeLabel = () => {
       <Textinput
         label={'Edge label'}
         value={edgeLabel}
-        style={'graphviewer'}
+        template={'graphviewer'}
         width={'200px'}
         onChange={(e) => {
           setEdgeLabel(e.target.value);

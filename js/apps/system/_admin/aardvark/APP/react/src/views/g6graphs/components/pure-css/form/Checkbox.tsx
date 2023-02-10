@@ -17,10 +17,10 @@ type CheckboxProps = {
   label?: ReactNode;
   inline?: boolean;
   disabled?: boolean;
-  style?: string;
+  template?: string;
 };
 
-const Checkbox = ({ id, checked, onChange, label, inline, disabled, style }: CheckboxProps) => {
+const Checkbox = ({ id, checked, onChange, label, inline, disabled, template }: CheckboxProps) => {
   const [thisId, setThisId] = useState(id || uniqueId('checkbox-'));
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const Checkbox = ({ id, checked, onChange, label, inline, disabled, style }: Che
   }, [id]);
 
   if (inline && label) {
-    if(style === "graphviewer") {
+    if(template === "graphviewer") {
         return <>
             {label ? <div style={{ 'color': '#ffffff', 'width': '150px' }}>{label}</div> : null}
             <StyledCheckbox id={thisId} checked={checked || false} onChange={onChange} disabled={disabled} style={{ 'marginRight': '8px' }}/>

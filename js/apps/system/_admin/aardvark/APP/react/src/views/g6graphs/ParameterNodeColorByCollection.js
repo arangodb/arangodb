@@ -21,7 +21,7 @@ const ParameterNodeColorByCollection = () => {
           newUrlParameters.nodeColorByCollection = newNodeColorByCollection;
           setUrlParameters(newUrlParameters);
         }}
-        style={'graphviewer'}
+        template={'graphviewer'}
       />
       <ToolTip
         title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}

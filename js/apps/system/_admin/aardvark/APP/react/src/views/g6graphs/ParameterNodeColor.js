@@ -13,12 +13,12 @@ const ParameterNodeColor = () => {
   }
 
   return (
-    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <div style={{ 'marginTop': '12px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Default node color'}
         type={'color'}
         value={calculatedNodeColor}
-        style={'graphviewer'}
+        template={'graphviewer'}
         width={'60px'}
         height={'30px'}
         onChange={(e) => {

@@ -21,7 +21,7 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
           newUrlParameters.nodeLabelByCollection = newNodeLabelByCollection;
           setUrlParameters(newUrlParameters);
         }}
-        style={'graphviewer'}
+        template={'graphviewer'}
       />
       <ToolTip
         title={"Adds a collection name to the node label."}

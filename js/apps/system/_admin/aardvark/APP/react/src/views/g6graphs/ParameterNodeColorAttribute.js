@@ -10,11 +10,11 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+      <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
           label={'Node color attribute'}
           value={nodeColorAttribute}
-          style={'graphviewer'}
+          template={'graphviewer'}
           width={'200px'}
           onChange={(e) => {
             setNodeColorAttribute(e.target.value);

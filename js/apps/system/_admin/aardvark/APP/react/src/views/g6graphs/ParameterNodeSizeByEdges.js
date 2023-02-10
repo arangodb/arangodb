@@ -21,7 +21,7 @@ const ParameterNodeSizeByEdges = () => {
           newUrlParameters.nodeSizeByEdges = newNodeSizeByEdges;
           setUrlParameters(newUrlParameters);
         }}
-        style={'graphviewer'}
+        template={'graphviewer'}
       />
       <ToolTip
         title={"If enabled, nodes are sized according to the number of edges they have. This option overrides the sizing attribute."}

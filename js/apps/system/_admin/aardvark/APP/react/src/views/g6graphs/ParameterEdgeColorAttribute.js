@@ -10,12 +10,12 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
   const newUrlParameters = { ...urlParameters };
   
   return (
-    <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Edge color attribute'}
         value={edgeColorAttribute}
-        style={'graphviewer'}
-        width={'300px'}
+        template={'graphviewer'}
+        width={'200px'}
         onChange={(e) => {
           setEdgeColorAttribute(e.target.value);
           newUrlParameters.edgeColorAttribute = e.target.value;

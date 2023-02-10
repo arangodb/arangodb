@@ -15,7 +15,7 @@ const ParameterNodeLabel = () => {
         <Textinput
           label={'Node label'}
           value={nodeLabel}
-          style={'graphviewer'}
+          template={'graphviewer'}
           width={'200px'}
           onChange={(e) => {
             setNodeLabel(e.target.value);

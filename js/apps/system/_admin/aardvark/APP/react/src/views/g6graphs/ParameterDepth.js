@@ -11,11 +11,11 @@ const ParameterDepth = () => {
 
   return (
     <>
-      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+      <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
         <Textinput
             label={'Depth'}
             value={depth}
-            style={'graphviewer'}
+            template={'graphviewer'}
             width={'60px'}
             onChange={(e) => {
               setDepth(+e.target.value);

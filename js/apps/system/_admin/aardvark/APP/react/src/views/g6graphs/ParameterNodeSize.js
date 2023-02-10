@@ -10,11 +10,11 @@ const ParameterNodeSize = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{ 'marginTop': '24px', 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Textinput
         label={'Sizing attribute'}
         value={nodeSize}
-        style={'graphviewer'}
+        template={'graphviewer'}
         width={'200px'}
         onChange={(e) => {
           setNodeSize(e.target.value);

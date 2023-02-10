@@ -21,7 +21,7 @@ const ParameterEdgeColorByCollection = () => {
           newUrlParameters.edgeColorByCollection = newEdgeColorByCollection;
           setUrlParameters(newUrlParameters);
         }}
-        style={'graphviewer'}
+        template={'graphviewer'}
       />
       <ToolTip
         title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}
