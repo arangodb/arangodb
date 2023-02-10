@@ -112,6 +112,19 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   destructor(cleanup) {
+    if (this.fn !== undefined && fs.exists(this.fn)) {
+      fs.remove(this.fn);
+    }
+    if (this.instanceManager === null) {
+      print(RED + 'no instance running. Nothing to stop!' + RESET);
+      return this.results;
+    }
+    print(CYAN + 'Shutting down...' + RESET);
+    this.results['shutdown'] = this.im1.shutdownInstance();
+    if (this.im2 !== null) {
+      this.results['shutdown'] &= this.im2.shutdownInstance();
+    }
+    print(CYAN + 'done.' + RESET);
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
       if (this.im1 !== null) {
@@ -307,18 +320,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   extractResults() {
-    if (this.fn !== undefined && fs.exists(this.fn)) {
-      fs.remove(this.fn);
-    }
-    if (this.instanceManager === null) {
-      print(RED + 'no instance running. Nothing to stop!' + RESET);
-      return this.results;
-    }
-    print(CYAN + 'Shutting down...' + RESET);
-    this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor(false);
-    print(CYAN + 'done.' + RESET);
-
     print();
     return this.results;
   }
