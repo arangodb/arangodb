@@ -42,27 +42,19 @@ struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
-  PlanCollectionEntryReplication2(UserInputCollectionProperties collection,
-                                  ShardDistribution shardDistribution,
-                                  AgencyIsBuildingFlags isBuildingFlags);
+  PlanCollectionEntryReplication2(UserInputCollectionProperties collection);
 
   [[nodiscard]] std::string getCID() const;
 
   [[nodiscard]] std::string const& getName() const;
 
-  // To be replaced by Inspect below, as soon as same-level fields are merged.
-  [[nodiscard]] velocypack::Builder toVPackDeprecated() const;
-
  private:
   replication2::agency::CollectionTargetSpecification _properties{};
-  CollectionIndexesProperties _indexProperties{};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, PlanCollectionEntryReplication2& planCollection) {
-  // TODO This is waiting on inspector with fields on same toplevel object
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return f.object(planCollection).fields();
+  return f.apply(planCollection);
 }
 
 }  // namespace arangodb

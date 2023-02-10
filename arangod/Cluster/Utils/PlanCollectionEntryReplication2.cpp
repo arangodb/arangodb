@@ -54,17 +54,15 @@ auto transform(UserInputCollectionProperties col)
                               col.smartJoinAttribute,
                               col.smartGraphAttribute,
                               col.shadowCollections};
+  spec.indexes = CollectionIndexesProperties::defaultIndexesForCollectionType(
+      col.getType());
   return spec;
 }
 }  // namespace
 
 PlanCollectionEntryReplication2::PlanCollectionEntryReplication2(
-    UserInputCollectionProperties col, ShardDistribution shardDistribution,
-    AgencyIsBuildingFlags isBuildingFlags)
-    : _properties{::transform(std::move(col))},
-      _indexProperties(
-          CollectionIndexesProperties::defaultIndexesForCollectionType(
-              col.getType())) {}
+    UserInputCollectionProperties col)
+    : _properties{::transform(std::move(col))} {}
 
 std::string PlanCollectionEntryReplication2::getCID() const {
   TRI_ASSERT(!_properties.immutableProperties.id.empty());
@@ -74,14 +72,4 @@ std::string PlanCollectionEntryReplication2::getCID() const {
 std::string const& PlanCollectionEntryReplication2::getName() const {
   TRI_ASSERT(!_properties.immutableProperties.name.empty());
   return {_properties.immutableProperties.name};
-}
-
-VPackBuilder PlanCollectionEntryReplication2::toVPackDeprecated() const {
-  // NOTE this is just a deprecated Helper that will be replaced by inspect as
-  // soon as inspector feature is merged
-  VPackBuilder props;
-  velocypack::serialize(props, _properties);
-  VPackBuilder indexes;
-  velocypack::serialize(indexes, _indexProperties);
-  return VPackCollection::merge(props.slice(), indexes.slice(), false, false);
 }

@@ -109,7 +109,8 @@ auto inspect(Inspector& f, Collection& x) {
   return f.object(x).fields(
       f.field("groupId", x.groupId),
       f.field("mutableProperties", x.mutableProperties),
-      f.field("immutableProperties", x.immutableProperties));
+      f.field("immutableProperties", x.immutableProperties),
+      f.field("indexes", x.indexes));
 }
 
 template<class Inspector>

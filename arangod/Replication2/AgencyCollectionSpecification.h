@@ -34,6 +34,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 
 namespace arangodb::replication2::agency {
 
@@ -123,6 +124,8 @@ struct Collection {
   };
 
   ImmutableProperties immutableProperties;
+
+  CollectionIndexesProperties indexes;
 };
 
 struct CollectionTargetSpecification : public Collection {};

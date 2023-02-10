@@ -44,17 +44,12 @@ namespace paths = arangodb::cluster::paths::aliases;
 namespace {
 
 inline auto pathCollectionNamesInTarget(std::string_view databaseName) {
-  return cluster::paths::root()->arango()->target()->collectionNames()->database(
+  return paths::target()->collectionNames()->database(
       std::string{databaseName});
 }
 
 inline auto pathCollectionInTarget(std::string_view databaseName) {
-  return cluster::paths::root()->arango()->target()->collections()->database(
-      std::string{databaseName});
-}
-
-inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
-  return paths::target()->replicatedLogs()->database(std::string{databaseName});
+  return paths::target()->collections()->database(std::string{databaseName});
 }
 
 inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
@@ -122,7 +117,6 @@ ResultT<VPackBufferUInt8>
 TargetCollectionAgencyWriter::prepareCreateTransaction(
     std::string_view databaseName) const {
   auto const baseCollectionPath = pathCollectionInTarget(databaseName);
-  auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
   auto const baseGroupPath = pathCollectionGroupInTarget(databaseName);
   auto const collectionNamePath = pathCollectionNamesInTarget(databaseName);
 
@@ -160,10 +154,7 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
     writes = std::move(writes).emplace_object(
         baseCollectionPath->collection(entry.getCID())->str(),
         [&](VPackBuilder& builder) {
-          // Temporary. It should be replaced by velocypack::serialize(builder,
-          // entry); This is not efficient we copy the builder twice
-          auto b = entry.toVPackDeprecated();
-          builder.add(b.slice());
+          velocypack::serialize(builder, entry);
         });
 
     // Insert an empty object, we basically want to occupy the key here for
