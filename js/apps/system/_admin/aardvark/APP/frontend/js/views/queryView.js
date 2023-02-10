@@ -109,6 +109,7 @@
       'change #querySearchInput': 'restrictToSearchPhrase',
       'keydown #querySearchInput': 'restrictToSearchPhraseKey',
       'click #sortOptionsToggle': 'toggleSortOptions',
+      'click #sortOrder': 'sortOrder',
     },
     toggleSortOptions: function () {
       $('#sortOptionsToggle').toggleClass('activated');
@@ -173,12 +174,34 @@
       this.aqlEditor.setValue('', 1);
     },
 
-    sortDateAdded: function () {
-      this.sortByHistory = !this.sortByHistory;
-      this.updateQueryTable();
-      this.resize();
+    sortName: function () {
+      var searchOptions = this.collection.searchOptions;
+      var oldValue = searchOptions.sortBy;
+      searchOptions.sortBy = (($('#sortName').is(':checked') === true) ? 'name' : 'dateAdded');
+      if (oldValue !== searchOptions.sortBy) {
+        this.updateQueryTable();
+        this.resize();
+      }
     },
+    sortDateAdded: function () {
+      var searchOptions = this.collection.searchOptions;
+      var oldValue = searchOptions.sortBy;
+      searchOptions.sortBy = (($('#sortDateAdded').is(':checked') === true) ? 'dateAdded' : 'name');
+      if (oldValue !== searchOptions.sortBy) {
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
+    sortOrder: function () {
+      var searchOptions = this.collection.searchOptions;
+      var oldValue = searchOptions.sortOrder;
 
+      searchOptions.sortOrder = (($('#sortOrder').is(':checked') === true) ? -1 : 1);
+      if (oldValue !== searchOptions.sortOrder) {
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
     closeProfile: function (e) {
       var count = $(e.currentTarget).parent().attr('counter');
 
@@ -938,7 +961,6 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
-      arangoHelper.setCheckboxStatus('#sortOptionsDropdownInner');
       $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
@@ -1581,8 +1603,19 @@
         }
         return x;
       }
-      if (this.sortByHistory) {
-        return rows.reverse()
+      if (this.collection.searchOptions.sortBy === 'dateAdded') {
+        if (this.collection.searchOptions.sortOrder === 1) {
+          return rows.reverse();
+        }
+        if (this.collection.searchOptions.sortOrder === -1) {
+          return rows.reverse().reverse();
+        }
+      }
+      if (this.collection.searchOptions.sortOrder === 1) {
+        return rows.sort(compare);
+      }
+      if (this.collection.searchOptions.sortOrder === -1) {
+        return rows.sort(compare).reverse();
       }
       return rows.sort(compare);
     },

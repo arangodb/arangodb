@@ -558,3 +558,9 @@
     max-height: 250px;
   }
 }
+
+
+#sortOptionsDropdown input[type="radio"],
+input[type="checkbox"] {
+  margin: 0;
+}

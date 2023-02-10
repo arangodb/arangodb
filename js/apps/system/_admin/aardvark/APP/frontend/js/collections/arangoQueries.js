@@ -9,6 +9,7 @@
       searchPhrase: null,
       includeExample: false,
       sortBy: 'name',
+      sortOrder: 1
     },
 
     getQueryPath: function () {
