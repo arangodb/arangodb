@@ -461,7 +461,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_DIFF", ".,.,.|.", flags, &functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", flags, &functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &functions::DateFormat});
-  add({"DATE_TRUNC", ".,.", flags, &functions::DateTrunc});
+  add({"DATE_TRUNC", ".,.|.", flags, &functions::DateTrunc});
   add({"DATE_UTCTOLOCAL", ".,.|.", flags, &functions::DateUtcToLocal});
   add({"DATE_LOCALTOUTC", ".,.|.", flags, &functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &functions::DateTimeZone});

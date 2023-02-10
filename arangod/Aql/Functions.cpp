@@ -4158,6 +4158,21 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   std::string duration = durationType.slice().copyString();
   basics::StringUtils::tolowerInPlace(duration);
 
+  std::string inputTimezone = "UTC";
+
+  if (parameters.size() == 3) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 2);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
@@ -4183,6 +4198,10 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
   tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
+
+  if (parameters.size() == 3) {
+    ::unlocalizeTimePoint(inputTimezone, tp);
+  }
 
   return ::timeAqlValue(expressionContext, AFN, tp);
 }

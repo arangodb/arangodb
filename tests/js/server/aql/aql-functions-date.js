@@ -1624,7 +1624,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
     testDateTruncInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC(1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC(1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, 1)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(false, 'year')");
@@ -1636,6 +1636,10 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, [])");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC({}, 'year')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, {})");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', [])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', {})");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TRUNC(DATE_NOW(), 'sugar')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TRUNC(DATE_NOW(), '')");
     },
@@ -1666,12 +1670,17 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2000-04-29 12:34:56.789", "s"], "2000-04-29T12:34:56.000Z" ],
         [ ["2000-04-29 12:34:56.789", "milliseconds"], "2000-04-29T12:34:56.789Z" ],
         [ ["2000-04-29 12:34:56.789", "millisecond"], "2000-04-29T12:34:56.789Z" ],
-        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ]
+        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ],
+        [ [1679785200000, "day"], "2023-03-25T00:00:00.000Z" ],
+        [ [1679785200000, "day", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1])`, {val: value[0]});
-        assertEqual([ value[1] ], actual);
+        if (value[0].length === 2) {
+          assertEqual([ value[1] ], getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1])`, {val: value[0]}));
+        } else {
+          assertEqual([ value[1] ], getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1], @val[2])`, {val: value[0]}));
+        }
       });
     },
 
