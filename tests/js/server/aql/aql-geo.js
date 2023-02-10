@@ -206,8 +206,7 @@ function geoSuite(isSearchAlias) {
       withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
-
-      analyzers.save("geo_json", analyzerType, {}, ["frequency", "norm", "position"]);
+      let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
 
       withIndex.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       withView.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
