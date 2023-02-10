@@ -1781,7 +1781,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 return "supervision";
               }
               using BaseType::StaticComponent;
-
             };
 
             std::shared_ptr<Supervision const> supervision() const {
@@ -1802,8 +1801,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       std::shared_ptr<CollectionGroups const> collectionGroups() const {
         return CollectionGroups::make_shared(shared_from_this());
       }
-
-
     };
 
     std::shared_ptr<Current const> current() const {
@@ -2546,8 +2543,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return CollectionGroups::make_shared(shared_from_this());
       }
 
-      class Collections
-          : public StaticComponent<Collections, Target> {
+      class Collections : public StaticComponent<Collections, Target> {
        public:
         constexpr char const* component() const noexcept {
           return "Collections";
@@ -2570,8 +2566,10 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             using BaseType::DynamicComponent;
           };
 
-          std::shared_ptr<Collection const> collection(std::string value) const {
-            return Collection::make_shared(shared_from_this(), std::move(value));
+          std::shared_ptr<Collection const> collection(
+              std::string value) const {
+            return Collection::make_shared(shared_from_this(),
+                                           std::move(value));
           }
         };
 
@@ -2584,8 +2582,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return Collections::make_shared(shared_from_this());
       }
 
-      class CollectionNames
-          : public StaticComponent<CollectionNames, Target> {
+      class CollectionNames : public StaticComponent<CollectionNames, Target> {
        public:
         constexpr char const* component() const noexcept {
           return "CollectionNames";
@@ -2608,8 +2605,10 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             using BaseType::DynamicComponent;
           };
 
-          std::shared_ptr<Collection const> collection(std::string value) const {
-            return Collection::make_shared(shared_from_this(), std::move(value));
+          std::shared_ptr<Collection const> collection(
+              std::string value) const {
+            return Collection::make_shared(shared_from_this(),
+                                           std::move(value));
           }
         };
 
@@ -2621,7 +2620,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       std::shared_ptr<CollectionNames const> collectionNames() const {
         return CollectionNames::make_shared(shared_from_this());
       }
-
     };
 
     std::shared_ptr<Target const> target() const {

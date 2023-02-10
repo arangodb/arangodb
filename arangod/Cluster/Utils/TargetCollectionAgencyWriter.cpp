@@ -53,11 +53,13 @@ inline auto pathCollectionInTarget(std::string_view databaseName) {
 }
 
 inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
-  return paths::target()->collectionGroups()->database(std::string{databaseName});
+  return paths::target()->collectionGroups()->database(
+      std::string{databaseName});
 }
 
 inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
-  return paths::current()->collectionGroups()->database(std::string{databaseName});
+  return paths::current()->collectionGroups()->database(
+      std::string{databaseName});
 }
 
 }  // namespace
@@ -153,9 +155,7 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
 
     writes = std::move(writes).emplace_object(
         baseCollectionPath->collection(entry.getCID())->str(),
-        [&](VPackBuilder& builder) {
-          velocypack::serialize(builder, entry);
-        });
+        [&](VPackBuilder& builder) { velocypack::serialize(builder, entry); });
 
     // Insert an empty object, we basically want to occupy the key here for
     // preconditions

@@ -43,8 +43,10 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
   g.version = 1;
   g.attributes.mutableAttributes.waitForSync = collection.waitForSync;
   g.attributes.mutableAttributes.writeConcern = collection.writeConcern.value();
-  g.attributes.mutableAttributes.replicationFactor = collection.replicationFactor.value();
-  g.attributes.immutableAttributes.numberOfShards = collection.numberOfShards.value();
+  g.attributes.mutableAttributes.replicationFactor =
+      collection.replicationFactor.value();
+  g.attributes.immutableAttributes.numberOfShards =
+      collection.numberOfShards.value();
   g.collections.emplace(::toCollectionIdString(collection.id),
                         agency::CollectionGroup::Collection{});
   newGroups.emplace_back(std::move(g));
