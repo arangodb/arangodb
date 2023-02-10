@@ -582,7 +582,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     CreateCollectionBody col, std::vector<ShardID> shardNames,
     std::shared_ptr<IShardDistributionFactory> distributeType,
     AgencyIsBuildingFlags buildingFlags) -> PlanCollectionEntryReplication2 {
-  return {std::move(col)};
+  return PlanCollectionEntryReplication2{std::move(col)};
 }
 
 [[nodiscard]] auto ClusterCollectionMethods::generateShardNames(

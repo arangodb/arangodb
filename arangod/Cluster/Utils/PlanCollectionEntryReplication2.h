@@ -31,6 +31,7 @@
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -42,19 +43,19 @@ struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
-  PlanCollectionEntryReplication2(UserInputCollectionProperties collection);
+
+  explicit PlanCollectionEntryReplication2(UserInputCollectionProperties collection);
 
   [[nodiscard]] std::string getCID() const;
 
   [[nodiscard]] std::string const& getName() const;
 
- private:
   replication2::agency::CollectionTargetSpecification _properties{};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, PlanCollectionEntryReplication2& planCollection) {
-  return f.apply(planCollection);
+  return f.apply(planCollection._properties);
 }
 
 }  // namespace arangodb

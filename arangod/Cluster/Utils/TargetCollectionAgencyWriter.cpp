@@ -185,7 +185,6 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
 
   // Created preconditions that no one has stolen our collections id or name
   for (auto const& entry : _collectionPlanEntries) {
-    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
     preconditions =
         std::move(preconditions)
             .isEmpty(baseCollectionPath->collection(entry.getCID())->str());
