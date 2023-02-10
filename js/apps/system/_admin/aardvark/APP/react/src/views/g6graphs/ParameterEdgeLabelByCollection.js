@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import Checkbox from "../../components/pure-css/form/Checkbox";
+import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import ToolTip from '../../components/arango/tootip';
 
 const ParameterEdgeLabelByCollection = () => {
@@ -10,7 +10,7 @@ const ParameterEdgeLabelByCollection = () => {
   const newUrlParameters = { ...urlParameters };
   
   return (
-    <div>
+    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <Checkbox
         label='Show collection name'
         inline
@@ -21,13 +21,13 @@ const ParameterEdgeLabelByCollection = () => {
           newUrlParameters.edgeLabelByCollection = newEdgeLabelByCollection;
           setUrlParameters(newUrlParameters);
         }}
-        style={{ 'color': '#736b68' }}
+        style={'graphviewer'}
       />
       <ToolTip
         title={"Adds a collection name to the edge label."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px' }}></span>
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
       </ToolTip>
     </div>
   );
