@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -80,8 +79,6 @@
 #include <tuple>
 
 #include <absl/strings/str_cat.h>
-
-#include "Logger/LogMacros.h"
 
 namespace {
 
@@ -7512,9 +7509,35 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
-    if (info && info.collectionNodeToReplace == node &&
-        !plan->hasForcedIndexHints()) {
-      if (applyGeoOptimization(plan.get(), limit, info)) {
+    if (info && info.collectionNodeToReplace == node) {
+      bool mustRespectIdxHint = false;
+      if (plan->hasForcedIndexHints()) {
+        auto enumerateColNode =
+            ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+        auto indexes = enumerateColNode->collection()->indexes();
+        VPackBuilder b;
+        b.openObject();
+        enumerateColNode->hint().toVelocyPack(b);
+        b.close();
+        auto namesSlice =
+            b.slice().get(StaticStrings::IndexHintOption).get("hint");
+        for (VPackSlice nameSlice : VPackArrayIterator(namesSlice)) {
+          for (std::shared_ptr<Index> idx : indexes) {
+            std::string idxName = nameSlice.toString();
+            if (idx->name() == idxName) {
+              auto idxType = idx->type();
+              if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                  (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                  (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+                mustRespectIdxHint = true;
+              }
+              break;
+            }
+          }
+        }
+      }
+      if (!mustRespectIdxHint &&
+          applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
     }
