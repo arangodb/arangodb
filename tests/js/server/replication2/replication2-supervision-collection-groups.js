@@ -86,6 +86,9 @@ const createCollectionGroupTarget = function (database, config) {
       schema: null,
       computedValues: null,
     },
+    indexes: {
+      indexes: []
+    },
     immutableProperties: {
       name: `TestCollection${cid}`,
       id: `${cid}`,
@@ -97,7 +100,7 @@ const createCollectionGroupTarget = function (database, config) {
       keyOptions: {
         allowUserKeys: true,
         type: "traditional",
-      }
+      },
     },
   };
   print(target);

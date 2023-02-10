@@ -3002,6 +3002,10 @@ void Supervision::readyOrphanedIndexCreations() {
     auto const& currentDBs = snapshot().get(curColPrefix).value().get();
 
     for (auto const& db : plannedDBs) {
+      if (isReplicationTwoDB(snapshot().get(planDBPrefix)->get().children(),
+                             db.first)) {
+        continue;
+      }
       std::string const& dbname = db.first;
       auto const& database = *(db.second);
       auto const& plannedCols = database.children();
