@@ -1,26 +1,28 @@
 .side-drawer {
-    width: 0;
-    background-color: gray;
+    width: 400px;
+    background-color: #3A4045;
     position: absolute;
-    margin: 0;
+    z-index: 999999;
+    overflow-y: scroll;
     text-align: left;
   
-    -webkit-transition: all 0.2s ease-out;
-    -moz-transition: all 0.2s ease-out;
-    -o-transition: all 0.2s ease-out;
-    transition: all 0.2s ease-out;
+    transition: all 0.3s ease-in-out;
   }
   
   .side-drawer.left {
-    left: 0;
+    left: -400px;
   }
   
   .side-drawer.right {
-    right: 0;
+    right: -400px;
   }
   
-  .side-drawer.open {
-    width: 400px;
-    z-index: 1;
+  .side-drawer.left.open {
+    left: 0;
+    z-index: 999999;
+  }
+  .side-drawer.right.open {
+    right: 0;
+    z-index: 999999;
   }
   

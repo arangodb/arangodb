@@ -33,7 +33,7 @@ const Drawer = ({
     }
   }, [open]);
   return (
-    <div className={open ? `side-drawer open ${position}` : "drawer"}>
+    <div className={`side-drawer ${open ? "open" : ""} ${position}`}>
       {open ? children : null}
     </div>
   );
