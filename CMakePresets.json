@@ -88,7 +88,7 @@
       "name": "gcov",
       "cacheVariables": {
         "USE_COVERAGE": "On",
-        "USE_JEMALLOC": "Off"
+        "USE_JEMALLOC": "On"
       }
     },
     {
