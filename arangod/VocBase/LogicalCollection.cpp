@@ -230,6 +230,53 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   }
 }
 
+/* TODO: Long term plan for this constructor is to just retain the handed in Spec.
+ * and all read access should just be reading from this spec.
+ * Therefor the GroupSpecification is a SharedPtr, we assume more than one Collection to share
+ * the same group.
+ */
+LogicalCollection::LogicalCollection(
+    TRI_vocbase_t& vocbase,
+    replication2::agency::CollectionPlanSpecification spec,
+    std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification>
+        groupSpec,
+    bool attachLocalStorage)
+    : LogicalDataSource(
+          *this, vocbase,
+          /* For Local shards we generate a new ID here, otherweise the PlanId and this Id has to be equal. */
+          (attachLocalStorage ? DataSourceId(TRI_NewTickServer()) : spec.immutableProperties.id),
+          std::string{StaticStrings::Empty}, /* Globally unique id is never set in original */
+          spec.immutableProperties.id,   /* Plan Id */
+          std::move(spec.immutableProperties.name), spec.immutableProperties.isSystem,
+          false /* is deleted */
+          ),
+      /* TODO: Do we need this in Plan? */
+      _version(Version::v40),
+      _v8CacheVersion(0),
+      _type(spec.immutableProperties.type),
+      _isAStub(!attachLocalStorage),
+#ifdef USE_ENTERPRISE
+      _isDisjoint(spec.immutableProperties.isDisjoint),
+      _isSmart(spec.immutableProperties.isSmart),
+      _isSmartChild(spec.immutableProperties.isSmartChild),
+#endif
+      /* TODO: How is allow User keys infered? */
+      _allowUserKeys(true),
+      _usesRevisionsAsDocumentIds(
+          spec.immutableProperties.usesRevisionsAsDocumentIds),
+      _waitForSync(groupSpec->attributes.mutableAttributes.waitForSync),
+      /* TODO: Check if sync by revision is correct / still needed at all */
+      _syncByRevision(false),
+      _countCache(/*ttl*/ system() ? 900.0 : 180.0),
+      /* TODO: Implement this, we need a new Constructor from Physical as well
+       */
+      _physical(vocbase.server()
+                    .getFeature<EngineSelectorFeature>()
+                    .engine()
+                    .createPhysicalCollection(*this,
+                                              VPackSlice::emptyObjectSlice())) {
+}
+
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE

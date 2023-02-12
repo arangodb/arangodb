@@ -78,6 +78,12 @@ struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
 }  // namespace replicated_state
+
+namespace agency {
+struct CollectionPlanSpecification;
+struct CollectionGroupPlanSpecification;
+}
+
 }  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
@@ -97,11 +103,15 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection() = delete;
   LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info,
                     bool isAStub);
+  LogicalCollection(TRI_vocbase_t& vocbase,
+                    replication2::agency::CollectionPlanSpecification spec,
+                    std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification> groupSpec,
+                    bool attachLocalStorage);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
+  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9, v40 = 9 };
 
   constexpr static Category category() noexcept {
     return Category::kCollection;
