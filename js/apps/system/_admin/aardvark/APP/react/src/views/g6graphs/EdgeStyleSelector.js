@@ -7,23 +7,20 @@ import { UrlParametersContext } from "./url-parameters-context";
 const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [type, setType] = useState(urlParameters.edgeType);
+
+  const newUrlParameters = { ...urlParameters };
+
   const SelectOption = Select.Option;
 
   const styles = [
     {
-      type: 'line'
-    },
-    {
-      type: 'arrow'
-    },
-    {
-      type: 'dotted'
+      type: 'solid'
     },
     {
       type: 'dashed'
     },
     {
-      type: 'tapered'
+      type: 'dotted'
     }
   ];
 
@@ -32,6 +29,8 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
       type: type
     };
     setType(type);
+    newUrlParameters.edgeType = type;
+    setUrlParameters(newUrlParameters);
     onEdgeStyleChange(typeModelMerged);
   };
 
