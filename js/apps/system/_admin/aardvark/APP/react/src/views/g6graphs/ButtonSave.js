@@ -73,7 +73,7 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
       <Tooltip placement="left" title={"Use current settings to receive data"} overlayClassName="graphReactViewContainer">    
         <Button
           type="primary"
-          style={{ background: "#2ecc71", borderColor: "#2ecc71" }}
+          style={{ background: "#2ecc71", borderColor: "#2ecc71", marginLeft: 'auto' }}
           className="graphReactViewContainer"
           overlayClassName="graphReactViewContainer"
           icon={<SaveOutlined />}

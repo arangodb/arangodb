@@ -110,6 +110,20 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
 
   return (
     <>
+      <div
+        class="graphViewerNavbar"
+        style={{ 'width': '100%', 'height': '40px', 'background': '#ffffff', 'display': 'flex', 'padding': '8px' }}
+      >
+        <IconButton icon={'bars'} onClick={() => toggleDrawer(!open)} style={{
+          background: '#2ECC71',
+          color: 'white',
+          paddingLeft: 8,
+          paddingTop: 2,
+          marginLeft: 'auto'
+        }}>
+          Settings
+        </IconButton>
+      </div>
       <Drawer
         position="right"
         open={open}
@@ -121,7 +135,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         }}
       >
         <div style={{ 'background': '#404a53' }}>
-          <div style={{ 'padding': '24px' }}>
+          <div style={{ 'padding': '24px', 'display': 'flex' }}>
             <ButtonSave
               graphName={graphName}
               onGraphDataLoaded={(newGraphData, responseTimesObject) => {
@@ -160,13 +174,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
           />
         </div>
       </Drawer>
-      <IconButton icon={'bars'} onClick={() => toggleDrawer(!open)} style={{
-          background: '#2ECC71',
-          color: 'white',
-          paddingLeft: 8,
-          paddingTop: 6
-        }}>Settings
-        </IconButton>
       <HelpModal
         shouldShow={showHelpModal}
         onRequestClose={() => {
