@@ -84,7 +84,7 @@ function indexHintSuite() {
       collection.ensureIndex({type: "persistent", fields: ["value2"], name: persistentIdxName2});
       collection.ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: geoIdxName});
       collection.ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: geoIdxName2});
-      analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+      analyzers.save("geo_json", "geojson", {type: "point"}, ["frequency", "norm", "position"]);
       let commonInvertedIndexMeta = {type: "inverted", name: invertedIdxName, includeAllFields: true, fields:[
           {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
           "name_1",
@@ -104,6 +104,7 @@ function indexHintSuite() {
     tearDownAll: function () {
       internal.db._drop(cn);
       internal.db._drop(cn2);
+      analyzers.remove("geo_json");
     },
 
     testFilterNoHint: function () {
