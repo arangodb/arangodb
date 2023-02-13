@@ -333,7 +333,7 @@ class endpointRunner extends tu.runInArangoshRunner {
       let message = "";
       try {
         obj.instance.shutDownOneInstance({nonAgenciesCount: 1}, false, 30);
-        obj.instance.waitForInstanceShutdown(10);
+        obj.instance.waitForInstanceShutdown(20);
       } catch (ex) {
         shutdown = false;
         message = ex.message;

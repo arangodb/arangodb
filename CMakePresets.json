@@ -84,6 +84,14 @@
       }
     },
     {
+      "hidden": true,
+      "name": "gcov",
+      "cacheVariables": {
+        "USE_COVERAGE": "On",
+        "USE_JEMALLOC": "On"
+      }
+    },
+    {
       "name": "enterprise",
       "inherits": "community",
       "displayName": "Build ArangoDB Enterprise Edition",
