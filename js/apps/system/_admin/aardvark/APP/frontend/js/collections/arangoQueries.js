@@ -114,7 +114,8 @@
         queries.push({
           value: query.attributes.value,
           parameter: query.attributes.parameter,
-          name: query.attributes.name
+          name: query.attributes.name,
+          modified_at: query.attributes.modified_at
         });
       });
 

@@ -1650,7 +1650,8 @@
         query.set('value', content);
         // SET QUERY BIND PARAMS
         query.set('parameter', this.bindParamTableObj);
-
+        // SET MODIFIED TIMESTAMP
+        query.set('modified_at', Date.now());
         var callback = function (error) {
           if (error) {
             arangoHelper.arangoError('Query', 'Could not save query');
