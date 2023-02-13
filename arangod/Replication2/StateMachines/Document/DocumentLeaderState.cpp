@@ -267,6 +267,26 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
   });
 }
 
+auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
+    -> futures::Future<Result> {
+  DocumentLogEntry entry;
+  entry.operation = OperationType::kDropShard;
+  entry.shardId = shard;
+  entry.collectionId = collectionId;
+
+  // TODO actually we have to block this log entry from release until the
+  // collection is actually created
+  auto const& stream = getStream();
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue([=, self = shared_from_this()](auto&&) {
+    auto guard = self->_shardHandler.getLockedGuard();
+    auto result = guard->get()->dropLocalShard(shard, collectionId);
+    // TODO update internal shard map
+    return result;
+  });
+}
+
 template<class ResultType, class GetFunc, class ProcessFunc>
 auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
                                                    ProcessFunc processSnapshot)

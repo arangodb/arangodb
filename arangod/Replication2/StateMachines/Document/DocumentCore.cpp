@@ -66,6 +66,7 @@ auto DocumentCore::getCollectionId() -> std::string const& {
 }
 
 void DocumentCore::drop() {
+  // TODO drop shards using the local shard list
   auto result = _shardHandler->dropLocalShard(_shardId, _params.collectionId);
   if (result.fail()) {
     LOG_CTX("b7f0d", FATAL, this->loggerContext)

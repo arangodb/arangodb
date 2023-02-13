@@ -1131,6 +1131,39 @@ TEST_F(DocumentStateMachineTest, leader_create_shard) {
   leaderState->createShard(shardId, collectionId, velocypack::SharedSlice());
 }
 
+TEST_F(DocumentStateMachineTest, leader_drop_shard) {
+  using namespace testing;
+
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
+
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
+  leaderState->setStream(stream);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+
+  EXPECT_CALL(*stream, insert).Times(1).WillOnce([&](DocumentLogEntry entry) {
+    EXPECT_EQ(entry.operation, OperationType::kDropShard);
+    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.collectionId, collectionId);
+    return LogIndex{12};
+  });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
+
+  leaderState->dropShard(shardId, collectionId);
+}
+
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {
   auto id = SnapshotId::fromString("12345");
   ASSERT_TRUE(id.ok()) << id.result();
