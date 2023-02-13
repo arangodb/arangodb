@@ -417,7 +417,9 @@ static void handlePlanShard(
                 {SHARD, shname},
                 {DATABASE, dbname},
                 {SERVER_ID, serverId},
-                {"from", "maintenance"},  // TODO clean up
+                {"from", "maintenance"},  // ugly hack - leader uses maintenance
+                                          // action as well. Used to distinguish
+                                          // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
             shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
             std::move(props));
