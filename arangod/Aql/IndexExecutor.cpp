@@ -107,10 +107,18 @@ IndexIterator::CoveringCallback getCallback(
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   auto impl = [&context, &index, &outNonMaterializedIndVars,
-          &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIteratorCoveringData& covering,
-                                      AqlValue&& searchDoc) {
-    if constexpr (checkUniqueness) {
+          &outNonMaterializedIndRegs]<typename TokenType>(TokenType&& token,
+                                      IndexIteratorCoveringData& covering) {
+    constexpr bool isLocalDocumentId = std::is_same_v <LocalDocumentId,
+                   std::decay_t<TokenType>>;
+    // can't be a static_assert as this implementation is still possible
+    // just can't be used right now as for restriction in late materialization rule
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if constexpr (checkUniqueness && !isLocalDocumentId) {
+      TRI_ASSERT(false);
+    }
+#endif
+    if constexpr (checkUniqueness && isLocalDocumentId) {
       TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -139,13 +147,13 @@ IndexIterator::CoveringCallback getCallback(
 
     TRI_ASSERT(!output.isFull());
     // move a document id
-    if (token.isSet()) {
-      TRI_ASSERT(searchDoc.isNull(true));
+    if constexpr (isLocalDocumentId) {
+      TRI_ASSERT(token.isSet());
       AqlValue v(AqlValueHintUInt(token.id()));
       AqlValueGuard guard{v, true};
       output.moveValueInto(registerId, input, guard);
     } else {
-      AqlValueGuard guard{searchDoc, true};
+      AqlValueGuard guard{token, true};
       output.moveValueInto(registerId, input, guard);
     }
 
@@ -179,11 +187,15 @@ IndexIterator::CoveringCallback getCallback(
     return true;
   };
 
-  return {[impl](LocalDocumentId const& token,
-                 IndexIteratorCoveringData& covering) {
-            return impl(token, covering, AqlValue(AqlValueHintNull()));
-          },
-          impl};
+  return impl;
+  //return {[&impl](LocalDocumentId const& token,
+  //                IndexIteratorCoveringData& covering) {
+  //          return impl(token, covering);
+  //        },
+  //        [&impl](AqlValue&& token, IndexIteratorCoveringData& covering) {
+  //          return impl(token, covering);
+  //        }
+  //};
 }
 
 }  // namespace

@@ -488,7 +488,7 @@ class IResearchInvertedIndexIterator final
                                        uint64_t limit) override {
     return nextImpl(
         [this, &cb](LocalDocumentId const& token) {
-          // we use here just first snapshot as they all are the same here.
+          // we use here just first snapshot as they are all the same here.
           // iterator operates only one iresearch datastore
           return _collection->getPhysical()
               ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(), _snapshot.snapshot(0))
@@ -559,8 +559,8 @@ class IResearchInvertedIndexIterator final
                 } else {
                   SearchDoc doc(_snapshot.segment(_readerOffset - 1),
                                 _doc->value);
-                  emitRes = callback(documentId, _projections,
-                                     aql::AqlValue{doc.encode(_buf)});
+                  emitRes =
+                      callback(aql::AqlValue{doc.encode(_buf)}, _projections);
                 }
                 if (emitRes) {
                   --limit;
@@ -681,8 +681,14 @@ class IResearchInvertedIndexMergeIterator final
                   _snapshot.segment(currentIdx),
                   segment.doc->value);
               TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
-              if (callback(documentId, segment.projections,
-                           aql::AqlValue{doc.encode(_buf)})) {
+              bool emitRes{false};
+              if constexpr (emitLocalDocumentId) {
+                emitRes = callback(documentId, segment.projections);
+              } else {
+                emitRes = callback(aql::AqlValue{doc.encode(_buf)},
+                                   segment.projections);
+              }
+              if (emitRes) {
                 --limit;
               }
             } else {

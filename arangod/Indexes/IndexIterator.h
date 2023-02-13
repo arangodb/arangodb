@@ -189,10 +189,11 @@ class IndexIterator {
   using DocumentCallback =
       CallbackImpl<bool(LocalDocumentId const& token, velocypack::Slice doc) const>;
 
-  using CoveringCallback = CallbackImpl<
-      bool(LocalDocumentId const& token, IndexIteratorCoveringData& covering) const,
-      bool(LocalDocumentId const& token, IndexIteratorCoveringData& covering,
-           aql::AqlValue&& searchDoc) const>;
+  using CoveringCallback =
+      CallbackImpl<bool(LocalDocumentId const& token,
+                        IndexIteratorCoveringData& covering) const,
+                   bool(aql::AqlValue&& searchDoc,
+                        IndexIteratorCoveringData& covering) const>;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
