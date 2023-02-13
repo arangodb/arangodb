@@ -29,8 +29,8 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-struct Store {
-  using VertexType = Vertex<V,E>;
+struct Quiver {
+  using VertexType = Vertex<V, E>;
   using EdgeType = Edge<E>;
 
   auto emplace(VertexType&& v) -> void { vertices.emplace(v); }
@@ -40,7 +40,7 @@ struct Store {
 };
 
 template<typename V, typename E, typename Inspector>
-auto inspect(Inspector& f, Store<V, E>& s) {
+auto inspect(Inspector& f, Quiver<V, E>& s) {
   return f.object(s).fields(f.field("vertices", s.vertices));
 }
 
