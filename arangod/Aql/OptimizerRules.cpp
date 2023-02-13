@@ -7530,6 +7530,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                   (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
                   (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
                 mustRespectIdxHint = true;
+              } else {
+                info.index = idx;
               }
               break;
             }
