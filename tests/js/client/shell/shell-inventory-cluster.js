@@ -221,23 +221,46 @@ function clusterInventorySuite () {
       db._createView("UnitTestsDumpViewEmpty", "arangosearch", {});
 
       let view = db._createView("UnitTestsDumpView", "arangosearch", {});
-      view.properties({
-        cleanupIntervalStep: 456,
-        consolidationPolicy: {
-          threshold: 0.3,
-          type: "bytes_accum"
-        },
-        commitIntervalMsec: 12345,
-        consolidationIntervalMsec: 0,
-        links: {
-          "UnitTestsDumpEmpty" : {
-            includeAllFields: true,
-            fields: {
-              text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = {
+          cleanupIntervalStep: 456,
+          consolidationPolicy: {
+            threshold: 0.3,
+            type: "bytes_accum"
+          },
+          commitIntervalMsec: 12345,
+          consolidationIntervalMsec: 0,
+          links: {
+            "UnitTestsDumpEmpty" : {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+              }
             }
           }
-        }
-      });
+        };
+      } else {
+        viewMeta = {
+          cleanupIntervalStep: 456,
+          consolidationPolicy: {
+            threshold: 0.3,
+            type: "bytes_accum"
+          },
+          commitIntervalMsec: 12345,
+          consolidationIntervalMsec: 0,
+          links: {
+            "UnitTestsDumpEmpty" : {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": {}}}
+              }
+            }
+          }
+        };
+      }
+      view.properties(viewMeta);
       
       c = db._create("UnitTestsDumpSearchAliasCollection");
       let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
