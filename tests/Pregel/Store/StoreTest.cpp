@@ -27,35 +27,35 @@
 #include "Inspection/JsonPrintInspector.h"
 
 #include "Pregel/GraphStore/Vertex.h"
-#include "Pregel/GraphStore/Store.h"
+#include "Pregel/GraphStore/Quiver.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-using MyStore = Store<std::string, std::string>;
+using MyQuiver = Quiver<std::string, std::string>;
 
-TEST(PregelStore, vertex_construction) {
-  auto store = MyStore{};
+TEST(PregelQuiver, vertex_construction) {
+  auto store = MyQuiver{};
 
-  auto v = MyStore::VertexType();
+  auto v = MyQuiver::VertexType();
   ASSERT_TRUE(v.active());
   ASSERT_EQ(v.getEdgeCount(), 0);
   ASSERT_EQ(v.pregelId(), VertexID());
 }
 
-TEST(PregelStore, vertex_and_edges) {
-  using MyStore = Store<std::string, std::string>;
-  auto store = MyStore{};
+TEST(PregelQuiver, vertex_and_edges) {
+  using MyQuiver = Quiver<std::string, std::string>;
+  auto store = MyQuiver{};
 
-  auto v = MyStore::VertexType();
+  auto v = MyQuiver::VertexType();
 
   auto data = std::vector<std::pair<VertexID, std::string>>{
       {{PregelShard(5), "foo"}, "data"}, {{PregelShard(6), "bar"}, "moredata"}};
 
   ASSERT_EQ(v.getEdgeCount(), 0);
-  for(auto d : data) {
+  for (auto d : data) {
     auto edgeCount = v.getEdgeCount();
-    auto e = MyStore::EdgeType(d.first, std::move(d.second));
+    auto e = MyQuiver::EdgeType(d.first, std::move(d.second));
     v.addEdge(std::move(e));
     ASSERT_EQ(v.getEdgeCount(), edgeCount + 1);
   }
@@ -69,12 +69,12 @@ TEST(PregelStore, vertex_and_edges) {
   }
 }
 
-TEST(PregelStore, storing_some_vertices) {
-  using MyStore = Store<std::string, std::string>;
-  auto store = MyStore{};
+TEST(PregelQuiver, storing_some_vertices) {
+  using MyQuiver = Quiver<std::string, std::string>;
+  auto store = MyQuiver{};
 
-  for(size_t i=0; i < 155; ++i) {
-    auto v = MyStore::VertexType();
+  for (size_t i = 0; i < 155; ++i) {
+    auto v = MyQuiver::VertexType();
     store.vertices.emplace_back(std::move(v));
   }
 
