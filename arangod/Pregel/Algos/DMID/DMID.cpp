@@ -330,7 +330,7 @@ struct DMIDComputation
        */
       bool hasEdgeToSender = false;
 
-      for (auto edge : getEdges()) {
+      for (auto& edge : getEdges()) {
         if (edge.targetShard() == senderID.shard &&
             edge.toKey() == senderID.key) {
           hasEdgeToSender = true;
