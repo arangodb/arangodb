@@ -127,9 +127,13 @@ struct CollectionPlanSpecification : public Collection {
 // TODO: Not sure if this is the right place for the following variant classes,
 // as the information will not actually end up in Agency
 
-struct ClusterPhysicalCollectionSpec {};
+struct ClusterPhysicalCollectionSpec {
+  bool cacheEnabled = false;
+};
 
-struct RocksDBPhysicalCollectionSpec {};
+struct RocksDBPhysicalCollectionSpec {
+  uint64_t objectId = 0;
+};
 
 struct PhysicalCollectionSpec : std::variant<RocksDBPhysicalCollectionSpec,
                                              ClusterPhysicalCollectionSpec> {};

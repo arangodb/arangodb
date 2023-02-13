@@ -239,6 +239,7 @@ LogicalCollection::LogicalCollection(
     replication2::agency::CollectionPlanSpecification spec,
     std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification>
         groupSpec,
+    replication2::agency::PhysicalCollectionSpec physicalSpec,
     bool attachLocalStorage)
     : LogicalDataSource(
           *this, vocbase,
@@ -281,14 +282,11 @@ LogicalCollection::LogicalCollection(
       _keyGenerator{KeyGeneratorHelper::createKeyGenerator(
           *this, spec.immutableProperties.keyOptions)},
            */
-
-      /* TODO: Implement this, we need a new Constructor from Physical as well
-       */
       _physical(
           vocbase.server()
               .getFeature<EngineSelectorFeature>()
               .engine()
-              .createPhysicalCollection(*this, VPackSlice::emptyObjectSlice())),
+              .createPhysicalCollection(*this, physicalSpec)),
       /* TODO: Is this needed for Replication2 at all? Should we not set it at
        all? _followers = std::make_unique<FollowerInfo>(this);
        */

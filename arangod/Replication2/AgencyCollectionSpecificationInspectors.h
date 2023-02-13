@@ -129,12 +129,16 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusterPhysicalCollectionSpec& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field(StaticStrings::CacheEnabled, x.cacheEnabled)
+      );
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, RocksDBPhysicalCollectionSpec& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field(StaticStrings::ObjectId, x.objectId)
+      );
 }
 
 template<class Inspector>

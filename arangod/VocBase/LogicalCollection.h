@@ -82,6 +82,7 @@ struct DocumentFollowerState;
 namespace agency {
 struct CollectionPlanSpecification;
 struct CollectionGroupPlanSpecification;
+struct PhysicalCollectionSpec;
 }
 
 }  // namespace replication2
@@ -106,6 +107,7 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection(TRI_vocbase_t& vocbase,
                     replication2::agency::CollectionPlanSpecification spec,
                     std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification> groupSpec,
+                    replication2::agency::PhysicalCollectionSpec physicalSpec,
                     bool attachLocalStorage);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
