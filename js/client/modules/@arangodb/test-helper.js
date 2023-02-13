@@ -284,6 +284,8 @@ while (++saveTries < 100) {
 };
 exports.runShell = runShell;
 
+const abortSignal = 6;
+
 exports.runParallelArangoshTests = function (tests, duration, cn) {
   assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
   
@@ -302,7 +304,28 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
     debug("running test for " + duration + " s...");
 
-    internal.sleep(duration);
+    for (let count = 0; count < duration; count ++) {
+      internal.sleep(1);
+      clients.forEach(function (client) {
+        if (!client.done) {
+          let status = internal.statusExternal(client.pid, false);
+          if (status.status !== 'RUNNING') {
+            client.done = true;
+            client.failed = true;
+            debug(`Client ${client.pid} exited before the duration end. Aborting tests: %{status}`);
+            count = duration + 10;
+          }
+        }
+      });
+      if (count > duration) {
+        clients.forEach(function (client) {
+          if (!client.done) {
+            debug(`force terminating ${client.pid} since we're aborting the tests`);
+            internal.killExternal(client.pid, abortSignal);
+          }
+        });
+      }
+    }
 
     debug("stopping all test clients");
 
@@ -346,7 +369,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   } finally {
     clients.forEach(function(client) {
       try {
-        fs.remove(client.file);
+        if (!client.failed) {
+          fs.remove(client.file);
+        }
       } catch (err) { }
 
       const logfile = client.file + '.log';
