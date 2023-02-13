@@ -45,20 +45,13 @@ DocumentCore::DocumentCore(
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
 
+  // TODO this is currently still required. once the snapshot transfer contains
+  //  a list of shards that exist for this log, we can remove this.
   _shardId = _params.shardId;
-  // auto shardResult = _shardHandler->createLocalShard(
-  //    _shardId, _params.collectionId, collectionProperties);
-  // TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state
-  // "
-  //                             << _gid << ": " << shardResult;
-
-  // auto commResult = _agencyHandler->reportShardInCurrent(
-  //    _params.collectionId, _shardId, collectionProperties);
-
-  // TODO see CINFRA-651
-  // TRI_ASSERT(true || commResult.ok())
-  //    << "Failed to report shard in current for replicated state " << _gid
-  //    << ": " << commResult;
+  auto shardResult = _shardHandler->createLocalShard(
+      _shardId, _params.collectionId, collectionProperties);
+  TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state"
+                               << _gid << ": " << shardResult;
 
   LOG_CTX("b7e0d", TRACE, this->loggerContext)
       << "Created shard " << _shardId << " for replicated state " << _gid;
