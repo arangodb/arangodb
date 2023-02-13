@@ -384,10 +384,14 @@ function clusterInventorySuite () {
       assertEqual(1, Object.keys(link.fields).length);
       assertEqual("text", Object.keys(link.fields)[0]);
       let field = link.fields["text"];
-      assertEqual(1, Object.keys(field).length);
+      assertEqual(2, Object.keys(field).length);
       assertEqual("analyzers", Object.keys(field)[0]);
       assertTrue(Array.isArray(field.analyzers));
       assertEqual(["custom", "text_en"], field.analyzers.sort());
+
+      assertEqual("fields", Object.keys(field)[1]);
+      assertTrue(typeof field.fields === 'object');
+      assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}))
 
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);
