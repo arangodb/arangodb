@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/AccessMode.h"
@@ -64,6 +65,11 @@ class SmartContext : public Context {
   void setState(
       std::shared_ptr<arangodb::TransactionState> const& state) noexcept {
     _state = state;
+  }
+
+  virtual bool checkTransactionHints() const override {
+    return _state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+           _state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
   }
 
  protected:

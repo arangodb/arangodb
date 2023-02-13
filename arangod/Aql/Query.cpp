@@ -248,6 +248,20 @@ std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options) {
   TRI_ASSERT(ctx != nullptr);
+
+  // Check for hints, if we are on a coordinator, we either need
+  // GLOBAL_MANAGED or FROM_TOPLEVEL_AQL, otherwise the query would be
+  // run with a legacy transaction and could lead to silent inconsistencies
+  // between leader and follower shards:
+  if (ServerState::instance()->isCoordinator()) {
+    if (!ctx->checkTransactionHints()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "query transaction context does not have a required hint (either "
+          "GLOBAL_MANAGED or FROM_TOPLEVEL_AQL)");
+    }
+  }
+
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
