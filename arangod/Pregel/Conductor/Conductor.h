@@ -1,8 +1,7 @@
-#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +33,7 @@
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
