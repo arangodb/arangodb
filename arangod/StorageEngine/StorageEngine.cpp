@@ -34,6 +34,11 @@
 
 #include <utility>
 
+// TODO Temporary includes for below temporary method
+#include "Inspection/VPack.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
+
 using namespace arangodb;
 
 StorageEngine::StorageEngine(Server& server, std::string_view engineName,
@@ -54,6 +59,17 @@ StorageEngine::StorageEngine(Server& server, std::string_view engineName,
   startsAfter<transaction::ManagerFeature>();
   startsAfter<ViewTypesFeature>();
 }
+
+// create storage-engine specific collection
+std::unique_ptr<PhysicalCollection> StorageEngine::createPhysicalCollection(
+    LogicalCollection& collection, replication2::agency::PhysicalCollectionSpec spec) {
+  // TODO: Temporary quick and dirty solution. We transform our struct back into Slice,
+  // just to parse it again
+  VPackBuilder info;
+  velocypack::serialize(info, spec);
+  return createPhysicalCollection(collection, info.slice());
+}
+
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}

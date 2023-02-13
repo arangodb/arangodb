@@ -122,6 +122,12 @@ class StorageEngine : public ArangodFeature {
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) = 0;
 
+  // create storage-engine specific collection
+  // TODO: This needs to be virtual, and replace the Slice based variant
+  std::unique_ptr<PhysicalCollection> createPhysicalCollection(
+      LogicalCollection& collection,
+      replication2::agency::PhysicalCollectionSpec spec);
+
   // status functionality
   // --------------------
 
