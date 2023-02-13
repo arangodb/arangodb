@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
+/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual, _ */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for inventory
@@ -391,7 +391,7 @@ function clusterInventorySuite () {
 
       assertEqual("fields", Object.keys(field)[1]);
       assertTrue(typeof field.fields === 'object');
-      assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}))
+      assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}));
 
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);
