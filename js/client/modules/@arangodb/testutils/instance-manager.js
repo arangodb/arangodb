@@ -67,8 +67,11 @@ const termSignal = 15;
 
 const instanceRole = inst.instanceRole;
 
+let instanceCount = 1;
+
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
+    this.instanceCount = instanceCount++;
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
@@ -528,20 +531,48 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
+    const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
+    if (fs.isFile(zipfn)) {
+      fs.remove(zipfn);
+    };
+    if (fs.exists(dumpdir)) {
+      fs.list(dumpdir).forEach(file => {
+        const fn = fs.join(dumpdir, file);
+        if (fs.isFile(fn)) {
+          fs.remove(fn);
+        }
+      });
+    } else {
+      fs.makeDirectory(dumpdir);
+    }
     this.arangods.forEach((arangod) => {
       if (arangod.isAgent()) {
         if (!arangod.checkArangoAlive()) {
           print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
-          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig');
+          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState');
+          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan');
+          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
         }
       }
     });
+    let zipfiles = [];
+    fs.list(dumpdir).forEach(file => {
+      const fn = fs.join(dumpdir, file);
+      if (fs.isFile(fn)) {
+        zipfiles.push(file);
+      }
+    });
+    print(`${CYAN}${Date()} Zipping ${zipfn}${RESET}`);
+    fs.zipFile(zipfn, dumpdir, zipfiles);
+    zipfiles.forEach(file => {
+      fs.remove(fs.join(dumpdir, file));
+    });
+    fs.removeDirectory(dumpdir);
   }
 
   checkUptime () {
@@ -737,6 +768,12 @@ class instanceManager {
         stack: ex.stack
       };
     }
+  }
+
+  detectShouldBeRunning() {
+    let ret = true;
+    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
+    return ret;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

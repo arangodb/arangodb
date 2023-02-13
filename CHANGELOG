@@ -5,6 +5,8 @@ devel
   on query when geo index was present, because it would override the choice of
   the index hint with optimizations related to it.
 
+* FE-133: Alphabetical sorting for collections on user permissions page.
+
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
 * BTS-1193: Fix for schema update. When removing a field and then inserting a 
