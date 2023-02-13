@@ -22,6 +22,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -36,8 +37,9 @@ auto DocumentStateSnapshotHandler::create(std::string_view shardId)
 
     auto id = SnapshotId::create();
     auto emplacement = _snapshots.emplace(
-        id, std::make_shared<Snapshot>(id, std::string{shardId},
-                                       std::move(snapshot)));
+        id, std::make_shared<Snapshot>(
+                id, std::vector<ShardID>{std::string{shardId}},
+                std::move(snapshot)));
     TRI_ASSERT(emplacement.second);
     return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
   } catch (basics::Exception const& ex) {

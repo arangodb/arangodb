@@ -231,7 +231,7 @@ TEST_F(DocumentStateMachineTest, snapshot_has_valid_ongoing_state) {
 
   EXPECT_CALL(*collectionReaderMock, getDocCount()).Times(1);
   auto snapshot = Snapshot(
-      SnapshotId{12345}, shardId,
+      SnapshotId{12345}, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
@@ -250,7 +250,7 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
+      snapshotId, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   std::size_t bytesSent{0};
 
@@ -278,12 +278,93 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
   }
 }
 
+TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
+  using namespace testing;
+
+  auto snapshotId = SnapshotId{12345};
+  const ShardID shardId1 = "s1";
+  const ShardID shardId2 = "s2";
+
+  std::shared_ptr<testing::NiceMock<MockCollectionReader>>
+      collectionReaderMock1 =
+          std::make_shared<testing::NiceMock<MockCollectionReader>>(
+              collectionData);
+  std::shared_ptr<testing::NiceMock<MockCollectionReader>>
+      collectionReaderMock2 =
+          std::make_shared<testing::NiceMock<MockCollectionReader>>(
+              collectionData);
+
+  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId1))
+      .WillOnce([&collectionReaderMock1](std::string_view collectionName) {
+        return std::make_unique<MockCollectionReaderDelegator>(
+            collectionReaderMock1);
+      });
+  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId2))
+      .WillOnce([&collectionReaderMock2](std::string_view collectionName) {
+        return std::make_unique<MockCollectionReaderDelegator>(
+            collectionReaderMock2);
+      });
+
+  auto snapshot = Snapshot(
+      snapshotId, {shardId2, shardId1},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+  std::size_t bytesSent{0};
+
+  // fetch data from shard1
+  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
+    EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
+    EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
+    auto batchRes = snapshot.fetch();
+    Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+
+    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+    auto batch = batchRes.get();
+    EXPECT_EQ(batch.snapshotId, snapshotId);
+    EXPECT_EQ(batch.shardId, shardId1);
+    EXPECT_TRUE(batch.hasMore);
+    EXPECT_TRUE(batch.payload.isArray());
+
+    auto status = snapshot.status();
+    ASSERT_EQ(status.state,
+              replication2::replicated_state::document::kStringOngoing);
+    EXPECT_EQ(status.statistics.docsSent, idx + 1);
+    EXPECT_EQ(status.statistics.batchesSent, idx + 1);
+
+    bytesSent += batch.payload.byteSize();
+    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
+  }
+
+  // fetch data from shard2
+  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
+    EXPECT_CALL(*collectionReaderMock2, read(_, _)).Times(1);
+    EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(1);
+    auto batchRes = snapshot.fetch();
+    Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+
+    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+    auto batch = batchRes.get();
+    EXPECT_EQ(batch.snapshotId, snapshotId);
+    EXPECT_EQ(batch.shardId, shardId2);
+    EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
+    EXPECT_TRUE(batch.payload.isArray());
+
+    auto status = snapshot.status();
+    ASSERT_EQ(status.state,
+              replication2::replicated_state::document::kStringOngoing);
+    EXPECT_EQ(status.statistics.docsSent, collectionData.size() + idx + 1);
+    EXPECT_EQ(status.statistics.batchesSent, collectionData.size() + idx + 1);
+
+    bytesSent += batch.payload.byteSize();
+    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
+  }
+}
+
 TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_finish) {
   using namespace testing;
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
+      snapshotId, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.finish();
@@ -305,7 +386,7 @@ TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
+      snapshotId, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.abort();
@@ -327,7 +408,7 @@ TEST_F(DocumentStateMachineTest, snapshot_try_finish_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
+      snapshotId, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.abort();
@@ -349,7 +430,7 @@ TEST_F(DocumentStateMachineTest, snapshot_try_abort_after_finish) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
+      snapshotId, {shardId},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.finish();

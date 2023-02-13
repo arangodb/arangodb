@@ -234,7 +234,7 @@ class Snapshot {
   static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
                                                       1024};  // 16MB
 
-  explicit Snapshot(SnapshotId id, ShardID shardId,
+  explicit Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
                     std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
 
   Snapshot(Snapshot const&) = delete;
@@ -249,8 +249,9 @@ class Snapshot {
 
  private:
   SnapshotId _id;
+  std::vector<ShardID> _shardIds;
   std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
-  std::unique_ptr<ICollectionReader> _reader;
+  std::unique_ptr<ICollectionReader> _currentReader;
   SnapshotState _state;
   SnapshotStatistics _statistics;
 };
