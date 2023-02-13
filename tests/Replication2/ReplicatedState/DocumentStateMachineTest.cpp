@@ -85,7 +85,18 @@ struct DocumentStateMachineTest : testing::Test {
     VPackBuilder builder;
     builder.openObject();
     builder.close();
-    auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
+    auto entry =
+        DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId, {}};
+    entries.emplace_back(std::move(entry));
+  }
+
+  void addShardEntry(std::vector<DocumentLogEntry>& entries, OperationType op,
+                     ShardID shard, CollectionID collection) {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+    auto entry = DocumentLogEntry{shard, op, builder.sharedSlice(),
+                                  TransactionId{}, collection};
     entries.emplace_back(std::move(entry));
   }
 
@@ -188,8 +199,7 @@ struct DocumentStateMachineTest : testing::Test {
   const std::string leaderId = "leader";
 };
 
-TEST_F(DocumentStateMachineTest,
-       constructing_the_core_creates_shard_successfully) {
+TEST_F(DocumentStateMachineTest, constructing_the_core_does_not_create_shard) {
   using namespace testing;
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
@@ -197,17 +207,13 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
   EXPECT_CALL(*agencyHandlerMock,
               reportShardInCurrent(collectionId, shardId, _))
-      .Times(1);
+      .Times(0);
   EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .Times(1);
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
 
   Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
-
-  EXPECT_EQ(core->getShardId(), shardId);
-  EXPECT_EQ(core->getGid().database, dbName);
-  EXPECT_EQ(core->getGid().id, logId);
 }
 
 TEST_F(DocumentStateMachineTest, shard_is_dropped_during_cleanup) {
@@ -426,8 +432,8 @@ TEST_F(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
 
   EXPECT_CALL(*handlersFactoryMock, createTransaction(_, _)).Times(1);
   auto trx = transactionHandler.ensureTransaction(doc);
@@ -446,8 +452,8 @@ TEST_F(DocumentStateMachineTest, test_transactionHandler_removeTransaction) {
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
   auto trx = transactionHandler.ensureTransaction(doc);
   EXPECT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
   transactionHandler.removeTransaction(tid);
@@ -462,8 +468,8 @@ TEST_F(DocumentStateMachineTest,
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
   auto trx = transactionHandler.ensureTransaction(doc);
   ASSERT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
 
@@ -479,8 +485,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_commit) {
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{6}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kInsert,
+                              velocypack::SharedSlice(),
+                              TransactionId{6},
+                              {}};
 
   // Expect the transaction to be started an applied successfully
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
@@ -513,8 +522,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_abort) {
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   // Start a new transaction and then abort it.
-  auto doc = DocumentLogEntry{"s1234", OperationType::kRemove,
-                              velocypack::SharedSlice(), TransactionId{10}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kRemove,
+                              velocypack::SharedSlice(),
+                              TransactionId{10},
+                              {}};
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
   EXPECT_CALL(*transactionMock, apply).Times(1);
   auto res = transactionHandler.applyEntry(doc);
@@ -537,8 +549,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
 
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{6}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kInsert,
+                              velocypack::SharedSlice(),
+                              TransactionId{6},
+                              {}};
 
   // OperationResult failed, transaction should fail
   EXPECT_CALL(*transactionMock, apply(_))
@@ -850,17 +865,20 @@ TEST_F(DocumentStateMachineTest,
   follower->setStream(stream);
   EXPECT_CALL(*stream, release).Times(0);
 
+  ShardID const myShard = "s12";
+  CollectionID const myCollection = "myCollection";
+
   std::vector<DocumentLogEntry> entries;
-  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kCreateShard, myShard, myCollection);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(myShard, myCollection, _))
       .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
   entries.clear();
-  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kDropShard, myShard, myCollection);
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(myShard, myCollection))
       .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
@@ -879,14 +897,14 @@ TEST_F(DocumentStateMachineTest,
   follower->setStream(stream);
 
   std::vector<DocumentLogEntry> entries;
-  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kCreateShard, shardId, collectionId);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ON_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 
   entries.clear();
-  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kDropShard, shardId, collectionId);
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ON_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
@@ -1078,6 +1096,39 @@ TEST_F(DocumentStateMachineTest,
           .get();
   EXPECT_CALL(*stream, insert).Times(0);
   EXPECT_EQ(logIndex, LogIndex{});
+}
+
+TEST_F(DocumentStateMachineTest, leader_create_shard) {
+  using namespace testing;
+
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
+
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
+  leaderState->setStream(stream);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+
+  EXPECT_CALL(*stream, insert).Times(1).WillOnce([&](DocumentLogEntry entry) {
+    EXPECT_EQ(entry.operation, OperationType::kCreateShard);
+    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.collectionId, collectionId);
+    return LogIndex{12};
+  });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+      .Times(1);
+
+  leaderState->createShard(shardId, collectionId, velocypack::SharedSlice());
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {

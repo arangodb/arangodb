@@ -854,6 +854,10 @@ class ClusterInfo final {
       -> ResultT<
           std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
+  auto getCollectionGroupById(replication2::agency::CollectionGroupId)
+      -> std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -1163,7 +1167,10 @@ class ClusterInfo final {
 
   using CollectionGroupMap = containers::FlatHashMap<
       replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
+      std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>>;
+  // note: protected by _planProt
+  CollectionGroupMap _collectionGroups;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
