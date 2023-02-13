@@ -106,8 +106,6 @@ struct DocumentProducingFunctionContext {
 
   RegisterId getOutputRegister() const noexcept;
 
-  RegisterId getOutputRegisterSearchDoc() const noexcept;
-
   ReadOwnWrites getReadOwnWrites() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
@@ -154,7 +152,6 @@ struct DocumentProducingFunctionContext {
   containers::FlatHashSet<LocalDocumentId> _alreadyReturned;
 
   RegisterId const _outputRegister;
-  RegisterId const _outputSearchDocRegister;
   Variable const* _outputVariable;
 
   ReadOwnWrites const _readOwnWrites;

@@ -1203,13 +1203,13 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
+template<bool localDocumentId>
 class MaterializeSingleNode : public MaterializeNode,
                               public CollectionAccessingNode {
  public:
   MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
                         aql::Collection const* collection,
                         aql::Variable const& inDocId,
-                        aql::Variable const* inSearchDocVariable,
                         aql::Variable const& outVariable);
 
   MaterializeSingleNode(ExecutionPlan* plan,
@@ -1225,14 +1225,10 @@ class MaterializeSingleNode : public MaterializeNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  void getVariablesUsedHere(VarSet& vars) const override;
-
- protected:
+protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
-
-  aql::Variable const* _inSearchDocVariable;
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,

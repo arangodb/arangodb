@@ -74,8 +74,7 @@ class IndexExecutorInfos {
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
-      RegisterId outSearchDocRegister);
+      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -129,10 +128,6 @@ class IndexExecutorInfos {
     return _outNonMaterializedIndRegs;
   }
 
-  RegisterId getOutputRegisterSearchDoc() const noexcept {
-    return _outputSearchDocRegister;
-  }
-
   bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
  private:
@@ -168,7 +163,6 @@ class IndexExecutorInfos {
   NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
-  RegisterId _outputSearchDocRegister;
 
   IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
   IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;

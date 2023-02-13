@@ -151,8 +151,7 @@ class IndexNode : public ExecutionNode,
 
   void setLateMaterialized(aql::Variable const* docIdVariable,
                            IndexId commonIndexId,
-                           IndexVarsInfo const& indexVariables,
-                           aql::Variable const* searchDocVariable);
+                           IndexVarsInfo const& indexVariables);
 
   void setProjections(Projections projections) override;
 
@@ -202,10 +201,6 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
-
-  /// @brief output variable for storing SearchDoc in case of using
-  /// inverted index together with another index types
-  aql::Variable const* _outSearchDocVar;
 
   /// @brief output variables to non-materialized document index references
   IndexValuesVars _outNonMaterializedIndVars;

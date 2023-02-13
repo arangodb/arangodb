@@ -552,11 +552,17 @@ class IResearchInvertedIndexIterator final
               if constexpr (withCovering) {
                 _projections.seek(_doc->value);
                 TRI_ASSERT(_readerOffset > 0);
-                SearchDoc doc(_snapshot.segment(_readerOffset - 1),
-                              _doc->value);
                 TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
-                if (callback(documentId, _projections,
-                             aql::AqlValue{doc.encode(_buf)})) {
+                bool emitRes{false};
+                if constexpr (emitLocalDocumentId) {
+                  emitRes = callback(documentId, _projections);
+                } else {
+                  SearchDoc doc(_snapshot.segment(_readerOffset - 1),
+                                _doc->value);
+                  emitRes = callback(documentId, _projections,
+                                     aql::AqlValue{doc.encode(_buf)});
+                }
+                if (emitRes) {
                   --limit;
                 }
               } else {

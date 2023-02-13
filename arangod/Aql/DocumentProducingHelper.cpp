@@ -194,7 +194,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _numScanned(0),
       _numFiltered(0),
       _outputRegister(infos.getOutputRegisterId()),
-      _outputSearchDocRegister(RegisterId::makeInvalid()),
       _outputVariable(infos.getOutVariable()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(false),
@@ -236,7 +235,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _numScanned(0),
       _numFiltered(0),
       _outputRegister(infos.getOutputRegisterId()),
-      _outputSearchDocRegister(infos.getOutputRegisterSearchDoc()),
       _outputVariable(infos.getOutVariable()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(infos.getIndexes().size() > 1 ||
@@ -349,10 +347,6 @@ RegisterId DocumentProducingFunctionContext::getOutputRegister()
   return _outputRegister;
 }
 
-RegisterId DocumentProducingFunctionContext::getOutputRegisterSearchDoc()
-    const noexcept {
-  return _outputSearchDocRegister;
-}
 
 ReadOwnWrites DocumentProducingFunctionContext::getReadOwnWrites()
     const noexcept {

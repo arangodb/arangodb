@@ -2827,7 +2827,7 @@ namespace {
 constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
 constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
 constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
-constexpr std::string_view kMaterializeNodeInNmSearchDocParam = "inSearchDoc";
+constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
@@ -2836,7 +2836,11 @@ MaterializeNode* materialize::createMaterializeNode(
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeMultiNode(plan, base);
   }
-  return new MaterializeSingleNode(plan, base);
+  auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
+  if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
+    return new MaterializeSingleNode<true>(plan, base);
+  }
+  return new MaterializeSingleNode<false>(plan, base);
 }
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2926,10 +2930,10 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos =
-      MaterializerExecutorInfos<void>(RegisterId::makeInvalid(), inNmDocIdRegId,
+      MaterializerExecutorInfos<void>(inNmDocIdRegId,
                                       outDocumentRegId, engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void, false>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -2952,74 +2956,53 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void MaterializeSingleNode::getVariablesUsedHere(VarSet& vars) const {
-  MaterializeNode::getVariablesUsedHere(vars);
-  if (_inSearchDocVariable) {
-    vars.emplace(_inSearchDocVariable);
-  }
-}
-
-MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan,
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(ExecutionPlan* plan,
                                              ExecutionNodeId id,
                                              aql::Collection const* collection,
                                              aql::Variable const& inDocId,
-                                             aql::Variable const* inSearchDocVariable,
                                              aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable),
-      CollectionAccessingNode(collection),
-      _inSearchDocVariable(inSearchDocVariable) {}
+      CollectionAccessingNode(collection) {}
 
-MaterializeSingleNode::MaterializeSingleNode(
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : MaterializeNode(plan, base), CollectionAccessingNode(plan, base),
-      _inSearchDocVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, kMaterializeNodeInNmSearchDocParam, true)) {}
+    : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-void MaterializeSingleNode::doToVelocyPack(velocypack::Builder& nodes,
+template<bool localDocumentId>
+void MaterializeSingleNode<localDocumentId>::doToVelocyPack(velocypack::Builder& nodes,
                                            unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
-
-  if (_inSearchDocVariable) {
-    nodes.add(VPackValue(kMaterializeNodeInNmSearchDocParam));
-    _inSearchDocVariable->toVelocyPack(nodes);
-  }
+  nodes.add(kMaterializeNodeInLocalDocIdParam, localDocumentId);
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
+template<bool localDocumentId>
+std::unique_ptr<ExecutionBlock> MaterializeSingleNode<localDocumentId>::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inNmDocIdRegId{RegisterId::makeInvalid()};
-  if (_inNonMaterializedDocId != _inSearchDocVariable) {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
   RegisterId outDocumentRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  RegisterId inSearchDocRegisterId{RegisterId::makeInvalid()};
-  if (_inSearchDocVariable) {
-    auto it = getRegisterPlan()->varInfo.find(_inSearchDocVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inSearchDocRegisterId = it->second.registerId;
-  }
   auto const& name = collection()->name();
-
+  RegisterId inNmDocIdRegId;
+  { 
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
   RegIdSet readableInputRegisters;
   if (inNmDocIdRegId.isValid()) {
     readableInputRegisters.emplace(inNmDocIdRegId);
-  }
-  if (inSearchDocRegisterId.isValid()) {
-    readableInputRegisters.emplace(inSearchDocRegisterId);
   }
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
@@ -3027,34 +3010,30 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
-      inNmDocIdRegId, inSearchDocRegisterId, outDocumentRegId, engine.getQuery(),
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(),
       name);
   return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
+      ExecutionBlockImpl<MaterializeExecutor<decltype(name), localDocumentId>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan,
+template<bool localDocumentId>
+ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(ExecutionPlan* plan,
                                             bool withDependencies,
                                             bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
   auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-  auto* inSearchDocVariable = _inSearchDocVariable;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     inNonMaterializedDocId =
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-    if (inSearchDocVariable) {
-      inSearchDocVariable =
-          plan->getAst()->variables()->createVariable(inSearchDocVariable);
-    }
   }
 
-  auto c = std::make_unique<MaterializeSingleNode>(
-      plan, _id, collection(), *inNonMaterializedDocId, inSearchDocVariable,
+  auto c = std::make_unique<MaterializeSingleNode<localDocumentId>>(
+      plan, _id, collection(), *inNonMaterializedDocId,
       *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);

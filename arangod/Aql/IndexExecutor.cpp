@@ -136,19 +136,17 @@ IndexIterator::CoveringCallback getCallback(
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
-    RegisterId registerIdSearchDoc = context.getOutputRegisterSearchDoc();
 
     TRI_ASSERT(!output.isFull());
     // move a document id
     if (token.isSet()) {
+      TRI_ASSERT(searchDoc.isNull(true));
       AqlValue v(AqlValueHintUInt(token.id()));
       AqlValueGuard guard{v, true};
       output.moveValueInto(registerId, input, guard);
-    }
-    if (registerIdSearchDoc.isValid() &&
-        (!token.isSet() || registerIdSearchDoc != registerId)) {
+    } else {
       AqlValueGuard guard{searchDoc, true};
-      output.moveValueInto(registerIdSearchDoc, input, guard);
+      output.moveValueInto(registerId, input, guard);
     }
 
     // hash/skiplist/persistent
@@ -202,8 +200,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
-    RegisterId outSearchDocRegister)
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
     : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
@@ -217,7 +214,6 @@ IndexExecutorInfos::IndexExecutorInfos(
       _filterVarsToRegs(std::move(filterVarsToRegs)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
-      _outputSearchDocRegister(outSearchDocRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
