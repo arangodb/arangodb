@@ -1,7 +1,7 @@
 devel
 -----
 
-* FE-133: Alphabetical sorting for collections on user permissions page
+* FE-133: Alphabetical sorting for collections on user permissions page.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
