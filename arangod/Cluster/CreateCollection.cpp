@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -127,13 +128,33 @@ bool CreateCollection::first() {
     if (vocbase.replicationVersion() == replication::Version::TWO &&
         from == "maintenance") {
       // special case for replication 2 on the leader
-      LOG_DEVEL << shard << " " << collection << " " << properties().toJson();
       // TODO use collection group instead
       auto logId = LogicalCollection::shardIdToStateId(shard);
       if (auto gid = props.get("groupId"); gid.isNumber()) {
         logId = replication2::LogId{gid.getUInt()};
+        // Now look up the collection group
+        auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+        auto group = ci.getCollectionGroupById(
+            replication2::agency::CollectionGroupId{logId.id()});
+        if (group == nullptr) {
+          return false;  // retry later
+        }
+        // now find the index of the shard in the collection group
+        auto shardsR2 = props.get("shardsR2");
+        ADB_PROD_ASSERT(shardsR2.isArray());
+        bool found = false;
+        std::size_t index = 0;
+        for (auto x : VPackArrayIterator(shardsR2)) {
+          if (x.isEqualString(shard)) {
+            found = true;
+            break;
+          }
+          ++index;
+        }
+        ADB_PROD_ASSERT(found);
+        ADB_PROD_ASSERT(index < group->shardSheaves.size());
+        logId = group->shardSheaves[index].replicatedLog;
       }
-      LOG_DEVEL << "using replicated log " << logId;
       auto state = vocbase.getReplicatedStateById(logId);
       if (state.ok()) {
         auto leaderState = std::dynamic_pointer_cast<
@@ -143,11 +164,7 @@ bool CreateCollection::first() {
           leaderState->createShard(
               shard, collection,
               velocypack::SharedSlice(_description.properties()->bufferRef()));
-        } else {
-          LOG_DEVEL << "leader state not yet ready " << logId;
         }
-      } else {
-        LOG_DEVEL << "replicated log " << logId << " not yet ready";
       }
 
       return false;

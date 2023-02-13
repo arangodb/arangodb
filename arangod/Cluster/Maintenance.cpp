@@ -408,9 +408,6 @@ static void handlePlanShard(
   } else {  // Create the collection, if not a previous error stops us
     if (!errors.shards.contains(dbname + "/" + colname + "/" + shname)) {
       if (replicationVersion != replication::Version::TWO || shouldBeLeading) {
-        LOG_DEVEL_IF(replicationVersion == replication::Version::TWO)
-            << "maintenance detected new shard " << dbname << "/" << colname
-            << "/" << shname;
         // Skip for replication 2 databases on followers
         auto props = createProps(cprops);  // Only once might need often!
         description = std::make_shared<ActionDescription>(

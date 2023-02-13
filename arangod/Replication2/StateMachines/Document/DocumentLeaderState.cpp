@@ -249,18 +249,12 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
   entry.data = properties;
   entry.collectionId = collectionId;
 
-  LOG_DEVEL << "creating shard in document leader state " << collectionId << "/"
-            << shard;
-
   // TODO actually we have to block this log entry from release until the
   // collection is actually created
   auto const& stream = getStream();
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue([=, self = shared_from_this()](auto&&) {
-    LOG_DEVEL << "shard creation replicated, actually create that shard "
-              << collectionId << "/" << shard;
-
     auto guard = self->_shardHandler.getLockedGuard();
     // TODO remove this unnecessary copy when api is better
     auto propertiesCopy = std::make_shared<VPackBuilder>();
@@ -269,8 +263,6 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
     auto result =
         guard->get()->createLocalShard(shard, collectionId, propertiesCopy);
     // TODO update internal shard map
-    LOG_DEVEL << "shard creation result " << collectionId << "/" << shard
-              << ": " << result;
     return result;
   });
 }
