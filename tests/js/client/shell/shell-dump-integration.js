@@ -84,19 +84,14 @@ function dumpIntegrationSuite() {
     args.push(arango.connectedUser());
   };
 
-  let runDump = function (path, args, rc) {
-    try {
-      fs.removeDirectory(path);
-    } catch (err) {
-    }
-
+  let runDump = function (path, args, expectRc) {
     args.push('--output-directory');
     args.push(path);
     addConnectionArgs(args);
 
     let actualRc = internal.executeExternalAndWait(arangodump, args);
     assertTrue(actualRc.hasOwnProperty("exit"));
-    assertEqual(rc, actualRc.exit);
+    assertEqual(expectRc, actualRc.exit);
     return fs.listTree(path);
   };
 
@@ -351,50 +346,32 @@ function dumpIntegrationSuite() {
 
     testDumpForCollectionWithSchema: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn + "WithSchema", '--compress-output', 'false'];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn + "WithSchema");
-        checkDataFile(tree, path, false, false, false, cn + "WithSchema");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', cn + "WithSchema", '--compress-output', 'false'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn + "WithSchema");
+      checkDataFile(tree, path, false, false, false, cn + "WithSchema");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpForCollectionWithComputedValuesUncompressed: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'false'];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn + "ComputedValues");
-        checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, cn + "ComputedValues");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', cn + "ComputedValues", '--compress-output', 'false'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn + "ComputedValues");
+      checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, cn + "ComputedValues");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpForCollectionWithComputedValuesCompressed: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'true'];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn + "ComputedValues");
-        checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, cn + "ComputedValues");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', cn + "ComputedValues", '--compress-output', 'true'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn + "ComputedValues");
+      checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, cn + "ComputedValues");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOnlyOneShard: function () {
@@ -409,20 +386,14 @@ function dumpIntegrationSuite() {
       let shards = Object.keys(shardCounts);
 
       assertEqual(3, shards.length);
-      try {
-        let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0]];
-        let tree = runDump(path, args, 0);
+      let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0]];
+      let tree = runDump(path, args, 0);
 
-        const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-        let file = fs.join(path, prefix + '.data.json');
-        let data = fs.readFileSync(file).toString();
-        assertEqual(shardCounts[shards[0]] + 1, data.split('\n').length);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+      let file = fs.join(path, prefix + '.data.json');
+      let data = fs.readFileSync(file).toString();
+      assertEqual(shardCounts[shards[0]] + 1, data.split('\n').length);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOnlyTwoShards: function () {
@@ -437,172 +408,133 @@ function dumpIntegrationSuite() {
       let shards = Object.keys(shardCounts);
 
       assertEqual(3, shards.length);
-      try {
-        let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0], '--shard', shards[1]];
-        let tree = runDump(path, args, 0);
+      let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0], '--shard', shards[1]];
+      let tree = runDump(path, args, 0);
 
-        const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-        let file = fs.join(path, prefix + '.data.json');
-        let data = fs.readFileSync(file).toString();
-        assertEqual(shardCounts[shards[0]] + shardCounts[shards[1]] + 1, data.split('\n').length);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+      let file = fs.join(path, prefix + '.data.json');
+      let data = fs.readFileSync(file).toString();
+      assertEqual(shardCounts[shards[0]] + shardCounts[shards[1]] + 1, data.split('\n').length);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpAutoIncrementKeyGenerator: function () {
 
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn + 'AutoIncrement', '--dump-data', 'false'];
-        let tree = runDump(path, args, 0);
-        checkStructureFile(tree, path, true, cn + 'AutoIncrement');
-        let structure = structureFile(path, cn + 'AutoIncrement');
-        let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
-        assertEqual("autoincrement", data.parameters.keyOptions.type);
-        let c = db._collection(cn + 'AutoIncrement');
-        assertEqual(1000, c.count());
-        let p = c.properties();
-        let lastValue = p.keyOptions.lastValue;
-        if (!isCluster) {
-          assertTrue(lastValue > 0, lastValue);
-        }
-        assertEqual(lastValue, data.parameters.keyOptions.lastValue);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
+      let args = ['--collection', cn + 'AutoIncrement', '--dump-data', 'false'];
+      let tree = runDump(path, args, 0);
+      checkStructureFile(tree, path, true, cn + 'AutoIncrement');
+      let structure = structureFile(path, cn + 'AutoIncrement');
+      let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
+      assertEqual("autoincrement", data.parameters.keyOptions.type);
+      let c = db._collection(cn + 'AutoIncrement');
+      assertEqual(1000, c.count());
+      let p = c.properties();
+      let lastValue = p.keyOptions.lastValue;
+      if (!isCluster) {
+        assertTrue(lastValue > 0, lastValue);
       }
+      assertEqual(lastValue, data.parameters.keyOptions.lastValue);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpPaddedKeyGenerator: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn + 'Padded', '--dump-data', 'false'];
-        let tree = runDump(path, args, 0);
-        checkStructureFile(tree, path, true, cn + 'Padded');
-        let structure = structureFile(path, cn + 'Padded');
-        let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
-        assertEqual("padded", data.parameters.keyOptions.type);
-        let c = db._collection(cn + 'Padded');
-        assertEqual(1000, c.count());
-        let p = c.properties();
-        let lastValue = p.keyOptions.lastValue;
-        assertTrue(lastValue > 0, lastValue);
-        assertEqual(lastValue, data.parameters.keyOptions.lastValue);
-
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', cn + 'Padded', '--dump-data', 'false'];
+      let tree = runDump(path, args, 0);
+      checkStructureFile(tree, path, true, cn + 'Padded');
+      let structure = structureFile(path, cn + 'Padded');
+      let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
+      assertEqual("padded", data.parameters.keyOptions.type);
+      let c = db._collection(cn + 'Padded');
+      assertEqual(1000, c.count());
+      let p = c.properties();
+      let lastValue = p.keyOptions.lastValue;
+      assertTrue(lastValue > 0, lastValue);
+      assertEqual(lastValue, data.parameters.keyOptions.lastValue);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpSingleDatabase: function () {
       dbs.forEach((name) => {
         let path = fs.getTempFile();
         db._useDatabase(name);
-        try {
-          let args = ['--overwrite', 'true'];
-          let tree = runDump(path, args, 0);
-          checkDumpJsonFile(name, path, db._id());
-          checkCollections(tree, path);
-        } finally {
-          try {
-            fs.removeDirectory(path);
-          } catch (err) {
-          }
-        }
+        let args = ['--overwrite', 'true'];
+        let tree = runDump(path, args, 0);
+        checkDumpJsonFile(name, path, db._id());
+        checkCollections(tree, path);
+        fs.removeDirectoryRecursive(path, true);
       });
     },
 
     testDumpAllDatabases: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--all-databases', 'true'];
-        let tree = runDump(path, args, 0);
-        db._useDatabase("maçã");
-        assertEqual(-1, tree.indexOf("maçã"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-        db._useDatabase("_system");
-        assertNotEqual(-1, tree.indexOf("_system"));
-        assertEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
-        checkCollections(tree, path, db._name());
-        db._useDatabase("testName");
-        assertNotEqual(-1, tree.indexOf("testName"));
-        assertEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
-        checkCollections(tree, path, db._name());
-        db._useDatabase("😀");
-        assertEqual(-1, tree.indexOf("😀"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
-        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-      } finally {
-        try {
-          fs.removeDirectory(path);
-          db._useDatabase("_system");
-        } catch (err) {
-        }
-      }
+      let args = ['--all-databases', 'true'];
+      let tree = runDump(path, args, 0);
+      db._useDatabase("maçã");
+      assertEqual(-1, tree.indexOf("maçã"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      db._useDatabase("_system");
+      assertNotEqual(-1, tree.indexOf("_system"));
+      assertEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+      checkCollections(tree, path, db._name());
+      db._useDatabase("testName");
+      assertNotEqual(-1, tree.indexOf("testName"));
+      assertEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+      checkCollections(tree, path, db._name());
+      db._useDatabase("😀");
+      assertEqual(-1, tree.indexOf("😀"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
+      assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpAllDatabasesWithOverwrite: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--all-databases', 'true'];
-        runDump(path, args, 0);
+      let args = ['--all-databases', 'true'];
+      runDump(path, args, 0);
 
-        // run the dump a second time, to overwrite all data in the target directory
-        args.push('--overwrite');
-        args.push('true');
+      // run the dump a second time, to overwrite all data in the target directory
+      args.push('--overwrite');
+      args.push('true');
 
-        let tree = runDump(path, args, 0);
-        db._useDatabase("maçã");
-        assertEqual(-1, tree.indexOf("maçã"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-        db._useDatabase("_system");
-        assertNotEqual(-1, tree.indexOf("_system"));
-        assertEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
-        checkCollections(tree, path, db._name());
-        db._useDatabase("testName");
-        assertNotEqual(-1, tree.indexOf("testName"));
-        assertEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
-        checkCollections(tree, path, db._name());
-        db._useDatabase("😀");
-        assertEqual(-1, tree.indexOf("😀"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
-        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
-        assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
-        checkCollections(tree, path, db._id());
-      } finally {
-        try {
-          fs.removeDirectory(path);
-          db._useDatabase("_system");
-        } catch (err) {
-        }
-      }
+      let tree = runDump(path, args, 0);
+      db._useDatabase("maçã");
+      assertEqual(-1, tree.indexOf("maçã"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      db._useDatabase("_system");
+      assertNotEqual(-1, tree.indexOf("_system"));
+      assertEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+      checkCollections(tree, path, db._name());
+      db._useDatabase("testName");
+      assertNotEqual(-1, tree.indexOf("testName"));
+      assertEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+      checkCollections(tree, path, db._name());
+      db._useDatabase("😀");
+      assertEqual(-1, tree.indexOf("😀"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
+      assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+      assertNotEqual(-1, tree.indexOf(db._id()));
+      checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id());
+      checkCollections(tree, path, db._id());
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpCompressedEncryptedWithEnvelope: function () {
@@ -612,21 +544,15 @@ function dumpIntegrationSuite() {
 
       let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+      // 32 bytes of garbage
+      fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true', '--envelope', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, true, false, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--compress-output', 'true', '--envelope', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "aes-256-ctr");
+      checkStructureFile(tree, path, false, cn);
+      checkDataFile(tree, path, false, true, false, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpCompressedEncryptedNoEnvelope: function () {
@@ -636,67 +562,49 @@ function dumpIntegrationSuite() {
 
       let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+      // 32 bytes of garbage
+      fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true', '--envelope', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, false, false, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--compress-output', 'true', '--envelope', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "aes-256-ctr");
+      checkStructureFile(tree, path, false, cn);
+      checkDataFile(tree, path, false, false, false, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteUncompressedWithEnvelope: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, true, cn);
+      let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, true, true, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'false', '--envelope', 'true', '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'false', '--envelope', 'true', '--overwrite', 'true', '--collection', cn];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, true, true, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteUncompressedNoEnvelope: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, true, cn);
+      let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, true, true, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'false', '--envelope', 'false', '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, false, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'false', '--envelope', 'false', '--overwrite', 'true', '--collection', cn];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, false, true, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpCompressedEncrypted: function () {
@@ -706,85 +614,61 @@ function dumpIntegrationSuite() {
 
       let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+      // 32 bytes of garbage
+      fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, true, false, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--compress-output', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "aes-256-ctr");
+      checkStructureFile(tree, path, false, cn);
+      checkDataFile(tree, path, false, true, false, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteDisabled: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
+      let args = ['--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
 
-        // second dump, without overwrite
-        // this is expected to have an exit code of 1
-        runDump(path, args, 1 /*exit code*/);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, without overwrite
+      // this is expected to have an exit code of 1
+      runDump(path, args, 1 /*exit code*/);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteCompressed: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
+      let args = ['--compress-output', 'true', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteUncompressed: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'false', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, false, true, cn);
+      let args = ['--compress-output', 'false', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, false, true, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'false', '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, false, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'false', '--overwrite', 'true', '--collection', cn];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, false, false, true, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteEncrypted: function () {
@@ -794,28 +678,22 @@ function dumpIntegrationSuite() {
 
       let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+      // 32 bytes of garbage
+      fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, true, false, cn);
+      let args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "aes-256-ctr");
+      checkStructureFile(tree, path, false, cn);
+      checkDataFile(tree, path, false, true, false, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, true, false, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "aes-256-ctr");
+      checkStructureFile(tree, path, false, cn);
+      checkDataFile(tree, path, false, true, false, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteCompressedWithEncrypted: function () {
@@ -825,95 +703,65 @@ function dumpIntegrationSuite() {
 
       let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+      // 32 bytes of garbage
+      fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
+      let args = ['--compress-output', 'true', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
 
-        // second dump, which overwrites
-        // this is expected to have an exit code of 1
-        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
-        runDump(path, args, 1 /*exit code*/);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      // this is expected to have an exit code of 1
+      args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
+      runDump(path, args, 1 /*exit code*/);
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOverwriteOtherCompressed: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
+      let args = ['--compress-output', 'true', '--collection', cn];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
 
-        // second dump, which overwrites
-        args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn + "Other"];
-        tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
-        checkStructureFile(tree, path, true, cn + "Other");
-        checkDataFile(tree, path, true, false, true, cn + "Other");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      // second dump, which overwrites
+      args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn + "Other"];
+      tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
+      checkStructureFile(tree, path, true, cn + "Other");
+      checkDataFile(tree, path, true, false, true, cn + "Other");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpJustOneInvalidCollection: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', 'foobarbaz'];
-        let tree = runDump(path, args, 1);
-        checkEncryption(tree, path, "none");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', 'foobarbaz'];
+      let tree = runDump(path, args, 1);
+      checkEncryption(tree, path, "none");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpJustInvalidCollections: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
-        let tree = runDump(path, args, 1);
-        checkEncryption(tree, path, "none");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
+      let tree = runDump(path, args, 1);
+      checkEncryption(tree, path, "none");
+      fs.removeDirectoryRecursive(path, true);
     },
 
     testDumpOneValidCollection: function () {
       let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'true', '--collection', cn, '--collection', 'knarzknarzknarz'];
-        let tree = runDump(path, args, 0);
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, false, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {
-        }
-      }
+      let args = ['--compress-output', 'true', '--collection', cn, '--collection', 'knarzknarzknarz'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkDataFile(tree, path, true, false, true, cn);
+      fs.removeDirectoryRecursive(path, true);
     },
   };
 }

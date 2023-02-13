@@ -383,7 +383,7 @@ class BenchmarkThread : public arangodb::Thread {
             if (++_warningCount < maxWarnings) {
               LOG_TOPIC("b1db5", WARN, arangodb::Logger::BENCH)
                   << type
-                  << " operation sServer side warning count: " << errorCount;
+                  << " operation server side warning count: " << errorCount;
             }
           }
         }
