@@ -1770,7 +1770,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (_random) {
     // we retrieve at most one random document from the collection.
     // so the estimate is at most 1
-    estimatedNrItems = 1;
+    // estimatedNrItems = 1;
+    // Unnecessary to set, we just leave estimate.estimatedNrItems as it is.
   } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
