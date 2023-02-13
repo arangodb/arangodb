@@ -356,7 +356,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // UNNECESSARY, since only truncate and document insert operations are done.
 
   // .............................................................................
   // inside write transaction
@@ -556,7 +557,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // UNNECESSARY, since only truncate and document insert operations are done.
 
   // .............................................................................
   // inside write transaction
@@ -742,7 +744,8 @@ bool RestImportHandler::createFromKeyValueList() {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // UNNECESSARY, since only truncate and document insert operations are done.
 
   // .............................................................................
   // inside write transaction
