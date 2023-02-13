@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
-let db = require("internal").db;
+let {db, isCluster} = require("internal");
 
 const ruleName = "move-filters-into-enumerate";
 const lateRuleName = "late-document-materialization";
@@ -261,13 +261,34 @@ function optimizerRuleTestSuite () {
         `FOR doc IN ${cn} FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
         `FOR doc IN ${cn} FILTER doc.abc FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
         `FOR doc IN ${cn} FILTER doc.abc FILTER doc.xyz FOR inner IN doc.xyz RETURN inner`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+
+    testVariableUsageInCluster : function () {
+      let queries = [ 
         `FOR doc IN ${cn} FOR inner IN 1..10 FILTER doc.abc == inner + 1 RETURN inner`,
         `FOR doc IN ${cn} FOR inner IN 1..10 FILTER doc.abc == inner + 1 FILTER doc.xyz == inner + 2 RETURN inner`,
       ];
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        // In these queries something odd happens, due to the distributed
+        // nature of the cluster and the cost calculation we use, the execution
+        // plan we prefer in the single server becomes more expensive than
+        // another plan, which cannot pull the FILTER into the
+        // EnumerateCollectionNode. Therefore another plan is chosen and
+        // we do not see our rule used. Therefore we have to distinguish
+        // cases here:
+        if (isCluster()) {
+          assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        } else {
+          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        }
       });
     },
 
