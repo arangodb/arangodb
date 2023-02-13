@@ -466,7 +466,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_LOCALTOUTC", ".,.|.", flags, &functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &functions::DateTimeZone});
   add({"DATE_TIMEZONES", "", flags, &functions::DateTimeZones});
-  add({"DATE_ROUND", ".,.,.", flags, &functions::DateRound});
+  add({"DATE_ROUND", ".,.,.|.", flags, &functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "",

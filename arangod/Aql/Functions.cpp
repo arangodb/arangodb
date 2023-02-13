@@ -4757,6 +4757,21 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  std::string inputTimezone = "UTC";
+
+  if (parameters.size() == 4) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 3);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   int64_t const m = durationUnit.toInt64();
   if (m <= 0) {
     registerInvalidArgumentWarning(expressionContext, AFN);
@@ -4788,6 +4803,11 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
   // integer division!
   t /= multiplier;
   tp = tp_sys_clock_ms(milliseconds(t * multiplier));
+
+  if (parameters.size() == 4) {
+    ::unlocalizeTimePoint(inputTimezone, tp);
+  }
+
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
