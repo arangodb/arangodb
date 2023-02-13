@@ -63,7 +63,6 @@
 
     aqlEditor: null,
     queryPreview: null,
-    sortByHistory: false,
 
     initialize: function () {
       this.refreshAQL();
@@ -396,7 +395,7 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer',
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery',
         'searchQueryByNameContainer',
         'sortOptionsToggle'
       ];
@@ -961,7 +960,6 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
-      $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
     cleanupGraphs: function () {
@@ -1566,14 +1564,7 @@
         }
         delete k.value;
       });
-
-     
-
-      // if(!this.sortByHistory) {
-      //   self.customQueries.sort(compare);
-      // }
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
-
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
