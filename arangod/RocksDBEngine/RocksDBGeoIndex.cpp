@@ -919,4 +919,3 @@ arangodb::Index::FilterCosts RocksDBGeoIndex::supportsFilterCondition(
   costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
   return costs;
 }
-
