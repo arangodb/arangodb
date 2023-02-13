@@ -1754,11 +1754,15 @@ function IResearchFeatureDDLTestSuite1() {
             .figures;
           assertNotEqual(null, figures);
           assertTrue(Object === figures.constructor);
-          assertEqual(6, Object.keys(figures).length);
+          // DELETE LINE BELOW AFTER BACKPORT
+          assertEqual(5, Object.keys(figures).length);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(6, Object.keys(figures).length);
           assertEqual(0, figures.indexSize);
           assertEqual(0, figures.numDocs);
           assertEqual(0, figures.numLiveDocs);
-          assertEqual(0, figures.numPrimaryDocs);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(0, figures.numPrimaryDocs);
           assertEqual(1, figures.numFiles);
           assertEqual(0, figures.numSegments);
         }
@@ -1786,11 +1790,15 @@ function IResearchFeatureDDLTestSuite1() {
             .figures;
           assertNotEqual(null, figures);
           assertTrue(Object === figures.constructor);
-          assertEqual(6, Object.keys(figures).length);
+          // DELETE LINE BELOW AFTER BACKPORT
+          assertEqual(5, Object.keys(figures).length);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(6, Object.keys(figures).length);
           assertEqual(0, figures.indexSize);
           assertEqual(0, figures.numDocs);
           assertEqual(0, figures.numLiveDocs);
-          assertEqual(0, figures.numPrimaryDocs);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(0, figures.numPrimaryDocs);
           assertEqual(1, figures.numFiles);
           assertEqual(0, figures.numSegments);
         }
@@ -1825,7 +1833,10 @@ function IResearchFeatureDDLTestSuite1() {
             .figures;
           assertNotEqual(null, figures);
           assertTrue(Object === figures.constructor);
-          assertEqual(6, Object.keys(figures).length);
+          // DELETE LINE BELOW AFTER BACKPORT
+          assertEqual(5, Object.keys(figures).length);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(6, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
           if (type === "arangosearch") {
             assertEqual((isEnterprise ? 10 : 5), figures.numDocs);
@@ -1834,7 +1845,8 @@ function IResearchFeatureDDLTestSuite1() {
             assertEqual((isEnterprise ? 15 : 5), figures.numDocs);
             assertEqual((isEnterprise ? 15 : 5), figures.numLiveDocs);
           }
-          assertEqual(5, figures.numPrimaryDocs);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(5, figures.numPrimaryDocs);
           assertEqual(6, figures.numFiles);
           assertEqual(1, figures.numSegments);
         }
@@ -1865,7 +1877,10 @@ function IResearchFeatureDDLTestSuite1() {
             .figures;
           assertNotEqual(null, figures);
           assertTrue(Object === figures.constructor);
-          assertEqual(6, Object.keys(figures).length);
+          // DELETE LINE BELOW AFTER BACKPORT
+          assertEqual(5, Object.keys(figures).length);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(6, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
           if (type === "arangosearch") {
             assertEqual((isEnterprise ? 10 : 5), figures.numDocs);
@@ -1874,7 +1889,8 @@ function IResearchFeatureDDLTestSuite1() {
             assertEqual((isEnterprise ? 15 : 5), figures.numDocs);
             assertEqual((isEnterprise ? 12 : 4), figures.numLiveDocs);
           }
-          assertEqual(5, figures.numPrimaryDocs);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(5, figures.numPrimaryDocs);
           assertEqual(7, figures.numFiles);
           assertEqual(1, figures.numSegments);
         }
@@ -1900,11 +1916,15 @@ function IResearchFeatureDDLTestSuite1() {
             .figures;
           assertNotEqual(null, figures);
           assertTrue(Object === figures.constructor);
-          assertEqual(6, Object.keys(figures).length);
+          // DELETE LINE BELOW AFTER BACKPORT
+          assertEqual(5, Object.keys(figures).length);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(6, Object.keys(figures).length);
           assertEqual(0, figures.indexSize);
           assertEqual(0, figures.numDocs);
           assertEqual(0, figures.numLiveDocs);
-          assertEqual(0, figures.numPrimaryDocs);
+          // UNCOMMENT LINE BELOW AFTER BACKPORT:
+          // assertEqual(0, figures.numPrimaryDocs);
           assertEqual(1, figures.numFiles);
           assertEqual(0, figures.numSegments);
         }

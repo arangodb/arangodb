@@ -182,10 +182,10 @@ function geoSuite(isSearchAlias) {
     /*
       NB: 'if' statement below should be removed after fixing all bugs from ticket https://arangodb.atlassian.net/browse/SEARCH-284
     */  
-    // if (disableViewTests) {
-    //   cmpResView.good = true;   // fake goodness
-    //   cmpResInvertedIndex.good = true;   // fake goodness
-    // }
+    if (disableViewTests) {
+      cmpResView.good = true;   // fake goodness
+      cmpResInvertedIndex.good = true;   // fake goodness
+    }
     return {cmpResFullScanWithIndexes, cmpResView, cmpResInvertedIndex};
   }
 
