@@ -7,8 +7,7 @@ target_sources(arango_pregel PRIVATE
   ColorPropagation.cpp)
 
 if (USE_MAINTAINER_MODE)
-  target_sources(arango_pregel PRIVATE
-    ReadWrite.cpp)
+  add_subdirectory(ReadWrite)
 endif()
 
 add_subdirectory(DMID)
