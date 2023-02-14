@@ -32,7 +32,11 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
 
+// TODO: CLEAN THIS UP LATER move implementation to cpp file remove this include
+#include "Assertions/Assert.h"
+
 #include <set>
+#include <deque>
 #include <unordered_map>
 
 namespace arangodb {
@@ -59,8 +63,9 @@ template<class QueueType, class PathStoreType, class ProviderType,
 class WeightedTwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
-  using Candidate = std::pair<Step, Step>;
-  using CandidatesMap = std::unordered_map<double, Candidate>;
+
+  // A meeting point with calculated path weight
+  using CalculatedCandidate = std::tuple<double, Step, Step>;
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -68,8 +73,85 @@ class WeightedTwoSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
   using Shell = std::multiset<Step>;
-  using ResultList = std::vector<std::pair<Step, Step>>;
+  using ResultList = std::deque<CalculatedCandidate>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
+
+  /*
+   * Weighted candidate store for handling path-match candidates in the order
+   * from the lowest weight to the highest weight.
+   */
+  class CandidatesStore {
+   public:
+    void clear() {
+      if (!_queue.empty()) {
+        _queue.clear();
+      }
+    }
+
+    void append(CalculatedCandidate candidate) {
+      // if emplace() throws, no harm is done, and the memory usage increase
+      // will be rolled back
+      _queue.emplace_back(std::move(candidate));
+      // std::push_heap takes the last element in the queue, assumes that all
+      // other elements are in heap structure, and moves the last element into
+      // the correct position in the heap (incl. rebalancing of other elements)
+      // The heap structure guarantees that the first element in the queue
+      // is the "largest" element (in our case it is the smallest, as we
+      // inverted the comparator)
+      std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
+    }
+
+    size_t size() const { return _queue.size(); }
+
+    bool isEmpty() const { return _queue.empty(); }
+
+    std::vector<CalculatedCandidate> getQueue() const { return _queue; };
+
+    CalculatedCandidate& peek() {
+      TRI_ASSERT(!_queue.empty());
+      // will return a pointer to the step with the lowest weight amount
+      // possible. The heap structure guarantees that the first element in the
+      // queue is the "largest" element (in our case it is the smallest, as we
+      // inverted the comparator)
+      auto& first = _queue.front();
+      return first;
+    }
+
+    CalculatedCandidate pop() {
+      TRI_ASSERT(!isEmpty());
+      // std::pop_heap will move the front element (the one we would like to
+      // steal) to the back of the vector, keeping the tree intact otherwise.
+      // Now we steal the last element.
+      std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
+      CalculatedCandidate first = std::move(_queue.back());
+      _queue.pop_back();
+      return first;
+    }
+
+   private:
+    struct WeightedComparator {
+      bool operator()(CalculatedCandidate const& a,
+                      CalculatedCandidate const& b) {
+        auto const& [weightA, candAA, candAB] = a;
+        auto const& [weightB, candBA, candBB] = b;
+        if (weightA == weightB) {
+          /*if (a.getDepth() == b.getDepth()) {
+            // Only false if A is not processable but B is.
+            return !a.isProcessable() || b.isProcessable();
+          }*/
+          return weightA > weightB;
+        }
+        return weightA > weightB;
+      }
+    };
+
+    WeightedComparator _cmpHeap{};
+
+    /// @brief queue datastore
+    /// Note: Mutable is a required for hasProcessableElement right now which is
+    /// const. We can easily make it non const here.
+    mutable std::vector<CalculatedCandidate> _queue;
+  };
 
   class Ball {
    public:
@@ -83,16 +165,20 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
+    // Check if this can be removed
     auto testDepthZero(Ball& other, CandidatesMap& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, CandidatesMap& results,
+    auto matchResultsInShell(Step const& match, CandidatesStore& results,
                              PathValidatorType const& otherSideValidator)
         -> double;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesMap& results,
-                                          double& matchPathLength) -> void;
+
+    // @brief returns a positive double in a match has been found.
+    // returns -1.0 if no match has been found.
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
+        -> double;
 
     auto hasBeenVisited(Step const& step) -> bool;
 
@@ -100,8 +186,8 @@ class WeightedTwoSidedEnumerator {
     // in the _results list.
     // Otherwise we will not be able to
     // generate the resulting path
-    auto fetchResults(CandidatesMap& candidates) -> void;
-    auto fetchResult(Candidate& candidate) -> void;
+    auto fetchResults(CandidatesStore& candidates) -> void;
+    auto fetchResult(CalculatedCandidate& candidate) -> void;
 
     auto provider() -> ProviderType&;
 
@@ -126,6 +212,34 @@ class WeightedTwoSidedEnumerator {
     GraphOptions _graphOptions;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
+
+  /*
+   * A class that is able to store valid shortest paths results.
+   * This is required to be able to check for duplicate paths, as those can be
+   * found during a KShortestPaths graphs search.
+   */
+  class ResultCache {
+   public:
+    ResultCache(Ball& left, Ball& right);
+    ~ResultCache();
+
+    // @brief: returns whether a path could be inserted or not.
+    // True: It will be inserted if this specific path has not been added yet.
+    // False: Could not insert as this path has already been found.
+    auto addResult(CalculatedCandidate const& candidate) -> bool;
+    auto clear() -> void;
+
+   private:
+    auto checkIfPathExists() -> bool;
+
+   private:
+    Ball& _internalLeft;
+    Ball& _internalRight;
+
+    // TODO: First implement simple, then add advanced range-based std::set
+    // std::set<double, std::vector<typename Step::Edge>> _resultsCache{};
+    std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
+  };
 
  public:
   WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
@@ -244,7 +358,9 @@ class WeightedTwoSidedEnumerator {
   bool _handledInitialFetch{false};
 
   // Templated result list, where only valid result(s) are stored in
-  CandidatesMap _candidates{};
+  CandidatesStore _candidatesStore{};
+  ResultCache _resultsCache;
+  ResultList _results{};
   double _bestCandidateLength = -1.0;
 
   bool _resultsFetched{false};
