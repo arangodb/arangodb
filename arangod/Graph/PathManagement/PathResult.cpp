@@ -88,7 +88,7 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
-    arangodb::velocypack::Builder& builder, bool addWeight) -> void {
+    arangodb::velocypack::Builder& builder, double weight) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
@@ -117,10 +117,34 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
     }
   }
 
-  if (addWeight) {
-    // Adds amount of edges per path
-    { builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size())); }
+  if (weight > 0) {
+    // TODO: Handle both cases properly. Think about better interface here.
+
+    // We need to handled two different cases here. In case no weight callback
+    // has been set, we need to write the amount of edges here. In case a weight
+    // callback is set, we need to set the calculated weight.
+
+    // Case 1) Amount of edges (as will be seen as weight=1 per edge)
+    // builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size()));
+
+    // Case 2) Calculated weight (currently passed as parameter)
+    builder.add(StaticStrings::GraphQueryWeight, VPackValue(weight));
   }
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::isEqualEdgeRepresentation(
+    PathResult<ProviderType, Step> const& other) -> bool {
+  if (_edges.size() == other._edges.size()) {
+    for (size_t i = 0; i < _edges.size(); i++) {
+      if (!_edges[i].getID().equals(other._edges[i].getID())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
 }
 
 template<class ProviderType, class Step>

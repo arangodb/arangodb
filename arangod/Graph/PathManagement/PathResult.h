@@ -49,7 +49,9 @@ class PathResult {
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder,
-                    bool addWeight = false) -> void;
+                    double addWeight = -1.0) -> void;
+  auto isEqualEdgeRepresentation(PathResult<ProviderType, Step> const& other)
+      -> bool;
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
