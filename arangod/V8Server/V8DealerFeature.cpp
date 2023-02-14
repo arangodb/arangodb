@@ -36,6 +36,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -81,6 +82,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -795,16 +797,15 @@ void V8DealerFeature::unprepare() {
   _gcThread.reset();
 }
 
-bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
+bool V8DealerFeature::addGlobalContextMethod(
+    GlobalContextMethods::MethodType type) {
   bool result = true;
 
   CONDITION_LOCKER(guard, _contextCondition);
 
   for (auto& context : _contexts) {
     try {
-      if (!context->addGlobalContextMethod(method)) {
-        result = false;
-      }
+      context->addGlobalContextMethod(type);
     } catch (...) {
       result = false;
     }
