@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/AccessMode.h"
