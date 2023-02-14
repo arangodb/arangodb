@@ -7477,7 +7477,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
       auto indexes = enumerateColNode->collection()->indexes();
       auto& idxNames = colNodeHints.hint();
       for (auto const& idxName : idxNames) {
-        for (std::shared_ptr<Index> idx : indexes) {
+        for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {
             auto idxType = idx->type();
             if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
