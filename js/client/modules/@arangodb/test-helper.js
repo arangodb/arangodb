@@ -312,7 +312,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (status.status !== 'RUNNING') {
             client.done = true;
             client.failed = true;
-            debug(`Client ${client.pid} exited before the duration end. Aborting tests: %{status}`);
+            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${status}`);
             count = duration + 10;
           }
         }
