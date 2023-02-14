@@ -414,7 +414,11 @@ function clusterInventorySuite () {
 
       assertEqual("fields", Object.keys(field)[1]);
       assertTrue(typeof field.fields === 'object');
-      assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}));
+      if (isEnterprise) {
+        assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}));
+      } else {
+        assertTrue(_.isEqual(field.fields.value, {}));
+      }
 
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);
