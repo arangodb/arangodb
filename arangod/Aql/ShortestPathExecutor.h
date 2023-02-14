@@ -43,8 +43,6 @@ class Slice;
 }
 
 namespace graph {
-class ShortestPathFinder;
-class ShortestPathResult;
 class TraverserCache;
 }  // namespace graph
 
