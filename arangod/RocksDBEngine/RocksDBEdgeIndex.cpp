@@ -1093,7 +1093,7 @@ RocksDBEdgeIndex::CachedCollectionName::CachedCollectionName() noexcept
     : _name(nullptr) {}
 
 RocksDBEdgeIndex::CachedCollectionName::~CachedCollectionName() {
-  delete _name.load(std::memory_order_relaxed);
+  delete get();
 }
 
 std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
