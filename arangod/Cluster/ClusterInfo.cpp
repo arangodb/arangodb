@@ -3994,16 +3994,40 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  // Transact to agency
-  AgencyOperation delPlanCollection(
-      "Plan/Collections/" + dbName + "/" + collectionID,
-      AgencySimpleOperationType::DELETE_OP);
-  AgencyOperation incrementVersion("Plan/Version",
-                                   AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition = AgencyPrecondition(
-      "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
-  AgencyWriteTransaction trans({delPlanCollection, incrementVersion},
-                               precondition);
+  auto trans = std::invoke([&]() {
+    if (coll->replicationVersion() == replication::Version::TWO) {
+      // Transact to agency
+      AgencyOperation delTargetCollection(
+          "Target/Collections/" + dbName + "/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation delTargetCollectionGroup(
+          "Target/CollectionGroups/" + dbName + "/" +
+              std::to_string(coll->groupID()) + "/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation incrementVersion(
+          "Target/CollectionGroups/" + dbName + "/" +
+              std::to_string(coll->groupID()) + "/" + collectionID + "/version",
+          AgencySimpleOperationType::INCREMENT_OP);
+      AgencyPrecondition precondition = AgencyPrecondition(
+          "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
+      AgencyWriteTransaction trans(
+          {delTargetCollection, incrementVersion, delTargetCollectionGroup},
+          precondition);
+      return trans;
+    } else {
+      // Transact to agency
+      AgencyOperation delPlanCollection(
+          "Plan/Collections/" + dbName + "/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation incrementVersion("Plan/Version",
+                                       AgencySimpleOperationType::INCREMENT_OP);
+      AgencyPrecondition precondition = AgencyPrecondition(
+          "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
+      AgencyWriteTransaction trans({delPlanCollection, incrementVersion},
+                                   precondition);
+      return trans;
+    }
+  });
   res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
@@ -4034,59 +4058,10 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_NO_ERROR);
   }
 
-  // Delete replicated states in case we are using Replication2
-  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
-  if (coll->replicationVersion() == replication::Version::TWO) {
-    std::vector<replication2::LogId> stateIds;
-    velocypack::Slice groupIdSlice = collectionSlice.get("groupId");
-    if (groupIdSlice.isNone()) {
-      // Legacy code to support system collections
-      for (auto pair : VPackObjectIterator(shardsSlice)) {
-        auto shardId = pair.key.copyString();
-        stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
-      }
-    } else {
-      auto groupId =
-          velocypack::deserialize<replication2::agency::CollectionGroupId>(
-              groupIdSlice);
-
-      velocypack::Slice shardsR2Slice = collectionSlice.get("shardsR2");
-      TRI_ASSERT(shardsR2Slice.isArray());
-
-      // TODO: Needs to be moved to Target as soon as supervision is completed
-      auto [groupsBuilder, _] = agencyCache.read(std::vector<std::string>{
-          AgencyCommHelper::path("Plan/CollectionGroups/" + dbName + "/" +
-                                 std::to_string(groupId.id()))});
-
-      velocypack::Slice groupsSlice =
-          groupsBuilder->slice()[0].get(std::initializer_list<std::string_view>{
-              AgencyCommHelper::path(), "Plan", "CollectionGroups", dbName,
-              std::to_string(groupId.id())});
-
-      auto collectionGroup = velocypack::deserialize<
-          replication2::agency::CollectionGroupPlanSpecification>(groupsSlice);
-
-      TRI_ASSERT(shardsR2Slice.length() == collectionGroup.shardSheaves.size());
-      std::size_t shardSheafIdx = 0;
-      for (auto const& shard : VPackArrayIterator(shardsR2Slice)) {
-        auto shardId = shard.copyString();
-        stateIds.emplace_back(
-            collectionGroup.shardSheaves[shardSheafIdx].replicatedLog);
-        ++shardSheafIdx;
-      }
-    }
-    replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
-  }
-
+  //TODO Need to wait for CollectionGroupVersion to be propagated :/Current/CollectionGroups/<db>/<gid>/supervision/targetVersion == x
   while (true) {
     auto tmpRes = dbServerResult->load();
-    if (tmpRes.has_value() && replicatedStatesCleanup.isReady()) {
-      if (replicatedStatesCleanup.get().fail()) {
-        LOG_TOPIC("f5063", ERR, Logger::CLUSTER)
-            << "Failed to successfully remove replicated states"
-            << " database: " << dbName << " collection ID: " << collectionID
-            << " collection name: " << coll->name();
-      }
+    if (tmpRes.has_value()) {
 
       cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
       // ...remove the entire directory for the collection

@@ -228,6 +228,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
   }
+
+  if (replicationVersion() == replication::Version::TWO) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+  }
 }
 
 LogicalCollection::~LogicalCollection() = default;
@@ -1324,3 +1328,10 @@ void LogicalCollection::decorateWithInternalEEValidators() {
   // Only available in Enterprise Mode
 }
 #endif
+
+auto LogicalCollection::groupID() const noexcept
+    -> arangodb::replication2::agency::CollectionGroupId {
+  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
+                  _groupId.has_value());
+  return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+}
