@@ -40,16 +40,6 @@
 
 namespace arangodb::pregel {
 
-// Label propagation
-struct LPValue {
-  /// The desired partition the vertex want to migrate to.
-  uint64_t currentCommunity = 0;
-  /// The actual partition.
-  uint64_t lastCommunity = UINT64_MAX;
-  /// Iterations since last migration.
-  uint64_t stabilizationRounds = 0;
-};
-
 /// Value for Hyperlink-Induced Topic Search (HITS; also known as
 /// hubs and authorities)
 struct HITSValue {

@@ -47,6 +47,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
@@ -686,7 +687,7 @@ template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<algos::LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<algos::SLPAValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
                                         ColorPropagationMessageValue>;

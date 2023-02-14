@@ -25,10 +25,9 @@
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// Finds communities in a network
 /// Tries to assign every vertex to the community in which most of it's
@@ -54,5 +53,3 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
       WorkerConfig const*) const override;
 };
 }  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
