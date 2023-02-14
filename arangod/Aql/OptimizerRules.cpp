@@ -7472,7 +7472,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     bool mustRespectIdxHint = false;
     auto enumerateColNode =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
-    auto& colNodeHints = enumerateColNode->hint();
+    auto const& colNodeHints = enumerateColNode->hint();
     if (colNodeHints.isForced()) {
       auto indexes = enumerateColNode->collection()->indexes();
       auto& idxNames = colNodeHints.hint();
