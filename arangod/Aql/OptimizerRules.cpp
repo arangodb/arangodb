@@ -7470,6 +7470,35 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
 
+    bool mustRespectIdxHint = false;
+    if (plan->hasForcedIndexHints()) {
+      auto enumerateColNode =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+      auto indexes = enumerateColNode->collection()->indexes();
+      VPackBuilder b;
+      b.openObject();
+      enumerateColNode->hint().toVelocyPack(b);
+      b.close();
+      auto namesSlice =
+          b.slice().get(StaticStrings::IndexHintOption).get("hint");
+      for (VPackSlice nameSlice : VPackArrayIterator(namesSlice)) {
+        for (std::shared_ptr<Index> idx : indexes) {
+          std::string idxName = nameSlice.toString();
+          if (idx->name() == idxName) {
+            auto idxType = idx->type();
+            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+              mustRespectIdxHint = true;
+            } else {
+              info.index = idx;
+            }
+            break;
+          }
+        }
+      }
+    }
+
     while (current) {
       if (current->getType() == EN::FILTER) {
         // picking up filter conditions is always allowed
@@ -7510,34 +7539,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      bool mustRespectIdxHint = false;
-      if (plan->hasForcedIndexHints()) {
-        auto enumerateColNode =
-            ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
-        auto indexes = enumerateColNode->collection()->indexes();
-        VPackBuilder b;
-        b.openObject();
-        enumerateColNode->hint().toVelocyPack(b);
-        b.close();
-        auto namesSlice =
-            b.slice().get(StaticStrings::IndexHintOption).get("hint");
-        for (VPackSlice nameSlice : VPackArrayIterator(namesSlice)) {
-          for (std::shared_ptr<Index> idx : indexes) {
-            std::string idxName = nameSlice.toString();
-            if (idx->name() == idxName) {
-              auto idxType = idx->type();
-              if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
-                  (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
-                  (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
-                mustRespectIdxHint = true;
-              } else {
-                info.index = idx;
-              }
-              break;
-            }
-          }
-        }
-      }
       if (!mustRespectIdxHint &&
           applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
