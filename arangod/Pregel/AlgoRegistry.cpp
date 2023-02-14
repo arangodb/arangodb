@@ -35,7 +35,7 @@
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank.h"
 #include "Pregel/Algos/SCC.h"
-#include "Pregel/Algos/SLPA.h"
+#include "Pregel/Algos/SLPA/SLPA.h"
 #include "Pregel/Algos/SSSP/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC/WCC.h"
