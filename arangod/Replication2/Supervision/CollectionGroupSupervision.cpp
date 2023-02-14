@@ -99,6 +99,10 @@ auto computeShardList(
   PlanShardToServerMapping mapping;
   for (std::size_t i = 0; i < shards.size(); i++) {
     ResponsibleServerList servers;
+    ADB_PROD_ASSERT(logs.contains(shardSheaves[i].replicatedLog))
+        << "shard sheaf " << i << " (replicated log "
+        << shardSheaves[i].replicatedLog
+        << ") of collection group does not exist.";
     auto const& log = logs.at(shardSheaves[i].replicatedLog);
     for (auto const& [pid, flags] : log.target.participants) {
       servers.servers.push_back(pid);
@@ -189,6 +193,9 @@ auto createCollectionGroupTarget(
                       return basics::StringUtils::concatT("s", uniqid.next());
                     });
 
+    ADB_PROD_ASSERT(group.targetCollections.contains(cid))
+        << "collection " << cid << " is listed in collection group "
+        << group.target.id << " but not in Target/Collections";
     collections[cid] = ag::CollectionPlanSpecification{
         group.targetCollections.at(cid), std::move(shardList), {}};
     spec.collections[cid];
@@ -198,9 +205,12 @@ auto createCollectionGroupTarget(
     auto& log = replicatedLogs[sheafId.replicatedLog];
     replicated_state::document::DocumentCoreParameters parameters;
     parameters.databaseName = database;
-    parameters.collectionId = collections.begin()->first;
-    parameters.shardId = collections.begin()->second.shardList[j];
-
+    parameters.collectionId =
+        collections.begin()->first;  // TODO remove - unused
+    parameters.shardId =
+        collections.begin()->second.shardList[j];  // TODO remove - unused
+    parameters.shardSheafIndex = j;
+    parameters.groupId = group.target.id.id();
     j++;
     log.properties.implementation.parameters =
         velocypack::serialize(parameters);
@@ -217,8 +227,16 @@ auto checkAssociatedReplicatedLogs(
     replicated_log::ParticipantsHealth const& health) -> Action {
   // check if replicated logs require an update
   ADB_PROD_ASSERT(plan.shardSheaves.size() ==
-                  target.attributes.immutableAttributes.numberOfShards);
+                  target.attributes.immutableAttributes.numberOfShards)
+      << "number of shards in target ("
+      << target.attributes.immutableAttributes.numberOfShards
+      << ") and size of shard sheaf array (" << plan.shardSheaves.size()
+      << ") have diverged for collection group " << target.id.id();
   for (auto const& sheaf : plan.shardSheaves) {
+    ADB_PROD_ASSERT(logs.contains(sheaf.replicatedLog))
+        << "collection group " << target.id
+        << " is in plan, but the replicated log " << sheaf.replicatedLog
+        << " is missing.";
     auto const& log = logs.at(sheaf.replicatedLog);
     auto const& wantedConfig =
         createLogConfigFromGroupAttributes(target.attributes);
@@ -250,7 +268,10 @@ auto checkAssociatedReplicatedLogs(
     } else if (currentReplicationFactor > expectedReplicationFactor) {
       // TODO prefer an unhealthy participant over a healthy one
       //  do not pick the current leader
-      ADB_PROD_ASSERT(log.target.participants.size() > 1);
+      ADB_PROD_ASSERT(log.target.participants.size() > 1)
+          << "refuse to remove the last remaining participant of replicated "
+             "log "
+          << log.target.id;
       auto const& server = log.target.participants.begin()->first;
       return RemoveParticipantFromLog{log.target.id, server};
     }
@@ -298,10 +319,15 @@ auto document::supervision::checkCollectionGroup(
 
   // check that every collection in target is in plan
   for (auto const& [cid, collection] : group.targetCollections) {
-    ADB_PROD_ASSERT(group.target.collections.contains(cid));
+    ADB_PROD_ASSERT(group.target.collections.contains(cid))
+        << "the collection " << cid << " is listed in Target/CollectionGroups/"
+        << group.target.id.id() << " but does not exist in Target/Collections";
 
     if (not group.planCollections.contains(cid)) {
-      ADB_PROD_ASSERT(not group.plan->collections.contains(cid));
+      ADB_PROD_ASSERT(not group.plan->collections.contains(cid))
+          << "the target collection " << cid
+          << " is not listed in Plan/CollectionGroup/" << group.target.id.id()
+          << ", but exists in Plan/Collections.";
       auto spec =
           createCollectionPlanSpec(group.target, group.plan->shardSheaves,
                                    collection, group.logs, uniqid);

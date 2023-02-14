@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1098,16 +1098,6 @@ void Job::addPreconditionServerReadLocked(Builder& pre,
   {
     VPackObjectBuilder shardLockEmpty(&pre);
     pre.add(PREC_IS_READ_LOCKED, VPackValue(jobId));
-  }
-}
-
-void Job::addPreconditionServerWriteLockable(Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId) {
-  pre.add(VPackValue(blockedServersPrefix + server));
-  {
-    VPackObjectBuilder shardLockEmpty(&pre);
-    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
   }
 }
 

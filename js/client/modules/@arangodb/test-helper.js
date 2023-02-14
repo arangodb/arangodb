@@ -1,7 +1,7 @@
 /*jshint strict: false */
 /* global print */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
+// / @brief helper for JavaScript Tests
 // /
 // / @file
 // /
@@ -29,13 +29,15 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
@@ -48,7 +50,9 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
-exports.Helper = Helper;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -190,7 +190,6 @@ class AgencyCommHelper {
 
  public:
   static void initialize(std::string const& prefix);
-  static void shutdown();
 
   static std::string const& path() noexcept;
   static std::string path(std::string const&);
@@ -643,14 +642,6 @@ class AgencyComm {
 
   AgencyCommResult unregisterCallback(std::string const& key,
                                       std::string const& endpoint);
-
-  bool lockRead(std::string const&, double, double);
-
-  bool lockWrite(std::string const&, double, double);
-
-  bool unlockRead(std::string const&, double);
-
-  bool unlockWrite(std::string const&, double);
 
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
