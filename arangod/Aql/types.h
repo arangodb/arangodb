@@ -90,6 +90,7 @@ using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 struct Variable;
 // Note: #include <Containers/HashSet.h> to use the following types
 using VarSet = containers::HashSet<Variable const*>;
+using VarIdSet = containers::HashSet<VariableId>;
 using VarSetStack = std::vector<VarSet>;
 using RegIdSet = containers::HashSet<RegisterId>;
 using RegIdSetStack = std::vector<RegIdSet>;
