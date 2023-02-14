@@ -1108,7 +1108,7 @@ std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
   } else {
     if (previous == nullptr) {
       // no context yet. now try looking up cached collection name
-      previous = _name.load(std::memory_order_relaxed);
+      previous = _name.load(std::memory_order_acquire);
       if (previous == nullptr) {
         // no cached collection name yet. now try to store the collection name
         // we determined ourselves. create a string with the collection name on
