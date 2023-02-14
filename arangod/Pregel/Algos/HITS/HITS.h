@@ -25,6 +25,7 @@
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
 
 namespace arangodb {
 namespace pregel {

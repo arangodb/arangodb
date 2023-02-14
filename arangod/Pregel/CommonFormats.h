@@ -40,13 +40,6 @@
 
 namespace arangodb::pregel {
 
-/// Value for Hyperlink-Induced Topic Search (HITS; also known as
-/// hubs and authorities)
-struct HITSValue {
-  double authorityScore;
-  double hubScore;
-};
-
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
