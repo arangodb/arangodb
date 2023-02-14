@@ -133,9 +133,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   // this function. this is a performance optimization to avoid repeated
   // atomic lookups of the collection name once it is already known.
   // note: returns an empty string view for invalid lookup values!
-  std::string_view buildCompressedCacheKey(std::string*& previous,
+  std::string_view buildCompressedCacheKey(std::string const*& previous,
                                            std::string_view value) const;
-  std::string_view buildCompressedCacheValue(std::string*& previous,
+  std::string_view buildCompressedCacheValue(std::string const*& previous,
                                              std::string_view value) const;
 
   std::string const* cachedValueCollection(
@@ -151,14 +151,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
     // this function. this is a performance optimization to avoid repeated
     // atomic lookups of the collection name once it is already known.
     // note: returns an empty string view for invalid lookup values!
-    // TODO: make std::string const
-    std::string_view buildCompressedValue(std::string*& previous,
+    std::string_view buildCompressedValue(std::string const*& previous,
                                           std::string_view value) const;
 
     std::string const* get() const noexcept;
 
    private:
-    std::atomic<std::string*> mutable _name;
+    std::atomic<std::string const*> mutable _name;
   };
 
  private:

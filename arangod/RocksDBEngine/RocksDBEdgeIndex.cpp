@@ -249,7 +249,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       return false;
     }
 
-    std::string* cacheKeyCollection = nullptr;
+    std::string const* cacheKeyCollection = nullptr;
     std::string const* cacheValueCollection = nullptr;
 
     fu2::unique_function<void()> handleSingleResult = [&, this]() {
@@ -371,7 +371,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // slow case: read from RocksDB
     auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
 
-    std::string* cacheValueCollection = nullptr;
+    std::string const* cacheValueCollection = nullptr;
 
     // unfortunately we *must* create a new RocksDB iterator here for each edge
     // lookup. the problem is that if we don't and reuse an existing RocksDB
@@ -666,7 +666,7 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
                                     std::move(keysBuilder), _cache,
                                     ReadOwnWrites::no);
 
-  std::string* cacheKeyCollection = nullptr;
+  std::string const* cacheKeyCollection = nullptr;
 
   for (auto const& key : keys) {
     std::string_view fromTo = {key.data(), key.size()};
@@ -684,7 +684,7 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
   // always invalidate cache entry for all edges with same _from / _to
 
   // adjust key for potential prefix compression
-  std::string* cacheKeyCollection = nullptr;
+  std::string const* cacheKeyCollection = nullptr;
   std::string_view cacheKey =
       buildCompressedCacheKey(cacheKeyCollection, fromToRef);
   if (!cacheKey.empty()) {
@@ -807,7 +807,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   std::string previous;
   VPackBuilder builder;
   velocypack::Builder docBuilder;
-  std::string* cacheKeyCollection = nullptr;
+  std::string const* cacheKeyCollection = nullptr;
   std::string_view cacheKey;
 
   size_t n = 0;
@@ -1038,12 +1038,12 @@ void RocksDBEdgeIndex::recalculateEstimates() {
 }
 
 std::string_view RocksDBEdgeIndex::buildCompressedCacheKey(
-    std::string*& previous, std::string_view value) const {
+    std::string const*& previous, std::string_view value) const {
   return _cacheKeyCollectionName.buildCompressedValue(previous, value);
 }
 
 std::string_view RocksDBEdgeIndex::buildCompressedCacheValue(
-    std::string*& previous, std::string_view value) const {
+    std::string const*& previous, std::string_view value) const {
   return _cacheValueCollectionName.buildCompressedValue(previous, value);
 }
 
@@ -1064,7 +1064,7 @@ RocksDBEdgeIndex::CachedCollectionName::~CachedCollectionName() {
 }
 
 std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
-    std::string*& previous, std::string_view value) const {
+    std::string const*& previous, std::string_view value) const {
   // split lookup value to determine collection name and key parts
   auto pos = value.find('/');
 
@@ -1072,25 +1072,27 @@ std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
       value[pos + 1] == '/') {
     // totally invalid lookup value
     value = {};
-  } else if (previous == nullptr) {
-    // no context yet. now try looking up cached collection name
-    previous = _name.load(std::memory_order_relaxed);
+  } else {
     if (previous == nullptr) {
-      // no cached collection name yet. now try to store the collection name
-      // we determined ourselves. create a string with the collection name on
-      // the heap
-      auto cn = std::make_unique<std::string>(value.data(), pos);
-      // try to store the name. this can race with other threads.
-      // TODO: fix memory order
-      if (_name.compare_exchange_strong(previous, cn.get())) {
-        // we won the race and were able to store our value. now we are owning
-        // the collection name.
-        previous = cn.release();
-      } else {
-        // we lost the race. now we need to fetch the name another thread
-        // stored.
+      // no context yet. now try looking up cached collection name
+      previous = _name.load(std::memory_order_relaxed);
+      if (previous == nullptr) {
+        // no cached collection name yet. now try to store the collection name
+        // we determined ourselves. create a string with the collection name on
+        // the heap
+        auto cn = std::make_unique<std::string const>(value.data(), pos);
+        // try to store the name. this can race with other threads.
         // TODO: fix memory order
-        previous = _name.load();
+        if (_name.compare_exchange_strong(previous, cn.get())) {
+          // we won the race and were able to store our value. now we are owning
+          // the collection name.
+          previous = cn.release();
+        } else {
+          // we lost the race. now we need to fetch the name another thread
+          // stored.
+          // TODO: fix memory order
+          previous = _name.load();
+        }
       }
     }
 

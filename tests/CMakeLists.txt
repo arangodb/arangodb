@@ -253,6 +253,7 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
+  RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/ChecksumCalculatorTest.cpp
   RocksDBEngine/ChecksumHelperTest.cpp
   RocksDBEngine/EndianTest.cpp
