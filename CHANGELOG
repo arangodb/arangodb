@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
 * FE-133: Alphabetical sorting for collections on user permissions page.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
