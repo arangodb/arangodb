@@ -6,7 +6,6 @@ target_sources(arango_pregel PRIVATE
   LineRank.cpp
   PageRank.cpp
   RecoveringPageRank.cpp
-  SCC.cpp
   ColorPropagation.cpp)
 
 if (USE_MAINTAINER_MODE)
@@ -16,6 +15,7 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
+add_subdirectory(SCC)
 add_subdirectory(ShortestPath)
 add_subdirectory(SLPA)
 add_subdirectory(SSSP)

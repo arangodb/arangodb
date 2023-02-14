@@ -25,6 +25,7 @@
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
 
 namespace arangodb::pregel::algos {
 
