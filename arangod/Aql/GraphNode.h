@@ -135,6 +135,8 @@ class GraphNode : public ExecutionNode {
   /// @brief checks if the vertex out variable is used
   bool isVertexOutVariableUsedLater() const;
 
+  void markUnusedConditionVariable(Variable const* var);
+
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
 
@@ -251,6 +253,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief vertex output variable
   Variable const* _edgeOutVariable;
+
+  /// @brief variables that got optimized out
+  VarIdSet _optimizedOutVariables;
 
   /// @brief our graph...
   graph::Graph const* _graphObj;
