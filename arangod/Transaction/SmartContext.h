@@ -67,14 +67,6 @@ class SmartContext : public Context {
     _state = state;
   }
 
-  virtual bool checkTransactionHints() const override {
-    if (_state == nullptr) {
-      return false;
-    }
-    return _state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-           _state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-  }
-
  protected:
   /// @brief ID of the transaction to use
   TransactionId const _globalId;

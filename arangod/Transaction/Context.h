@@ -104,9 +104,6 @@ class Context {
   virtual std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) = 0;
 
-  /// @brief check hints of transaction context
-  virtual bool checkTransactionHints() const { return true; }
-
   /// @brief whether or not is from a streaming transaction (used to know
   /// whether or not can read from query cache)
   bool isStreaming() const noexcept {

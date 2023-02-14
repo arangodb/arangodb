@@ -220,9 +220,6 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
-        transaction::Methods trx(ctx);
-        trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-        trx.begin();
         query = arangodb::aql::Query::create(ctx, queryString, nullptr);
 
         query->collections().add("v", AccessMode::Type::READ,
