@@ -159,10 +159,10 @@ class IndexIterator {
     struct DummyRetval {
       template<typename T>
       operator T() const{
+        TRI_ASSERT(false);
         throw std::bad_function_call{};
       }
     };
-
    public:
     using Base::operator();
     using Base::operator bool;

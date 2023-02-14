@@ -23,6 +23,7 @@
 #include "common.h"
 #include "gtest/gtest.h"
 #include "IResearch/common.h"
+#include "IResearch/SearchDoc.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"
@@ -197,7 +198,9 @@ class IResearchInvertedIndexIteratorTestBase
       std::function<void(arangodb::IndexIterator* it)> const& test,
       std::string_view refName = "d",
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-      int mutableConditionIdx = -1) {
+      int mutableConditionIdx = -1,
+      // value 2 to force LocalDocumentId reading by default
+      unsigned numIndexesTotal = 2) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
     auto ctx =
@@ -242,6 +245,7 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::ResourceMonitor monitor(
         arangodb::GlobalResourceMonitor::instance());
     arangodb::IndexIteratorOptions opts;
+    opts.numIndexesTotal = numIndexesTotal;
     arangodb::SingleCollectionTransaction trx(ctx, collection(),
                                               arangodb::AccessMode::Type::READ);
     auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
@@ -401,6 +405,57 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
     ASSERT_FALSE(iterator->hasMore());
   };
   executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_LateMaterialized) {
+  std::string queryString{
+      R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto test = [this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    unsigned docs{0};
+
+    auto docCallback = [&docs](
+                           arangodb::aql::AqlValue&& token,
+                           arangodb::IndexIteratorCoveringData& data) {
+      ++docs;
+      auto searchDoc = arangodb::iresearch::SearchDoc::decode(
+          token.slice().stringView());
+      token.destroy();
+      EXPECT_TRUE(searchDoc.isValid());
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+      }
+      return true;
+    };
+    ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
+    ASSERT_EQ(docs, 2);
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test, "d", nullptr, - 1, 1);
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {

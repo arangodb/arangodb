@@ -188,14 +188,6 @@ IndexIterator::CoveringCallback getCallback(
   };
 
   return impl;
-  //return {[&impl](LocalDocumentId const& token,
-  //                IndexIteratorCoveringData& covering) {
-  //          return impl(token, covering);
-  //        },
-  //        [&impl](AqlValue&& token, IndexIteratorCoveringData& covering) {
-  //          return impl(token, covering);
-  //        }
-  //};
 }
 
 }  // namespace
