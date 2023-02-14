@@ -482,9 +482,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
         case arangodb::graph::PathType::Type::KShortestPaths:
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+
           if (!opts->useWeight()) {
-            enumeratorOptions.setMinDepth(0);
-            enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+            // Non-Weighted Variant
             return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
                                            Provider,
                                            SingleServerBaseProviderOptions>(
@@ -493,6 +495,36 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 validatorOptions, outputRegister, engine, sourceInput,
                 targetInput, registerInfos);
           } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
                 SingleServerBaseProviderOptions>(
