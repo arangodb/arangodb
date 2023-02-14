@@ -2509,6 +2509,7 @@ void Supervision::checkBrokenCreatedDatabases() {
 }
 
 void Supervision::checkBrokenCollections() {
+  return;
   _lock.assertLockedByCurrentThread();
 
   // check if snapshot has databases
