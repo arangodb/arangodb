@@ -25,7 +25,7 @@
 #include "Pregel/Conductor/Messages.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/ConnectedComponents.h"
+#include "Pregel/Algos/ConnectedComponents/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS/HITS.h"
