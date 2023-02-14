@@ -7469,13 +7469,13 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
-
     bool mustRespectIdxHint = false;
-    if (plan->hasForcedIndexHints()) {
-      auto enumerateColNode =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto enumerateColNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto& colNodeHints = enumerateColNode->hint();
+    if (colNodeHints.isForced()) {
       auto indexes = enumerateColNode->collection()->indexes();
-      auto idxNames = enumerateColNode->hint().hint();
+      auto& idxNames = colNodeHints.hint();
       for (auto const& idxName : idxNames) {
         for (std::shared_ptr<Index> idx : indexes) {
           if (idx->name() == idxName) {
