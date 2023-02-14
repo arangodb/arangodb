@@ -78,6 +78,7 @@ struct std::hash<
 namespace arangodb::replication2::replicated_state::document {
 inline constexpr auto kStringSnapshotId = std::string_view{"snapshotId"};
 inline constexpr auto kStringShardId = std::string_view{"shardId"};
+inline constexpr auto kStringShards = std::string_view{"shards"};
 inline constexpr auto kStringHasMore = std::string_view{"hasMore"};
 inline constexpr auto kStringPayload = std::string_view{"payload"};
 inline constexpr auto kStringState = std::string_view{"state"};
@@ -127,7 +128,9 @@ struct SnapshotParams {
  */
 struct SnapshotBatch {
   SnapshotId snapshotId;
-  ShardID shardId;
+  // optional since we always have to send at least one batch, even though we
+  // might not have a single shard
+  std::optional<ShardID> shardId;
   bool hasMore{false};
   velocypack::SharedSlice payload{};
 
@@ -163,9 +166,18 @@ using SnapshotState =
  * Used to retrieve debug information about a snapshot.
  */
 struct SnapshotStatistics {
-  ShardID shardId{};
-  std::optional<uint64_t> totalDocs{std::nullopt};
-  uint64_t docsSent{0};
+  struct ShardStatistics {
+    std::optional<uint64_t> totalDocs{std::nullopt};
+    uint64_t docsSent{0};
+
+    template<class Inspector>
+    inline friend auto inspect(Inspector& f, ShardStatistics& s) {
+      return f.object(s).fields(f.field(kStringTotalDocsToBeSent, s.totalDocs),
+                                f.field(kStringDocsSent, s.docsSent));
+    }
+  };
+
+  std::unordered_map<ShardID, ShardStatistics> shards;
   std::size_t batchesSent{0};
   std::size_t bytesSent{0};
   std::chrono::system_clock::time_point startTime{
@@ -177,9 +189,7 @@ struct SnapshotStatistics {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotStatistics& s) {
     return f.object(s).fields(
-        f.field(kStringShardId, s.shardId),
-        f.field(kStringTotalDocsToBeSent, s.totalDocs),
-        f.field(kStringDocsSent, s.docsSent),
+        f.field(kStringShards, s.shards),
         f.field(kStringTotalBatches, s.batchesSent),
         f.field(kStringTotalBytes, s.bytesSent),
         f.field(kStringStartTime, s.startTime)
@@ -249,9 +259,8 @@ class Snapshot {
 
  private:
   SnapshotId _id;
-  std::vector<ShardID> _shardIds;
+  std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
   std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
-  std::unique_ptr<ICollectionReader> _currentReader;
   SnapshotState _state;
   SnapshotStatistics _statistics;
 };

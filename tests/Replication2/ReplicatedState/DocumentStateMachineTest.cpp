@@ -238,9 +238,11 @@ TEST_F(DocumentStateMachineTest, snapshot_has_valid_ongoing_state) {
   auto status = snapshot.status();
   ASSERT_EQ(status.state,
             replication2::replicated_state::document::kStringOngoing);
-  EXPECT_EQ(status.statistics.shardId, shardId);
-  EXPECT_EQ(status.statistics.totalDocs, collectionReaderMock->getDocCount());
-  EXPECT_EQ(status.statistics.docsSent, 0);
+  EXPECT_EQ(status.statistics.shards.size(), 1);
+  EXPECT_TRUE(status.statistics.shards.contains(shardId));
+  EXPECT_EQ(status.statistics.shards[shardId].totalDocs,
+            collectionReaderMock->getDocCount());
+  EXPECT_EQ(status.statistics.shards[shardId].docsSent, 0);
   EXPECT_EQ(status.statistics.batchesSent, 0);
   EXPECT_EQ(status.statistics.bytesSent, 0);
 }
@@ -270,7 +272,7 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
     auto status = snapshot.status();
     ASSERT_EQ(status.state,
               replication2::replicated_state::document::kStringOngoing);
-    EXPECT_EQ(status.statistics.docsSent, idx + 1);
+    EXPECT_EQ(status.statistics.shards[shardId].docsSent, idx + 1);
     EXPECT_EQ(status.statistics.batchesSent, idx + 1);
 
     bytesSent += batch.payload.byteSize();
@@ -306,7 +308,7 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
       });
 
   auto snapshot = Snapshot(
-      snapshotId, {shardId2, shardId1},
+      snapshotId, {shardId1, shardId2},
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   std::size_t bytesSent{0};
 
@@ -319,19 +321,20 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
 
     ASSERT_TRUE(batchRes.ok()) << batchRes.result();
     auto batch = batchRes.get();
-    EXPECT_EQ(batch.snapshotId, snapshotId);
+    EXPECT_EQ(snapshotId, batch.snapshotId);
     EXPECT_EQ(batch.shardId, shardId1);
     EXPECT_TRUE(batch.hasMore);
     EXPECT_TRUE(batch.payload.isArray());
 
     auto status = snapshot.status();
-    ASSERT_EQ(status.state,
-              replication2::replicated_state::document::kStringOngoing);
-    EXPECT_EQ(status.statistics.docsSent, idx + 1);
-    EXPECT_EQ(status.statistics.batchesSent, idx + 1);
+    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+              status.state);
+    EXPECT_EQ(2, status.statistics.shards.size());
+    EXPECT_EQ(idx + 1, status.statistics.shards[shardId1].docsSent);
+    EXPECT_EQ(idx + 1, status.statistics.batchesSent);
 
     bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
+    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
   }
 
   // fetch data from shard2
@@ -343,20 +346,48 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
 
     ASSERT_TRUE(batchRes.ok()) << batchRes.result();
     auto batch = batchRes.get();
-    EXPECT_EQ(batch.snapshotId, snapshotId);
+    EXPECT_EQ(snapshotId, batch.snapshotId);
     EXPECT_EQ(batch.shardId, shardId2);
     EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
     EXPECT_TRUE(batch.payload.isArray());
 
     auto status = snapshot.status();
-    ASSERT_EQ(status.state,
-              replication2::replicated_state::document::kStringOngoing);
-    EXPECT_EQ(status.statistics.docsSent, collectionData.size() + idx + 1);
-    EXPECT_EQ(status.statistics.batchesSent, collectionData.size() + idx + 1);
+    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+              status.state);
+    EXPECT_EQ(idx + 1, status.statistics.shards[shardId2].docsSent);
+    EXPECT_EQ(collectionData.size() + idx + 1, status.statistics.batchesSent);
 
     bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
+    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
   }
+}
+
+TEST_F(DocumentStateMachineTest, snapshot_fetch_empty) {
+  using namespace testing;
+
+  auto snapshotId = SnapshotId{12345};
+
+  auto databaseSnapshotMock =
+      std::make_shared<testing::StrictMock<MockDatabaseSnapshot>>(nullptr);
+
+  auto snapshot = Snapshot(
+      snapshotId, {},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+
+  auto batchRes = snapshot.fetch();
+
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  auto batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId);
+  EXPECT_FALSE(batch.shardId.has_value());
+  EXPECT_FALSE(batch.hasMore);
+  EXPECT_TRUE(batch.payload.isNone());
+
+  auto status = snapshot.status();
+  ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+            status.state);
+  EXPECT_EQ(0, status.statistics.shards.size());
+  EXPECT_EQ(0, status.statistics.batchesSent);
 }
 
 TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_finish) {
