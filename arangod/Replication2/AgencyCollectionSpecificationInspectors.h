@@ -109,9 +109,9 @@ template<class Inspector>
 auto inspect(Inspector& f, Collection& x) {
   return f.object(x).fields(
       f.field("groupId", x.groupId),
-      f.field("mutableProperties", x.mutableProperties),
-      f.field("immutableProperties", x.immutableProperties),
-      f.field("indexes", x.indexes));
+      f.field("indexes", x.indexes),
+      f.template embedFields<Collection::ImmutableProperties>(x.immutableProperties),
+      f.template embedFields<Collection::MutableProperties>(x.mutableProperties));
 }
 
 template<class Inspector>
