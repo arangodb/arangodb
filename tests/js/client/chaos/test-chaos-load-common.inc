@@ -497,7 +497,7 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 3 minutes
-      runParallelArangoshTests(tests, 3 * 60, coordination_cn);
+      let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
       print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
@@ -516,6 +516,7 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, true, true);
       }
       print(Date() + " checking consistency done.");
+      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully"); }});
     }
   };
 }
