@@ -37,9 +37,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Cluster/RebootTracker.h"
 #include "Mocks/Servers.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
