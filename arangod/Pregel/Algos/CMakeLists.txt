@@ -4,7 +4,6 @@ target_sources(arango_pregel PRIVATE
   HITSKleinberg.cpp
   LabelPropagation.cpp
   LineRank.cpp
-  PageRank.cpp
   RecoveringPageRank.cpp
   ColorPropagation.cpp)
 
@@ -15,6 +14,7 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
+add_subdirectory(PageRank)
 add_subdirectory(SCC)
 add_subdirectory(ShortestPath)
 add_subdirectory(SLPA)
