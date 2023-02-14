@@ -47,6 +47,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
@@ -677,7 +678,7 @@ template class arangodb::pregel::Worker<uint64_t, uint64_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<algos::WCCValue, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<SCCValue, int8_t,
+template class arangodb::pregel::Worker<algos::SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t,
                                         SenderMessage<double>>;

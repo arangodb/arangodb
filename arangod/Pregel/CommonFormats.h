@@ -111,12 +111,6 @@ struct ECValue {
   std::vector<uint32_t> shortestPaths;
 };
 
-struct SCCValue {
-  std::vector<VertexID> parents;
-  uint64_t vertexID;
-  uint64_t color;
-};
-
 using CollectionIdType = uint16_t;
 using ColorType = uint16_t;
 using PropagatedColor = uint16_t;
