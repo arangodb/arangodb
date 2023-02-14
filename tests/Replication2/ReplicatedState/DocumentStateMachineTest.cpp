@@ -983,26 +983,26 @@ TEST_F(DocumentStateMachineTest,
     builder.close();
 
     auto operation = OperationType::kInsert;
-    std::ignore =
-        leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{5}, ReplicationOptions{});
-    std::ignore =
-        leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{9}, ReplicationOptions{});
-    std::ignore = leaderState->replicateOperation(builder.sharedSlice(),
-                                                  operation, TransactionId{13},
-                                                  ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{5}, shardId,
+        ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{9}, shardId,
+        ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{13}, shardId,
+        ReplicationOptions{});
   }
   EXPECT_EQ(3U, leaderState->getActiveTransactionsCount());
 
   {
     VPackBuilder builder;
     std::ignore = leaderState->replicateOperation(
-        builder.sharedSlice(), OperationType::kAbort, TransactionId{5},
+        builder.sharedSlice(), OperationType::kAbort, TransactionId{5}, shardId,
         ReplicationOptions{});
     std::ignore = leaderState->replicateOperation(
         builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
-        ReplicationOptions{});
+        shardId, ReplicationOptions{});
   }
   EXPECT_EQ(1U, leaderState->getActiveTransactionsCount());
 
@@ -1037,7 +1037,7 @@ TEST_F(DocumentStateMachineTest,
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
-    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.shardId, "");  // covers all shards
     EXPECT_EQ(entry.operation, OperationType::kAbortAllOngoingTrx);
     return LogIndex{entries.size() + 1};
   });
@@ -1074,7 +1074,7 @@ TEST_F(DocumentStateMachineTest,
   auto logIndex =
       leaderState
           ->replicateOperation(builder.sharedSlice(), operation,
-                               TransactionId{5}, ReplicationOptions{})
+                               TransactionId{5}, shardId, ReplicationOptions{})
           .get();
   EXPECT_CALL(*stream, insert).Times(0);
   EXPECT_EQ(logIndex, LogIndex{});
