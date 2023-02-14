@@ -55,9 +55,10 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-class WeightedTwoSidedFinderTest
+class WeightedShortestPathTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  using WeightedFinder = WeightedShortestPathEnumerator<MockGraphProvider>;
+  using WeightedShortestPathFinder =
+      WeightedShortestPathEnumerator<MockGraphProvider>;
 
   static constexpr size_t minDepth = 0;
   static constexpr size_t maxDepth = std::numeric_limits<size_t>::max();
@@ -81,7 +82,7 @@ class WeightedTwoSidedFinderTest
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};
-  WeightedTwoSidedFinderTest() {
+  WeightedShortestPathTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
     }
@@ -143,7 +144,7 @@ class WeightedTwoSidedFinderTest
     return GetParam();
   }
 
-  auto pathFinder(bool reverse = false) -> WeightedFinder {
+  auto pathFinder(bool reverse = false) -> WeightedShortestPathFinder {
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::ShortestPath;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
@@ -157,7 +158,6 @@ class WeightedTwoSidedFinderTest
 
     double defaultWeight = 1.0;
     std::string weightAttribute = "weight";
-    LOG_DEVEL << "- get weight is set: " << weightAttribute;
     forwardProviderOptions.setWeightEdgeCallback(
         [weightAttribute = weightAttribute, defaultWeight](
             double previousWeight, VPackSlice edge) -> double {
@@ -183,7 +183,7 @@ class WeightedTwoSidedFinderTest
           return previousWeight + weight;
         });
 
-    return WeightedFinder{
+    return WeightedShortestPathFinder{
         MockGraphProvider(*_query.get(), std::move(forwardProviderOptions),
                           resourceMonitor),
         MockGraphProvider(*_query.get(), std::move(backwardProviderOptions),
@@ -196,6 +196,7 @@ class WeightedTwoSidedFinderTest
   }
 
   auto pathStructureValid(VPackSlice path, size_t pathLength) -> void {
+    LOG_DEVEL << "Path: " << path.toJson() << " (" << pathLength << ")";
     ASSERT_TRUE(path.isObject());
     {
       // Check Vertices
@@ -266,11 +267,11 @@ class WeightedTwoSidedFinderTest
 };
 
 INSTANTIATE_TEST_CASE_P(
-    WeightedTwoSidedFinderTestRunner, WeightedTwoSidedFinderTest,
+    WeightedShortestPathTestRunner, WeightedShortestPathTest,
     ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
                       MockGraphProvider::LooseEndBehaviour::ALWAYS));
 
-TEST_P(WeightedTwoSidedFinderTest, no_path_exists) {
+TEST_P(WeightedShortestPathTest, no_path_exists) {
   VPackBuilder result;
   // No path between those
   auto source = vId(91);
@@ -301,7 +302,7 @@ TEST_P(WeightedTwoSidedFinderTest, no_path_exists) {
   }
 }
 
-TEST_P(WeightedTwoSidedFinderTest, shortest_path_V1_V3) {
+TEST_P(WeightedShortestPathTest, shortest_path_V1_V3) {
   VPackBuilder result;
   auto finder = pathFinder();
 
@@ -322,10 +323,6 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V1_V3) {
     EXPECT_FALSE(hasPath);
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {1, 2, 3});
-    LOG_DEVEL << "MY FINAL RESULT IS: ";
-    LOG_DEVEL << "==========";
-    LOG_DEVEL << result.slice().toJson();
-    LOG_DEVEL << "==========";
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -353,7 +350,7 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V1_V3) {
   }
 }
 
-TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
+TEST_P(WeightedShortestPathTest, shortest_path_V4_V9) {
   VPackBuilder result;
   auto finder = pathFinder();
 
@@ -372,8 +369,6 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
     }
 
     EXPECT_FALSE(hasPath);
-    LOG_DEVEL << " ===== My final Result =====";
-    LOG_DEVEL << result.slice().toJson();
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {4, 5, 8, 9});
     EXPECT_TRUE(finder.isDone());
@@ -403,7 +398,7 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
   }
 }
 
-TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_outbound) {
+TEST_P(WeightedShortestPathTest, shortest_path_A_F_outbound) {
   VPackBuilder result;
   auto finder = pathFinder();
 
@@ -422,8 +417,6 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_outbound) {
     }
 
     EXPECT_FALSE(hasPath);
-    LOG_DEVEL << " ===== My final Result =====";
-    LOG_DEVEL << result.slice().toJson();
     pathStructureValid(result.slice(), 4);
     pathEquals(result.slice(), {Vertices::A, Vertices::C, Vertices::E,
                                 Vertices::D, Vertices::F});
@@ -454,7 +447,7 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_outbound) {
   }
 }
 
-TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_inbound) {
+TEST_P(WeightedShortestPathTest, shortest_path_A_F_inbound) {
   VPackBuilder result;
   auto finder = pathFinder(true);
 
@@ -473,8 +466,6 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_inbound) {
     }
 
     EXPECT_FALSE(hasPath);
-    LOG_DEVEL << " ===== My final Result =====";
-    LOG_DEVEL << result.slice().toJson();
     pathStructureValid(result.slice(), 4);
     pathEquals(result.slice(), {Vertices::A, Vertices::C, Vertices::E,
                                 Vertices::D, Vertices::F});

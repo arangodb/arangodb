@@ -12,8 +12,8 @@ add_library(arango_tests_graph OBJECT
   FifoQueueTest.cpp
   LifoQueueTest.cpp
   WeightedQueueTest.cpp
-  WeightedTwoSidedFinderTest.cpp
-  SingleServerProviderTest.cpp)
+        WeightedShortestPathTest.cpp
+        SingleServerProviderTest.cpp)
 
 target_link_libraries(arango_tests_graph
   PRIVATE
@@ -26,14 +26,16 @@ add_executable(arangodbtests_graph
   EXCLUDE_FROM_ALL)
 
 target_link_libraries(arangodbtests_graph
-    arango_tests_graph
-    arango_tests_basics
-    arango_agency
-    arango_cluster_engine
-    arango_rocksdb
-    arango_v8server
-    arangoserver
-    boost_boost)
+        arango_tests_graph
+        arango_tests_basics
+        arango_agency
+        arango_cluster_engine
+        arango_rocksdb
+        arango_v8server
+        arangoserver
+        boost_boost)
+
+add_test(test_all_graphs arango_tests_graph)
 
 add_test(NAME graph
-         COMMAND arangodbtests_graph)
+        COMMAND arangodbtests_graph)
