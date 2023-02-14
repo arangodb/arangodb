@@ -38,7 +38,7 @@
 #include "Pregel/Algos/SLPA.h"
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
-#include "Pregel/Algos/WCC.h"
+#include "Pregel/Algos/WCC/WCC.h"
 #include "Pregel/Utils.h"
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"

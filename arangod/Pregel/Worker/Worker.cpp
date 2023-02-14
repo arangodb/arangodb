@@ -47,6 +47,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/WCC/WCCValue.h"
+
 #include <velocypack/Builder.h>
 
 #include "fmt/core.h"
@@ -672,7 +674,7 @@ template class arangodb::pregel::Worker<float, uint8_t, float>;
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<WCCValue, uint64_t,
+template class arangodb::pregel::Worker<algos::WCCValue, uint64_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;

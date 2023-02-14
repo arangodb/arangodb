@@ -54,6 +54,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/WCC/WCCValue.h"
+
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -810,7 +812,7 @@ template class arangodb::pregel::GraphStore<double, double>;
 template class arangodb::pregel::GraphStore<float, uint8_t>;
 
 // specific algo combos
-template class arangodb::pregel::GraphStore<WCCValue, uint64_t>;
+template class arangodb::pregel::GraphStore<algos::WCCValue, uint64_t>;
 template class arangodb::pregel::GraphStore<SCCValue, int8_t>;
 template class arangodb::pregel::GraphStore<ECValue, int8_t>;
 template class arangodb::pregel::GraphStore<HITSValue, int8_t>;

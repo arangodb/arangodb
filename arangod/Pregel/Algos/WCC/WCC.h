@@ -24,12 +24,11 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
-
+namespace arangodb::pregel::algos {
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
@@ -52,6 +51,4 @@ struct WCC
   VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
   createComputation(WorkerConfig const*) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos
