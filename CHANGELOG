@@ -1,6 +1,10 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
+
 * Allow usage of document projections and traversal projections in slightly more
   cases, specifically when the document's or traversal's output variables were
   used in subqueries. Previously the usage of the document or traversal output
