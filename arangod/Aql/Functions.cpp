@@ -9161,18 +9161,32 @@ AqlValue functions::Fail(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function DATE_FORMAT
 AqlValue functions::DateFormat(ExpressionContext* expressionContext,
                                AstNode const&,
-                               VPackFunctionParametersView params) {
+                               VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_FORMAT";
   tp_sys_clock_ms tp;
 
-  if (!::parameterToTimePoint(expressionContext, params, tp, AFN, 0)) {
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValue const& aqlFormatString = extractFunctionParameterValue(params, 1);
+  AqlValue const& aqlFormatString =
+      extractFunctionParameterValue(parameters, 1);
   if (!aqlFormatString.isString()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 3) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 2);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp));
