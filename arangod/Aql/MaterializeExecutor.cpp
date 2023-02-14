@@ -93,11 +93,11 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(AqlItemBlockInputRange&
     _memoryTracker.increase(required - tracked);
   }
   _bufferedDocs.reserve(numDataRows);
-  auto readInputDocs = [numRows, this, &block]<bool HasShadowRows, bool hasSingleCollection>() {
+  auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
     auto searchDocRegId =
         _readDocumentContext._infos->inputNonMaterializedDocRegId();
     LogicalCollection const* lastCollection{nullptr};
-    if constexpr (hasSingleCollection) {
+    if constexpr (isSingleCollection) {
       lastCollection = _collection;
     }
     auto lastSourceId = DataSourceId::none();
@@ -110,7 +110,7 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(AqlItemBlockInputRange&
       auto const buf =
           block->getValueReference(i, searchDocRegId).slice().stringView();
       auto searchDoc = iresearch::SearchDoc::decode(buf);
-      if constexpr (!hasSingleCollection) {
+      if constexpr (!isSingleCollection) {
         auto docSourceId = std::get<0>(*searchDoc.segment());
         if (docSourceId != lastSourceId) {
           lastSourceId = docSourceId;
@@ -142,9 +142,9 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(AqlItemBlockInputRange&
   };
 
   if (block->hasShadowRows()) {
-    readInputDocs.template operator()<true, isSingleCollection>();
+    readInputDocs.template operator()<true>();
   } else {
-    readInputDocs.template operator()<false, isSingleCollection>();
+    readInputDocs.template operator()<false>();
   }
   std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
   std::iota(readOrder.begin(), readOrder.end(), 0);
