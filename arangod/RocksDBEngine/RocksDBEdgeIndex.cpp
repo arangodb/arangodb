@@ -67,6 +67,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <array>
 #include <cmath>
 
 using namespace arangodb;
@@ -76,6 +77,39 @@ namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
 
 using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
+template<std::size_t N>
+class StringFromParts final : public velocypack::IStringFromParts {
+ public:
+  template<typename... Args>
+  StringFromParts(Args&&... args) noexcept
+      : _parts{std::forward<Args>(args)...} {
+    static_assert(sizeof...(Args) == N);
+  }
+
+  std::size_t size() const final { return N; }
+
+  std::size_t length() const final {
+    size_t length = 0;
+    for (size_t index = 0; index != N; ++index) {
+      length += _parts[index].length();
+    }
+    return length;
+  }
+
+  std::string_view operator()(size_t index) const final {
+    TRI_ASSERT(index < size());
+    return _parts[index];
+  }
+
+ private:
+  std::array<std::string_view, N> _parts;
+};
+
+template<typename... Args>
+auto makeStringFromParts(Args&&... args) noexcept {
+  return StringFromParts<sizeof...(Args)>{std::forward<Args>(args)...};
+}
 
 }  // namespace
 
@@ -271,7 +305,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         TRI_ASSERT(cacheValueCollection != nullptr);
         _idBuilder.clear();
         // collection name  and  key including forward slash
-        _idBuilder.add(VPackValueString2Parts(*cacheValueCollection, v));
+        _idBuilder.add(::makeStringFromParts(*cacheValueCollection, v));
         fromTo = _idBuilder.slice();
       }
 
