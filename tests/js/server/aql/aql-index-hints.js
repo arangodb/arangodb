@@ -34,11 +34,11 @@ const jsunity = require("jsunity");
 const errors = internal.errors;
 const analyzers = require("@arangodb/analyzers");
 
-function indexHintSuite () {
+function indexHintSuite() {
   const getIndexNames = function (query) {
     return AQL_EXPLAIN(query)
       .plan.nodes.filter(node => (node.type === 'IndexNode' ||
-        node.type === 'SingleRemoteOperationNode'))
+                                  node.type === 'SingleRemoteOperationNode'))
       .map(node => node.indexes.map(index => index.name));
   };
 
@@ -491,7 +491,7 @@ function indexHintSuite () {
       indexHints.forEach((indexHint, index) => {
         let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(indexHint[0])).plan.nodes;
         queryExplain.filter((node) => node.type === "IndexNode").forEach((node) => {
-          assertNotEqual(indexHint[1].indexOf(node.indexes[0].name), -1);
+            assertNotEqual(indexHint[1].indexOf(node.indexes[0].name), -1);
         });
       });
     },
@@ -626,7 +626,7 @@ function indexHintSuite () {
       } catch (err) {
         assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum);
         assertTrue(err.errorMessage.includes("could not use index hint to serve query"));
-      }
+    }
     },
 
     testForceInvertedIndexWithGeoPresent2: function () {
@@ -945,7 +945,7 @@ function indexHintSuite () {
   };
 }
 
-function indexHintDisableIndexSuite () {
+function indexHintDisableIndexSuite() {
   const cn = 'UnitTestsIndexHints';
 
   return {
@@ -955,31 +955,31 @@ function indexHintDisableIndexSuite () {
       let c = internal.db._create(cn);
       c.ensureIndex({type: 'persistent', name: 'value1', fields: ['value1']});
     },
-
+    
     tearDownAll: function () {
       internal.db._drop(cn);
     },
 
-    testDisableIndexOff: function () {
-      ["", "OPTIONS { disableIndex: false }"].forEach((option) => {
+    testDisableIndexOff : function () {
+      [ "", "OPTIONS { disableIndex: false }"].forEach((option) => {
         const queries = [
-          [`FOR doc IN ${cn} ${option} RETURN doc`, null, []],
-          [`FOR doc IN ${cn} ${option} RETURN doc._key`, 'primary', ['_key'], true],
-          [`FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc`, 'primary', [], false],
-          [`FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc._key`, 'primary', ['_key'], true],
-          [`FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc`, 'value1', [], false],
-          [`FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value1`, 'value1', ['value1'], true],
-          [`FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value2`, 'value1', ['value2'], false],
-          [`FOR doc IN ${cn} ${option} SORT doc._key RETURN doc._key`, 'primary', ['_key'], true],
-          [`FOR doc IN ${cn} ${option} SORT doc._key RETURN 1`, 'primary', [], false],
-          [`FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN doc._key`, 'primary', ['_key'], true],
-          [`FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN 1`, 'primary', [], false],
-          [`FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value1`, 'value1', ['value1'], true],
-          [`FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false],
+          [ `FOR doc IN ${cn} ${option} RETURN doc`, null, [] ],
+          [ `FOR doc IN ${cn} ${option} RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc`, 'value1', [], false ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value1`, 'value1', ['value1'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value2`, 'value1', ['value2'], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value1`, 'value1', ['value1'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false ],
         ];
 
         queries.forEach((query) => {
-          let plan = AQL_EXPLAIN(query[0], null, {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}).plan;
+          let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
           let nodes = plan.nodes;
 
           let node;
@@ -1004,27 +1004,27 @@ function indexHintDisableIndexSuite () {
         });
       });
     },
-
-    testDisableIndexOn: function () {
+    
+    testDisableIndexOn : function () {
       const queries = [
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN 1`, []],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc`, []],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc._key`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc`, []],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc._key`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc`, []],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value1`, ['value1']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value2`, ['value1', 'value2']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN doc._key`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN 1`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN doc._key`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN 1`, ['_key']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value1`, ['value1']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2']],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN 1`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value1`, ['value1'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value2`, ['value1', 'value2'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value1`, ['value1'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2'] ],
       ];
 
       queries.forEach((query) => {
-        let plan = AQL_EXPLAIN(query[0], null, {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}).plan;
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes;
 
         assertEqual(0, nodes.filter((node) => node.type === 'IndexNode').length);
