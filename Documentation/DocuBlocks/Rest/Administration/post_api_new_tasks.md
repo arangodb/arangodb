@@ -79,7 +79,7 @@ If the post body is not accurate, a *HTTP 400* is returned.
     logJsonResponse(response);
 
     // Cleanup:
-    logCurlRequest('DELETE', url + JSON.parse(response.body).id);
+    logCurlRequest('DELETE', url + response.parsedBody.id);
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
