@@ -29,7 +29,7 @@
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS.h"
-#include "Pregel/Algos/HITSKleinberg.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinberg.h"
 #include "Pregel/Algos/LabelPropagation/LabelPropagation.h"
 #include "Pregel/Algos/LineRank/LineRank.h"
 #include "Pregel/Algos/PageRank/PageRank.h"

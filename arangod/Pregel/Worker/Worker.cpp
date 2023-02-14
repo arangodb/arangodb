@@ -47,6 +47,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
 #include "Pregel/Algos/LabelPropagation/LPValue.h"
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
@@ -683,7 +684,7 @@ template class arangodb::pregel::Worker<algos::SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
+template class arangodb::pregel::Worker<algos::HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;

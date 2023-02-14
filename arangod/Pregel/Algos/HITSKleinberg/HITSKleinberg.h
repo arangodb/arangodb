@@ -25,6 +25,7 @@
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
 
 /// The version of the algorithm according to
 /// J. Kleinberg, Authoritative sources in a hyperlinked environment,
