@@ -333,8 +333,10 @@ class endpointRunner extends tu.runInArangoshRunner {
       let message = "";
       try {
         obj.instance.shutDownOneInstance({nonAgenciesCount: 1}, false, 30);
-        obj.instance.waitForInstanceShutdown(20);
+        obj.instance.waitForInstanceShutdown(30);
       } catch (ex) {
+        print(`${RED}${Date()} Server did not shut down on time: ${ex.message}${RESET}`);
+        obj.instance.shutdownArangod(true);
         shutdown = false;
         message = ex.message;
       }
