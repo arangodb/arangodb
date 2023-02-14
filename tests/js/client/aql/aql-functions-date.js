@@ -247,7 +247,9 @@ function ahuacatlDateFunctionsTestSuite () {
 
     testDateFormat () {
       const date = "6789-12-31T23:59:58.990Z";
+      const dateTimezoned = "6790-01-01T00:59:58.990Z";
       assertEqual([ date ], getQueryResults("RETURN DATE_FORMAT(@value, '%z')", { value: date }));
+      assertEqual([ dateTimezoned ], getQueryResults("RETURN DATE_FORMAT(@value, '%z', 'Europe/Berlin')", { value: date }));
 
       const values = [
         ["7200-04-29", "7200", "7200", "00", "+007200", "04", "29"],
@@ -263,6 +265,19 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@value, '%yyyyyy')", { value: value[0] }), "%yyyyyyy");
         assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@value, '%mm')", { value: value[0] }), "%mm");
         assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@value, '%dd')", { value: value[0] }), "%dd");
+      });
+      const timezonedValues = [
+        ["2023-03-25T23:00:00.000Z", "Europe/Berlin", "2023", "2023", "23", "+002023", "03", "26"],
+        ["7199-12-31T23:59:59.000Z", "Europe/Berlin", "7200", "7200", "00", "+007200", "01", "01"],
+        ["199-12-31T23:59:59.000Z", "Europe/Berlin", "200", "0200", "00", "+000200", "01", "01"]
+      ];
+      timezonedValues.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%y', @timezone)", { date: value[0], timezone: value[1] }), "%y");
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyy', @timezone)", { date: value[0], timezone: value[1] }), "%yyyy");
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yy', @timezone)", { date: value[0], timezone: value[1] }), "%yy");
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyyyy', @timezone)", { date: value[0], timezone: value[1] }), "%yyyyyyy");
+        assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mm', @timezone)", { date: value[0], timezone: value[1] }), "%mm");
+        assertEqual([ value[7] ], getQueryResults("RETURN DATE_FORMAT(@date, '%dd', @timezone)", { date: value[0], timezone: value[1] }), "%dd");
       });
       const tvalues = [
         ["2012-01-01T17:17:17.177Z", "17", "17", "17", "177", "001", "52"],
@@ -280,7 +295,21 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@value, '%xxx')", { value: value[0] }), "xxx");
         assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@value, '%kk')", { value: value[0] }), "kk"); // TODO: WTF?
       });
-
+      const timezonedTValues = [
+        ["2023-03-25T23:00:00.000Z", "Europe/Berlin", "00", "00", "00", "000", "085", "12"],
+        ["7199-12-31T23:59:59.000Z", "Europe/Berlin", "00", "59", "59", "000", "001", "52"],
+        // this is very different and will parse to 0200-01-01T00:53:27.000+00:53 + 27 seconds
+        ["199-12-31T23:59:59.000Z", "Europe/Berlin", "00", "53", "27", "000", "001", "01"],
+        ["2023-12-31T23:00:00.000Z", "Asia/Kathmandu", "04", "45", "00", "000", "001", "01"]
+      ];
+      timezonedTValues.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%hh', @timezone)", { date: value[0], timezone: value[1] }), "hh " + value[0] + " " + value[1]);
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%ii', @timezone)", { date: value[0], timezone: value[1] }), "ii " + value[0] + " " + value[1]);
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%ss', @timezone)", { date: value[0], timezone: value[1] }), "ss " + value[0] + " " + value[1]);
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%fff', @timezone)", { date: value[0], timezone: value[1] }), "fff " + value[0] + " " + value[1]);
+        assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@date, '%xxx', @timezone)", { date: value[0], timezone: value[1] }), "xxx " + value[0] + " " + value[1]);
+        assertEqual([ value[7] ], getQueryResults("RETURN DATE_FORMAT(@date, '%kk', @timezone)", { date: value[0], timezone: value[1] }), "kk " + value[0] + " " + value[1]);
+      });
       const dates = [
         ["2012-01-01", "Jan", "January", "Sun", "Sunday"],
         ["2012-02-06", "Feb", "February", "Mon", "Monday"],
@@ -300,6 +329,15 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@value, '%mmmm')", { value: value[0] }), "mmmm " + value[0]);
         assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@value, '%www')", { value: value[0] }), "www " + value[0]);
         assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@value, '%wwww')", { value: value[0] }), "wwww " + value[0]);
+      });
+      const timezonedDates = [
+        ["1985-01-02T23:00:00.000Z", "Europe/Berlin", "Jan", "January", "Thu", "Thursday"]
+      ]
+      timezonedDates.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmm', @timezone)", { date: value[0],timezone: value[1] }), "mmm " + value[0]);
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmmm', @timezone)", { date: value[0],timezone: value[1] }), "mmmm " + value[0]);
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%www', @timezone)", { date: value[0],timezone: value[1] }), "www " + value[0]);
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%wwww', @timezone)", { date: value[0],timezone: value[1] }), "wwww " + value[0]);
       });
       assertEqual([ " - %  " ], getQueryResults("RETURN DATE_FORMAT(@value, '%& - %% % ')", { value: "2012-01-01" }), "format ");
     },
@@ -524,7 +562,8 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1679788555555, 1, "day", "2023-03-25T00:00:00.000Z" ],
         [ "2023-03-25T23:55:55.555Z", 1, "day", "2023-03-25T00:00:00.000Z" ],
         [ 1679788555555, 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ],
-        [ "2023-03-25T23:55:55.555Z", 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ]
+        [ "2023-03-25T23:55:55.555Z", 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ],
+        [ "2023-03-26T00:55:55.555+01:00", 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
@@ -626,13 +665,11 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         if (value.length === 2) {
-          let actual = getQueryResults("RETURN DATE_DAYOFWEEK(@value)", {value: value[0]});
-          assertEqual([value[1]], actual);
-          actual = getQueryResults("RETURN DATE_FORMAT(@value, '%w')", {value: value[0]});
-          assertEqual([value[1]], actual);
+          assertEqual([value[1]], getQueryResults("RETURN DATE_DAYOFWEEK(@value)", {value: value[0]}));
+          assertEqual([value[1]], getQueryResults("RETURN DATE_FORMAT(@value, '%w')", {value: value[0]}));
         } else {
-          let actual = getQueryResults("RETURN DATE_DAYOFWEEK(@date,@timezone)", {date: value[0], timezone: value[1]});
-          assertEqual([value[2]], actual);
+          assertEqual([value[2]], getQueryResults("RETURN DATE_DAYOFWEEK(@date,@timezone)", {date: value[0], timezone: value[1]}));
+          assertEqual([value[2]], getQueryResults("RETURN DATE_FORMAT(@date, '%w',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -719,6 +756,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%yyyy')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_YEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([value[2]], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyy',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -806,6 +844,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%m")', { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_MONTH(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%m',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -895,6 +934,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%d")', { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAY(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%d',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -995,6 +1035,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%h")', { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_HOUR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%h',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1089,6 +1130,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%i')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_MINUTE(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%i',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1365,6 +1407,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%x')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAYOFYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%x',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1484,6 +1527,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_ISOWEEK(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%k',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1550,6 +1594,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
         } else {
           assertEqual([{week: value[2], year: value[3]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%k',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1642,6 +1687,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ? 1 : 0 ], getQueryResults("RETURN DATE_FORMAT(@value, '%l')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_LEAPYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ? 1 : 0  ], getQueryResults("RETURN DATE_FORMAT(@date, '%l',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
@@ -1802,6 +1848,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%q')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_QUARTER(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%q', @timezone)", { date: value[0], timezone: value[1] }));
         }
       });
     },
@@ -1896,6 +1943,7 @@ function ahuacatlDateFunctionsTestSuite () {
           assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%a')", { value: value[0] }));
         } else {
           assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAYS_IN_MONTH(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%a',@timezone)", {date: value[0], timezone: value[1]}));
         }
       });
     },
