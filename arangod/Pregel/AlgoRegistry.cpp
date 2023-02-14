@@ -31,7 +31,7 @@
 #include "Pregel/Algos/HITS.h"
 #include "Pregel/Algos/HITSKleinberg.h"
 #include "Pregel/Algos/LabelPropagation.h"
-#include "Pregel/Algos/LineRank.h"
+#include "Pregel/Algos/LineRank/LineRank.h"
 #include "Pregel/Algos/PageRank/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank/RecoveringPageRank.h"
 #include "Pregel/Algos/SCC/SCC.h"
