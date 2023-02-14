@@ -37,7 +37,9 @@
 #include "Basics/ResourceUsage.h"
 #include "Cluster/RebootTracker.h"
 #include "Mocks/Servers.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -146,7 +148,21 @@ TEST(EngineInfoContainerTest,
       scopeGuard([=]() noexcept { ServerState::instance()->setRole(oldRole); });
 
   // simon: we only use this query for the API
-  auto q = server.createFakeQuery("RETURN 1");
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
+  queryOptions.close();
+
+  auto& database = server.getFeature<DatabaseFeature>();
+  auto system = database.lookupDatabase(StaticStrings::SystemDatabase);
+  TRI_ASSERT(system != nullptr);
+  auto ctx = transaction::StandaloneContext::Create(*system);
+  transaction::Methods trx(ctx);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  trx.begin();
+  auto q = aql::Query::create(ctx, aql::QueryString(std::string("RETURN 1")),
+                              nullptr, aql::QueryOptions(queryOptions.slice()));
+  q->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+
   ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
 
   ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2].get();

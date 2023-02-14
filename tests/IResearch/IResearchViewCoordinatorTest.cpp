@@ -7867,9 +7867,12 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query
+    auto ctx = arangodb::transaction::StandaloneContext::Create(*vocbase);
+    arangodb::transaction::Methods trx(ctx);
+    trx.addHint(arangodb::transaction::Hints::Hint::GLOBAL_MANAGED);
+    trx.begin();
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
-        arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
+        ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query->plan(),
