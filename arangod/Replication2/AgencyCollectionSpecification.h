@@ -124,6 +124,20 @@ struct CollectionPlanSpecification : public Collection {
   PlanShardToServerMapping deprecatedShardMap;
 };
 
+// TODO: Not sure if this is the right place for the following variant classes,
+// as the information will not actually end up in Agency
+
+struct ClusterPhysicalCollectionSpec {
+  bool cacheEnabled = false;
+};
+
+struct RocksDBPhysicalCollectionSpec {
+  uint64_t objectId = 0;
+};
+
+struct PhysicalCollectionSpec : std::variant<RocksDBPhysicalCollectionSpec,
+                                             ClusterPhysicalCollectionSpec> {};
+
 }  // namespace arangodb::replication2::agency
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::replication2::agency::CollectionGroupId)

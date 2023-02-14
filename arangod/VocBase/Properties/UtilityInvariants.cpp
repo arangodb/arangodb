@@ -22,7 +22,9 @@
 
 #include "UtilityInvariants.h"
 
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
 
@@ -91,4 +93,20 @@ auto UtilityInvariants::isValidCollectionType(
     return inspection::Status::Success{};
   }
   return {"Only 2 (document) and 3 (edge) are allowed."};
+}
+
+arangodb::inspection::Status UtilityTransformers::IntegerAsString::toSerialized(
+    uint64_t v, std::string& result) {
+  result = arangodb::basics::StringUtils::itoa(v);
+  return {};
+}
+
+arangodb::inspection::Status
+UtilityTransformers::IntegerAsString::fromSerialized(std::string const& v,
+                                                     uint64_t& result) {
+  // This is taken from VPackBased variant.
+  result = arangodb::NumberUtils::atoi_zero<uint64_t>(v.c_str(),
+                                                      v.c_str() + v.length());
+  // In case of Error above code returns number 0.
+  return {};
 }

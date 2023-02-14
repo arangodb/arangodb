@@ -127,4 +127,26 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
       f.field("shards", x.deprecatedShardMap));
 }
 
+template<class Inspector>
+auto inspect(Inspector& f, ClusterPhysicalCollectionSpec& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::CacheEnabled, x.cacheEnabled)
+      );
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, RocksDBPhysicalCollectionSpec& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::ObjectId, x.objectId)
+      );
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, PhysicalCollectionSpec& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<RocksDBPhysicalCollectionSpec>(),
+      insp::inlineType<ClusterPhysicalCollectionSpec>());
+}
+
 }  // namespace arangodb::replication2::agency

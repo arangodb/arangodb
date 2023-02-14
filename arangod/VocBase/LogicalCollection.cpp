@@ -157,7 +157,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                     .getFeature<EngineSelectorFeature>()
                     .engine()
                     .createPhysicalCollection(*this, info)) {
-
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
@@ -226,6 +225,104 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << res.errorMessage()
         << " - disabling computed values for this collection. original value: "
         << info.get(StaticStrings::ComputedValues).toJson();
+    TRI_ASSERT(_computedValues == nullptr);
+  }
+}
+
+/* TODO: Long term plan for this constructor is to just retain the handed in Spec.
+ * and all read access should just be reading from this spec.
+ * Therefor the GroupSpecification is a SharedPtr, we assume more than one Collection to share
+ * the same group.
+ */
+LogicalCollection::LogicalCollection(
+    TRI_vocbase_t& vocbase,
+    replication2::agency::CollectionPlanSpecification spec,
+    std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification>
+        groupSpec,
+    replication2::agency::PhysicalCollectionSpec physicalSpec,
+    bool attachLocalStorage)
+    : LogicalDataSource(
+          *this, vocbase,
+          /* For Local shards we generate a new ID here, otherweise the PlanId
+             and this Id has to be equal. */
+          (attachLocalStorage ? DataSourceId(TRI_NewTickServer())
+                              : spec.immutableProperties.id),
+          std::string{StaticStrings::Empty}, /* Globally unique id is never set
+                                                in original */
+          spec.immutableProperties.id,       /* Plan Id */
+          std::move(spec.immutableProperties.name),
+          spec.immutableProperties.isSystem, false /* is deleted */
+          ),
+      /* TODO: Do we need this in Plan? */
+      _version(Version::v40),
+      _v8CacheVersion(0),
+      _type(spec.immutableProperties.type),
+      _isAStub(!attachLocalStorage),
+#ifdef USE_ENTERPRISE
+      _isDisjoint(spec.immutableProperties.isDisjoint),
+      _isSmart(spec.immutableProperties.isSmart),
+      _isSmartChild(spec.immutableProperties.isSmartChild),
+#endif
+      /* TODO: How is allow User keys infered? */
+      _allowUserKeys(true),
+      _usesRevisionsAsDocumentIds(
+          spec.immutableProperties.usesRevisionsAsDocumentIds),
+      _waitForSync(groupSpec->attributes.mutableAttributes.waitForSync),
+      /* TODO: Check if sync by revision is correct / still needed at all */
+      _syncByRevision(false),
+#ifdef USE_ENTERPRISE
+      _smartGraphAttribute(
+          spec.immutableProperties.smartGraphAttribute.value_or(
+              StaticStrings::Empty)),
+      _smartJoinAttribute(spec.immutableProperties.smartGraphAttribute.value_or(
+          StaticStrings::Empty)),
+#endif
+      _countCache(/*ttl*/ system() ? 900.0 : 180.0),
+      /* TODO Needs a Constructor from Variant Types as in Spec
+      _keyGenerator{KeyGeneratorHelper::createKeyGenerator(
+          *this, spec.immutableProperties.keyOptions)},
+           */
+      _physical(
+          vocbase.server()
+              .getFeature<EngineSelectorFeature>()
+              .engine()
+              .createPhysicalCollection(*this, physicalSpec)),
+      /* TODO: Is this needed for Replication2 at all? Should we not set it at
+       all? _followers = std::make_unique<FollowerInfo>(this);
+       */
+      /* TODO: This needs to get a new Constructor based on specs
+      _sharding()
+       */
+      _internalValidatorTypes{spec.immutableProperties.internalValidatorType} {
+  /* TODO Check if this failure Point is still relevant */
+  /*
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
+    _usesRevisionsAsDocumentIds = false;
+    _syncByRevision.store(false);
+  }
+ */
+
+  if (auto res = updateSchema(spec.mutableProperties.schema.slice());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  TRI_ASSERT(!guid().empty());
+  /* TODO Maybe a bit late, probably should update ticks at the place they are
+   * injected. */
+  // update server's tick value
+  TRI_UpdateTickServer(id().id());
+  TRI_ASSERT(_physical != nullptr);
+
+  // TODO: Would like to move the Tests out into Constructor
+  // computed values
+  if (auto res =
+          updateComputedValues(spec.mutableProperties.computedValues.slice());
+      res.fail()) {
+    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << spec.mutableProperties.computedValues.slice().toJson();
     TRI_ASSERT(_computedValues == nullptr);
   }
 }

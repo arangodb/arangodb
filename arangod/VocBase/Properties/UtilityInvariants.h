@@ -60,4 +60,17 @@ struct UtilityInvariants {
   // Never instantiate. only static methods
   UtilityInvariants() = default;
 };
+
+struct UtilityTransformers {
+  struct IntegerAsString {
+    using MemoryType = uint64_t;
+    using SerializedType = std::string;
+
+    static arangodb::inspection::Status toSerialized(MemoryType v,
+                                                     SerializedType& result);
+
+    static arangodb::inspection::Status fromSerialized(SerializedType const& v,
+                                                       MemoryType& result);
+  };
+};
 }  // namespace arangodb
