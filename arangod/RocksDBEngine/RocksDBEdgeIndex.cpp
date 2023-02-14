@@ -57,8 +57,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <function2.hpp>
-
 #include <rocksdb/db.h>
 #include <rocksdb/slice.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -286,7 +284,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     std::string const* cacheKeyCollection = nullptr;
     std::string const* cacheValueCollection = nullptr;
 
-    fu2::unique_function<void()> handleSingleResult = [&, this]() {
+    auto handleSingleResult = [&, this]() {
       TRI_ASSERT(_builderIterator.value().isNumber());
       LocalDocumentId docId{
           _builderIterator.value().getNumericValue<uint64_t>()};
