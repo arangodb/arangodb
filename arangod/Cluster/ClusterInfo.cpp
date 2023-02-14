@@ -3055,7 +3055,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
             return LogicalCollection::shardIdToStateId(shardPair.first);
           });
     }
-    replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
+    // replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
   }
 
   // Now wait stuff in Current to disappear and thus be complete:
@@ -4002,7 +4002,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
           AgencySimpleOperationType::DELETE_OP);
       AgencyOperation delTargetCollectionGroup(
           "Target/CollectionGroups/" + dbName + "/" +
-              std::to_string(coll->groupID().id()) + "/collections/" + collectionID,
+              std::to_string(coll->groupID().id()) + "/collections/" +
+              collectionID,
           AgencySimpleOperationType::DELETE_OP);
       AgencyOperation delTargetCollectionName(
           "Target/CollectionNames/" + dbName + "/" + coll->name(),
@@ -4014,7 +4015,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       AgencyPrecondition precondition = AgencyPrecondition(
           "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
       AgencyWriteTransaction trans(
-          {delTargetCollection, incrementVersion, delTargetCollectionGroup, delTargetCollectionName},
+          {delTargetCollection, incrementVersion, delTargetCollectionGroup,
+           delTargetCollectionName},
           precondition);
       return trans;
     } else {
@@ -4061,11 +4063,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_NO_ERROR);
   }
 
-  //TODO Need to wait for CollectionGroupVersion to be propagated :/Current/CollectionGroups/<db>/<gid>/supervision/targetVersion == x
+  // TODO Need to wait for CollectionGroupVersion to be propagated
+  // :/Current/CollectionGroups/<db>/<gid>/supervision/targetVersion == x
   while (true) {
     auto tmpRes = dbServerResult->load();
     if (tmpRes.has_value()) {
-
       cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
       // ...remove the entire directory for the collection
       AgencyOperation delCurrentCollection(
