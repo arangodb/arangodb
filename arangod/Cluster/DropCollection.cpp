@@ -27,14 +27,19 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -60,12 +65,57 @@ DropCollection::DropCollection(MaintenanceFeature& feature,
 
 DropCollection::~DropCollection() = default;
 
+bool DropCollection::dropReplication2Shard(ShardID const& shard,
+                                           TRI_vocbase_t& vocbase) {
+  auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+  auto props = properties();
+  auto logId = LogicalCollection::shardIdToStateId(shard);
+  if (auto gid = props.get("groupId"); gid.isNumber()) {
+    logId = replication2::LogId{gid.getUInt()};
+    // Now look up the collection group
+    auto group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{logId.id()});
+    if (group == nullptr) {
+      return false;  // retry later
+    }
+    // now find the index of the shard in the collection group
+    auto shardsR2 = props.get("shardsR2");
+    ADB_PROD_ASSERT(shardsR2.isArray());
+    bool found = false;
+    std::size_t index = 0;
+    for (auto x : VPackArrayIterator(shardsR2)) {
+      if (x.isEqualString(shard)) {
+        found = true;
+        break;
+      }
+      ++index;
+    }
+    ADB_PROD_ASSERT(found);
+    ADB_PROD_ASSERT(index < group->shardSheaves.size());
+    logId = group->shardSheaves[index].replicatedLog;
+  }
+  auto state = vocbase.getReplicatedStateById(logId);
+  if (state.ok()) {
+    auto leaderState = std::dynamic_pointer_cast<
+        replication2::replicated_state::document::DocumentLeaderState>(
+        state.get()->getLeader());
+    if (leaderState != nullptr) {
+      leaderState->dropShard(shard, props.get(StaticStrings::Id).copyString());
+    }
+  }
+
+  return false;
+}
+
 bool DropCollection::first() {
   auto const& database = getDatabase();
   auto const& shard = getShard();
 
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;
+
+  std::string from;
+  _description.get("from", from);
 
   // Database still there?
   auto* vocbase =
@@ -74,6 +124,11 @@ bool DropCollection::first() {
     try {
       DatabaseGuard guard(*vocbase);
       auto& vocbase = guard.database();
+
+      if (vocbase.replicationVersion() == replication::Version::TWO &&
+          from == "maintenance") {
+        return dropReplication2Shard(shard, vocbase);
+      }
 
       std::shared_ptr<LogicalCollection> coll;
       Result found = methods::Collections::lookup(vocbase, shard, coll);
