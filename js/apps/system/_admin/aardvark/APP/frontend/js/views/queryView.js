@@ -1572,13 +1572,13 @@
     },
 
     filterRows: function(rows) {
-      var searchPhrase = this.collection.searchOptions.searchPhrase
+      var searchPhrase = this.collection.searchOptions.searchPhrase;
       if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {
         return rows.filter(row => {
           return row.name.toLowerCase().includes(
             this.collection.searchOptions.searchPhrase.toLowerCase()
           );
-        })
+        });
       }
       return rows;
     },
