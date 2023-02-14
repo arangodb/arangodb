@@ -30,6 +30,8 @@
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"

@@ -1,10 +1,8 @@
-target_sources(arango_pregel PRIVATE
-  ColorPropagation.cpp)
-
 if (USE_MAINTAINER_MODE)
   add_subdirectory(ReadWrite)
 endif()
 
+add_subdirectory(ColorPropagation)
 add_subdirectory(ConnectedComponents)
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)

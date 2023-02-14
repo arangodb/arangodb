@@ -26,6 +26,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 
 namespace arangodb::pregel::algos {
 

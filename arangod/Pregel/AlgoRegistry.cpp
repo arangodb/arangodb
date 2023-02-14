@@ -25,6 +25,7 @@
 #include "Pregel/Conductor/Messages.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagation.h"
 #include "Pregel/Algos/ConnectedComponents/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
@@ -43,7 +44,6 @@
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite/ReadWrite.h"
 #endif
-#include "Pregel/Algos/ColorPropagation.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
