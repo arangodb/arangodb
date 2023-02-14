@@ -281,10 +281,7 @@ function geoSuite(isSearchAlias, analyzerType) {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
-/*
-      let analyzers = require("@arangodb/analyzers");
-      analyzers.remove(analyzerType);
-*/
+      analyzers.remove("geo_json");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,8 +1120,8 @@ function BTS_470() {
         }
       });
   
-      lat = 6.537
-      long = 50.332
+      let lat = 6.537;
+      let long = 50.332;
       for (let x = 0; x < 500; ++x) {
         let points = [];
         for (let y = 0; y < 500; ++y) {
@@ -1163,11 +1160,21 @@ function BTS_470() {
           [ 37.614, 55.7058 ],
           [ 37.614, 55.7050 ]]]
       ]}});
+
+      // sync view
+      db._query(`
+        LET lines = GEO_MULTILINESTRING([
+          [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+          [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+        ])
+        FOR doc IN geo_view SEARCH
+          ANALYZER(GEO_DISTANCE(doc.location, lines) < 100, "geo_json") OPTIONS {'waitForSync': true} return doc`);
     },
 
     tearDownAll: function () {
       db._dropView("geo_view");
       db._drop("geo");
+      analyzers.remove("geo_json");
     },
 
     test: function() {
@@ -1246,7 +1253,166 @@ function BTS_470() {
         try {
           actual = db._query(query).toArray().length;
           assertEqual(actual, expected);
+        } catch (err) {
+          print(`Actual: ${actual}, Expected: ${expected}, Index: ${index}`);
+          print(query);
+          fail(err);
+        }
+      }); 
+    }
+  }
+}
 
+function BTS_471() {
+  return {
+    setUpAll: function () {
+      db._create("geo");
+      analyzers.save("geo_json", "geojson", {}, []);
+      db._createView("geo_view", "arangosearch", {
+       links: {
+          geo: {
+            fields: {
+              location: { analyzers: ["geo_json"] }
+            }
+          }
+        }
+      });
+
+      let lat = 6.537;
+      let long = 50.332;
+      for (let x = 0; x < 500; ++x) {
+        let points = [];
+        for (let y = 0; y < 500; ++y) {
+          points.push({ location: { type: "Point", coordinates: [lat + x/1000, long + y/1000] } });
+        }
+        db.geo.save(points);
+      }
+
+      db.geo.save({ location: { "type": "Polygon", "coordinates": [
+        [[ 37.614323, 55.705898 ],
+          [ 37.615825, 55.705898 ],
+          [ 37.615825, 55.70652  ],
+          [ 37.614323, 55.70652  ],
+          [ 37.614323, 55.705898 ]]
+      ]}});
+      db.geo.save({ location: {"type": "LineString", "coordinates": [
+        [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
+      }});
+      db.geo.save({ location: { "type": "MultiLineString", "coordinates": [
+        [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+        [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+      ]}});
+      db.geo.save({ location: { "type": "MultiPoint", "coordinates": [
+        [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+        [ 6.621, 50.332 ], [ 6.621, 50.376 ]
+      ]}});
+      db.geo.save({ location: { "type": "MultiPolygon", "coordinates": [
+        [[[ 37.614323, 55.705898 ],
+          [ 37.615825, 55.705898 ],
+          [ 37.615825, 55.70652  ],
+          [ 37.614323, 55.70652  ],
+          [ 37.614323, 55.705898 ]]],
+        [[[ 37.614, 55.7050 ],
+          [ 37.615, 55.7050 ],
+          [ 37.615, 55.7058 ],
+          [ 37.614, 55.7058 ],
+          [ 37.614, 55.7050 ]]]
+      ]}});
+
+      // sync view
+      db._query(`
+      LET lines = GEO_MULTILINESTRING([
+        [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+        [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+      ])
+      FOR doc IN geo_view
+        SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json") OPTIONS {'waitForSync': true}
+        RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
+      `)
+    },
+    tearDownAll: function () {
+      db._dropView("geo_view");
+      db._drop("geo");
+      analyzers.remove("geo_json");
+    },
+    test: function() {
+      const queries = [
+        [
+          `
+          LET lines = GEO_MULTILINESTRING([
+            [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+            [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json")
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
+          `, 5
+        ],
+        [
+          `
+          LET lines = GEO_MULTILINESTRING([
+            [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+            [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 3000), "geo_json")
+            FILTER doc.location.type != "Point"
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
+          `, 3
+        ],
+        [
+          `
+          LET lines = GEO_MULTILINESTRING([
+            [[ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ]],
+            [[ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ]]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json")
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines)})
+          `, 2
+        ],
+        [
+          `
+          LET lines = GEO_MULTIPOINT([
+            [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+            [ 6.621, 50.332 ], [ 6.621, 50.376 ]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json")
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
+          `, 5
+        ], 
+        [
+          `
+          LET lines = GEO_MULTIPOINT([
+            [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+            [ 6.621, 50.332 ], [ 6.621, 50.376 ]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 3000), "geo_json")
+            FILTER doc.location.type != "Point"
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
+          `, 3
+        ], 
+        [
+          `
+          LET lines = GEO_MULTIPOINT([
+            [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
+            [ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ]
+          ])
+          FOR doc IN geo_view
+            SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json")
+            RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines)})
+          `, 2
+        ]
+      ];
+      
+      queries.forEach( function (query_tuple, index) {
+        [query, expected] = query_tuple;
+        let actual;
+        try {
+          actual = db._query(query).toArray().length;
+          assertEqual(actual, expected);
         } catch (err) {
           print(`Actual: ${actual}, Expected: ${expected}, Index: ${index}`);
           print(query);
@@ -1258,7 +1424,13 @@ function BTS_470() {
 }
 
 function BTS_471Suite() {
-
+  let suite = {};
+  deriveTestSuite(
+    BTS_471(),
+    suite,
+    "BTS_471"
+  );
+  return suite;
 }
 
 function BTS_470Suite() {
@@ -1311,9 +1483,10 @@ function searchAliasS2GeoSuite() {
   return suite;
 }
 
-// jsunity.run(arangoSearchVPackGeoSuite);
-// jsunity.run(searchAliasVPackGeoSuite);
+jsunity.run(arangoSearchVPackGeoSuite);
+jsunity.run(searchAliasVPackGeoSuite);
 jsunity.run(BTS_470Suite)
+jsunity.run(BTS_471Suite)
 /*
 jsunity.run(arangoSearchS2GeoSuite);
 jsunity.run(searchAliasS2GeoSuite);
