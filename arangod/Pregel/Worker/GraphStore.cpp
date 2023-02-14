@@ -54,6 +54,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
@@ -820,6 +821,6 @@ template class arangodb::pregel::GraphStore<ECValue, int8_t>;
 template class arangodb::pregel::GraphStore<HITSValue, int8_t>;
 template class arangodb::pregel::GraphStore<HITSKleinbergValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
-template class arangodb::pregel::GraphStore<LPValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<algos::SLPAValue, int8_t>;
 template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
