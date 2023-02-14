@@ -115,14 +115,7 @@ function indexHintSuite () {
     tearDownAll: function () {
       internal.db._drop(cn);
       internal.db._drop(cn2);
-      let hasRemoved = false;
-      do {
-        try {
-          analyzers.remove("geo_json");
-          hasRemoved = true;
-        } catch (err) {
-        }
-      } while (!hasRemoved);
+      analyzers.remove("geo_json", true);
     },
 
     testFilterNoHint: function () {

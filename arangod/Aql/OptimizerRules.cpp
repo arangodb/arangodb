@@ -7475,15 +7475,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
       auto enumerateColNode =
           ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
       auto indexes = enumerateColNode->collection()->indexes();
-      VPackBuilder b;
-      b.openObject();
-      enumerateColNode->hint().toVelocyPack(b);
-      b.close();
-      auto namesSlice =
-          b.slice().get(StaticStrings::IndexHintOption).get("hint");
-      for (VPackSlice nameSlice : VPackArrayIterator(namesSlice)) {
+      auto idxNames = enumerateColNode->hint().hint();
+      for (auto const& idxName : idxNames) {
         for (std::shared_ptr<Index> idx : indexes) {
-          std::string idxName = nameSlice.toString();
           if (idx->name() == idxName) {
             auto idxType = idx->type();
             if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
