@@ -1,6 +1,18 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
+* ES-1428: make the maximum number of V8 contexts depend on the maximum number
+  of server threads, if `--javascript.v8-contexts` is not set explicitly. 
+  Previously the maximum number of V8 contexts was hard-coded to 16 when the
+  option `--javascript.v8-contexts` option was not set explicitly.
+  Now the maximum number defaults to the value of `--server.maximal-threads`,
+  regardless of if this was is explicitly configured or the default value is
+  used.
+  A server with default configuration should now not block waiting for V8 
+  contexts to become available, but it may use more memory for the additional V8 
+  contexts if there are many concurrent that invoke JavaScript actions (e.g.
+  using the web UI or Foxx).
+
 * Allow usage of document projections and traversal projections in slightly more
   cases, specifically when the document's or traversal's output variables were
   used in subqueries. Previously the usage of the document or traversal output
