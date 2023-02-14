@@ -57,11 +57,15 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <function2.hpp>
+
 #include <rocksdb/db.h>
+#include <rocksdb/slice.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 #include <cmath>
 
@@ -248,34 +252,38 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     std::string* cacheKeyCollection = nullptr;
     std::string const* cacheValueCollection = nullptr;
 
+    fu2::unique_function<void()> handleSingleResult = [&, this]() {
+      TRI_ASSERT(_builderIterator.value().isNumber());
+      LocalDocumentId docId{
+          _builderIterator.value().getNumericValue<uint64_t>()};
+      _builderIterator.next();
+      TRI_ASSERT(_builderIterator.valid());
+      // For now we store the complete opposite _from/_to value
+      VPackSlice fromTo = _builderIterator.value();
+      TRI_ASSERT(fromTo.isString());
+
+      std::string_view v = fromTo.stringView();
+      TRI_ASSERT(!v.empty());
+      if (v.front() == '/') {
+        // prefix-compressed value
+        cacheValueCollection =
+            _index->cachedValueCollection(cacheValueCollection);
+        TRI_ASSERT(cacheValueCollection != nullptr);
+        _idBuilder.clear();
+        // collection name  and  key including forward slash
+        _idBuilder.add(VPackValueString2Parts(*cacheValueCollection, v));
+        fromTo = _idBuilder.slice();
+      }
+
+      std::forward<F>(cb)(docId, fromTo);
+    };
+
     while (limit > 0) {
       while (_builderIterator.valid()) {
         // we still have unreturned edges in out memory. simply return them
-        TRI_ASSERT(_builderIterator.value().isNumber());
-        LocalDocumentId docId{
-            _builderIterator.value().getNumericValue<uint64_t>()};
+        handleSingleResult();
         _builderIterator.next();
-        TRI_ASSERT(_builderIterator.valid());
-        // For now we store the complete opposite _from/_to value
-        VPackSlice fromTo = _builderIterator.value();
-        TRI_ASSERT(fromTo.isString());
-
-        std::string_view v = fromTo.stringView();
-        TRI_ASSERT(!v.empty());
-        if (v.front() == '/') {
-          // prefix-compressed value
-          cacheValueCollection =
-              _index->cachedValueCollection(cacheValueCollection);
-          TRI_ASSERT(cacheValueCollection != nullptr);
-          _idBuilder.clear();
-          // collection name  and  key including forward slash
-          _idBuilder.add(VPackValueString2Parts(*cacheValueCollection, v));
-          fromTo = _idBuilder.slice();
-        }
-        std::forward<F>(cb)(docId, fromTo);
-
-        _builderIterator.next();
-        limit--;
+        --limit;
 
         if (limit == 0) {
           // Limit reached. bail out
@@ -322,33 +330,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
               // Directly return it, no need to copy
               _builderIterator = VPackArrayIterator(cachedData);
               while (_builderIterator.valid()) {
-                TRI_ASSERT(_builderIterator.value().isNumber());
-                LocalDocumentId docId{
-                    _builderIterator.value().getNumericValue<uint64_t>()};
-
+                handleSingleResult();
                 _builderIterator.next();
-
-                TRI_ASSERT(_builderIterator.valid());
-                VPackSlice fromTo = _builderIterator.value();
-                TRI_ASSERT(fromTo.isString());
-                std::string_view v = fromTo.stringView();
-                TRI_ASSERT(!v.empty());
-                if (v.front() == '/') {
-                  // prefix-compressed value
-                  cacheValueCollection =
-                      _index->cachedValueCollection(cacheValueCollection);
-                  TRI_ASSERT(cacheValueCollection != nullptr);
-                  _idBuilder.clear();
-                  // collection name  and  key including forward slash
-                  _idBuilder.add(
-                      VPackValueString2Parts(*cacheValueCollection, v));
-                  fromTo = _idBuilder.slice();
-                }
-
-                std::forward<F>(cb)(docId, fromTo);
-
-                _builderIterator.next();
-                limit--;
+                TRI_ASSERT(limit > 0);
+                --limit;
               }
               _builderIterator =
                   VPackArrayIterator(VPackArrayIterator::Empty{});

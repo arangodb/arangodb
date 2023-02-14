@@ -23,9 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -40,7 +37,15 @@
 #include <string_view>
 #include <vector>
 
+namespace rocksdb {
+class Slice;
+}
+
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 class DatabaseFeature;
 class RocksDBEdgeIndex;
 
