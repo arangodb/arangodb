@@ -3038,3 +3038,6 @@ ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(ExecutionPlan* plan
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+template class arangodb::aql::materialize::MaterializeSingleNode<false>;
+template class arangodb::aql::materialize::MaterializeSingleNode<true>;
