@@ -628,8 +628,8 @@ modified documents
     var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 201);
-    assert(JSON.parse(response.body).extra.stats.writesExecuted === 2);
-    assert(JSON.parse(response.body).extra.stats.writesIgnored === 0);
+    assert(response.parsedBody.extra.stats.writesExecuted === 2);
+    assert(response.parsedBody.extra.stats.writesIgnored === 0);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -652,8 +652,8 @@ Execute a data-modification query with option *ignoreErrors*
     var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 201);
-    assert(JSON.parse(response.body).extra.stats.writesExecuted === 0);
-    assert(JSON.parse(response.body).extra.stats.writesIgnored === 1);
+    assert(response.parsedBody.extra.stats.writesExecuted === 0);
+    assert(response.parsedBody.extra.stats.writesIgnored === 1);
 
     logJsonResponse(response);
   ~ db._drop(cn);

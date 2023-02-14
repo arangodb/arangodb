@@ -43,8 +43,7 @@ glance. The possible values are as follows:
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
-    var body = JSON.parse(response.body);
-    assertTypeOf("string", body.license);
+    assertTypeOf("string", response.parsedBody.license);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
