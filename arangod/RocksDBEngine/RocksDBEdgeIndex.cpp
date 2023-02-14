@@ -344,10 +344,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         // or a suffix of it in case fromTo starts with the cached collection
         // name, and an empty string_view if the lookup value is invalid.
         cacheKey = _index->buildCompressedCacheKey(cacheKeyCollection, fromTo);
-        TRI_ASSERT(cacheKey.empty() || cacheKey == fromTo ||
-                   fromTo.ends_with(cacheKey));
 
         if (!cacheKey.empty()) {
+          TRI_ASSERT(cacheKey == fromTo || fromTo.ends_with(cacheKey));
           // only look up a key in the cache if the key is syntactially valid.
           // this is important because we can only tell syntactically valid keys
           // apart from prefix-compressed keys.
@@ -360,9 +359,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             // We got sth. in the cache
             VPackSlice cachedData(finding.value()->value());
             TRI_ASSERT(cachedData.isArray());
-            if (cachedData.length() / 2 < limit) {
+            VPackArrayIterator cachedIterator(cachedData);
+            TRI_ASSERT(cachedIterator.size() % 2 == 0);
+            if (cachedIterator.size() / 2 < limit) {
               // Directly return it, no need to copy
-              _builderIterator = VPackArrayIterator(cachedData);
+              _builderIterator = cachedIterator;
               while (_builderIterator.valid()) {
                 handleSingleResult();
                 _builderIterator.next();
@@ -1116,16 +1117,12 @@ std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
         // the heap
         auto cn = std::make_unique<std::string const>(value.data(), pos);
         // try to store the name. this can race with other threads.
-        // TODO: fix memory order
-        if (_name.compare_exchange_strong(previous, cn.get())) {
+        if (_name.compare_exchange_strong(previous, cn.get(),
+                                          std::memory_order_release,
+                                          std::memory_order_acquire)) {
           // we won the race and were able to store our value. now we are owning
           // the collection name.
           previous = cn.release();
-        } else {
-          // we lost the race. now we need to fetch the name another thread
-          // stored.
-          // TODO: fix memory order
-          previous = _name.load();
         }
       }
     }
@@ -1155,5 +1152,5 @@ std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
 
 std::string const* RocksDBEdgeIndex::CachedCollectionName::get()
     const noexcept {
-  return _name.load(std::memory_order_relaxed);
+  return _name.load(std::memory_order_acquire);
 }
