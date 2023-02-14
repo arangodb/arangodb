@@ -767,30 +767,6 @@ are stopped to allow compaction to catch up.)");
       .setLongDescription(R"(The recommended value is to set this equal to
 `max-background-flushes`. The default value is `number of processors / 2`.)");
 
-  options->addOption(
-      "--rocksdb.num-threads-priority-low",
-      "The number of threads for low priority operations (e.g. compaction).",
-      new UInt32Parameter(&_numThreadsLow, /*base*/ 1, /*minValue*/ 0,
-                          /*maxValue*/ 256),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnAgent,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--rocksdb.block-cache-shard-bits",
-      "The number of shard bits to use for block cache (use -1 for default "
-      "value).",
-      new Int64Parameter(&_blockCacheShardBits, /*base*/ 1, /*minValue*/ -1,
-                         /*maxValue*/ 20, /*minInclusive*/ true,
-                         /*maxInclusive*/ false),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnAgent,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::OnSingle));
-
   options
       ->addOption("--rocksdb.block-cache-estimated-entry-charge",
                   "The estimated charge of cache entries (in bytes) for the "
@@ -803,15 +779,6 @@ are stopped to allow compaction to catch up.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
-
-  options->addOption("--rocksdb.enforce-block-cache-size-limit",
-                     "If true, strictly enforces the block cache size limit.",
-                     new BooleanParameter(&_enforceBlockCacheSizeLimit),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnAgent,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle));
 
   TRI_ASSERT(::blockCacheTypes.contains(_blockCacheType));
   options

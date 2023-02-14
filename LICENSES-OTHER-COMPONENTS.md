@@ -454,8 +454,8 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 7.9.0
-* Date: 2022-11-23 16:28:01 -0800
+* Version: 7.10.0.fb
+* Date: 2023-01-23 11:11:36 -0800
 * GitHub: https://github.com/arangodb/rocksdb
 * License: https://github.com/arangodb/rocksdb/blob/main/README.md
 * License Name: Apache License 2.0
