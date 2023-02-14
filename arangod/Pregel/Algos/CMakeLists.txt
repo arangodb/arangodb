@@ -10,7 +10,6 @@ target_sources(arango_pregel PRIVATE
   SLPA.cpp
   SSSP.cpp
   ShortestPath.cpp
-  WCC.cpp
   ColorPropagation.cpp)
 
 if (USE_MAINTAINER_MODE)
@@ -20,3 +19,4 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
+add_subdirectory(WCC)

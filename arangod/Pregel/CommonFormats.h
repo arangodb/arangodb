@@ -32,6 +32,8 @@
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
 #include "Pregel/VertexComputation.h"
 
 #include "Inspection/VPack.h"
@@ -191,44 +193,6 @@ auto inspect(Inspector& f, ColorPropagationUserParameters& x) {
       f.field(Utils::outputColorsFieldName, x.outputColorsFieldName),
       f.field(Utils::equivalenceClass, x.equivalenceClassFieldName));
 }
-
-struct WCCValue {
-  uint64_t component;
-  std::unordered_set<VertexID> inboundNeighbors;
-};
-
-template<typename T>
-struct SenderMessage {
-  SenderMessage() = default;
-  SenderMessage(VertexID pid, T const& val)
-      : senderId(std::move(pid)), value(val) {}
-
-  VertexID senderId;
-  T value;
-};
-
-template<typename T>
-struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
-  static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
-  SenderMessageFormat() = default;
-  void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
-    VPackArrayIterator array(s);
-    senderVal.senderId.shard =
-        PregelShard(static_cast<PregelShard::value_type>((*array).getUInt()));
-    senderVal.senderId.key = (*(++array)).copyString();
-    senderVal.value = (*(++array)).getNumber<T>();
-  }
-  void addValue(VPackBuilder& arrayBuilder,
-                SenderMessage<T> const& senderVal) const override {
-    arrayBuilder.openArray();
-    arrayBuilder.add(VPackValue(senderVal.senderId.shard));
-    arrayBuilder.add(VPackValuePair(senderVal.senderId.key.data(),
-                                    senderVal.senderId.key.size(),
-                                    VPackValueType::String));
-    arrayBuilder.add(VPackValue(senderVal.value));
-    arrayBuilder.close();
-  }
-};
 
 struct ColorPropagationValueMessageFormat
     : public MessageFormat<ColorPropagationMessageValue> {
