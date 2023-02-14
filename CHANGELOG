@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-131: Added search input for query page.
+
 * Return peak memory usage and execution time as part of query explain result.
   This helps finding queries that use a lot of memory to build the execution
   plan.
