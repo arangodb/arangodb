@@ -4002,16 +4002,19 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
           AgencySimpleOperationType::DELETE_OP);
       AgencyOperation delTargetCollectionGroup(
           "Target/CollectionGroups/" + dbName + "/" +
-              std::to_string(coll->groupID().id()) + "/" + collectionID,
+              std::to_string(coll->groupID().id()) + "/collections/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation delTargetCollectionName(
+          "Target/CollectionNames/" + dbName + "/" + coll->name(),
           AgencySimpleOperationType::DELETE_OP);
       AgencyOperation incrementVersion(
           "Target/CollectionGroups/" + dbName + "/" +
-              std::to_string(coll->groupID().id()) + "/" + collectionID + "/version",
+              std::to_string(coll->groupID().id()) + "/version",
           AgencySimpleOperationType::INCREMENT_OP);
       AgencyPrecondition precondition = AgencyPrecondition(
           "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
       AgencyWriteTransaction trans(
-          {delTargetCollection, incrementVersion, delTargetCollectionGroup},
+          {delTargetCollection, incrementVersion, delTargetCollectionGroup, delTargetCollectionName},
           precondition);
       return trans;
     } else {
