@@ -47,18 +47,6 @@ struct HITSValue {
   double hubScore;
 };
 
-/// Value for Hyperlink-Induced Topic Search (HITS; also known as
-/// hubs and authorities) according to the paper
-/// J. Kleinberg, Authoritative sources in a hyperlinked environment,
-/// Journal of the ACM. 46 (5): 604–632, 1999,
-/// http://www.cs.cornell.edu/home/kleinber/auth.pdf.
-struct HITSKleinbergValue {
-  double nonNormalizedAuth;
-  double nonNormalizedHub;
-  double normalizedAuth;
-  double normalizedHub;
-};
-
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
