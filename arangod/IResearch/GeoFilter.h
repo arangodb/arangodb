@@ -38,16 +38,20 @@ enum class StoredType : uint8_t {
   VPackLegacy = 0,
   // Valid GeoJson as VPack or coordinates array of two S2LatLng
   VPack,
-  // Valid ShapeContainer serialized as S2Shape
-  S2Shape,
-  // Valid S2Point serialized as S2Point
+  // Valid ShapeContainer serialized as S2Region
+  S2Region,
+  // Same as S2Region, but contains only S2Point
   S2Point,
+  // Store centroid
+  S2Centroid,
 };
 
 struct GeoFilterOptionsBase {
   std::string prefix;
   S2RegionTermIndexer::Options options;
   StoredType stored{StoredType::VPack};
+  // Default value should be S2Point for bad written test
+  geo::coding::Options coding{geo::coding::Options::Invalid};
 };
 
 enum class GeoFilterType : uint8_t {

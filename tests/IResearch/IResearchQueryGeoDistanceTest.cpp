@@ -34,29 +34,30 @@ std::vector<VPackSlice> const empty;
 
 class QueryGeoDistance : public QueryTest {
  protected:
-  void createAnalyzers(std::string_view analyzer) {
+  void createAnalyzers(std::string_view analyzer,
+                       std::string_view params = {}) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     {
-      auto json = VPackParser::fromJson(R"({})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, _vocbase.name() + "::mygeojson",
-                               analyzer, json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "shape"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
-      auto json = VPackParser::fromJson(R"({"type": "centroid"})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, _vocbase.name() + "::mygeocentroid",
-                               analyzer, json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "centroid"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeocentroid",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
-      auto json = VPackParser::fromJson(R"({"type": "point"})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, _vocbase.name() + "::mygeopoint",
-                               analyzer, json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "point"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeopoint",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
   }
 
@@ -586,8 +587,10 @@ TEST_P(QueryGeoDistanceSearch, TestGeoPoint) {
   queryTestsGeoPoint();
 }
 
-TEST_P(QueryGeoDistanceView, TestS2) {
-  createAnalyzers("geojson-s2");
+#ifdef USE_ENTERPRISE
+
+TEST_P(QueryGeoDistanceView, TestS2LatLng) {
+  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
   createCollections();
   createView();
   queryTests();
@@ -597,8 +600,8 @@ TEST_P(QueryGeoDistanceView, TestS2) {
   queryTestsMulti();
 }
 
-TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2) {
-  createAnalyzers("geojson-s2");
+TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2LatLng) {
+  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
@@ -606,8 +609,8 @@ TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2) {
   queryTestsGeoJson(false);
 }
 
-TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2) {
-  createAnalyzers("geojson-s2");
+TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2LatLng) {
+  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -615,14 +618,92 @@ TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2) {
   queryTestsGeoCentroid();
 }
 
-TEST_P(QueryGeoDistanceSearch, TestGeoPointS2) {
-  createAnalyzers("geojson-s2");
+TEST_P(QueryGeoDistanceSearch, TestGeoPointS2LatLng) {
+  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();
   queryTests();
   queryTestsGeoPoint();
 }
+
+TEST_P(QueryGeoDistanceView, TestS2LatLngInt) {
+  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createCollections();
+  createView();
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2LatLngInt) {
+  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes("mygeojson");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2LatLngInt) {
+  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes("mygeocentroid");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoPointS2LatLngInt) {
+  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes("mygeopoint");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+TEST_P(QueryGeoDistanceView, TestS2Point) {
+  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createCollections();
+  createView();
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2Point) {
+  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes("mygeojson");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2Point) {
+  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes("mygeocentroid");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoPointS2Point) {
+  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes("mygeopoint");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+#endif
 
 INSTANTIATE_TEST_CASE_P(IResearch, QueryGeoDistanceView, GetLinkVersions());
 

@@ -58,7 +58,7 @@ TEST(GeoBench, sizes) {
   vpackOptions.legacy = false;
   GeoVPackAnalyzer vpackAnalyzer{vpackOptions};
   GeoS2Analyzer::Options s2Options;
-  s2Options.hint = s2coding::CodingHint::COMPACT;
+  s2Options.coding = geo::coding::Options::S2LatLngInt;
   GeoS2Analyzer s2Analyzer{s2Options};
 
   auto builder = VPackParser::fromJson(R"=([ 6.537, 50.332 ])=");
@@ -1952,9 +1952,10 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
   auto json = VPackParser::fromJson(R"([ 53.72314453125, 63.57789956676574 ])");
 
   geo::ShapeContainer shape;
-  std::vector<S2Point> cache;
+  std::vector<S2LatLng> cache;
   ASSERT_TRUE(parseShape<arangodb::iresearch::Parsing::OnlyPoint>(
-      json->slice(), shape, cache, false));
+      json->slice(), shape, cache, false, geo::coding::Options::Invalid,
+      nullptr));
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape

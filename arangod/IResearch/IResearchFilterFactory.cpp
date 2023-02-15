@@ -161,8 +161,9 @@ Result setupGeoFilter(FieldMeta::Analyzer const& a,
   return {};
 }
 
-Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
-                  char const* funcName, size_t argIdx) {
+Result getLatLng(ScopedAqlValue const& value, S2Point& point,
+                 char const* funcName, size_t argIdx,
+                 GeoFilterOptionsBase const& options) {
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {  // [lng, lat] is valid input
       if (value.size() != 2) {
@@ -182,29 +183,41 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      point = S2LatLng::FromDegrees(lat, lon).Normalized();
-      return {};
-    }
+      auto latLng = S2LatLng::FromDegrees(lat, lon).Normalized();
+      if (options.stored != StoredType::S2Centroid &&
+          options.coding == geo::coding::Options::S2LatLngInt) {
+        geo::toLatLngInt(latLng);
+      }
+      point = latLng.ToPoint();
+    } break;
     case SCOPED_VALUE_TYPE_OBJECT: {
       VPackSlice const json = value.slice();
       geo::ShapeContainer shape;
-      Result res;
-      if (json.isArray()) {
-        res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
-      } else {
-        res = geo::json::parseRegion(json, shape, /*legacy=*/false);
+      std::vector<S2LatLng> cache;
+      auto r = parseShape<Parsing::GeoJson>(
+          json, shape, cache, options.stored == StoredType::VPackLegacy,
+          (options.stored == StoredType::S2Centroid
+               ? geo::coding::Options::Invalid
+               : options.coding),
+          nullptr);
+      if (!r) {
+        return error::failedToEvaluate(funcName, argIdx);
       }
-      if (res.fail()) {
-        return res;
-      }
-      point = S2LatLng(shape.centroid());
-      TRI_ASSERT(point.is_valid());
-      return {};
-    }
-    default: {
+      point = shape.centroid();
+      TRI_ASSERT(S2::IsUnitLength(point));
+    } break;
+    default:
       return error::invalidArgument(funcName, argIdx);
-    }
   }
+  if (options.stored == StoredType::S2Centroid &&
+      !geo::coding::isOptionsS2(options.coding)) {
+    S2LatLng latLng{point};
+    if (options.coding == geo::coding::Options::S2LatLngInt) {
+      geo::toLatLngInt(latLng);
+    }
+    point = latLng.ToPoint();
+  }
+  return {};
 }
 
 using ConversionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
@@ -750,21 +763,9 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     return error::invalidAttribute(funcName, centroidNodeIdx);
   }
 
-  bool const buildFilter = filter;
+  bool const buildFilter = filter != nullptr;
 
-  S2LatLng centroid;
-  ScopedAqlValue tmpValue(*centroidNode);
-  if (buildFilter || tmpValue.isConstant()) {
-    if (!tmpValue.execute(ctx)) {
-      return error::failedToEvaluate(funcName, centroidNodeIdx);
-    }
-
-    auto const res = getLatLong(tmpValue, centroid, funcName, centroidNodeIdx);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
+  ScopedAqlValue tmpValue;
 
   double minDistance = 0;
 
@@ -807,7 +808,14 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
-  if (filter) {
+
+  tmpValue.reset(*centroidNode);
+  if (buildFilter || tmpValue.isConstant()) {
+    if (!tmpValue.execute(ctx)) {
+      return error::failedToEvaluate(funcName, centroidNodeIdx);
+    }
+  }
+  if (buildFilter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
@@ -821,7 +829,14 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     if (!r.ok()) {
       return r;
     }
-    options->origin = centroid.ToPoint();
+
+    S2Point centroid;
+    r = getLatLng(tmpValue, centroid, funcName, centroidNodeIdx, *options);
+    if (!r.ok()) {
+      return r;
+    }
+
+    options->origin = centroid;
     if (minDistance != 0.) {
       options->range.min = minDistance;
       options->range.min_type =
@@ -878,33 +893,18 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     return {TRI_ERROR_BAD_PARAMETER};
   }
 
-  S2LatLng centroid;
-  ScopedAqlValue centroidValue(*centroidNode);
-  if (filter || centroidValue.isConstant()) {
-    if (!centroidValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
-    }
-
-    auto const res =
-        getLatLong(centroidValue, centroid, GEO_DISTANCE_FUNC, centroidNodeIdx);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
-
   double distance{};
-  ScopedAqlValue distanceValue(*node.value);
-  if (filter || distanceValue.isConstant()) {
-    if (!distanceValue.execute(ctx)) {
+  ScopedAqlValue tmpValue(*node.value);
+  if (filter || tmpValue.isConstant()) {
+    if (!tmpValue.execute(ctx)) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(
                   "Failed to evaluate an argument denoting a distance near '",
                   GEO_DISTANCE_FUNC, "' function")};
     }
 
-    if (SCOPED_VALUE_TYPE_DOUBLE != distanceValue.type() ||
-        !distanceValue.getDouble(distance)) {
+    if (SCOPED_VALUE_TYPE_DOUBLE != tmpValue.type() ||
+        !tmpValue.getDouble(distance)) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("Failed to parse an argument denoting a distance as "
                            "a number near '",
@@ -915,6 +915,13 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
     return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
+  }
+
+  tmpValue.reset(*centroidNode);
+  if (filter || tmpValue.isConstant()) {
+    if (!tmpValue.execute(ctx)) {
+      return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
+    }
   }
   if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
@@ -932,7 +939,15 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     if (!r.ok()) {
       return r;
     }
-    options->origin = centroid.ToPoint();
+
+    S2Point centroid;
+    r = getLatLng(tmpValue, centroid, GEO_DISTANCE_FUNC, centroidNodeIdx,
+                  *options);
+    if (!r.ok()) {
+      return r;
+    }
+
+    options->origin = centroid;
     switch (node.cmp) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case aql::NODE_TYPE_OPERATOR_BINARY_NE:
@@ -3805,27 +3820,9 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   }
 
   ScopedAqlValue shapeValue(*shapeNode);
-  geo::ShapeContainer shape;
-
   if (filter || shapeValue.isConstant()) {
     if (!shapeValue.execute(ctx)) {
       return error::failedToEvaluate(funcName, shapeNodeIdx);
-    }
-
-    Result res;
-    if (auto const slice = shapeValue.slice(); slice.isArray()) {
-      res = geo::json::parseCoordinates<true>(slice, shape, /*geoJson=*/true);
-    } else {
-      res = geo::json::parseRegion(slice, shape, /*legacy=*/false);
-    }
-
-    if (res.fail()) {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          absl::StrCat("'", funcName,
-                       "' AQL function: failed to parse argument at position '",
-                       shapeNodeIdx, "' due to the following error '",
-                       res.errorMessage(), "'")};
     }
   }
 
@@ -3848,11 +3845,26 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     if (!r.ok()) {
       return r;
     }
+
+    // TODO(MBkkt) S2Centroid case are missed!
+    geo::ShapeContainer shape;
+    std::vector<S2LatLng> cache;
+    auto res = parseShape<Parsing::GeoJson>(
+        shapeValue.slice(), shape, cache,
+        options->stored == StoredType::VPackLegacy, options->coding, nullptr);
+    if (!res) {  // TODO(MBkkt) better error handling
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("'", funcName,
+                       "' AQL function: failed to parse argument at position '",
+                       shapeNodeIdx, "'.")};
+    }
+
+    options->shape = std::move(shape);
     options->type = GEO_INTERSECT_FUNC == funcName
                         ? GeoFilterType::INTERSECTS
                         : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
                                              : GeoFilterType::IS_CONTAINED);
-    options->shape = std::move(shape);
 
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
     *geo_filter.mutable_field() = std::move(name);
