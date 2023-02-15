@@ -6,7 +6,7 @@ v3.9.8 (2023-01-23)
   merged, meaning it would maintain the old field and add the new one.
 
 * Fixed EE: Concurrent batch insert/update CRUD operations into
-  SmartEgeCollections on conflicting edge keys, could get the
+  SmartEdgeCollections on conflicting edge keys could get the
   smart edge caching out-of-sync, which would yield different results
   for OUTBOUND/INBOUND search over edges. This is now fixed, however there
   is now a slightly higher chance to get a CONFLICT response back on those
