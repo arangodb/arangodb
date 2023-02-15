@@ -75,6 +75,12 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
+  arangodb::Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
+
   void toVelocyPack(
       velocypack::Builder&,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
