@@ -98,6 +98,7 @@ TEST(CachedCollectionNameTest, test_set_once) {
   ASSERT_NE(nullptr, previous);
   EXPECT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
 
