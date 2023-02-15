@@ -45,4 +45,4 @@ auto inspect(Inspector& f, DMIDMessage& v) {
                             f.field("weight", v.weight));
 }
 
-}
+}  // namespace arangodb::pregel

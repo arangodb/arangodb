@@ -40,10 +40,10 @@ struct LPValue {
 
 template<typename Inspector>
 auto inspect(Inspector& f, LPValue& v) {
-  return f.object(v).fields(f.field("currentCommunity", v.currentCommunity),
-                            f.field("lastCommunity", v.lastCommunity),
-                            f.field("stabilizationRounds", v.stabilizationRounds));
+  return f.object(v).fields(
+      f.field("currentCommunity", v.currentCommunity),
+      f.field("lastCommunity", v.lastCommunity),
+      f.field("stabilizationRounds", v.stabilizationRounds));
 }
-
 
 }  // namespace arangodb::pregel::algos

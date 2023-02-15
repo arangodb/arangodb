@@ -67,4 +67,4 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };
-}  // namespace algos
+}  // namespace arangodb::pregel::algos

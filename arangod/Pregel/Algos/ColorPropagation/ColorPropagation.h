@@ -134,15 +134,20 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
   uint64_t const _maxGss;
 
   static uint64_t getMaxGss(VPackSlice userParams) {
-    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(userParams).maxGss;
+    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(
+               userParams)
+        .maxGss;
   }
   static uint16_t getNumColors(VPackSlice userParams) {
-    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(userParams).numColors;
+    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(
+               userParams)
+        .numColors;
   };
 
   static std::string getInputColorsFieldName(VPackSlice userParams) {
     try {
-      return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(userParams)
+      return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(
+                 userParams)
           .inputColorsFieldName;
     } catch (std::exception const& ex) {
       LOG_TOPIC("42cd7", ERR, Logger::PREGEL)
@@ -156,7 +161,8 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 
   static std::string getOutputColorsFieldName(VPackSlice userParams) {
     try {
-      return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(userParams)
+      return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(
+                 userParams)
           .outputColorsFieldName;
     } catch (std::exception const& ex) {
       LOG_TOPIC("8faa4", ERR, Logger::PREGEL)
@@ -169,7 +175,8 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
   }
 
   static std::string getEquivalenceClassFieldName(VPackSlice userParams) {
-    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(userParams)
+    return arangodb::velocypack::deserialize<ColorPropagationUserParameters>(
+               userParams)
         .equivalenceClassFieldName;
   }
 };
