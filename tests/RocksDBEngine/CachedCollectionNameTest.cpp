@@ -134,7 +134,8 @@ TEST(CachedCollectionNameTest, test_set_multiple_times_different_collection) {
   ASSERT_NE(nullptr, previous);
   EXPECT_EQ("foobar", *previous);
   ASSERT_EQ("barbaz/123456", result);
-  ASSERT_EQ("foobar", *testee.get());
+  ASSERT_NE(nullptr, testee.get());
+  EXPECT_EQ("foobar", *testee.get());
 }
 
 TEST(CachedCollectionNameTest, test_wrong_previous) {
