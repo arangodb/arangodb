@@ -1130,7 +1130,7 @@ All required data is passed as parameters:
 - driverOptions options to be passed on to the driver works in the form of
   `--driverOptions.argname value` evaluating to `--argname` `value`
 - `--test testcase` evaluates to `--testsuite testcase`
-- `--testCase testcaseExp` evalates to `--filter testcaseExp`
+- `--testCase testcaseExp` evaluates to `--filter testcaseExp`
 
 Statically provided options (with sample values):
 
