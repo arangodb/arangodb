@@ -2524,10 +2524,11 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "milliseconds", "Europe/Berlin", "UTC"], true ],
         [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156+02:00", "days", "UTC", "Europe/Berlin"], true ],
         [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "Europe/Berlin", "UTC"], true ],
-        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds", "Europe/Berlin"], true ], // no conversion
-        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds", "UTC"], true ], // no conversion
-        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "Europe/Berlin"], true ], // no conversion
-        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "UTC"], true ] // no conversion
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds"], false ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds", "UTC"], false ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds", "Europe/Berlin"], true ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin"], true ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "UTC"], true ]
       ];
 
       values.forEach(function (value) {

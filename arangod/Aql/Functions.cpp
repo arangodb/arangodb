@@ -4670,8 +4670,7 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
       }
     }
 
-    // same timezones do not need to be converted
-    if (startTimezoneIndex != endTimezoneIndex) {
+    if (startTimezoneIndex > 0) {
       AqlValue const startTimezoneParam =
           extractFunctionParameterValue(parameters, startTimezoneIndex);
 
@@ -4682,20 +4681,22 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
 
       std::string startTimezone = startTimezoneParam.slice().copyString();
 
-      AqlValue const endTimezoneParam =
-          extractFunctionParameterValue(parameters, endTimezoneIndex);
+      ::localizeTimePoint(startTimezone, tp1);
 
-      if (!endTimezoneParam.isString()) {  // timezone type must be string
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
-      }
+      if (startTimezoneIndex != endTimezoneIndex) {
+        AqlValue const endTimezoneParam =
+            extractFunctionParameterValue(parameters, endTimezoneIndex);
 
-      std::string endTimezone = endTimezoneParam.slice().copyString();
+        if (!endTimezoneParam.isString()) {  // timezone type must be string
+          registerInvalidArgumentWarning(expressionContext, AFN);
+          return AqlValue(AqlValueHintNull());
+        }
 
-      // same timezones do not need to be converted
-      if (startTimezone != endTimezone) {
-        ::localizeTimePoint(startTimezone, tp1);
+        std::string endTimezone = endTimezoneParam.slice().copyString();
+
         ::localizeTimePoint(endTimezone, tp2);
+      } else {
+        ::localizeTimePoint(startTimezone, tp2);
       }
     }
   }
