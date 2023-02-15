@@ -19,6 +19,11 @@ v3.10.4 (XXXX-XX-XX)
   compressed values but the full-length edge ids. The compressed values will
   also be used in memory only and will not be persisted on disk.
 
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9 where a
+  geo index was no longer used because of an optimizer rule, which gained new
+  powers, and wrong cost estimations for execution plans.
+
 * Allow usage of document projections and traversal projections in slightly more
   cases, specifically when the document's or traversal's output variables were
   used in subqueries. Previously the usage of the document or traversal output
