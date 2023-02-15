@@ -229,7 +229,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     TRI_ASSERT(_computedValues == nullptr);
   }
 
-  if (replicationVersion() == replication::Version::TWO && info.hasKey("groupId")) {
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
     _groupId = info.get("groupId").getNumericValue<uint64_t>();
   }
 }
