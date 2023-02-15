@@ -46,6 +46,7 @@
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
+#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -88,7 +89,7 @@ std::vector<std::string> Databases::list(ArangodServer& server,
   }
 }
 
-arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
+Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -137,8 +138,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
-                                             int64_t timeout) {
+Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
+                                   int64_t timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   Result res;
@@ -309,7 +310,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(!vocbase->isDangling());
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
+  auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
 
   Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {
@@ -324,11 +325,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(ArangodServer& server,
-                                   ExecContext const& exec,
-                                   std::string const& dbName,
-                                   VPackSlice const& users,
-                                   VPackSlice const& options) {
+Result Databases::create(ArangodServer& server, ExecContext const& exec,
+                         std::string const& dbName, VPackSlice const& users,
+                         VPackSlice const& options) {
   // Only admin users are permitted to create databases
   if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
@@ -336,7 +335,7 @@ arangodb::Result Databases::create(ArangodServer& server,
   }
 
   CreateDatabaseInfo createInfo(server, exec);
-  arangodb::Result res = createInfo.load(dbName, options, users);
+  Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
     events::CreateDatabase(dbName, res, exec);
@@ -439,9 +438,8 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 const std::string dropError = "Error when dropping database";
 }  // namespace
 
-arangodb::Result Databases::drop(ExecContext const& exec,
-                                 TRI_vocbase_t* systemVocbase,
-                                 std::string const& dbName) {
+Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
+                       std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (exec.systemAuthLevel() != auth::Level::RW) {
     events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
@@ -483,13 +481,14 @@ arangodb::Result Databases::drop(ExecContext const& exec,
           return res;
         }
 
-        arangodb::Task::removeTasksForDatabase(dbName);
+        Task::removeTasksForDatabase(dbName);
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer.addGlobalContextMethod("reloadRouting");
+        dealer.addGlobalContextMethod(
+            GlobalContextMethods::MethodType::kReloadRouting);
       }
-    } catch (arangodb::basics::Exception const& ex) {
+    } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
       return Result(ex.code(), dropError + ex.message());
     } catch (std::exception const& ex) {

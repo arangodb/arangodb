@@ -135,6 +135,16 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[0].two, e.three, p.edges[1].four]`, ["one", "two"], ["_from", "_to", "three", "four"], true, true, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[-1].one.two, e.three, p.edges[-11].three.four]`, ["one"], ["_from", "_to", "three"], true, true, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.vertices[-1].one.two, p.edges[-11].three.four]`, [["one", "two"]], ["_from", "_to", ["three", "four"]], true, true, true],
+        
+        /* Test for subqueries */
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 RETURN v.testi) RETURN sub`, ["testi"], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 FILTER v.testi == i RETURN v.testi) RETURN sub`, ["testi"], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 RETURN v.testi1) RETURN [sub, v.testi2]`, ["testi1", "testi2"], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 FILTER v.testi1 == i RETURN v.testi1) RETURN [sub, v.testi2]`, ["testi1", "testi2"], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 RETURN e.testi) RETURN sub`, [], ["_from", "_to", "testi"], false, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 FILTER e.testi == i RETURN e.testi) RETURN sub`, [], ["_from", "_to", "testi"], false, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 RETURN e.testi1) RETURN [sub, e.testi2]`, [], ["_from", "_to", "testi1", "testi2"], false, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 FILTER e.testi1 == i RETURN e.testi1) RETURN [sub, e.testi2]`, [], ["_from", "_to", "testi1", "testi2"], false, false, false],
 
         /* Test for PRUNE */
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE v.c == "foo" RETURN e`, ["c"], [], true, false, false],
