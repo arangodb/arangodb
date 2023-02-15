@@ -18,7 +18,6 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
-add_subdirectory(Pregel)
 
 # ----------------------------------------
 # Link directories
@@ -318,6 +317,7 @@ target_link_libraries(arangodbtests
   arango_tests_futures
   arango_tests_zkd
   arango_tests_pregel
+  arango_tests_actor
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -375,4 +375,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Pregel)
 add_subdirectory(sepp)

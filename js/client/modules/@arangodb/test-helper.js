@@ -1,7 +1,7 @@
 /*jshint strict: false */
 /* global print */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
+// / @brief helper for JavaScript Tests
 // /
 // / @file
 // /
@@ -29,13 +29,15 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
@@ -48,7 +50,9 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
-exports.Helper = Helper;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
@@ -280,6 +284,8 @@ while (++saveTries < 100) {
 };
 exports.runShell = runShell;
 
+const abortSignal = 6;
+
 exports.runParallelArangoshTests = function (tests, duration, cn) {
   assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
   
@@ -298,7 +304,28 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
     debug("running test for " + duration + " s...");
 
-    internal.sleep(duration);
+    for (let count = 0; count < duration; count ++) {
+      internal.sleep(1);
+      clients.forEach(function (client) {
+        if (!client.done) {
+          let status = internal.statusExternal(client.pid, false);
+          if (status.status !== 'RUNNING') {
+            client.done = true;
+            client.failed = true;
+            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${status}`);
+            count = duration + 10;
+          }
+        }
+      });
+      if (count > duration) {
+        clients.forEach(function (client) {
+          if (!client.done) {
+            debug(`force terminating ${client.pid} since we're aborting the tests`);
+            internal.killExternal(client.pid, abortSignal);
+          }
+        });
+      }
+    }
 
     debug("stopping all test clients");
 
@@ -342,7 +369,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   } finally {
     clients.forEach(function(client) {
       try {
-        fs.remove(client.file);
+        if (!client.failed) {
+          fs.remove(client.file);
+        }
       } catch (err) { }
 
       const logfile = client.file + '.log';

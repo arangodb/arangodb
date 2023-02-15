@@ -86,11 +86,15 @@ replication2_client cluster
 replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 cluster -- --dumpAgencyOnError true
-resilience_failover priority=1200 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 cluster -- --dumpAgencyOnError true
+resilience_failover priority=1200 buckets=2 cluster -- --dumpAgencyOnError true
+resilience_move priority=600 buckets=3 cluster -- --dumpAgencyOnError true
 resilience_sharddist cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 cluster buckets=8
+
+shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
+shell_client_multi priority=1500 cluster suffix=http
+shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
