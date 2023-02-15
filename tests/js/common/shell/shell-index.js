@@ -29,7 +29,7 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
-const testHelper = require("@arangodb/test-helper").Helper;
+const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
 const cn = "UnitTestsCollection";
@@ -235,7 +235,7 @@ function IndexSuite() {
     testGetIndexUnloaded: function() {
       var idx = collection.ensureIndex({type: "persistent", fields: ["test"]});
 
-      testHelper.waitUnload(collection);
+      helper.waitUnload(collection);
 
       assertEqual(idx.id, collection.index(idx.id).id);
       assertEqual(idx.id, collection.getIndexes()[1].id);
@@ -250,7 +250,7 @@ function IndexSuite() {
 
       collection.drop();
 
-      if (internal.coverage || internal.valgrind) {
+      if (versionHas('coverage')) {
         internal.wait(2, false);
       }
       try {

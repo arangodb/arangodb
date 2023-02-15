@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/7819991/213479451-585f47f0-9f12-47e6-bd6e-012cea26c459.svg" width="750" height="215">
-  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/7819991/213479448-8c88f52c-ce39-4d19-b33a-639d47c0d6f5.svg" width="750" height="215">
-  <img alt="Two stylized avocado halves and the product name." src="https://user-images.githubusercontent.com/7819991/213479702-996a07c4-6994-40c6-8024-d7c711f0ec24.png" width="750" height="215">
+  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/7819991/218699214-264942f9-b020-4f50-b1a6-3363cdc0ddc9.svg" width="638" height="105">
+  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/7819991/218699215-b9b4a465-45f8-4db9-b5a4-ba912541e017.svg" width="638" height="105">
+  <img alt="Two stylized avocado halves and the product name." src="https://user-images.githubusercontent.com/7819991/218697980-26ffd7af-cf29-4365-8a5d-504b850fc6b1.png" width="638" height="105">
 </picture>
 
 ArangoDB

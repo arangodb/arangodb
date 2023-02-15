@@ -33,7 +33,7 @@ const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
-
+const isEnterprise = require("internal").isEnterprise();
 
 let api = "/_api/view";
 
@@ -421,7 +421,7 @@ function add_with_link_to_non_existing_collectionSuite () {
 
     test_creating_a_view_with_link_to_non_existing_collection: function() {
       let cmd = api;
-      let body = { "name": "abc", "type": "arangosearch", "links": { "wrong" : {} } };
+      let body = { "name": "abc", "type": "arangosearch", "links": { "wrong" : {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}} } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -449,10 +449,16 @@ function add_with_link_to_existing_collectionSuite () {
 
     test_creating_a_view_with_link_to_existing_collection_drop: function() {
       let cmd = api;
+      let meta = {};
+      if (isEnterprise) {
+        meta = { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+      } else {
+        meta = { "right" : { "includeAllFields": true, "fields": { "value": {} } } };
+      }
       let body = {
         "name": "abc",
         "type": "arangosearch",
-        "links": { "right" : { "includeAllFields": true } }
+        "links": meta
       };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -465,11 +471,19 @@ function add_with_link_to_existing_collectionSuite () {
 
     test_dropping_a_view_with_link: function() {
       let cmd = api;
+      let meta = {};
+      if (isEnterprise) {
+        meta = { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+      } else {
+        meta = { "right" : { "includeAllFields": true, "fields": { "value": {} } } };
+      }
+
       let body ={
         "name": "abc",
         "type": "arangosearch",
-        "links": { "right" : { "includeAllFields": true } }
+        "links": meta
       };
+
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);

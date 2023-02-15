@@ -54,6 +54,7 @@ const hb = require("@arangodb/hotbackup");
 const sleep = require("internal").sleep;
 const db = require("internal").db;
 const platform = require("internal").platform;
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -66,11 +67,9 @@ const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
 let timeoutFactor = 1;
-if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-    (platform.substr(0, 3) === 'win')) {
+if (versionHas('asan') || versionHas('tsan') || (platform.substr(0, 3) === 'win')) {
   timeoutFactor = 8;
-} else if (process.env.hasOwnProperty('GCOV_PREFIX')) {
+} else if (versionHas('coverage')) {
     timeoutFactor = 16;
 }
 
@@ -105,13 +104,41 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreOldConfig = false;
     this.afterServerStart = afterServerStart;
     this.instanceManager = null;
+    this.im1 = null;
+    this.im2 = null;
     this.keyDir = null;
     this.otherKeyDir = null;
   }
 
   destructor(cleanup) {
+    if (this.fn !== undefined && fs.exists(this.fn)) {
+      fs.remove(this.fn);
+    }
+    if (this.instanceManager === null) {
+      print(RED + 'no instance running. Nothing to stop!' + RESET);
+      return this.results;
+    }
+    print(CYAN + 'Shutting down...' + RESET);
+    if (this.im1.detectShouldBeRunning()) {
+      this.im1.reconnect();
+    }
+    this.results['shutdown'] = this.im1.shutdownInstance();
+
+    if (this.im2 !== null) {
+      if (this.im2.detectShouldBeRunning()) {
+        this.im2.reconnect();
+      }
+      this.results['shutdown'] &= this.im2.shutdownInstance();
+    }
+    print(CYAN + 'done.' + RESET);
     let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
     if (doCleanup) {
+      if (this.im1 !== null) {
+        this.im1.destructor(this.results.failed === 0);
+      }
+      if (this.im2 !== null) {
+        this.im2.destructor(this.results.failed === 0);
+      }
       [this.keyDir,
        this.otherKeyDir,
        this.dumpConfig.getOutputDirectory()].forEach(dir => {
@@ -220,7 +247,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   startFirstInstance() {
-    this.instanceManager = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
+    let rootDir = fs.join(fs.getTempPath(), '1');
+    this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which, rootDir);
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -244,11 +272,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
-      this.results['shutdown'] = this.instanceManager.shutdownInstance();
-      this.instanceManager.destructor(false); // must not cleanup!
+      let rootDir = fs.join(fs.getTempPath(), '2');
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
+      this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which, rootDir);
       this.instanceManager.prepareInstance();
       this.instanceManager.launchTcpDump("");
       if (!this.instanceManager.launchInstance()) {
@@ -297,18 +324,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   extractResults() {
-    if (this.fn !== undefined) {
-      fs.remove(this.fn);
-    }
-    if (this.instanceManager === null) {
-      print(RED + 'no instance running. Nothing to stop!' + RESET);
-      return this.results;
-    }
-    print(CYAN + 'Shutting down...' + RESET);
-    this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor(this.results.failed === 0);
-    print(CYAN + 'done.' + RESET);
-
     print();
     return this.results;
   }
@@ -825,15 +840,7 @@ function dumpJwt (options) {
 
 function dumpEncrypted (options) {
   // test is only meaningful in the Enterprise Edition
-  let skip = true;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      skip = false;
-    }
-  }
-
-  if (skip) {
+  if (!isEnterprise()) {
     print('skipping dump_encrypted test');
     return {
       dump_encrypted: {
@@ -869,15 +876,7 @@ function dumpEncrypted (options) {
 
 function dumpMaskings (options) {
   // test is only meaningful in the Enterprise Edition
-  let skip = true;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      skip = false;
-    }
-  }
-
-  if (skip) {
+  if (!isEnterprise()) {
     print('skipping dump_maskings test');
     return {
       dump_maskings: {
@@ -950,6 +949,7 @@ function hotBackup (options) {
 
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
   if (!helper.startFirstInstance()) {
+      helper.destructor(false);
     return helper.extractResults();
   }
 
@@ -975,6 +975,7 @@ function hotBackup (options) {
       !helper.restoreHotBackup() ||
       !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
       !helper.tearDown(tearDownFile)) {
+      helper.destructor(true);
     return helper.extractResults();
   }
 
@@ -984,6 +985,7 @@ function hotBackup (options) {
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
         !helper.testRestoreOld(oldTestFile)) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -996,6 +998,7 @@ function hotBackup (options) {
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -1003,6 +1006,7 @@ function hotBackup (options) {
   if (options.cleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
+  helper.destructor(true);
   return helper.extractResults();
 }
 
