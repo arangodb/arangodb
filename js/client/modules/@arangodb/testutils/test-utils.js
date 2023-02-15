@@ -203,6 +203,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
+    return false;
+  }
+
   if (options.failed) {
     return options.failed.hasOwnProperty(testname);
   }

@@ -163,6 +163,7 @@ let optionsDocumentation = [
   ''
 ];
 
+const isCoverage = versionHas('coverage');
 const isSan = versionHas('asan') || versionHas('tsan');
 const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
@@ -220,6 +221,7 @@ const optionsDefaults = {
   'onlyGrey': false,
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'isCov': isCoverage,
   'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
