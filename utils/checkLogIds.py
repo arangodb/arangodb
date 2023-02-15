@@ -140,7 +140,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
 
 
             elif operation == Operation.MODIFY:
-                #no match but we need to midify
+                #no match but we need to modify
                 target_file_handle.write(line)
 
             if not is_good(status):
