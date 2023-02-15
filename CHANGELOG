@@ -1,6 +1,12 @@
 devel
 -----
 
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
+
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
 * BTS-1219: Fix cost estimation for geo index usage and for collection
   enumeration with included filtering. This fixes a regression from 3.9
   where a geo index was no longer used because of an optimizer rule,
