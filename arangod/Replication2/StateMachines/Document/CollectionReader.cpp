@@ -77,11 +77,11 @@ CollectionReader::CollectionReader(
     std::shared_ptr<LogicalCollection> logicalCollection,
     ReplicationTransaction& trx)
     : _logicalCollection(std::move(logicalCollection)) {
-  Result res = trx.addCollection(*logicalCollection);
+  Result res = trx.addCollection(*_logicalCollection);
 
   if (!res.ok()) {
     LOG_TOPIC("c49e5", ERR, Logger::REPLICATION2)
-        << "Failed to add collection " << logicalCollection->name()
+        << "Failed to add collection " << _logicalCollection->name()
         << " to a transaction: " << res.errorMessage();
     THROW_ARANGO_EXCEPTION(res);
   }
