@@ -28,6 +28,7 @@
 #include "Pregel/Worker/WorkerConfig.h"
 
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"

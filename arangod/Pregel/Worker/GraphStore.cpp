@@ -55,6 +55,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
 #include "Pregel/Algos/HITS/HITSValue.h"
 #include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
 #include "Pregel/Algos/LabelPropagation/LPValue.h"

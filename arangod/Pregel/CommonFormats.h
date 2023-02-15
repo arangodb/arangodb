@@ -40,25 +40,6 @@
 
 namespace arangodb::pregel {
 
-struct DMIDValue {
-  constexpr static float INVALID_DEGREE = -1;
-  float weightedInDegree = INVALID_DEGREE;
-  std::map<VertexID, float> membershipDegree;
-  std::map<VertexID, float> disCol;
-};
-
-struct DMIDMessage {
-  DMIDMessage() {}
-  DMIDMessage(VertexID const& pid, float val) : senderId(pid), weight(val) {}
-
-  DMIDMessage(VertexID const& sender, VertexID const& leader)
-      : senderId(sender), leaderId(leader) {}
-
-  VertexID senderId;
-  VertexID leaderId;
-  float weight = 0;
-};
-
 /// A counter for counting unique vertex IDs using a HyperLogLog sketch.
 /// @author Aljoscha Krettek, Robert Metzger, Robert Waury
 /// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
