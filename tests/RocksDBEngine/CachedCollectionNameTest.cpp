@@ -42,7 +42,8 @@ TEST(CachedCollectionNameTest, test_set_invalid_values) {
     ASSERT_NE(nullptr, previous);
     EXPECT_EQ("foobar", *previous);
     ASSERT_EQ("/123", result);
-    ASSERT_EQ("foobar", *testee.get());
+    ASSERT_NE(nullptr, testee.get());
+    EXPECT_EQ("foobar", *testee.get());
 
     result = testee.buildCompressedValue(previous, "foobar/123/456");
     ASSERT_NE(nullptr, previous);
