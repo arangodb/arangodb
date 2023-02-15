@@ -3163,7 +3163,7 @@ devel
   to one hour. Older versions of ArangoDB had longer session timeouts.
 
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
-  (DEVSUPP-753).
+  (DEVSUP-753).
 
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
   internal requests to use the new url.
