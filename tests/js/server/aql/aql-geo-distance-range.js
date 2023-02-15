@@ -352,7 +352,7 @@ function BTS_471() {
         }
       }); 
     }
-  }
+  };
 }
 
 function BTS_471Suite() {
