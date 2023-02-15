@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode } from "react";
 import "./styles.css";
 
 /**
@@ -12,29 +12,19 @@ import "./styles.css";
  */
 
 interface IDrawer {
-  onClose?: () => void;
-  onOpen?: () => void;
   children?: ReactNode | null | JSX.Element;
   open?: boolean;
   position?: "left" | "right";
 }
 const Drawer = ({
   open,
-  onClose,
-  onOpen,
   position = "left",
   children
 }: IDrawer) => {
-  useEffect(() => {
-    if (open) {
-      onOpen && onOpen();
-    } else if (!open) {
-      onClose && onClose();
-    }
-  }, [open]);
+
   return (
-    <div className={`side-drawer ${open ? "open" : ""} ${position}`}>
-      {open ? children : null}
+    <div className={`side-drawer ${position} ${open ? "open" : ""} `}>
+      {children}
     </div>
   );
 };
