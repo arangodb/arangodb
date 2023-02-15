@@ -332,7 +332,7 @@ function ahuacatlDateFunctionsTestSuite () {
       });
       const timezonedDates = [
         ["1985-01-02T23:00:00.000Z", "Europe/Berlin", "Jan", "January", "Thu", "Thursday"]
-      ]
+      ];
       timezonedDates.forEach(function (value) {
         assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmm', @timezone)", { date: value[0],timezone: value[1] }), "mmm " + value[0]);
         assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmmm', @timezone)", { date: value[0],timezone: value[1] }), "mmmm " + value[0]);
@@ -2217,7 +2217,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDiffInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(null, 1, 'y')");
 
@@ -2225,7 +2225,17 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, null)");
 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, {})");
+
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', {})");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(1, 1, 'yo')");
 
@@ -2244,6 +2254,12 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF('', 1, 'y')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(1, '', 'y')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', 'Wrong Timezone' )");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', false, 'Wrong Timezone' )");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', false, 'Europe/Berlin','Wrong Timezone' )");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2311,7 +2327,38 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2000-05-01", "2400-05-01 00:00:00.000", "year", true], 400 ],
         [ ["2000-05-01", "2400-05-01 00:00:00.000", "y", true], 400 ],
         [ ["2000-05-01", "2000-04-30 00:00:00.000", "days", true], -1 ],
-        [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ]
+        [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ],
+
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true], 1/24 ], // #60
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true], 1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false], 1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours"], 1 ],// #65
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin"], 0 ],// #70
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "UTC", "Europe/Berlin"], 2/24 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "UTC", "Europe/Berlin"], 2 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "UTC", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "UTC", "Europe/Berlin"], 2 ],// #75
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "UTC", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "UTC", "Europe/Berlin"], 2 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin", "UTC"], -1/24 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin", "UTC"], 0 ],// #80
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin", "UTC"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin", "Europe/Berlin"], 0 ],// #85
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin", "Europe/Berlin"], 0 ]
       ];
 
       values.forEach(function (value) {
