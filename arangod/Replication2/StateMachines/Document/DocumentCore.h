@@ -50,6 +50,8 @@ struct DocumentCore {
   auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
   auto getCollectionId() -> std::string const&;
+  auto addShard(ShardID shardId, CollectionID collectionId,
+                velocypack::SharedSlice properties) -> Result;
 
   void drop();
 
@@ -57,7 +59,7 @@ struct DocumentCore {
   TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
-  ShardID _shardId;
+  std::unordered_map<ShardID, std::shared_ptr<velocypack::Builder>> _shards;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

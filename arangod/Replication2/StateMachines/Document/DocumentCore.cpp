@@ -47,17 +47,20 @@ DocumentCore::DocumentCore(
 
   // TODO this is currently still required. once the snapshot transfer contains
   //  a list of shards that exist for this log, we can remove this.
-  _shardId = _params.shardId;
+  auto shardId = _params.shardId;
   auto shardResult = _shardHandler->createLocalShard(
-      _shardId, _params.collectionId, collectionProperties);
+      shardId, _params.collectionId, collectionProperties);
   TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state"
                                << _gid << ": " << shardResult;
 
+  _shards.emplace(shardId, std::move(collectionProperties));
   LOG_CTX("b7e0d", TRACE, this->loggerContext)
-      << "Created shard " << _shardId << " for replicated state " << _gid;
+      << "Created shard " << shardId << " for replicated state " << _gid;
 }
 
-auto DocumentCore::getShardId() -> ShardID const& { return _shardId; }
+auto DocumentCore::getShardId() -> ShardID const& {
+  return _shards.begin()->first;
+}
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
@@ -66,12 +69,14 @@ auto DocumentCore::getCollectionId() -> std::string const& {
 }
 
 void DocumentCore::drop() {
-  auto result = _shardHandler->dropLocalShard(_shardId, _params.collectionId);
-  if (result.fail()) {
-    LOG_CTX("b7f0d", FATAL, this->loggerContext)
-        << "Failed to drop shard " << _shardId << " for replicated state "
-        << _gid << ": " << result;
-    FATAL_ERROR_EXIT();
+  for (auto const& [shardId, _] : _shards) {
+    auto result = _shardHandler->dropLocalShard(shardId, _params.collectionId);
+    if (result.fail()) {
+      LOG_CTX("b7f0d", FATAL, this->loggerContext)
+          << "Failed to drop shard " << shardId << " for replicated state "
+          << _gid << ": " << result;
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 
@@ -79,4 +84,18 @@ auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
 
 auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
   return _vocbase;
+}
+
+auto DocumentCore::addShard(ShardID shardId, CollectionID collectionId,
+                            velocypack::SharedSlice properties) -> Result {
+  // TODO remove this unnecessary copy when api is better
+  auto propertiesCopy = std::make_shared<VPackBuilder>();
+  propertiesCopy->add(properties.slice());
+
+  auto result =
+      _shardHandler->createLocalShard(shardId, collectionId, propertiesCopy);
+  if (result.ok()) {
+    _shards.emplace(std::move(shardId), std::move(propertiesCopy));
+  }
+  return result;
 }

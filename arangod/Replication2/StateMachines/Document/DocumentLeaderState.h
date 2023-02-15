@@ -96,8 +96,6 @@ struct DocumentLeaderState
   Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
-  Guarded<std::shared_ptr<IDocumentStateShardHandler>, basics::UnshackledMutex>
-      _shardHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;

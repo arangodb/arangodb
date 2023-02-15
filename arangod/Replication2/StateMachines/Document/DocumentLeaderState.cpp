@@ -47,7 +47,6 @@ DocumentLeaderState::DocumentLeaderState(
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
-      _shardHandler(_handlersFactory->createShardHandler(gid)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager),
       _isResigning(false) {
@@ -255,15 +254,13 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue([=, self = shared_from_this()](auto&&) {
-    auto guard = self->_shardHandler.getLockedGuard();
-    // TODO remove this unnecessary copy when api is better
-    auto propertiesCopy = std::make_shared<VPackBuilder>();
-    propertiesCopy->add(properties.slice());
-
-    auto result =
-        guard->get()->createLocalShard(shard, collectionId, propertiesCopy);
-    // TODO update internal shard map
-    return result;
+    return _guardedData.doUnderLock([&](auto& data) -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+      return data.core->addShard(std::move(shard), std::move(collectionId),
+                                 std::move(properties));
+    });
   });
 }
 
