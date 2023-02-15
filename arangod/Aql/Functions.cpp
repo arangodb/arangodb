@@ -4541,7 +4541,6 @@ AqlValue functions::DateDiff(ExpressionContext* expressionContext,
 
   double diff = 0.0;
   bool asFloat = false;
-  auto diffDuration = tp2 - tp1;
 
   AqlValue const& unitValue = extractFunctionParameterValue(parameters, 2);
   if (!unitValue.isString()) {
@@ -4551,14 +4550,55 @@ AqlValue functions::DateDiff(ExpressionContext* expressionContext,
 
   DateSelectionModifier flag = ::parseDateModifierFlag(unitValue.slice());
 
-  if (parameters.size() == 4) {
-    AqlValue const& asFloatValue = extractFunctionParameterValue(parameters, 3);
-    if (!asFloatValue.isBoolean()) {
+  if (parameters.size() > 3) {
+    AqlValue const& parameter4 = extractFunctionParameterValue(parameters, 3);
+    if (parameter4.isBoolean()) {
+      asFloat = parameter4.toBoolean();
+    } else if (parameter4.isString()) {
+      std::string inputTimezone = parameter4.slice().copyString();
+      ::localizeTimePoint(inputTimezone, tp1);
+      if (parameters.size() == 4) {
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+    } else {
       registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
-    asFloat = asFloatValue.toBoolean();
+
+    if (parameters.size() > 4) {
+      AqlValue const& parameter5 = extractFunctionParameterValue(parameters, 4);
+
+      if (!parameter5.isString()) {  // timezone type must be string
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      std::string inputTimezone = parameter5.slice().copyString();
+      if (parameter4.isBoolean()) {
+        ::localizeTimePoint(inputTimezone, tp1);
+        if (parameters.size() == 5) {
+          ::localizeTimePoint(inputTimezone, tp2);
+        }
+      } else {
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+
+      if (parameters.size() == 6) {
+        AqlValue const& parameter6 =
+            extractFunctionParameterValue(parameters, 5);
+
+        if (!parameter6.isString()) {  // timezone type must be string
+          registerInvalidArgumentWarning(expressionContext, AFN);
+          return AqlValue(AqlValueHintNull());
+        }
+
+        inputTimezone = parameter6.slice().copyString();
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+    }
   }
+
+  auto diffDuration = tp2 - tp1;
 
   switch (flag) {
     case YEAR:
