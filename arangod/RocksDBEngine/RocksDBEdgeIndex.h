@@ -23,20 +23,29 @@
 
 #pragma once
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace rocksdb {
+class Slice;
+}
+
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 class DatabaseFeature;
 class RocksDBEdgeIndex;
 
@@ -44,7 +53,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexLookupIterator;
 
  public:
-  static uint64_t HashForKey(rocksdb::Slice const& key);
+  static uint64_t HashForKey(rocksdb::Slice key);
 
   RocksDBEdgeIndex() = delete;
 
@@ -108,6 +117,48 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void refillCache(transaction::Methods& trx,
                    std::vector<std::string> const& keys) override;
 
+  // build a potentially prefix compressed lookup key for cache lookups.
+  // the return value is either
+  // - an empty std::string_view if the lookup value is syntactically
+  //   invalid (syntactially invalid _from/_to value),
+  // - identical to the input lookup value if the collection name in the
+  //   lookup value is not identical to the cached collection name
+  // - a suffix of the original lookup value (starting with the forward
+  //   slash) if the collection name of the lookup value matches the
+  //   cached collection name (e.g. 'someCollection/abc' will be returned
+  //   as just '/abc' if the cached collection name is 'someCollection''.
+  // note: previous is an in/out parameter and can be used to memoize
+  // the result of the collection name lookup between multiple calls of
+  // this function. this is a performance optimization to avoid repeated
+  // atomic lookups of the collection name once it is already known.
+  // note: returns an empty string view for invalid lookup values!
+  std::string_view buildCompressedCacheKey(std::string const*& previous,
+                                           std::string_view value) const;
+  std::string_view buildCompressedCacheValue(std::string const*& previous,
+                                             std::string_view value) const;
+
+  std::string const* cachedValueCollection(
+      std::string const*& previous) const noexcept;
+
+  class CachedCollectionName {
+   public:
+    CachedCollectionName() noexcept;
+    ~CachedCollectionName();
+
+    // note: previous is an in/out parameter and can be used to memoize
+    // the result of the collection name lookup between multiple calls of
+    // this function. this is a performance optimization to avoid repeated
+    // atomic lookups of the collection name once it is already known.
+    // note: returns an empty string view for invalid lookup values!
+    std::string_view buildCompressedValue(std::string const*& previous,
+                                          std::string_view value) const;
+
+    std::string const* get() const noexcept;
+
+   private:
+    std::atomic<std::string const*> mutable _name;
+  };
+
  private:
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
                                                   aql::AstNode const*,
@@ -139,8 +190,16 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   // name of direction attribute (i.e. "_from" or "_to")
   std::string const _directionAttr;
+
+  // cached collection name for edge index cache keys
+  CachedCollectionName _cacheKeyCollectionName;
+
+  // cached collection name for edge index cache values
+  CachedCollectionName _cacheValueCollectionName;
+
   // whether or not this is the _from part
   bool const _isFromIndex;
+
   // if true, force a refill of the in-memory cache after each
   // insert/update/replace operation
   bool const _forceCacheRefill;
