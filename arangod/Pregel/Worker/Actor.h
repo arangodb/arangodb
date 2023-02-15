@@ -67,7 +67,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
 
   auto operator()(actor::NetworkError notFound)
       -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("7915", INFO, Logger::PREGEL) << fmt::format(
+    LOG_TOPIC("1c3d9", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
   }
