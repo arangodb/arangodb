@@ -892,7 +892,7 @@ devel
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
 
-* Added CSP recommended headers to Aardvaark app for better security.
+* Added CSP recommended headers to Aardvark app for better security.
 
 * Fixed BTS-851: "Could not fetch the applier state of: undefined".
 
