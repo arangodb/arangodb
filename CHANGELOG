@@ -13039,7 +13039,7 @@ v3.1.8 (2017-01-09)
 
 * agents announce new endpoints in inception phase to leader
 
-* agency leadership accepts updatet endpoints to given uuid
+* agency leadership accepts updated endpoints to given uuid
 
 * unified endpoints replace localhost with 127.0.0.1
 
