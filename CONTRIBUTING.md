@@ -783,7 +783,7 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
 | `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
 | `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools                                                                   |
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
 | `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
 | `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
