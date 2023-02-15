@@ -116,6 +116,7 @@ TEST(CachedCollectionNameTest, test_set_multiple_times_same_collection) {
   ASSERT_NE(nullptr, previous);
   EXPECT_EQ("foobar", *previous);
   ASSERT_EQ("/def", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
 
