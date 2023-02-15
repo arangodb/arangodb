@@ -193,7 +193,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && (options.isInstrumented)) {
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
     whichFilter.filter = 'skip when built with an instrumented build';
     return false;
   }
