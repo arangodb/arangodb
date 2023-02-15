@@ -1386,6 +1386,66 @@ void ClusterInfo::loadPlan() {
   }
   TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") { swapAnalyzers = true; }
 
+  decltype(_replicatedLogs) newReplicatedLogs;
+  decltype(_collectionGroups) newCollectionGroups;
+
+  // And now for replicated logs
+  for (auto const& [databaseName, query] : changeSet.dbs) {
+    if (databaseName.empty()) {
+      continue;
+    }
+
+    auto stuff = std::make_shared<NewStuffByDatabase>();
+    {
+      auto replicatedLogsPaths = cluster::paths::aliases::plan()
+                                     ->replicatedLogs()
+                                     ->database(databaseName)
+                                     ->vec();
+
+      auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
+      if (!logsSlice.isNone()) {
+        ReplicatedLogsMap newLogs;
+        for (auto const& [idString, logSlice] :
+             VPackObjectIterator(logsSlice)) {
+          auto spec =
+              std::make_shared<replication2::agency::LogPlanSpecification>(
+                  velocypack::deserialize<
+                      replication2::agency::LogPlanSpecification>(logSlice));
+          newLogs.emplace(spec->id, std::move(spec));
+        }
+        stuff->replicatedLogs = std::move(newLogs);
+      }
+    }
+
+    {
+      auto collectionGroupsPath = std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
+      auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
+      if (!groupsSlice.isNone()) {
+        CollectionGroupMap groups;
+        for (auto const& [idString, groupSlice] :
+             VPackObjectIterator(groupsSlice)) {
+          auto spec = std::make_shared<
+              replication2::agency::CollectionGroupPlanSpecification>();
+          velocypack::deserialize(groupSlice, *spec);
+          groups.emplace(spec->id, std::move(spec));
+        }
+        stuff->collectionGroups = std::move(groups);
+      }
+    }
+
+    newStuffByDatabase[databaseName] = std::move(stuff);
+  }
+
+  for (auto& dbs : newStuffByDatabase) {
+    for (auto& it : dbs.second->replicatedLogs) {
+      newReplicatedLogs.emplace(it.first, it.second);
+    }
+    for (auto& it : dbs.second->collectionGroups) {
+      newCollectionGroups.emplace(it.first, it.second);
+    }
+  }
+
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
   // "Plan":{"Collections": {
@@ -1531,7 +1591,28 @@ void ClusterInfo::loadPlan() {
 
     for (auto const& collectionPairSlice :
          velocypack::ObjectIterator(collectionsSlice)) {
-      auto const& collectionSlice = collectionPairSlice.value;
+      auto collectionSlice = collectionPairSlice.value;
+
+      VPackBuilder newSliceBuilder;
+      if (auto gid = collectionSlice.get("groupId"); !gid.isNone()) {
+        auto group = newCollectionGroups.at(
+            replication2::agency::CollectionGroupId{gid.getUInt()});
+        {
+          VPackObjectBuilder ob(&newSliceBuilder);
+          newSliceBuilder.add(VPackObjectIterator(collectionSlice));
+          newSliceBuilder.add(
+              StaticStrings::NumberOfShards,
+              group->attributes.immutableAttributes.numberOfShards);
+          newSliceBuilder.add(StaticStrings::WriteConcern,
+                              group->attributes.mutableAttributes.writeConcern);
+          newSliceBuilder.add(StaticStrings::WaitForSyncString,
+                              group->attributes.mutableAttributes.waitForSync);
+          newSliceBuilder.add(
+              StaticStrings::ReplicationFactor,
+              group->attributes.mutableAttributes.replicationFactor);
+        }
+        collectionSlice = newSliceBuilder.slice();
+      }
 
       if (!collectionSlice.isObject()) {
         LOG_TOPIC("0f689", WARN, Logger::AGENCY)
@@ -1682,65 +1763,6 @@ void ClusterInfo::loadPlan() {
   // to allow views find collection's inverted indexes
   if (ServerState::instance()->isCoordinator()) {
     ensureViews(iresearch::StaticStrings::ViewSearchAliasType);
-  }
-
-  // And now for replicated logs
-  for (auto const& [databaseName, query] : changeSet.dbs) {
-    if (databaseName.empty()) {
-      continue;
-    }
-
-    auto stuff = std::make_shared<NewStuffByDatabase>();
-    {
-      auto replicatedLogsPaths = cluster::paths::aliases::plan()
-                                     ->replicatedLogs()
-                                     ->database(databaseName)
-                                     ->vec();
-
-      auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
-      if (!logsSlice.isNone()) {
-        ReplicatedLogsMap newLogs;
-        for (auto const& [idString, logSlice] :
-             VPackObjectIterator(logsSlice)) {
-          auto spec =
-              std::make_shared<replication2::agency::LogPlanSpecification>(
-                  velocypack::deserialize<
-                      replication2::agency::LogPlanSpecification>(logSlice));
-          newLogs.emplace(spec->id, std::move(spec));
-        }
-        stuff->replicatedLogs = std::move(newLogs);
-      }
-    }
-
-    {
-      auto collectionGroupsPath = std::initializer_list<std::string_view>{
-          AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
-      auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
-      if (!groupsSlice.isNone()) {
-        CollectionGroupMap groups;
-        for (auto const& [idString, groupSlice] :
-             VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<
-              replication2::agency::CollectionGroupPlanSpecification>();
-          velocypack::deserialize(groupSlice, *spec);
-          groups.emplace(spec->id, std::move(spec));
-        }
-        stuff->collectionGroups = std::move(groups);
-      }
-    }
-
-    newStuffByDatabase[databaseName] = std::move(stuff);
-  }
-
-  decltype(_replicatedLogs) newReplicatedLogs;
-  decltype(_collectionGroups) newCollectionGroups;
-  for (auto& dbs : newStuffByDatabase) {
-    for (auto& it : dbs.second->replicatedLogs) {
-      newReplicatedLogs.emplace(it.first, it.second);
-    }
-    for (auto& it : dbs.second->collectionGroups) {
-      newCollectionGroups.emplace(it.first, it.second);
-    }
   }
 
   if (isCoordinator) {
@@ -6185,7 +6207,8 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: did not find leader,"
+        << "getResponsibleServerReplication2: " << logId
+        << " shard = " << shardID << "did not find leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }

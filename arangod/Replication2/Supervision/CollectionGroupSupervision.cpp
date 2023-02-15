@@ -113,11 +113,8 @@ auto computeShardList(
     // sort by name, but leader in front
     std::sort(servers.servers.begin(), servers.servers.end(),
               [&](auto const& left, auto const& right) {
-                // returns true if left < right
-                if (left == leader) {
-                  return true;
-                }
-                return left < right;
+                return std::make_pair(left != leader, std::ref(left)) <
+                       std::make_pair(right != leader, std::ref(right));
               });
     mapping.shards[shards[i]] = std::move(servers);
   }

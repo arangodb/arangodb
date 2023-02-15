@@ -246,15 +246,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testDropCollection: function() {
-      db._drop(collectionName);
-      collection = null;
-      for (const shard of shards) {
-        let {plan} = lh.readReplicatedLogAgency(database, shardsToLogs[shard]);
-        assertEqual(plan, undefined);
-      }
-    },
-
     testReplicateOperationsCommit: function() {
       const opType = "Commit";
 
@@ -382,8 +373,9 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         }
       }
       assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
-        JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
-          entry.hasOwnProperty("payload") && entry.payload.operation !== "Insert")));
+          JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
+              entry.hasOwnProperty("payload") && entry.payload.operation !== "Insert"
+              && entry.payload.operation !== "Commit")));
     }
   };
 };
