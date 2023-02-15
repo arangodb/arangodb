@@ -72,7 +72,6 @@ IndexNode::IndexNode(
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
   TRI_ASSERT(_condition != nullptr);
-  TRI_ASSERT(_indexes.size() == _options.numIndexesTotal);
   prepareProjections();
 }
 
@@ -557,6 +556,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
   }
+  _options.forLateMaterialization = true;
 }
 
 transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {

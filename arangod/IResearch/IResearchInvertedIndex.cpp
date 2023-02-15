@@ -1013,22 +1013,22 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
-      if (opts.numIndexesTotal > 1) {
-        return std::make_unique<IResearchInvertedIndexIterator<true>>(
+      if (opts.forLateMaterialization) {
+        return std::make_unique<IResearchInvertedIndexIterator<false>>(
             monitor, collection, state, trx, node, &_meta, reference,
             mutableConditionIdx);
       } else {
-        return std::make_unique<IResearchInvertedIndexIterator<false>>(
+        return std::make_unique<IResearchInvertedIndexIterator<true>>(
             monitor, collection, state, trx, node, &_meta, reference,
             mutableConditionIdx);
       }
     } else {
-      if (opts.numIndexesTotal > 1) {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
+      if (opts.forLateMaterialization) {
+        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
             monitor, collection, state, trx, node, &_meta, reference,
             mutableConditionIdx);
       } else {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
+        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
             monitor, collection, state, trx, node, &_meta, reference,
             mutableConditionIdx);
       }
@@ -1038,7 +1038,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
 
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
-    if (opts.numIndexesTotal > 1) {
+    if (opts.forLateMaterialization) {
       return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
           monitor, collection, state, trx, node, &_meta, reference,
           transaction::Methods::kNoMutableConditionIdx);

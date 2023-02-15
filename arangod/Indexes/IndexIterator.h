@@ -419,8 +419,8 @@ struct IndexIteratorOptions {
   bool useCache = true;
   /// @brief forcefully synchronize external indexes
   bool waitForSync = false;
-  /// @brief total number of indexes used
-  size_t numIndexesTotal{1};
+  /// @brief iterator will be used with late materialization
+  bool forLateMaterialization{false};
 };
 
 /// index estimate map, defined here because it was convenient

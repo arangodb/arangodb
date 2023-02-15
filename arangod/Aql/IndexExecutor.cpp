@@ -186,7 +186,6 @@ IndexIterator::CoveringCallback getCallback(
     output.advanceRow();
     return true;
   };
-
   return impl;
 }
 

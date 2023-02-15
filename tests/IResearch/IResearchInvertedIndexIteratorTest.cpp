@@ -199,8 +199,7 @@ class IResearchInvertedIndexIteratorTestBase
       std::string_view refName = "d",
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
       int mutableConditionIdx = -1,
-      // value 2 to force LocalDocumentId reading by default
-      unsigned numIndexesTotal = 2) {
+      bool forLateMaterialization = false) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
     auto ctx =
@@ -245,7 +244,7 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::ResourceMonitor monitor(
         arangodb::GlobalResourceMonitor::instance());
     arangodb::IndexIteratorOptions opts;
-    opts.numIndexesTotal = numIndexesTotal;
+    opts.forLateMaterialization = forLateMaterialization;
     arangodb::SingleCollectionTransaction trx(ctx, collection(),
                                               arangodb::AccessMode::Type::READ);
     auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
@@ -455,7 +454,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_LateMaterializ
     ASSERT_EQ(docs, 2);
     ASSERT_FALSE(iterator->hasMore());
   };
-  executeIteratorTest(queryString, test, "d", nullptr, - 1, 1);
+  executeIteratorTest(queryString, test, "d", nullptr, - 1, true);
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
