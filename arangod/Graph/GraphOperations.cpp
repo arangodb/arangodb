@@ -293,8 +293,6 @@ OperationResult GraphOperations::editEdgeDefinition(
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
-  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  // UNNECESSARY since it is only a document operation being done.
 
   res = trx.begin();
 
@@ -908,8 +906,6 @@ OperationResult GraphOperations::updateVertex(const std::string& collectionName,
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
-  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  // UNNECESSARY since it is only a document operation being done.
 
   Result tRes = trx.begin();
 
@@ -931,8 +927,6 @@ OperationResult GraphOperations::replaceVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
-  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  // UNNECESSARY since it is only a document operation being done.
 
   Result tRes = trx.begin();
 
@@ -960,8 +954,6 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
-  // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  // UNNECESSARY since it is only a document operation being done.
 
   Result res = trx.begin();
 

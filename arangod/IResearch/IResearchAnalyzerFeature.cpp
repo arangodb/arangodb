@@ -1493,8 +1493,6 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::EXCLUSIVE);
-    // trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    // UNNECESSARY since it is only a single truncate operation.
 
     auto res = trx.begin();
     if (res.fail()) {
@@ -1549,8 +1547,6 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       SingleCollectionTransaction truncateTrx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::EXCLUSIVE);
-      // truncateTrx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-      // UNNECESSARY since it is only a single truncate operation.
 
       auto res = truncateTrx.begin();
 
