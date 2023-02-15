@@ -74,7 +74,7 @@ currently only *little* is supported
 which method do we use to handle fd-sets, *poll* should be here on linux.
 
 @RESTSTRUCT{fd-setsize,version_details_struct,string,optional,}
-if not *poll* the fd setsize is valid for the maximum number of filedescriptors
+if not *poll* the fd setsize is valid for the maximum number of file descriptors
 
 @RESTSTRUCT{full-version-string,version_details_struct,string,optional,}
 The full version string
