@@ -42,6 +42,8 @@ class PathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
+  enum WeightType { NONE, AMOUNT_EDGES, ACTUAL_WEIGHT };
+
   PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
@@ -49,7 +51,7 @@ class PathResult {
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder,
-                    double addWeight = -1.0) -> void;
+                    WeightType addWeight = WeightType::NONE) -> void;
   auto isEqualEdgeRepresentation(PathResult<ProviderType, Step> const& other)
       -> bool;
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;

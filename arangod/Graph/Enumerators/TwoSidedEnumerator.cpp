@@ -411,7 +411,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _results.pop_back();
       if (_options.getPathType() == PathType::Type::KShortestPaths) {
         // Add weight attribute to edges
-        _resultPath.toVelocyPack(result, true);
+        _resultPath.toVelocyPack(
+            result, PathResult<ProviderType, Step>::WeightType::AMOUNT_EDGES);
       } else {
         _resultPath.toVelocyPack(result);
       }

@@ -196,7 +196,6 @@ class WeightedShortestPathTest
   }
 
   auto pathStructureValid(VPackSlice path, size_t pathLength) -> void {
-    LOG_DEVEL << "Path: " << path.toJson() << " (" << pathLength << ")";
     ASSERT_TRUE(path.isObject());
     {
       // Check Vertices
@@ -305,8 +304,6 @@ TEST_P(WeightedShortestPathTest, no_path_exists) {
 TEST_P(WeightedShortestPathTest, shortest_path_V1_V3) {
   VPackBuilder result;
   auto finder = pathFinder();
-
-  // Source and target identical
   auto source = vId(1);
   auto target = vId(3);
 

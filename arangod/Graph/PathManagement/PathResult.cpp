@@ -88,8 +88,9 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
-    arangodb::velocypack::Builder& builder, double weight) -> void {
+    arangodb::velocypack::Builder& builder, WeightType weightType) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
+  double sumWeights = 0;
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
@@ -115,20 +116,26 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
       _targetProvider.addEdgeToBuilder(_edges[i], builder);
     }
+
+    if (weightType == WeightType::ACTUAL_WEIGHT) {
+      sumWeights += 1337;  // TODO: fixme this is wrong and just a placeholder
+    }
   }
 
-  if (weight > 0) {
+  if (weightType != WeightType::NONE) {
     // TODO: Handle both cases properly. Think about better interface here.
 
     // We need to handled two different cases here. In case no weight callback
     // has been set, we need to write the amount of edges here. In case a weight
     // callback is set, we need to set the calculated weight.
 
-    // Case 1) Amount of edges (as will be seen as weight=1 per edge)
-    // builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size()));
-
-    // Case 2) Calculated weight (currently passed as parameter)
-    builder.add(StaticStrings::GraphQueryWeight, VPackValue(weight));
+    if (weightType == WeightType::AMOUNT_EDGES) {
+      // Case 1) Amount of edges (as will be seen as weight=1 per edge)
+      builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size()));
+    } else if (weightType == WeightType::ACTUAL_WEIGHT) {
+      // Case 2) Calculated weight (currently passed as parameter)
+      builder.add(StaticStrings::GraphQueryWeight, VPackValue(sumWeights));
+    }
   }
 }
 

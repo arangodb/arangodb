@@ -303,7 +303,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void WeightedTwoSidedEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::testDepthZero(Ball& other,
-                                        CandidatesMap& candidates) {
+                                        CandidatesStore& candidates) {
   // TODO: Check - is this even required?
   /*for (auto const& step : _shell) {
     other.matchResultsInShell(step, candidates, _validator);
@@ -553,6 +553,26 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }*/
 }
 
+// TODO: I think this can be removed and is probably not needed.
+// Hint: check toVelocypack (Velocypack) vs. calculation via steps.
+// Not 100% sure yet which way to go.
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+typename PathResult<ProviderType, typename ProviderType::Step>::WeightType
+WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                           PathValidator>::identifyWeightType() {
+  if (_options.getPathType() == PathType::Type::KShortestPaths) {
+    bool hasWeightMethod = _options.hasWeightCallback();
+    if (hasWeightMethod) {
+      return PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT;
+    } else {
+      return PathResult<ProviderType, Step>::WeightType::AMOUNT_EDGES;
+    }
+  }
+
+  return PathResult<ProviderType, Step>::WeightType::NONE;
+}
+
 /**
  * @brief Get the next path, if available written into the result build.
  * The given builder will be not be cleared, this function requires a
@@ -603,7 +623,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
       if (_options.getPathType() == PathType::Type::KShortestPaths) {
         // Add weight attribute to edges
-        _resultPath.toVelocyPack(result, weight);
+        _resultPath.toVelocyPack(
+            result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
       } else {
         _resultPath.toVelocyPack(result);
       }
@@ -638,7 +659,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
     if (_options.getPathType() == PathType::Type::KShortestPaths) {
       // Add weight attribute to edges
-      _resultPath.toVelocyPack(result, weight);
+      // Add weight attribute to edges
+      _resultPath.toVelocyPack(
+          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
     } else {
       _resultPath.toVelocyPack(result);
     }

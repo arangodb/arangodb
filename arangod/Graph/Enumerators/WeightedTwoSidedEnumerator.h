@@ -166,7 +166,7 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
     // Check if this can be removed
-    auto testDepthZero(Ball& other, CandidatesMap& results) -> void;
+    auto testDepthZero(Ball& other, CandidatesStore& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
@@ -292,6 +292,8 @@ class WeightedTwoSidedEnumerator {
    * @return false No path found, result has not been changed.
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
+  // TODO: This might not be needed. Check CPP file for details
+  typename PathResult<ProviderType, Step>::WeightType identifyWeightType();
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
