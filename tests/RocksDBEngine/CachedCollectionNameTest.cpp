@@ -142,7 +142,8 @@ TEST(CachedCollectionNameTest, test_wrong_previous) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
-  ASSERT_EQ("foobar", *previous);
+  ASSERT_NE(nullptr, previous);
+  EXPECT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
   ASSERT_NE(nullptr, testee.get());
   EXPECT_EQ("foobar", *testee.get());
