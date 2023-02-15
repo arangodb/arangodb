@@ -34,7 +34,6 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Worker/GraphStore.h"
 #include "Pregel/Worker/Messages.h"

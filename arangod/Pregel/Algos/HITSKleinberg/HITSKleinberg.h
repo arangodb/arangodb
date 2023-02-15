@@ -24,8 +24,10 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
+
 
 /// The version of the algorithm according to
 /// J. Kleinberg, Authoritative sources in a hyperlinked environment,

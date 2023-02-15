@@ -35,7 +35,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"

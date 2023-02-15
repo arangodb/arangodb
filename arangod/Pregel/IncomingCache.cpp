@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IncomingCache.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
 
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDMessage.h"
