@@ -123,7 +123,8 @@ TEST(CachedCollectionNameTest, test_set_multiple_times_different_collection) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
-  ASSERT_EQ("foobar", *previous);
+  ASSERT_NE(nullptr, previous);
+  EXPECT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
   ASSERT_EQ("foobar", *testee.get());
 
