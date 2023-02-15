@@ -4641,17 +4641,65 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
   }
 
   DateSelectionModifier rangeEnd = rangeStart;
-  if (parameters.size() == 4) {
+  if (parameters.size() > 3) {
     AqlValue const& rangeEndValue =
         extractFunctionParameterValue(parameters, 3);
     rangeEnd = ::parseDateModifierFlag(rangeEndValue.slice());
 
+    auto startTimezoneIndex = 0;
+    auto endTimezoneIndex = 0;
+
     if (rangeEnd == INVALID) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      startTimezoneIndex = 3;
+      rangeEnd = rangeStart;
+      if (parameters.size() == 4) {
+        endTimezoneIndex = 3;
+      } else if (parameters.size() == 5) {
+        endTimezoneIndex = 4;
+      } else {
+        registerWarning(expressionContext, AFN,
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+    } else if (parameters.size() > 4) {
+      startTimezoneIndex = 4;
+      if (parameters.size() == 5) {
+        endTimezoneIndex = 4;
+      } else if (parameters.size() == 6) {
+        endTimezoneIndex = 5;
+      }
+    }
+
+    // same timezones do not need to be converted
+    if (startTimezoneIndex != endTimezoneIndex) {
+      AqlValue const startTimezoneParam =
+          extractFunctionParameterValue(parameters, startTimezoneIndex);
+
+      if (!startTimezoneParam.isString()) {  // timezone type must be string
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      std::string startTimezone = startTimezoneParam.slice().copyString();
+
+      AqlValue const endTimezoneParam =
+          extractFunctionParameterValue(parameters, endTimezoneIndex);
+
+      if (!endTimezoneParam.isString()) {  // timezone type must be string
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      std::string endTimezone = endTimezoneParam.slice().copyString();
+
+      // same timezones do not need to be converted
+      if (startTimezone != endTimezone) {
+        ::localizeTimePoint(startTimezone, tp1);
+        ::localizeTimePoint(endTimezone, tp2);
+      }
     }
   }
+
   auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
   auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
   auto time1 = date::make_time(tp1 - floor<date::days>(tp1));
@@ -4664,10 +4712,10 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
   // In each case if the value is significant
   // (above or equal the endRange) we compare it.
   // If this part is not equal we return false.
-  // Otherwise we fall down to the next part.
+  // Otherwise, we fall down to the next part.
   // As soon as we are below the endRange
   // we bail out.
-  // So all Fall throughs here are intentional
+  // So all fall throughs here are intentional
   switch (rangeStart) {
     case YEAR:
       // Always check for the year

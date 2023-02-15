@@ -2328,7 +2328,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateCompareInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(null, 1, 'y')");
 
@@ -2339,8 +2339,6 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', null)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'yo')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'yo')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(false, 1, 'y')");
 
@@ -2354,9 +2352,39 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, {}, 'y')");
 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', {})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', {})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  {})");
+
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_COMPARE('', 1, 'y')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_COMPARE(1, '', 'y')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'Wrong Timezone')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Wrong Timezone')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin', 'Wrong Timezone')");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2490,7 +2518,16 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "milliseconds"], true ],
         [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
         [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
-        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ]
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
+
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156+02:00", "days", "milliseconds", "UTC", "Europe/Berlin"], true ],
+        [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "milliseconds", "Europe/Berlin", "UTC"], true ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156+02:00", "days", "UTC", "Europe/Berlin"], true ],
+        [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "Europe/Berlin", "UTC"], true ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds", "Europe/Berlin"], true ], // no conversion
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds", "UTC"], true ], // no conversion
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "Europe/Berlin"], true ], // no conversion
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "UTC"], true ] // no conversion
       ];
 
       values.forEach(function (value) {
