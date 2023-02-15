@@ -421,7 +421,7 @@ SIGABRT. SIGKILL signals, which the operating system can send to a process in ca
 In case the crash handler receives one of the mentioned interceptable signals, it will
 write basic crash information to the logfile and a backtrace of the call site.
 The backtrace can be provided to the ArangoDB support for further inspection. Note that
-backtaces are only usable if debug symbols for ArangoDB have been installed as well.
+backtraces are only usable if debug symbols for ArangoDB have been installed as well.
 
 After logging the crash information, the crash handler will execute the default action for
 the signal it has caught. If core dumps are enabled, the default action for these signals
