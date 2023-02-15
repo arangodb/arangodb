@@ -7403,7 +7403,7 @@ devel
 
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
-  As a work around the returned _key can be used, which is identical to the name.
+  As a workaround the returned _key can be used, which is identical to the name.
 
 * REMOTE and GATHER no longer make subqueries unsuitable for the
   `splice-subqueries` optimization.
