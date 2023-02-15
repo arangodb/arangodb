@@ -19,6 +19,8 @@ devel
   compressed values but the full-length edge ids. The compressed values will
   also be used in memory only and will not be persisted on disk.
 
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
 * BTS-1219: Fix cost estimation for geo index usage and for collection
   enumeration with included filtering. This fixes a regression from 3.9
   where a geo index was no longer used because of an optimizer rule,
