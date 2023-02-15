@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
@@ -1358,7 +1358,130 @@ function geoLegacyComparison() {
                                  RETURN d._key`, {}, false);
       assertEqual(0, b.length);
     },
+  };
+}
 
+function geoThisAndThatSuite() {
+
+  let coll, coll2;
+
+  const cn = "UnitTestsAhuacatlGeoThisAndThat";
+  const cn2 = "UnitTestsAhuacatlGeoThisAndThat2";
+
+  let makeData = function(n) {
+    let l = [];
+    for (let i = 0; i < n; ++i) {
+      l.push({geo:{type:"Polygon",coordinates:[[10,10],[20,10],[20,20],[10,20],[10,10]]},
+              value:"K"+i});
+    }
+    coll.insert(l);
+    coll2.insert(l);
+  };
+
+  return {
+    setUp : function() {
+      db._drop(cn);
+      db._drop(cn2);
+      coll = db._create(cn);
+      coll2 = db._create(cn2);
+      coll.ensureIndex({type:"geo", fields:["geo"], geoJson: true});
+    },
+
+    tearDown : function() {
+      db._drop(cn);
+      db._drop(cn2);
+    },
+
+    testNestedFor0 : function() {
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
+    },
+
+    testNestedFor100 : function() {
+      makeData(100);
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
+    },
+
+    testNestedFor1000 : function() {
+      makeData(1000);
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
+    },
+
+    testNestedFor1000WithOtherIndex : function() {
+      coll.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      coll2.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      makeData(1000);
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
+    },
+
+    testNestedFor1000WithOtherIndexAndConditionGreater : function() {
+      coll.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      coll2.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      makeData(1000);
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       FILTER d.value > 47
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("geo", plan.plan.nodes[pos].indexes[0].type);
+    },
+
+    testNestedFor1000WithOtherIndexAndConditionEquals : function() {
+      coll.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      coll2.ensureIndex({type:"persistent", fields: ["value"], unique: false});
+      makeData(1000);
+      let query = `FOR e IN ${cn2}
+                     FOR d IN ${cn}
+                       FILTER GEO_INTERSECTS(e.geo, d.geo)
+                       FILTER d.value == 47
+                       RETURN {d: d._key, e: e._key}`;
+      let plan = AQL_EXPLAIN(query);
+      let compact = helper.getCompactPlan(plan)
+        .map(function(node) { return node.type; });
+      let pos = compact.indexOf("IndexNode");
+      assertTrue(pos > -1);
+      assertEqual("persistent", plan.plan.nodes[pos].indexes[0].type);
+    },
   };
 }
 
@@ -1368,5 +1491,6 @@ jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
 jsunity.run(geoFunctionsTestSuite);
 jsunity.run(geoLegacyComparison);
+jsunity.run(geoThisAndThatSuite);
 
 return jsunity.done();
