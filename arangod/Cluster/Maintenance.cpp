@@ -470,7 +470,7 @@ static void handleLocalShard(
           std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
                                              {DATABASE, dbname},
                                              {SHARD, colname},
-                                             {"from", "maintenace"}},
+                                             {"from", "maintenance"}},
           isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, props);
       makeDirty.insert(dbname);
       callNotify = true;
