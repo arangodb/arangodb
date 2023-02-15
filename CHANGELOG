@@ -8914,7 +8914,7 @@ v3.4.4 (2019-03-12)
 
 * Allow MoveShard from leader to a follower, thus swapping the two
 
-* Supervision fix: SatellitCollections, various fixes
+* Supervision fix: SatelliteCollections, various fixes
 
 * Add coordinator route for agency dump
 
