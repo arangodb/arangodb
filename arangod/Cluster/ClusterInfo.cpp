@@ -3010,8 +3010,18 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // Transact to agency
   AgencyOperation delPlanDatabases("Plan/Databases/" + name,
                                    AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delTargetCollections("Target/Collections/" + name,
+                                       AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delTargetCollectionsGroup(
+      "Target/CollectionGroups/" + name, AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanCollectionsGroups(
+      "Plan/CollectionGroups/" + name, AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delTargetReplicatedLogs("Target/ReplicatedLogs/" + name,
+                                          AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanReplicatedLogs("Plan/ReplicatedLogs/" + name,
+                                        AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanViews("Plan/Views/" + name,
                                AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanAnalyzers(analyzersPath(name),
@@ -3021,8 +3031,10 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans(
-      {delPlanDatabases, delPlanCollections, delPlanViews, delPlanAnalyzers,
-       incrementVersion},
+      {delPlanDatabases, delTargetCollections, delPlanCollections,
+       delTargetReplicatedLogs, delPlanReplicatedLogs,
+       delTargetCollectionsGroup, delPlanCollectionsGroups, delPlanViews,
+       delPlanAnalyzers, incrementVersion},
       databaseExists);
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
