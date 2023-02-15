@@ -3055,7 +3055,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
             return LogicalCollection::shardIdToStateId(shardPair.first);
           });
     }
-    replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
+    // replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
   }
 
   // Now wait stuff in Current to disappear and thus be complete:
@@ -4075,7 +4075,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         ++shardSheafIdx;
       }
     }
-    replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
+    // replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
   }
 
   while (true) {
