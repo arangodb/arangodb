@@ -5168,7 +5168,7 @@ devel
   - "http" for HTTP/1.1 connections
   - "http2" for HTTP/2 connections
   - "vst" for VST connections
-  - "unknown" for everyhting else
+  - "unknown" for everything else
   This is needed during testing, but can also be used for other purposes.
 
 * Updated arangosync to 0.7.12.
