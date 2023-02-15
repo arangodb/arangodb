@@ -107,7 +107,13 @@ RequestLane RestDocumentHandler::lane() const {
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  TRI_IF_FAILURE("failOnCRUDAPI" + suffixes[0]) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_DEBUG),
+                  TRI_ERROR_DEBUG, "Intentional test error");
+  }
+#endif
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
