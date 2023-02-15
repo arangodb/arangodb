@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
