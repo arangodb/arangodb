@@ -1,6 +1,25 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
+* FE-131: Added search input for query page.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
 * FE-133: Alphabetical sorting for collections on user permissions page.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
