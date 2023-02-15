@@ -51,4 +51,4 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
   VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
       WorkerConfig const*) const override;
 };
-}  // namespace algos
+}  // namespace arangodb::pregel::algos

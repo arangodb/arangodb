@@ -28,7 +28,6 @@
 #include "Pregel/SenderMessage.h"
 #include "Pregel/SenderMessageFormat.h"
 
-
 /// The version of the algorithm according to
 /// J. Kleinberg, Authoritative sources in a hyperlinked environment,
 /// Journal of the ACM. 46 (5): 604–632, 1999,

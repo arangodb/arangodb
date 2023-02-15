@@ -49,4 +49,4 @@ auto inspect(Inspector& f, HLLCounter& v) {
   return f.object(v).fields();
 }
 
-}
+}  // namespace arangodb::pregel

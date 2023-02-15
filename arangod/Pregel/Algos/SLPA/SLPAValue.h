@@ -42,4 +42,4 @@ auto inspect(Inspector& f, SLPAValue& v) {
                             f.field("numCommunities", v.numCommunities),
                             f.field("memory", v.memory));
 }
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::algos

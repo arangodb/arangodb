@@ -38,5 +38,4 @@ auto inspect(Inspector& f, ECValue& v) {
                             f.field("shortestPaths", v.shortestPaths));
 }
 
-
-}
+}  // namespace arangodb::pregel
