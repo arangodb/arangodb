@@ -12687,7 +12687,7 @@ v3.1.20 (2016-05-16)
 
 * fix in SimpleHttpClient for correct advancement of readBufferOffset
 
-* forward SIG_HUP in supervisor process to the server process to fix logrotaion
+* forward SIG_HUP in supervisor process to the server process to fix logrotation
   You need to stop the remaining arangod server process manually for the upgrade to work.
 
 
