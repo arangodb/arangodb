@@ -20209,7 +20209,7 @@ v1.3.2 (2013-06-21)
 
 * fixed a locking issue in collection.truncate()
 
-* fixed value overflow in accumulated filesizes reported by collection.figures()
+* fixed value overflow in accumulated file sizes reported by collection.figures()
 
 * issue #545: AQL FILTER unnecessary (?) loop
 
