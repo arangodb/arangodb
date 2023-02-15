@@ -265,7 +265,7 @@ devel
   keep track of which in-memory index cache entries were invalidated by 
   the transaction, and will try to (re-)fill them later.
   Currently edge indexes and velocypack-based indexes (persistent, hash, 
-  sklipist index) are supported. For velocypack-based indexes, the refilling
+  skiplist index) are supported. For velocypack-based indexes, the refilling
   will only happen if the index was set up with an in-memory cache (i.e. the
   `cacheEnabled` flag was set during index creation).
 
