@@ -13,6 +13,11 @@ devel
   contexts if there are many concurrent that invoke JavaScript actions (e.g.
   using the web UI or Foxx).
 
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
 * FE-131: Added search input for query page.
 
 * Return peak memory usage and execution time as part of query explain result.
