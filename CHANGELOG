@@ -18682,7 +18682,7 @@ v2.0.1 (2014-03-31)
   contain valid credentials, but it will omit the `WWW-Authenticate` header,
   allowing clients to bypass the browser's authentication dialog.
 
-* fixed isses in arango-dfdb:
+* fixed issues in arango-dfdb:
 
   the dfdb was not able to unload certain system collections, so these couldn't be
   inspected with the dfdb sometimes. Additionally, it did not truncate corrupt
