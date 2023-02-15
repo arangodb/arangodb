@@ -69,7 +69,7 @@ Consists of 3 values separated by ',':
 Attributes:
   - *name*: name of the parameter
   - *type*:
-  - *[required|optionas]* Optional is not supported anymore. Split the docublock into one with and one without.
+  - *[required|optional]* Optional is not supported anymore. Split the docublock into one with and one without.
 
 Followed by a long description.
 
