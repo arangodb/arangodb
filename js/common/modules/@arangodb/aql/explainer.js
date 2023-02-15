@@ -642,10 +642,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -2321,11 +2321,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},

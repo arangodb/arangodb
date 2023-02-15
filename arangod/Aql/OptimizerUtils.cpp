@@ -1046,6 +1046,15 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           return false;
         }
       }
+    } else if (current->getType() == EN::SUBQUERY) {
+      auto sub = ExecutionNode::castTo<SubqueryNode*>(current);
+      ExecutionNode* top = sub->getSubquery();
+      while (top->hasDependency()) {
+        top = top->getFirstDependency();
+      }
+      if (!findProjections(top, v, expectedAttribute, false, attributes)) {
+        return false;
+      }
     } else {
       // all other node types mandate a check
       doRegularCheck = true;

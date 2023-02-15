@@ -1616,6 +1616,15 @@ bool AstNode::willUseV8() const {
   return false;
 }
 
+/// @brief whether or not a node's filter condition can be used inside a
+/// TraversalNode
+bool AstNode::canBeUsedInFilter(bool isOneShard) const {
+  if (willUseV8() || !canRunOnDBServer(isOneShard) || !isDeterministic()) {
+    return false;
+  }
+  return true;
+}
+
 /// @brief whether or not a node has a constant value
 bool AstNode::isConstant() const {
   if (hasFlag(DETERMINED_CONSTANT)) {
