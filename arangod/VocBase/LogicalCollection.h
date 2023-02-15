@@ -78,6 +78,9 @@ struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
 }  // namespace replicated_state
+namespace agency {
+struct CollectionGroupId;
+}
 }  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
@@ -386,6 +389,9 @@ class LogicalCollection : public LogicalDataSource {
                                             VPackSlice collectionProperties);
 #endif
 
+  auto groupID() const noexcept
+      -> arangodb::replication2::agency::CollectionGroupId;
+
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
@@ -486,6 +492,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // Temporarily here, used for shards, only on DBServers
   std::optional<arangodb::replication2::LogId> _replicatedStateId;
+
+  // TODO: Only quickly added
+  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb
