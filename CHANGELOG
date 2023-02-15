@@ -4760,7 +4760,7 @@ devel
   - DEVSUP-665
 
 * Added metric `arangodb_server_statistics_cpu_cores` to provide the number of
-  CPU cores visibile to the arangod process. This is the number of CPU cores
+  CPU cores visible to the arangod process. This is the number of CPU cores
   reported by the operating system to the process.
   If the environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES` is
   set to a positive value at instance startup, this value will be returned
