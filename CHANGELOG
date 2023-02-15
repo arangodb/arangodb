@@ -19,6 +19,13 @@ v3.10.4 (XXXX-XX-XX)
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
 
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEgeCollections on conflicting edge keys, could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
+
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
 * Set the cache_oblivious option of jemalloc to `false` by default. This helps
