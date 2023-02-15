@@ -3195,7 +3195,7 @@ devel
 * Updated arangosync to 2.4.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
-  resetted, resulting in undefined behavior for traversals returning unique
+  reset, resulting in undefined behavior for traversals returning unique
   vertices from inner FOR loops.
 
 * For cluster AQL queries, let the coordinator determine the query id to be
