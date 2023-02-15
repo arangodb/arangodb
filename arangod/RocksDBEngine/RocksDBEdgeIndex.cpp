@@ -1042,45 +1042,45 @@ std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
   if (pos == std::string_view::npos || pos == 0 || pos + 1 == value.size() ||
       value[pos + 1] == '/') {
     // totally invalid lookup value
-    value = {};
-  } else {
+    return {};
+  }
+
+  if (previous == nullptr) {
+    // no context yet. now try looking up cached collection name
+    previous = _name.load(std::memory_order_acquire);
     if (previous == nullptr) {
-      // no context yet. now try looking up cached collection name
-      previous = _name.load(std::memory_order_acquire);
-      if (previous == nullptr) {
-        // no cached collection name yet. now try to store the collection name
-        // we determined ourselves. create a string with the collection name on
-        // the heap
-        auto cn = std::make_unique<std::string const>(value.data(), pos);
-        // try to store the name. this can race with other threads.
-        if (_name.compare_exchange_strong(previous, cn.get(),
-                                          std::memory_order_release,
-                                          std::memory_order_acquire)) {
-          // we won the race and were able to store our value. now we are owning
-          // the collection name.
-          previous = cn.release();
-        }
+      // no cached collection name yet. now try to store the collection name
+      // we determined ourselves. create a string with the collection name on
+      // the heap
+      auto cn = std::make_unique<std::string const>(value.data(), pos);
+      // try to store the name. this can race with other threads.
+      if (_name.compare_exchange_strong(previous, cn.get(),
+                                        std::memory_order_release,
+                                        std::memory_order_acquire)) {
+        // we won the race and were able to store our value. now we are owning
+        // the collection name.
+        previous = cn.release();
       }
     }
+  }
 
-    // here we must have a collection name
-    TRI_ASSERT(previous != nullptr);
+  // here we must have a collection name
+  TRI_ASSERT(previous != nullptr);
 
-    // now check if the collection name in the value we got matches the cached
-    // name.
-    TRI_ASSERT(!previous->empty());
-    // must have at least 'c/k'
-    TRI_ASSERT(value.size() > 2);
-    if (*previous == value.substr(0, pos)) {
-      // match. now return the remainder of the value, including the `/` at the
-      // front.
-      value = value.substr(pos);
-      // must have at least '/k'
-      TRI_ASSERT(value.size() > 1);
-      TRI_ASSERT(value.starts_with('/'));
-      // cannot have '//...'
-      TRI_ASSERT(value[1] != '/');
-    }
+  // now check if the collection name in the value we got matches the cached
+  // name.
+  TRI_ASSERT(!previous->empty());
+  // must have at least 'c/k'
+  TRI_ASSERT(value.size() > 2);
+  if (*previous == value.substr(0, pos)) {
+    // match. now return the remainder of the value, including the `/` at the
+    // front.
+    value = value.substr(pos);
+    // must have at least '/k'
+    TRI_ASSERT(value.size() > 1);
+    TRI_ASSERT(value.starts_with('/'));
+    // cannot have '//...'
+    TRI_ASSERT(value[1] != '/');
   }
 
   return value;
