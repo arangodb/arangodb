@@ -32,6 +32,8 @@
 
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"

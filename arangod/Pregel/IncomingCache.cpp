@@ -29,6 +29,7 @@
 
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"

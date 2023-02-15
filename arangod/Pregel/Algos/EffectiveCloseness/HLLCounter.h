@@ -18,27 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-
-// NOTE: this files exists primarily to include these algorithm specfic structs
-// in the
-// cpp files to do template specialization
 
 #pragma once
 
-#include <map>
-
-#include "Pregel/GraphStore/Graph.h"
-#include "Pregel/GraphFormat.h"
-#include "Pregel/MessageFormat.h"
-#include "Pregel/SenderMessage.h"
-#include "Pregel/SenderMessageFormat.h"
-#include "Pregel/VertexComputation.h"
-
-#include "Inspection/VPack.h"
+#include "Pregel/GraphStore/VertexID.h"
 
 namespace arangodb::pregel {
+/// A counter for counting unique vertex IDs using a HyperLogLog sketch.
+/// @author Aljoscha Krettek, Robert Metzger, Robert Waury
+/// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
+/// https://github.com/rmetzger/spargel-closeness/blob/master/src/main/java/de/robertmetzger/HLLCounterWritable.java
+struct HLLCounter {
+  friend struct HLLCounterFormat;
+  constexpr static int32_t NUM_BUCKETS = 64;
+  constexpr static double ALPHA = 0.709;
 
+  uint32_t getCount();
+  void addNode(VertexID const& pregelId);
+  void merge(HLLCounter const& counter);
 
-}  // namespace arangodb::pregel
+ private:
+  uint8_t _buckets[NUM_BUCKETS] = {0};
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, HLLCounter& v) {
+  // TODO: friend and implement
+  return f.object(v).fields();
+}
+
+}
