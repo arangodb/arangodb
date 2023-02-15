@@ -141,7 +141,8 @@ TEST(CachedCollectionNameTest, test_wrong_previous) {
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
-  ASSERT_EQ("foobar", *testee.get());
+  ASSERT_NE(nullptr, testee.get());
+  EXPECT_EQ("foobar", *testee.get());
 
   std::string other = "qux";
   previous = &other;
