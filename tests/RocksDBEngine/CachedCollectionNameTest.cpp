@@ -39,13 +39,17 @@ TEST(CachedCollectionNameTest, test_set_invalid_values) {
     std::string const* previous = nullptr;
     std::string_view result =
         testee.buildCompressedValue(previous, "foobar/123");
+    ASSERT_NE(nullptr, previous);
     ASSERT_EQ("foobar", *previous);
     ASSERT_EQ("/123", result);
+    ASSERT_NE(nullptr, testee.get());
     ASSERT_EQ("foobar", *testee.get());
 
     result = testee.buildCompressedValue(previous, "foobar/123/456");
+    ASSERT_NE(nullptr, previous);
     ASSERT_EQ("foobar", *previous);
     ASSERT_EQ("/123/456", result);
+    ASSERT_NE(nullptr, testee.get());
     ASSERT_EQ("foobar", *testee.get());
   }
 
@@ -91,8 +95,10 @@ TEST(CachedCollectionNameTest, test_set_once) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
 
@@ -100,13 +106,17 @@ TEST(CachedCollectionNameTest, test_set_multiple_times_same_collection) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 
   result = testee.buildCompressedValue(previous, "foobar/def");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/def", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
 
@@ -114,13 +124,17 @@ TEST(CachedCollectionNameTest, test_set_multiple_times_different_collection) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 
   result = testee.buildCompressedValue(previous, "barbaz/123456");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("barbaz/123456", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
 
@@ -128,20 +142,26 @@ TEST(CachedCollectionNameTest, test_wrong_previous) {
   RocksDBEdgeIndex::CachedCollectionName testee;
   std::string const* previous = nullptr;
   std::string_view result = testee.buildCompressedValue(previous, "foobar/abc");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("foobar", *previous);
   ASSERT_EQ("/abc", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 
   std::string other = "qux";
   previous = &other;
 
   result = testee.buildCompressedValue(previous, "foobar/123456");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("qux", *previous);
   ASSERT_EQ("foobar/123456", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 
   result = testee.buildCompressedValue(previous, "qux/123456");
+  ASSERT_NE(nullptr, previous);
   ASSERT_EQ("qux", *previous);
   ASSERT_EQ("/123456", result);
+  ASSERT_NE(nullptr, testee.get());
   ASSERT_EQ("foobar", *testee.get());
 }
