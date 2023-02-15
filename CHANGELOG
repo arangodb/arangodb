@@ -5,6 +5,13 @@ devel
   on query when geo index was present, because it would override the choice of
   the index hint with optimizations related to it.
 
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
 * FE-131: Added search input for query page.
 
 * Return peak memory usage and execution time as part of query explain result.
