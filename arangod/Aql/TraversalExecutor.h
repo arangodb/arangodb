@@ -68,6 +68,11 @@ class TraversalExecutorInfos {
       std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
                          TraversalExecutorInfosHelper::OutputNameHash>
           registerMapping,
+      // TODO [GraphRefactor]: Performance Improvement
+      // Idea: To replace map type with a array of ids only []
+      // Otherwise "invalid id" store. Will be less expensive without the
+      // hashing mechanism we use right now.
+
       std::string fixedSource, RegisterId inputRegister, Ast* ast,
       traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
