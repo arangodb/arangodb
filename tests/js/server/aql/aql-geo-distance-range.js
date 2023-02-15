@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse, print, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
@@ -192,7 +192,7 @@ function BTS_470() {
         }
       }); 
     }
-  }
+  };
 }
   
 function BTS_471() {
@@ -260,7 +260,7 @@ function BTS_471() {
       FOR doc IN geo_view
         SEARCH ANALYZER(GEO_IN_RANGE(doc.location, lines, 0, 100), "geo_json") OPTIONS {'waitForSync': true}
         RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines )})
-      `)
+      `);
     },
     tearDownAll: function () {
       db._dropView("geo_view");
@@ -340,7 +340,7 @@ function BTS_471() {
       ];
       
       queries.forEach( function (query_tuple, index) {
-        [query, expected] = query_tuple;
+        let [query, expected] = query_tuple;
         let actual;
         try {
           actual = db._query(query).toArray().length;
