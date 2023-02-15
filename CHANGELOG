@@ -20179,7 +20179,7 @@ v1.4.0-alpha1 (2013-08-02)
 
 * issue #517: Foxx: Route parameters with capital letters fail
 
-* issue #512: Binded Parameters for LIMIT
+* issue #512: Bound Parameters for LIMIT
 
 
 v1.3.3 (2013-08-01)
