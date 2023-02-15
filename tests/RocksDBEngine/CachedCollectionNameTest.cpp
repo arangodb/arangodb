@@ -141,7 +141,8 @@ TEST(CachedCollectionNameTest, test_wrong_previous) {
   previous = &other;
 
   result = testee.buildCompressedValue(previous, "foobar/123456");
-  ASSERT_EQ("qux", *previous);
+  ASSERT_NE(nullptr, previous);
+  EXPECT_EQ("qux", *previous);
   ASSERT_EQ("foobar/123456", result);
   ASSERT_NE(nullptr, testee.get());
   EXPECT_EQ("foobar", *testee.get());
