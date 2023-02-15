@@ -180,7 +180,7 @@ function BTS_470() {
       ];
 
       queries.forEach( function (query_tuple, index) {
-        [query, expected] = query_tuple;
+        let [query, expected] = query_tuple;
         let actual;
         try {
           actual = db._query(query).toArray().length;
