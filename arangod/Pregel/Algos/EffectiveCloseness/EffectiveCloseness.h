@@ -26,7 +26,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/EffectiveCloseness/ECValue.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
-#include "Pregel/CommonFormats.h"
 
 namespace arangodb {
 namespace pregel {

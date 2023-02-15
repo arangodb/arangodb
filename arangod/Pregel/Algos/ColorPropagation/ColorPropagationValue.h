@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Inspection/VPack.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
+
 namespace arangodb::pregel {
 
 using CollectionIdType = uint16_t;
@@ -95,11 +99,11 @@ struct ColorPropagationValueMessageFormat
   ColorPropagationValueMessageFormat() = default;
   void unwrapValue(VPackSlice s,
                    ColorPropagationMessageValue& value) const override {
-    value = deserialize<ColorPropagationMessageValue>(s);
+    value = arangodb::velocypack::deserialize<ColorPropagationMessageValue>(s);
   }
   void addValue(VPackBuilder& arrayBuilder,
                 ColorPropagationMessageValue const& value) const override {
-    serialize(arrayBuilder, value);
+    arangodb::velocypack::serialize(arrayBuilder, value);
   }
 };
 }  // namespace arangodb::pregel

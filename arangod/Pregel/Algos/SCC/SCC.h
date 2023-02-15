@@ -24,8 +24,9 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
 
 namespace arangodb::pregel::algos {
 

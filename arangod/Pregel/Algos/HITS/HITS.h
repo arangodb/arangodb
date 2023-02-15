@@ -24,12 +24,11 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// Finds strongly connected components of the graph.
 ///
@@ -69,5 +68,3 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb

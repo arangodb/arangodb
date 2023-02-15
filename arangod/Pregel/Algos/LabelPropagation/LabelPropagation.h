@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/LabelPropagation/LPValue.h"
 
 namespace arangodb::pregel::algos {
