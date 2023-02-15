@@ -2,7 +2,7 @@ devel
 -----
 
 * Fixed EE: Concurrent batch insert/update CRUD operations into
-  SmartEgeCollections on conflicting edge keys, could get the
+  SmartEdgeCollections on conflicting edge keys could get the
   smart edge caching out-of-sync, which would yield different results
   for OUTBOUND/INBOUND search over edges. This is now fixed, however there
   is now a slightly higher chance to get a CONFLICT response back on those
