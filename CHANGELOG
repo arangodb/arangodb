@@ -162,7 +162,7 @@ devel
   update/replace and remove operations, and use that snapshot throughout the 
   operation. Previously, the list of indexes was acquired multiple times during
   a write operation, and it was (at least in theory) possible that the list of
-  indexes changed between the individual acquistions.
+  indexes changed between the individual acquisitions.
   The PR also contains an optimization to not fetch the full document from the 
   storage engine for remove and replace operations in case the full document is
   not needed to process the operation. This is the case when the collection 
