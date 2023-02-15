@@ -104,7 +104,7 @@ devel
 * Change the request lane for replication catchup requests that leaders in
   active failover receive from their followers from medium to high. This
   will give catchup requests from followers highest priority, so that the
-  leader will preferrably execute them compared to regular requests.
+  leader will preferably execute them compared to regular requests.
 
 * Web UI [FE-48]: Additional fix to the previously introduced license
   information usability improvement. In case the server is being started with
