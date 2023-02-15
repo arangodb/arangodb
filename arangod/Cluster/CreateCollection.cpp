@@ -273,9 +273,12 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
         replication2::replicated_state::document::DocumentLeaderState>(
         state.get()->getLeader());
     if (leaderState != nullptr) {
-      leaderState->createShard(
-          shard, collection,
-          velocypack::SharedSlice(_description.properties()->bufferRef()));
+      // TODO we are blocking the maintenance here, but we should not
+      leaderState
+          ->createShard(
+              shard, collection,
+              velocypack::SharedSlice(_description.properties()->bufferRef()))
+          .get();
     }
   }
 

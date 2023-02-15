@@ -897,9 +897,10 @@ TEST_F(DocumentStateMachineTest,
   follower->setStream(stream);
 
   std::vector<DocumentLogEntry> entries;
-  addShardEntry(entries, OperationType::kCreateShard, shardId, collectionId);
+  addShardEntry(entries, OperationType::kCreateShard, "randomShardId",
+                collectionId);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  ON_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+  ON_CALL(*shardHandlerMock, createLocalShard("randomShardId", collectionId, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 

@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -49,17 +50,20 @@ struct DocumentCore {
   auto getVocbase() const -> TRI_vocbase_t const&;
   auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
-  auto getCollectionId() -> std::string const&;
-  auto addShard(ShardID shardId, CollectionID collectionId,
-                velocypack::SharedSlice properties) -> Result;
-
+  auto createShard(ShardID shardId, CollectionID collectionId,
+                   velocypack::SharedSlice properties) -> Result;
+  auto dropShard(ShardID shardId, CollectionID collectionId) -> Result;
+  auto dropAllShards() -> Result;
+  auto ensureShard(ShardID shardId, CollectionID collectionId,
+                   velocypack::SharedSlice properties) -> Result;
+  auto isShardAvailable(ShardID const& shardId) -> bool;
   void drop();
 
  private:
   TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
-  std::unordered_map<ShardID, std::shared_ptr<velocypack::Builder>> _shards;
+  std::unordered_map<ShardID, ShardProperties> _shards;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

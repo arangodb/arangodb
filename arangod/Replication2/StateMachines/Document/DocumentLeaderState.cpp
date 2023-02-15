@@ -114,6 +114,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         // Perhaps we should check that they're already created.
         continue;
       }
+
+      // Note that the shard could've been dropped before doing recovery.
+      if (!data.core->isShardAvailable(doc.shardId)) {
+        LOG_CTX("1970d", DEBUG, self->loggerContext)
+            << "Will not apply transaction " << doc.tid << " for shard "
+            << doc.shardId << " because it is not available";
+        continue;
+      }
+
       auto res = transactionHandler->applyEntry(doc);
       if (res.fail()) {
         return res;
@@ -258,8 +267,8 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
       if (data.didResign()) {
         return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
       }
-      return data.core->addShard(std::move(shard), std::move(collectionId),
-                                 std::move(properties));
+      return data.core->createShard(std::move(shard), std::move(collectionId),
+                                    std::move(properties));
     });
   });
 }

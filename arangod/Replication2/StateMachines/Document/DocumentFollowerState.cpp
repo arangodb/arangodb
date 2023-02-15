@@ -42,7 +42,6 @@ DocumentFollowerState::DocumentFollowerState(
       loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
-      _shardHandler(handlersFactory->createShardHandler(core->getGid())),
       _transactionHandler(handlersFactory->createTransactionHandler(
           core->getVocbase(), core->getGid())),
       _guardedData(std::move(core)) {}
@@ -69,9 +68,16 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         }
 
         auto count = ++data.currentSnapshotVersion;
+        // TODO we're going to drop the shards when then snapshot transfer will
+        // handle multiple shards
         if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
           return truncateRes;
         }
+        /*
+        if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
+          return dropAllRes;
+        }
+         */
         return count;
       });
 
@@ -102,11 +108,9 @@ auto DocumentFollowerState::applyEntries(
           while (auto entry = ptr->next()) {
             auto doc = entry->second;
             if (doc.operation == OperationType::kCreateShard) {
-              auto collectionProperties =
-                  std::make_shared<velocypack::Builder>(doc.data.slice());
               auto const& collectionId = doc.collectionId;
-              auto res = self->_shardHandler->createLocalShard(
-                  doc.shardId, collectionId, collectionProperties);
+              auto res =
+                  data.core->ensureShard(doc.shardId, collectionId, doc.data);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
                     << "Failed to create shard " << doc.shardId
@@ -119,8 +123,7 @@ auto DocumentFollowerState::applyEntries(
                   << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = doc.collectionId;
-              auto res = self->_shardHandler->dropLocalShard(doc.shardId,
-                                                             collectionId);
+              auto res = data.core->dropShard(doc.shardId, collectionId);
               if (res.fail()) {
                 LOG_CTX("8c7a0", FATAL, self->loggerContext)
                     << "Failed to drop shard " << doc.shardId
@@ -132,6 +135,15 @@ auto DocumentFollowerState::applyEntries(
                   << "Dropped local shard " << doc.shardId << " of collection "
                   << collectionId;
             } else {
+              // Even though a shard was dropped before acquiring the snapshot,
+              // we could still see transactions referring to that shard.
+              if (!data.core->isShardAvailable(doc.shardId)) {
+                LOG_CTX("1970d", DEBUG, self->loggerContext)
+                    << "Will not apply transaction " << doc.tid << " for shard "
+                    << doc.shardId << " because it is not available";
+                continue;
+              }
+
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
                 LOG_CTX("1b08f", FATAL, self->loggerContext)

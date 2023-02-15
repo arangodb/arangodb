@@ -79,7 +79,6 @@ struct DocumentFollowerState
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;
