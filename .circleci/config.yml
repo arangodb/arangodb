@@ -37,9 +37,6 @@ jobs:
 workflows:
   setup:
     when:
-      condition:
-        - or:
-          - equal: [ chore/circle-ci-take-2, << pipeline.git.branch >> ]
-          - equal: [ true, << pipeline.parameters.i-mean-it >> ]
+      equal: [ true, << pipeline.parameters.i-mean-it >> ]
     jobs:
       - setup
