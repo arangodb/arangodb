@@ -23,12 +23,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Basics/application-exit.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
@@ -106,26 +105,37 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
-      if (doc.operation == OperationType::kCreateShard ||
-          doc.operation == OperationType::kDropShard) {
-        // TODO
-        // If the maintenance sees that shards are missing, it is going to
-        // create them on the leader.
-        // Perhaps we should check that they're already created.
-        continue;
-      }
+      if (doc.operation == OperationType::kCreateShard) {
+        auto const& collectionId = doc.collectionId;
+        auto res = data.core->ensureShard(doc.shardId, collectionId, doc.data);
+        if (res.fail()) {
+          LOG_CTX("9e993", FATAL, self->loggerContext)
+              << "Failed to create shard " << doc.shardId << " of collection "
+              << collectionId << " with error: " << res;
+          FATAL_ERROR_EXIT();
+        }
+      } else if (doc.operation == OperationType::kDropShard) {
+        auto const& collectionId = doc.collectionId;
+        auto res = data.core->dropShard(doc.shardId, collectionId);
+        if (res.fail()) {
+          LOG_CTX("f1eb0", FATAL, self->loggerContext)
+              << "Failed to drop shard " << doc.shardId << " of collection "
+              << collectionId << " with error: " << res;
+          FATAL_ERROR_EXIT();
+        }
+      } else {
+        // Note that the shard could've been dropped before doing recovery.
+        if (!data.core->isShardAvailable(doc.shardId)) {
+          LOG_CTX("bee57", DEBUG, self->loggerContext)
+              << "Will not apply transaction " << doc.tid << " for shard "
+              << doc.shardId << " because it is not available";
+          continue;
+        }
 
-      // Note that the shard could've been dropped before doing recovery.
-      if (!data.core->isShardAvailable(doc.shardId)) {
-        LOG_CTX("bee57", DEBUG, self->loggerContext)
-            << "Will not apply transaction " << doc.tid << " for shard "
-            << doc.shardId << " because it is not available";
-        continue;
-      }
-
-      auto res = transactionHandler->applyEntry(doc);
-      if (res.fail()) {
-        return res;
+        auto res = transactionHandler->applyEntry(doc);
+        if (res.fail()) {
+          return res;
+        }
       }
     }
 
@@ -262,15 +272,18 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
   auto const& stream = getStream();
   auto idx = stream->insert(entry);
 
-  return stream->waitFor(idx).thenValue([=, self = shared_from_this()](auto&&) {
-    return _guardedData.doUnderLock([&](auto& data) -> Result {
-      if (data.didResign()) {
-        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-      }
-      return data.core->createShard(std::move(shard), std::move(collectionId),
-                                    std::move(properties));
-    });
-  });
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), shard = std::move(shard),
+       collectionId = std::move(collectionId),
+       properties = std::move(properties)](auto&&) mutable {
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          return data.core->createShard(
+              std::move(shard), std::move(collectionId), std::move(properties));
+        });
+      });
 }
 
 template<class ResultType, class GetFunc, class ProcessFunc>
@@ -284,12 +297,12 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
               fmt::format(
                   "Could not get snapshot statuses of {}, state resigned.",
-                  to_string(gid))};
+                  gid)};
         }
         if (_isResigning.load()) {
           return ResultT<std::weak_ptr<Snapshot>>::error(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-              fmt::format("Leader resigned for shard {}", shardId));
+              fmt::format("Leader resigned for state {}", gid));
         }
         return getSnapshot(handler);
       });
