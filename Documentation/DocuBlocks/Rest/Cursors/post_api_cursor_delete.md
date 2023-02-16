@@ -51,9 +51,8 @@ returned if a cursor is used after it has been destroyed.
     };
     var response = logCurlRequest('POST', url, body);
     logJsonResponse(response);
-    var body = response.body.replace(/\\/g, '');
-    var _id = JSON.parse(body).id;
-    response = logCurlRequest('DELETE', url + '/' + _id);
+    response = logCurlRequest('DELETE', url + '/' + response.parsedBody.id);
+    logJsonResponse(response);
 
     assert(response.code === 202);
   ~ db._drop(cn);
