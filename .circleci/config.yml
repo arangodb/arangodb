@@ -32,6 +32,6 @@ jobs:
 workflows:
   setup:
     when:
-      equal: [ devel, << pipeline.git.branch >> ]
+      equal: [ chore/circle-ci-take-2-when-test, << pipeline.git.branch >> ]
     jobs:
       - setup
