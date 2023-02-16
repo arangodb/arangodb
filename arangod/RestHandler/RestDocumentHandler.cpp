@@ -801,8 +801,6 @@ RestStatus RestDocumentHandler::removeDocument() {
             "' with the required access mode.");
   }
 
-  bool const isMultiple = search.isArray();
-
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
           .thenValue([=, this,

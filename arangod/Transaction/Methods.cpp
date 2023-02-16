@@ -1298,7 +1298,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     newDocumentBuilder->clear();
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
 #endif
@@ -1736,7 +1736,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     previousDocumentBuilder->clear();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
 #endif
@@ -2096,7 +2096,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     std::string_view key;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
 #endif
