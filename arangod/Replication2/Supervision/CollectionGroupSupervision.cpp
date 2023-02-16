@@ -197,9 +197,9 @@ auto createCollectionGroupTarget(
         group.targetCollections.at(cid), std::move(shardList), {}};
     spec.collections[cid];
   }
-  int j = 0;
-  for (auto& sheafId : spec.shardSheaves) {
-    auto& log = replicatedLogs[sheafId.replicatedLog];
+
+  for (unsigned j = 0; j < spec.shardSheaves.size(); j++) {
+    auto& log = replicatedLogs[spec.shardSheaves[j].replicatedLog];
     replicated_state::document::DocumentCoreParameters parameters;
     parameters.databaseName = database;
     parameters.collectionId =
@@ -208,7 +208,6 @@ auto createCollectionGroupTarget(
         collections.begin()->second.shardList[j];  // TODO remove - unused
     parameters.shardSheafIndex = j;
     parameters.groupId = group.target.id.id();
-    j++;
     log.properties.implementation.parameters =
         velocypack::serialize(parameters);
   }
