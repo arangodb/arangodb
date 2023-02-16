@@ -193,8 +193,18 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
+    whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
