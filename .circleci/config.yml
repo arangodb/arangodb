@@ -31,5 +31,7 @@ jobs:
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
+    when:
+      equal: [ devel, << pipeline.git.branch >> ]
     jobs:
       - setup
