@@ -743,7 +743,7 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
       db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
-      let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${"replication1TestDatabase"}`);
+      let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${dbNameR1}`);
       assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
   };

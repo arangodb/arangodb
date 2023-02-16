@@ -75,7 +75,11 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
     VPackObjectBuilder flagGuard(&flags);
   }
   VPackBuilder indexes;
-  velocypack::serialize(indexes, _indexProperties);
+  {
+    VPackObjectBuilder indexBuilder(&indexes);
+    indexes.add(VPackValue("indexes"));
+    velocypack::serialize(indexes, _indexProperties);
+  }
   auto shardMapping = getShardMapping();
   VPackBuilder shards;
   velocypack::serialize(shards, shardMapping);

@@ -486,8 +486,18 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }
 
    */
-  auto groups = arangodb::ClusterCollectionMethods::prepareCollectionGroups(
-      feature.clusterInfo(), vocbase.name(), collections);
+  auto groups = std::invoke(
+      [&]() -> ResultT<arangodb::replication2::CollectionGroupUpdates> {
+        if constexpr (ReplicationVersion == replication::Version::TWO) {
+          return arangodb::ClusterCollectionMethods::prepareCollectionGroups(
+              feature.clusterInfo(), vocbase.name(), collections);
+
+        } else {
+          arangodb::replication2::CollectionGroupUpdates groups{};
+          return groups;
+        }
+      });
+
   if (groups.fail()) {
     return groups.result();
   }
