@@ -5,6 +5,12 @@ v3.10.4 (XXXX-XX-XX)
   on query when geo index was present, because it would override the choice of
   the index hint with optimizations related to it.
 
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the smart edge caching
+  out-of-sync, which would yield different results for OUTBOUND/INBOUND search
+  over edges. This is now fixed, however there is now a slightly higher chance
+  to get a CONFLICT response back on those queries.
+
 * Return peak memory usage and execution time as part of query explain result.
   This helps finding queries that use a lot of memory to build the execution
   plan.
