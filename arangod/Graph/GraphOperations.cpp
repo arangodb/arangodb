@@ -1015,6 +1015,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();
 
