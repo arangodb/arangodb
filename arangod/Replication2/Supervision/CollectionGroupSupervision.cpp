@@ -295,24 +295,9 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
 
   return NoActionRequired{};
 }
-}  // namespace
 
-auto document::supervision::checkCollectionGroup(
-    DatabaseID const& database, CollectionGroup const& group,
-    UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
-    -> Action {
-  if (not group.plan.has_value()) {
-    // create collection group in plan
-    return createCollectionGroupTarget(database, group, uniqid, health);
-  }
-
-  // check replicated logs
-  if (auto action = checkAssociatedReplicatedLogs(group.target, *group.plan,
-                                                  group.logs, health);
-      not std::holds_alternative<NoActionRequired>(action)) {
-    return action;
-  }
-
+auto checkCollectionsOfGroup(CollectionGroup const& group,
+                             UniqueIdProvider& uniqid) -> Action {
   // check that every collection in target is in plan
   for (auto const& [cid, collection] : group.targetCollections) {
     ADB_PROD_ASSERT(group.target.collections.contains(cid))
@@ -348,6 +333,32 @@ auto document::supervision::checkCollectionGroup(
     if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
       return UpdateCollectionShardMap{cid, expectedShardMap};
     }
+  }
+
+  return NoActionRequired{};
+}
+
+}  // namespace
+
+auto document::supervision::checkCollectionGroup(
+    DatabaseID const& database, CollectionGroup const& group,
+    UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
+    -> Action {
+  if (not group.plan.has_value()) {
+    // create collection group in plan
+    return createCollectionGroupTarget(database, group, uniqid, health);
+  }
+
+  // check replicated logs
+  if (auto action = checkAssociatedReplicatedLogs(group.target, *group.plan,
+                                                  group.logs, health);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
+  }
+
+  if (auto action = checkCollectionsOfGroup(group, uniqid);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
   }
 
   if (auto action = checkCollectionGroupConverged(group);

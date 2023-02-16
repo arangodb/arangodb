@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include "Replication2/Supervision/CollectionGroupSupervision.h"
 #include "Containers/Enumerate.h"
@@ -305,4 +304,70 @@ TEST_F(CollectionGroupsSupervisionTest, check_remove_server) {
 
     collection.deprecatedShardMap = action.mapping;
   }
+}
+
+TEST_F(CollectionGroupsSupervisionTest, add_collection) {
+  constexpr auto numberOfShards = 3;
+
+  CollectionGroup group;
+  group.target.id = ag::CollectionGroupId{12};
+  group.target.version = 1;
+  group.target.collections["A"] = {};
+  group.target.collections["B"] = {};
+  group.target.collections["C"] = {};
+  group.target.attributes.mutableAttributes.replicationFactor = 3;
+  group.target.attributes.mutableAttributes.writeConcern = 2;
+  group.target.attributes.mutableAttributes.waitForSync = true;
+  group.target.attributes.immutableAttributes.numberOfShards = numberOfShards;
+
+  group.targetCollections["A"].groupId = group.target.id;
+  group.targetCollections["B"].groupId = group.target.id;
+  group.targetCollections["C"].groupId = group.target.id;
+
+  group.plan.emplace();
+  group.plan->attributes = group.target.attributes;
+  group.plan->id = group.target.id;
+  group.plan->collections["A"] = {};
+  group.plan->collections["B"] = {};
+  group.plan->shardSheaves.resize(3);
+  group.plan->shardSheaves[0].replicatedLog = LogId{1};
+  group.plan->shardSheaves[1].replicatedLog = LogId{2};
+  group.plan->shardSheaves[2].replicatedLog = LogId{3};
+
+  group.planCollections["A"].groupId = group.target.id;
+  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].groupId = group.target.id;
+  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+
+  auto const currentConfig = ag::LogTargetConfig(2, 3, true);
+  auto const availableServers = std::to_array({"DB1", "DB2", "DB3"});
+
+  for (unsigned k = 1; k <= 3; k++) {
+    group.logs[LogId{k}].target.id = LogId{k};
+    group.logs[LogId{k}].target.config = currentConfig;
+    group.logs[LogId{k}].target.participants["DB1"];
+    group.logs[LogId{k}].target.participants["DB2"];
+    group.logs[LogId{k}].target.participants["DB3"];
+    group.logs[LogId{k}].target.leader = availableServers[k - 1];
+
+    group.logs[LogId{k}].plan.emplace();
+    group.logs[LogId{k}].plan->participantsConfig.participants["DB1"];
+    group.logs[LogId{k}].plan->participantsConfig.participants["DB2"];
+    group.logs[LogId{k}].plan->participantsConfig.participants["DB3"];
+    group.logs[LogId{k}].plan->currentTerm.emplace();
+    group.logs[LogId{k}].plan->currentTerm->term = LogTerm{1};
+    group.logs[LogId{k}].plan->currentTerm->leader.emplace();
+    group.logs[LogId{k}].plan->currentTerm->leader->serverId =
+        availableServers[k - 1];
+  }
+
+  replicated_log::ParticipantsHealth health;
+  health.update("DB1", RebootId{12}, true);
+  health.update("DB2", RebootId{11}, true);
+  health.update("DB3", RebootId{110}, true);
+  health.update("DB4", RebootId{110}, true);
+
+  auto result = checkCollectionGroup(database, group, uniqid, health);
+  ASSERT_TRUE(std::holds_alternative<AddCollectionToPlan>(result))
+      << result.index();
 }
