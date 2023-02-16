@@ -54,7 +54,6 @@ DocumentCore::DocumentCore(
                                << _gid << ": " << shardResult;
 
   auto shardProperties = ShardProperties{
-      .shardId = shardId,
       .collectionId = _params.collectionId,
       .properties = std::move(collectionProperties),
   };
@@ -92,8 +91,7 @@ auto DocumentCore::createShard(ShardID shardId, CollectionID collectionId,
   auto result =
       _shardHandler->createLocalShard(shardId, collectionId, propertiesCopy);
   if (result.ok()) {
-    auto shardProperties =
-        ShardProperties{shardId, collectionId, propertiesCopy};
+    auto shardProperties = ShardProperties{collectionId, propertiesCopy};
     _shards.emplace(std::move(shardId), std::move(shardProperties));
   }
   return result;
@@ -115,7 +113,8 @@ auto DocumentCore::dropShard(ShardID shardId, CollectionID collectionId)
 }
 
 auto DocumentCore::dropAllShards() -> Result {
-  for (auto const& [shardId, shardProperties] : _shards) {
+  for (auto it = _shards.begin(); it != _shards.end(); it = _shards.erase(it)) {
+    auto const& [shardId, shardProperties] = *it;
     auto result =
         _shardHandler->dropLocalShard(shardId, shardProperties.collectionId);
     if (result.fail()) {
@@ -123,9 +122,7 @@ auto DocumentCore::dropAllShards() -> Result {
                     fmt::format("Failed to drop shard {}: {}", shardId,
                                 result.errorMessage())};
     }
-    _shards.erase(shardId);
   }
-  _shards.clear();
   return {};
 }
 

@@ -29,7 +29,6 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct ShardProperties {
-  ShardID shardId;
   CollectionID collectionId;
   std::shared_ptr<velocypack::Builder> properties;
 };
