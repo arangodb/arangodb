@@ -1010,16 +1010,15 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     }
     return *ctx;
   }();
-
+  auto resolveLateMaterialization =
+      [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
+    if (opts.forLateMaterialization) {
+      return factory(std::false_type{});
+    } else {
+      return factory(std::true_type{});
+    }
+  };
   if (node) {
-    auto resolveLateMaterialization =
-        [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
-      if (opts.forLateMaterialization) {
-        return factory(std::false_type{});
-      } else {
-        return factory(std::true_type{});
-      }
-    };
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
@@ -1046,15 +1045,14 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
 
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
-    if (opts.forLateMaterialization) {
-      return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
-          monitor, collection, state, trx, node, &_meta, reference,
-          transaction::Methods::kNoMutableConditionIdx);
-    } else {
-      return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
-          monitor, collection, state, trx, node, &_meta, reference,
-          transaction::Methods::kNoMutableConditionIdx);
-    }
+    return resolveLateMaterialization(
+        [&]<bool LateMaterialization>(
+            std::integral_constant<bool, LateMaterialization>) {
+          return std::make_unique<
+              IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+              monitor, collection, state, trx, node, &_meta, reference,
+              transaction::Methods::kNoMutableConditionIdx);
+        });
   }
 }
 
