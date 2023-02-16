@@ -32,6 +32,8 @@ jobs:
 workflows:
   setup:
     when:
-      equal: [ api, << pipeline.trigger_source >> ]
+      or:
+        equal: [ devel, << pipeline.git.branch >> ]
+        equal: [ api, << pipeline.trigger_source >> ]
     jobs:
       - setup
