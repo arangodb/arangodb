@@ -57,6 +57,12 @@ inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
       std::string{databaseName});
 }
 
+inline auto pathDatabaseInTarget(std::string_view databaseName) {
+  // TODO: Make this target, as soon as databases are moved
+  return paths::plan()->databases()->database(
+      std::string{databaseName});
+}
+
 inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
   return paths::current()->collectionGroups()->database(
       std::string{databaseName});
@@ -167,6 +173,10 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
   // Done with adding writes. Now add all preconditions
   // writes is not usable after this point
   auto preconditions = std::move(writes).precs();
+
+  // Make sure we have not lost our database yet
+  preconditions = std::move(preconditions)
+                      .isNotEmpty(pathDatabaseInTarget(databaseName)->str());
 
   // Preconditions for Collection Groups
   for (auto const& g : _collectionGroups.newGroups) {
