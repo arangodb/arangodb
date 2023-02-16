@@ -261,8 +261,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       const checkQuery = aql`
         FOR d IN ${col} 
           FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
-      count  = db._query(checkQuery).toArray()[0];
-      assertEqual(0, count);
+      assertEqual(0, db._query(checkQuery).toArray()[0]);
     },
     testEmptyFields: function() {
       col.ensureIndex({type: 'inverted',
