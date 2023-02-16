@@ -223,6 +223,10 @@ function splitBuckets (options, cases) {
   let r = parseInt(n[0]);
   let s = parseInt(n[1]);
 
+  if (cases.length < r) {
+    throw `We only have ${m} test cases, cannot split them into ${r} buckets`;
+  }
+
   if (r < 1) {
     r = 1;
   }
