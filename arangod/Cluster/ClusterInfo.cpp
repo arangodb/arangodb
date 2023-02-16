@@ -3012,6 +3012,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
                                    AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delTargetCollections("Target/Collections/" + name,
                                        AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delTargetCollectionNames("Target/CollectionNames/" + name,
+                                       AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delTargetCollectionsGroup(
@@ -3031,8 +3033,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans(
-      {delPlanDatabases, delTargetCollections, delPlanCollections,
-       delTargetReplicatedLogs, delPlanReplicatedLogs,
+      {delPlanDatabases, delTargetCollections, delTargetCollectionNames,
+       delPlanCollections, delTargetReplicatedLogs, delPlanReplicatedLogs,
        delTargetCollectionsGroup, delPlanCollectionsGroups, delPlanViews,
        delPlanAnalyzers, incrementVersion},
       databaseExists);
