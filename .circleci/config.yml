@@ -35,6 +35,6 @@ workflows:
       condition:
         - or:
           - equal: [ chore/circle-ci-take-2-when-test, << pipeline.git.branch >> ]
-          - equal: [ webhook, << pipeline.trigger_source >> ]
+          - equal: [ api, << pipeline.trigger_source >> ]
     jobs:
       - setup
