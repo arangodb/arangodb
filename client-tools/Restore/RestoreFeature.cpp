@@ -1670,9 +1670,8 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
   _options.inputPath = buildFilename(currentDirectory().result(), "dump");
-  // Default threadCount 4
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount), 4);
+  // Default ThreadCount 4
+  _options.threadCount = std::max(uint32_t(_options.threadCount), 4);
 }
 
 void RestoreFeature::collectOptions(
