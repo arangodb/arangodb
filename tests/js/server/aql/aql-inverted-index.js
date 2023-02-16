@@ -33,6 +33,7 @@ const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 const useIndexForSort = "use-index-for-sort";
+const lateDocumentMaterialization = "late-document-materialization";
 const sleep = require('internal').sleep;
 const errors = require('internal').errors;
 
@@ -53,11 +54,12 @@ function optimizerRuleInvertedIndexTestSuite() {
                                 {name:'custom_field', analyzer:'text_en'}]});
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexSorted',
+                       storedValues: ['norm_field'],
                        fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'},
                                 {name:'trackListField', trackListPositions:true}],
-                        primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
@@ -606,7 +608,44 @@ function optimizerRuleInvertedIndexTestSuite() {
       const appliedRules = res.plan.rules;
       assertTrue(appliedRules.includes(useIndexes));
       assertEqual(docs, db._query(query.query, query.bindVars).toArray().length);
-    }
+    },
+    testLateMaterialized: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", forceIndexHint: true}
+          FILTER d.data_field IN ['value1', 'value2', 'value3', 'value4', 'value5',
+                                  'value6', 'value7', 'value8', 'value9', 'value10', 'value11']
+          SORT d.norm_field DESC
+          LIMIT 110
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(lateDocumentMaterialization));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(110, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].norm_field >= executeRes[i].norm_field);
+      }
+    },
+    testLateMaterializedSorted: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", forceIndexHint: true}
+          FILTER d.data_field IN ['value1', 'value2', 'value3', 'value4', 'value5',
+                                  'value6', 'value7', 'value8', 'value9', 'value10', 'value11']
+          SORT d.count DESC
+          LIMIT 110
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(useIndexForSort));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(110, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      }
+    },
   };
 }
 
