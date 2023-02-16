@@ -9,15 +9,16 @@ import psutil
 
 from async_client import (
     ArangoCLIprogressiveTimeoutExecutor,
-
     make_tail_params,
     tail_line_result,
-    delete_tail_params
+    delete_tail_params,
 )
 
+
 def dmesg_runner(dmesg):
-    """ thread to run dmesg in """
+    """thread to run dmesg in"""
     dmesg.launch()
+
 
 class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
     """configuration"""
@@ -27,14 +28,14 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
         super().__init__(site_config, None)
 
     def launch(self):
-       # pylint: disable=R0913 disable=R0902
-        """ dmesg wrapper """
-        logging.info('------')
-        args = ['-wT']
+        # pylint: disable=R0913 disable=R0902
+        """dmesg wrapper"""
+        logging.info("------")
+        args = ["-wT"]
         verbose = False
-        self.params = make_tail_params(verbose,
-                                       'dmesg ',
-                                       self.cfg.test_report_dir / 'dmesg_log.txt')
+        self.params = make_tail_params(
+            verbose, "dmesg ", self.cfg.test_report_dir / "dmesg_log.txt"
+        )
         ret = self.run_monitored(
             "dmesg",
             args,
@@ -42,18 +43,18 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
             progressive_timeout=9999999,
             deadline=self.cfg.deadline,
             result_line_handler=tail_line_result,
-            identifier='0_dmesg'
+            identifier="0_dmesg",
         )
-        #delete_logfile_params(params)
+        # delete_logfile_params(params)
         ret = {}
-        ret['error'] = self.params['error']
+        ret["error"] = self.params["error"]
         delete_tail_params(self.params)
         return ret
 
     def end_run(self):
-        """ terminate dmesg again """
-        logging.info(f"killing dmesg {self.params['pid']}")
+        """terminate dmesg again"""
+        logging.info("killing dmesg %s", self.params["pid"])
         try:
-            psutil.Process(self.params['pid']).kill()
+            psutil.Process(self.params["pid"]).kill()
         except psutil.NoSuchProcess:
-            logging.info('dmesg already gone?')
+            logging.info("dmesg already gone?")

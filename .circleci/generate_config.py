@@ -2,15 +2,15 @@
 """ read test definition, and generate the output for the specified target """
 import argparse
 import sys
-import yaml
 import traceback
+import yaml
 
 # check python 3
 if sys.version_info[0] != 3:
     print("found unsupported python version ", sys.version_info)
     sys.exit()
 
-#pylint: disable=line-too-long disable=broad-except disable=chained-comparison
+# pylint: disable=line-too-long disable=broad-except disable=chained-comparison
 
 known_flags = {
     "cluster": "this test requires a cluster",
@@ -24,7 +24,7 @@ known_flags = {
     "!windows": "test is excluded from ps1 output",
     "!mac": "test is excluded when launched on MacOS",
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
-    "no_report": "disable reporting"
+    "no_report": "disable reporting",
 }
 
 known_parameter = {
@@ -33,12 +33,12 @@ known_parameter = {
     "suffix": "suffix that is appended to the tests folder name",
     "priority": "priority that controls execution order. Testsuites with lower priority are executed later",
     "parallelity": "parallelity how many resources will the job use in the SUT? Default: 1 in Single server, 4 in Clusters",
-    "size": "docker container size to be used in CircleCI"
+    "size": "docker container size to be used in CircleCI",
 }
 
 
 def print_help_flags():
-    """ print help for flags """
+    """print help for flags"""
     print("Flags are specified as a single token.")
     for flag, exp in known_flags.items():
         print(f"{flag}: {exp}")
@@ -49,38 +49,55 @@ def print_help_flags():
 
 
 def parse_arguments():
-    """ argv """
+    """argv"""
     if "--help-flags" in sys.argv:
         print_help_flags()
         sys.exit()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("base_config", help="file containing the circleci base config", type=str)
-    parser.add_argument("definitions", help="file containing the test definitions", type=str)
+    parser.add_argument(
+        "base_config", help="file containing the circleci base config", type=str
+    )
+    parser.add_argument(
+        "definitions", help="file containing the test definitions", type=str
+    )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
-    parser.add_argument("--validate-only", help="validates the test definition file", action="store_true")
-    parser.add_argument("--help-flags", help="prints information about available flags and exits", action="store_true")
-    parser.add_argument("--single", help="output single server tests", action="store_true")
+    parser.add_argument(
+        "--validate-only",
+        help="validates the test definition file",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--help-flags",
+        help="prints information about available flags and exits",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--single", help="output single server tests", action="store_true"
+    )
     parser.add_argument("--cluster", help="output cluster tests", action="store_true")
     parser.add_argument("--gtest", help="only run gtest", action="store_true")
     parser.add_argument("--full", help="output full test set", action="store_true")
-    parser.add_argument("--all", help="output all test, ignore other filters", action="store_true")
+    parser.add_argument(
+        "--all", help="output all test, ignore other filters", action="store_true"
+    )
     return parser.parse_args()
 
 
 def validate_params(params):
-    """ check for argument validity """
+    """check for argument validity"""
+
     def parse_number(value):
-        """ check value """
+        """check value"""
         try:
             return int(value)
         except Exception as exc:
             raise Exception(f"invalid numeric value: {value}") from exc
 
     def parse_number_or_default(key, default_value=None):
-        """ check number """
+        """check number"""
         if key in params:
-            if params[key][0] == '*': # factor the default
+            if params[key][0] == "*":  # factor the default
                 params[key] = default_value * parse_number(params[key][1:])
             else:
                 params[key] = parse_number(params[key])
@@ -93,7 +110,7 @@ def validate_params(params):
 
 
 def validate_flags(flags):
-    """ check whether target flags are valid """
+    """check whether target flags are valid"""
     if "cluster" in flags and "single" in flags:
         raise Exception("`cluster` and `single` specified for the same test")
     if "full" in flags and "!full" in flags:
@@ -101,7 +118,7 @@ def validate_flags(flags):
 
 
 def read_definition_line(line):
-    """ parse one test definition line """
+    """parse one test definition line"""
     bits = line.split()
     if len(bits) < 1:
         raise Exception("expected at least one argument: <testname>")
@@ -113,7 +130,7 @@ def read_definition_line(line):
 
     for idx, bit in enumerate(remainder):
         if bit == "--":
-            args = remainder[idx + 1:]
+            args = remainder[idx + 1 :]
             break
 
         if "=" in bit:
@@ -133,7 +150,7 @@ def read_definition_line(line):
             raise Exception(f"Unknown parameter `{param}` in `{line}`")
 
     validate_flags(flags)
-    is_cluster = 'cluster' in flags
+    is_cluster = "cluster" in flags
     params = validate_params(params)
 
     return {
@@ -142,12 +159,12 @@ def read_definition_line(line):
         "size": params.get("size", "medium" if is_cluster else "small"),
         "flags": flags,
         "args": args,
-        "params": params
+        "params": params,
     }
 
 
 def read_definitions(filename):
-    """ read test definitions txt """
+    """read test definitions txt"""
     tests = []
     has_error = False
     with open(filename, "r", encoding="utf-8") as filep:
@@ -168,7 +185,7 @@ def read_definitions(filename):
 
 
 def filter_tests(args, tests):
-    """ filter testcase by operations target Single/Cluster/full """
+    """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
 
@@ -184,9 +201,9 @@ def filter_tests(args, tests):
         filters.append(lambda test: "full" not in test["flags"])
 
     if args.gtest:
-        filters.append(lambda test: "gtest" ==  test["name"])
+        filters.append(lambda test: "gtest" == test["name"])
     else:
-        filters.append(lambda test: "gtest" !=  test["name"])
+        filters.append(lambda test: "gtest" != test["name"])
 
     filters.append(lambda test: "enterprise" not in test["flags"])
 
@@ -199,28 +216,29 @@ def filter_tests(args, tests):
 
 
 def create_test_job(test, cluster):
+    """creates the test job definition to be put into the config yaml"""
     params = test["params"]
-    suiteName = test["name"]
+    suite_name = test["name"]
     suffix = params.get("suffix", "")
     if suffix:
-        suiteName += f"-{suffix}"
+        suite_name += f"-{suffix}"
 
-    if (not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]):
+    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
-        "name": f"test-ce-{'cluster' if cluster else 'single'}-{suiteName}",
+        "name": f"test-ce-{'cluster' if cluster else 'single'}-{suite_name}",
         "testDefinitionLine": test["lineNumber"],
-        "suiteName": suiteName,
+        "suiteName": suite_name,
         "suites": test["suites"],
         "size": test["size"],
         "cluster": cluster,
-        "requires": ["build-community-pr"]
+        "requires": ["build-community-pr"],
     }
 
-    extraArgs = test["args"]
-    if extraArgs != []:
-        result["extraArgs"] = " ".join(extraArgs)
+    extra_args = test["args"]
+    if extra_args != []:
+        result["extraArgs"] = " ".join(extra_args)
 
     buckets = params.get("buckets", 1)
     if buckets != 1:
@@ -230,28 +248,29 @@ def create_test_job(test, cluster):
 
 
 def generate_output(args, tests):
-    """ generate output """
+    """generate output"""
     with open(args.base_config, "r", encoding="utf-8") as instream:
         with open(args.output, "w", encoding="utf-8") as outstream:
             config = yaml.safe_load(instream)
             jobs = config["workflows"]["community-pr"]["jobs"]
             for test in tests:
-                print("test: {}".format(test))
+                print(f"test: {test}")
                 if "cluster" in test["flags"]:
-                    jobs.append({ "run-js-tests": create_test_job(test, True) })
+                    jobs.append({"run-js-tests": create_test_job(test, True)})
                 elif "single" in test["flags"]:
-                    jobs.append({ "run-js-tests": create_test_job(test, False) })
+                    jobs.append({"run-js-tests": create_test_job(test, False)})
                 else:
-                    jobs.append({ "run-js-tests": create_test_job(test, True) })
-                    jobs.append({ "run-js-tests": create_test_job(test, False) })
+                    jobs.append({"run-js-tests": create_test_job(test, True)})
+                    jobs.append({"run-js-tests": create_test_job(test, False)})
             yaml.dump(config, outstream)
-    
+
+
 def main():
-    """ entrypoint """
+    """entrypoint"""
     try:
         args = parse_arguments()
         tests = read_definitions(args.definitions)
-        #if args.validate_only:
+        # if args.validate_only:
         #    return  # nothing left to do
         tests = filter_tests(args, tests)
         generate_output(args, tests)

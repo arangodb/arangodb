@@ -4,15 +4,17 @@ from pathlib import Path
 import logging
 import sys
 import time
-from threading  import Thread
+from threading import Thread
 from traceback import print_exc
 
 from dmesg import DmesgWatcher, dmesg_runner
 from site_config import SiteConfig, IS_LINUX
 from testing_runner import TestingRunner
 
+
 # pylint: disable=broad-except
 def launch(args, tests):
+    """Manage test execution on our own"""
     runner = None
     try:
         runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
@@ -20,7 +22,7 @@ def launch(args, tests):
             runner.register_test_func(test)
         runner.sort_by_priority()
     except Exception as exc:
-        logging.exception()
+        logging.exception("exception in launch")
         raise exc
     create_report = True
     if args.no_report:
@@ -30,7 +32,7 @@ def launch(args, tests):
 
 
 def launch_runner(runner, create_report):
-    """ Manage test execution on our own """
+    """Manage test execution on our own"""
     dmesg = DmesgWatcher(runner.cfg)
     if IS_LINUX:
         dmesg_thread = Thread(target=dmesg_runner, args=[dmesg])
@@ -60,6 +62,6 @@ def launch_runner(runner, create_report):
         runner.create_testruns_file()
         if IS_LINUX:
             dmesg.end_run()
-            logging.info('joining dmesg threads')
+            logging.info("joining dmesg threads")
             dmesg_thread.join()
         runner.print_and_exit_closing_stance()
