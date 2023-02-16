@@ -3,6 +3,11 @@ devel
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
+* Made all transactions used by the gharial API on coordinators and a few
+  others marked "globally managed". This fixes an issue where
+  transaction conflicts could lead to a silent out of sync situation
+  between a leader shard and its followers.
+
 * BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
   on query when geo index was present, because it would override the choice of
   the index hint with optimizations related to it.
@@ -27,6 +32,13 @@ devel
   disabled.
 
 * FE-133: Alphabetical sorting for collections on user permissions page.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
