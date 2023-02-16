@@ -185,6 +185,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
         operation != OperationType::kAbort) {
       activeTransactions.emplace(transactionId, idx);
     } else {
+      // TODO - must not release commit entry before trx has actually been
+      // committed!
       stream->release(activeTransactions.getReleaseIndex(idx));
     }
     return idx;

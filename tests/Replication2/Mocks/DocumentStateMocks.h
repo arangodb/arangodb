@@ -92,40 +92,60 @@ struct MockCollectionReaderDelegator
   std::shared_ptr<ICollectionReader> _reader;
 };
 
-struct MockCollectionReaderFactory
-    : replicated_state::document::ICollectionReaderFactory {
-  explicit MockCollectionReaderFactory(
+struct MockDatabaseSnapshot : replicated_state::document::IDatabaseSnapshot {
+  explicit MockDatabaseSnapshot(
       std::shared_ptr<replicated_state::document::ICollectionReader> reader);
 
-  MOCK_METHOD(
-      ResultT<std::unique_ptr<replicated_state::document::ICollectionReader>>,
-      createCollectionReader, (std::string_view collectionName), (override));
+  MOCK_METHOD(std::unique_ptr<replicated_state::document::ICollectionReader>,
+              createCollectionReader, (std::string_view collectionName),
+              (override));
 
  private:
   std::shared_ptr<replicated_state::document::ICollectionReader> _reader;
 };
 
-struct MockCollectionReaderFactoryDelegator
-    : replicated_state::document::ICollectionReaderFactory {
-  explicit MockCollectionReaderFactoryDelegator(
-      std::shared_ptr<replicated_state::document::ICollectionReaderFactory>
-          factory)
-      : _factory(std::move(factory)) {}
+struct MockDatabaseSnapshotDelegator
+    : replicated_state::document::IDatabaseSnapshot {
+  explicit MockDatabaseSnapshotDelegator(
+      std::shared_ptr<replicated_state::document::IDatabaseSnapshot> snapshot)
+      : _snapshot(std::move(snapshot)) {}
 
-  ResultT<std::unique_ptr<replicated_state::document::ICollectionReader>>
+  std::unique_ptr<replicated_state::document::ICollectionReader>
   createCollectionReader(std::string_view collectionName) override {
-    return _factory->createCollectionReader(collectionName);
+    return _snapshot->createCollectionReader(collectionName);
   }
 
  private:
-  std::shared_ptr<ICollectionReaderFactory> _factory;
+  std::shared_ptr<replicated_state::document::IDatabaseSnapshot> _snapshot;
+};
+
+struct MockDatabaseSnapshotFactory
+    : replicated_state::document::IDatabaseSnapshotFactory {
+  MOCK_METHOD(std::unique_ptr<replicated_state::document::IDatabaseSnapshot>,
+              createSnapshot, (), (override));
+};
+
+struct MockDatabaseSnapshotFactoryDelegator
+    : replicated_state::document::IDatabaseSnapshotFactory {
+  explicit MockDatabaseSnapshotFactoryDelegator(
+      std::shared_ptr<replicated_state::document::IDatabaseSnapshotFactory>
+          factory)
+      : _factory(std::move(factory)) {}
+
+  std::unique_ptr<replicated_state::document::IDatabaseSnapshot>
+  createSnapshot() override {
+    return _factory->createSnapshot();
+  }
+
+ private:
+  std::shared_ptr<IDatabaseSnapshotFactory> _factory;
 };
 
 struct MockDocumentStateHandlersFactory
     : replicated_state::document::IDocumentStateHandlersFactory,
       std::enable_shared_from_this<MockDocumentStateHandlersFactory> {
   explicit MockDocumentStateHandlersFactory(
-      std::shared_ptr<MockCollectionReaderFactory> readerFactory);
+      std::shared_ptr<MockDatabaseSnapshotFactory> snapshotFactory);
 
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateAgencyHandler>,
@@ -150,14 +170,14 @@ struct MockDocumentStateHandlersFactory
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
       createNetworkHandler, (GlobalLogIdentifier), (override));
 
-  auto makeUniqueCollectionReaderFactory()
-      -> std::unique_ptr<replicated_state::document::ICollectionReaderFactory>;
+  auto makeUniqueDatabaseSnapshotFactory()
+      -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
   auto makeRealSnapshotHandler()
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
   auto makeRealTransactionHandler(GlobalLogIdentifier const&)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
 
-  std::shared_ptr<MockCollectionReaderFactory> collectionReaderFactory;
+  std::shared_ptr<MockDatabaseSnapshotFactory> databaseSnapshotFactory;
 };
 
 struct MockDocumentStateTransaction
