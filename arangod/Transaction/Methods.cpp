@@ -1298,10 +1298,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     newDocumentBuilder->clear();
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-     TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
-       return {TRI_ERROR_DEBUG, "Intentional test error"};
-     }
- #endif
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
 
     if (!value.isObject()) {
       return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
@@ -1739,7 +1739,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
- #endif
+#endif
 
     if (!newValue.isObject()) {
       return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
@@ -2099,7 +2099,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
-#endif 
+#endif
 
     if (value.isString()) {
       key = value.stringView();
