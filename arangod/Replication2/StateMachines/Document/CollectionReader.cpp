@@ -33,27 +33,26 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
-ReplicationTransaction::ReplicationTransaction(
+SnapshotTransaction::SnapshotTransaction(
     std::shared_ptr<transaction::Context> ctx)
     : transaction::Methods(std::move(ctx), options()) {}
 
-auto ReplicationTransaction::options() -> transaction::Options {
+auto SnapshotTransaction::options() -> transaction::Options {
   transaction::Options options;
   options.requiresReplication = false;
   options.fillBlockCache = false;  // TODO - check whether this is a good idea
   return options;
 }
 
-auto ReplicationTransaction::addCollection(LogicalCollection const& collection)
-    -> Result {
-  return transaction::Methods::addCollection(collection.id(), collection.name(),
-                                             AccessMode::Type::READ);
+void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
+  transaction::Methods::addCollectionAtRuntime(
+      collection.id(), collection.name(), AccessMode::Type::READ);
 }
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _ctx(transaction::StandaloneContext::Create(vocbase)) {
-  _trx = std::make_unique<ReplicationTransaction>(_ctx);
-
+    : _vocbase(vocbase),
+      _ctx(transaction::StandaloneContext::Create(vocbase)),
+      _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
   if (auto res = _trx->begin(); res.fail()) {
     LOG_TOPIC("b4e74", ERR, Logger::REPLICATION2)
@@ -75,20 +74,15 @@ auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
 
 CollectionReader::CollectionReader(
     std::shared_ptr<LogicalCollection> logicalCollection,
-    ReplicationTransaction& trx)
+    SnapshotTransaction& trx)
     : _logicalCollection(std::move(logicalCollection)) {
-  Result res = trx.addCollection(*_logicalCollection);
-
-  if (!res.ok()) {
-    LOG_TOPIC("c49e5", ERR, Logger::REPLICATION2)
-        << "Failed to add collection " << _logicalCollection->name()
-        << " to a transaction: " << res.errorMessage();
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  trx.addCollection(*_logicalCollection);
 
   OperationOptions countOptions(ExecContext::current());
-  OperationResult countResult = trx.count(
-      _logicalCollection->name(), transaction::CountType::Normal, countOptions);
+  OperationResult countResult =
+      trx.countAsync(_logicalCollection->name(), transaction::CountType::Normal,
+                     countOptions)
+          .get();
   if (countResult.ok()) {
     _totalDocs = countResult.slice().getNumber<uint64_t>();
   } else {

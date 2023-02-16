@@ -44,10 +44,10 @@ class Context;
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct ReplicationTransaction : transaction::Methods {
-  explicit ReplicationTransaction(std::shared_ptr<transaction::Context> ctx);
+struct SnapshotTransaction : transaction::Methods {
+  explicit SnapshotTransaction(std::shared_ptr<transaction::Context> ctx);
   static auto options() -> transaction::Options;
-  auto addCollection(LogicalCollection const& collection) -> Result;
+  void addCollection(LogicalCollection const& collection);
 };
 
 /*
@@ -76,7 +76,7 @@ class CollectionReader : public ICollectionReader {
  public:
   explicit CollectionReader(
       std::shared_ptr<LogicalCollection> logicalCollection,
-      ReplicationTransaction& trx);
+      SnapshotTransaction& trx);
 
   [[nodiscard]] bool hasMore() override;
   [[nodiscard]] std::optional<uint64_t> getDocCount() override;
@@ -103,7 +103,7 @@ struct DatabaseSnapshot : IDatabaseSnapshot {
  private:
   TRI_vocbase_t& _vocbase;
   std::shared_ptr<transaction::Context> _ctx;
-  std::unique_ptr<ReplicationTransaction> _trx;
+  std::unique_ptr<SnapshotTransaction> _trx;
 };
 
 /*
