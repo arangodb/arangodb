@@ -58,29 +58,8 @@ const collectionGroupIsReady = function (database, groupId) {
   };
 };
 
-const createCollectionGroupTarget = function (database, config) {
-  const gid = lh.nextUniqueLogId();
-  const cid = lh.nextUniqueLogId();
-
-  const numberOfShards = config.numberOfShards || 1;
-
-  const target = {
-    id: gid,
-    collections: {[`${cid}`]: {}},
-    attributes: {
-      mutable: {
-        writeConcern: config.writeConcern || 1,
-        replicationFactor: config.replicationFactor || 2,
-        waitForSync: false,
-      },
-      immutable: {
-        numberOfShards: numberOfShards,
-      }
-    },
-    version: 1,
-  };
-
-  const collectionTarget = {
+const createCollectionTarget = function (gid, cid) {
+  return {
     groupId: gid,
     schema: null,
     computedValues: null,
@@ -97,32 +76,137 @@ const createCollectionGroupTarget = function (database, config) {
       type: "traditional",
     },
   };
-  print(target);
+};
+
+const createCollectionGroupTarget = function (database, config) {
+  const gid = lh.nextUniqueLogId();
+
+  const numberOfShards = config.numberOfShards || 1;
+  const numberOfCollections = config.numberOfCollections || 1;
+  const cids = new Array(numberOfCollections).fill(undefined).map(() => lh.nextUniqueLogId());
+  const target = {
+    id: gid,
+    collections: {},
+    attributes: {
+      mutable: {
+        writeConcern: config.writeConcern || 1,
+        replicationFactor: config.replicationFactor || 2,
+        waitForSync: false,
+      },
+      immutable: {
+        numberOfShards: numberOfShards,
+      }
+    },
+    version: 1,
+  };
+
+  const agencyTrx = {
+    [`arango/Target/CollectionGroups/${database}/${gid}`]: target,
+  };
+
+  for (const cid of cids) {
+    const collectionTarget = createCollectionTarget(gid, cid);
+    target.collections[cid] = {};
+    agencyTrx[`arango/Target/Collections/${database}/${cid}`] = collectionTarget;
+    agencyTrx[`arango/Target/CollectionNames/${database}/${collectionTarget.name}`] = {};
+  }
+
+  serverHelper.agency.write([[agencyTrx]]);
+  lh.waitFor(collectionGroupIsReady(database, gid));
+  return {gid, cid: cids[0], cids};
+};
+
+const addCollectionToGroup = function (database, gid) {
+  const cid = lh.nextUniqueLogId();
+  const collectionTarget = createCollectionTarget(gid, cid);
 
   serverHelper.agency.write([[{
-    [`arango/Target/CollectionGroups/${database}/${gid}`]: target,
+    [`arango/Target/CollectionGroups/${database}/${gid}/collections/${cid}`]: {},
+    [`arango/Target/CollectionGroups/${database}/${gid}/version`]: {op: "increment"},
     [`arango/Target/Collections/${database}/${cid}`]: collectionTarget,
     [`arango/Target/CollectionNames/${database}/${collectionTarget.name}`]: {},
   }]]);
 
-  return {gid, cid};
+  return {cid};
+};
+
+const dropCollectionFromGroup = function (database, gid, cid) {
+  serverHelper.agency.write([[{
+    [`arango/Target/CollectionGroups/${database}/${gid}/collections/${cid}`]: {op: "delete"},
+    [`arango/Target/CollectionGroups/${database}/${gid}/version`]: {op: "increment"},
+    [`arango/Target/Collections/${database}/${cid}`]: {op: "delete"},
+  }]]);
+
+  return {cid};
+};
+
+const readCollectionGroup = function (database, gid) {
+  const target = lh.readAgencyValueAt(`Target/CollectionGroups/${database}/${gid}`);
+  const plan = lh.readAgencyValueAt(`Plan/CollectionGroups/${database}/${gid}`);
+  const current = lh.readAgencyValueAt(`Current/CollectionGroups/${database}/${gid}`);
+  return {target, plan, current};
+};
+
+const readCollection = function (database, cid) {
+  const target = lh.readAgencyValueAt(`Target/Collections/${database}/${cid}`);
+  const plan = lh.readAgencyValueAt(`Plan/Collections/${database}/${cid}`);
+  const current = lh.readAgencyValueAt(`Current/Collections/${database}/${cid}`);
+  return {target, plan, current};
 };
 
 const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database, {replicationVersion: "2"});
 
 const collectionGroupsSupervisionSuite = function () {
-
-
   return {
     setUpAll, tearDownAll, setUp, tearDown,
 
     testCreateCollectionGroup: function () {
+      createCollectionGroupTarget(database, {
+        replicationFactor: 3,
+        numberOfShards: 3,
+      });
+    },
+
+    testAddCollection: function () {
       const {gid} = createCollectionGroupTarget(database, {
         replicationFactor: 3,
         numberOfShards: 3,
       });
 
+      const {cid} = addCollectionToGroup(database, gid);
       lh.waitFor(collectionGroupIsReady(database, gid));
+
+      {
+        const {plan} = readCollectionGroup(database, gid);
+        // check that collection was added to plan
+        assertTrue(plan.collections[cid] !== undefined);
+      }
+      {
+        const {plan} = readCollection(database, cid);
+        assertTrue(plan !== undefined);
+        assertEqual(plan.groupId, gid);
+      }
+    },
+
+    testRemoveCollection: function () {
+      const {gid, cid} = createCollectionGroupTarget(database, {
+        replicationFactor: 3,
+        numberOfShards: 3,
+        numberOfCollections: 2,
+      });
+
+      dropCollectionFromGroup(database, gid, cid);
+      lh.waitFor(collectionGroupIsReady(database, gid));
+
+      {
+        const {plan} = readCollectionGroup(database, gid);
+        // check that collection was added to plan
+        assertTrue(plan.collections[cid] === undefined);
+      }
+      {
+        const {plan} = readCollection(database, cid);
+        assertTrue(plan === undefined);
+      }
     }
   };
 };
