@@ -126,7 +126,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       } else {
         // Note that the shard could've been dropped before doing recovery.
         if (!data.core->isShardAvailable(doc.shardId)) {
-          LOG_CTX("bee57", DEBUG, self->loggerContext)
+          LOG_CTX("bee57", INFO, self->loggerContext)
               << "Will not apply transaction " << doc.tid << " for shard "
               << doc.shardId << " because it is not available";
           continue;

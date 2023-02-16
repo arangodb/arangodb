@@ -138,7 +138,7 @@ auto DocumentFollowerState::applyEntries(
               // Even though a shard was dropped before acquiring the snapshot,
               // we could still see transactions referring to that shard.
               if (!data.core->isShardAvailable(doc.shardId)) {
-                LOG_CTX("1970d", DEBUG, self->loggerContext)
+                LOG_CTX("1970d", INFO, self->loggerContext)
                     << "Will not apply transaction " << doc.tid << " for shard "
                     << doc.shardId << " because it is not available";
                 continue;
