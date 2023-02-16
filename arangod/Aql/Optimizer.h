@@ -24,10 +24,14 @@
 #pragma once
 
 #include "Aql/ExecutionPlan.h"
-#include "Basics/Common.h"
 #include "Containers/RollingVector.h"
 
 #include <velocypack/Builder.h>
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -40,7 +44,7 @@ class Optimizer {
   /// @brief this stored the positions of rules in OptimizerRulesFeature::_rules
   using RuleDatabase = std::vector<int>;
 
-  /// @brief the following struct keeps a list (deque) of ExecutionPlan*
+  /// @brief the following struct keeps a container of ExecutionPlan objects
   /// and has some automatic convenience functions.
   struct PlanList {
     using Entry =
@@ -59,10 +63,10 @@ class Optimizer {
     ~PlanList() = default;
 
     /// @brief get number of plans contained
-    size_t size() const { return list.size(); }
+    size_t size() const noexcept { return list.size(); }
 
     /// @brief check if empty
-    bool empty() const { return list.empty(); }
+    bool empty() const noexcept { return list.empty(); }
 
     /// @brief pop the first one
     Entry pop_front() {
@@ -78,10 +82,10 @@ class Optimizer {
     }
 
     /// @brief swaps the two lists
-    void swap(PlanList& b) { list.swap(b.list); }
+    void swap(PlanList& b) noexcept { list.swap(b.list); }
 
     /// @brief clear, deletes all plans contained
-    void clear() { list.clear(); }
+    void clear() noexcept { list.clear(); }
   };
 
  public:
@@ -130,7 +134,7 @@ class Optimizer {
                        bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
+  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() noexcept {
     return _plans.list;
   }
 
@@ -150,7 +154,9 @@ class Optimizer {
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
-  size_t numberOfPlans() { return _plans.size() + _newPlans.size() + 1; }
+  size_t numberOfPlans() const noexcept {
+    return _plans.size() + _newPlans.size() + 1;
+  }
 
  private:
   /// @brief disable a specific rule
@@ -170,15 +176,15 @@ class Optimizer {
                        OptimizerRule const& rule, bool wasModified,
                        RuleDatabase::iterator const& nextRule);
 
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+  void finalizePlans();
+  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+
  public:
   /// @brief optimizer statistics
   Stats _stats;
 
  private:
-  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
-  void finalizePlans();
-  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
-
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 
