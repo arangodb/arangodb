@@ -254,38 +254,43 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return snapshotRes.result();
         }
 
-        auto& docs = snapshotRes->payload;
-        auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
-                                                         snapshotVersion](
-                                                            auto& data)
-                                                            -> Result {
-          if (data.didResign()) {
-            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-          }
+        if (snapshotRes->shardId.has_value()) {
+          auto& docs = snapshotRes->payload;
+          auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                           &snapshotRes,
+                                                           snapshotVersion](
+                                                              auto& data)
+                                                              -> Result {
+            if (data.didResign()) {
+              return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+            }
 
-          // The user may remove and add the server again. The leader
-          // might do a compaction which the follower won't notice. Hence, a
-          // new snapshot is required. This can happen so quick, that one
-          // snapshot transfer is not yet completed before another one is
-          // requested. Before populating the shard, we have to make sure
-          // there's no new snapshot transfer in progress.
-          if (data.currentSnapshotVersion != snapshotVersion) {
-            return {
-                TRI_ERROR_INTERNAL,
-                "Snapshot transfer cancelled because a new one was started!"};
+            // The user may remove and add the server again. The leader
+            // might do a compaction which the follower won't notice. Hence, a
+            // new snapshot is required. This can happen so quick, that one
+            // snapshot transfer is not yet completed before another one is
+            // requested. Before populating the shard, we have to make sure
+            // there's no new snapshot transfer in progress.
+            if (data.currentSnapshotVersion != snapshotVersion) {
+              return {
+                  TRI_ERROR_INTERNAL,
+                  "Snapshot transfer cancelled because a new one was started!"};
+            }
+            return self->populateLocalShard(*snapshotRes->shardId, docs);
+          });
+          if (insertRes.fail()) {
+            LOG_CTX("d8b8a", ERR, self->loggerContext)
+                << "Failed to populate local shard: " << insertRes;
+            if (insertRes.isNot(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+              // TODO return result and let the leader clear the failed snapshot
+              // itself, or send an abort instead of finish?
+              return leader->finishSnapshot(snapshotRes->snapshotId);
+            }
+            return insertRes;
           }
-          return self->populateLocalShard(data.core->getShardId(), docs);
-        });
-        if (insertRes.fail()) {
-          LOG_CTX("d8b8a", ERR, self->loggerContext)
-              << "Failed to populate local shard: " << insertRes;
-          if (insertRes.isNot(
-                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
-            // TODO return result and let the leader clear the failed snapshot
-            // itself, or send an abort instead of finish?
-            return leader->finishSnapshot(snapshotRes->snapshotId);
-          }
-          return insertRes;
+        } else {
+          TRI_ASSERT(!snapshotRes->hasMore);
         }
 
         if (snapshotRes->hasMore) {
