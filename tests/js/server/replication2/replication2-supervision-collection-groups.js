@@ -82,25 +82,19 @@ const createCollectionGroupTarget = function (database, config) {
 
   const collectionTarget = {
     groupId: gid,
-    mutableProperties: {
-      schema: null,
-      computedValues: null,
-    },
-    indexes: {
-      indexes: []
-    },
-    immutableProperties: {
-      name: `TestCollection${cid}`,
-      id: `${cid}`,
-      isSystem: false,
-      isSmart: false,
-      isDisjoint: false,
-      cacheEnabled: false,
-      type: 0,
-      keyOptions: {
-        allowUserKeys: true,
-        type: "traditional",
-      },
+    schema: null,
+    computedValues: null,
+    indexes: [],
+    name: `TestCollection${cid}`,
+    id: `${cid}`,
+    isSystem: false,
+    isSmart: false,
+    isDisjoint: false,
+    cacheEnabled: false,
+    type: 2,
+    keyOptions: {
+      allowUserKeys: true,
+      type: "traditional",
     },
   };
   print(target);
@@ -108,7 +102,7 @@ const createCollectionGroupTarget = function (database, config) {
   serverHelper.agency.write([[{
     [`arango/Target/CollectionGroups/${database}/${gid}`]: target,
     [`arango/Target/Collections/${database}/${cid}`]: collectionTarget,
-    [`arango/Target/CollectionNames/${database}/${collectionTarget.immutableProperties.name}`]: {},
+    [`arango/Target/CollectionNames/${database}/${collectionTarget.name}`]: {},
   }]]);
 
   return {gid, cid};
