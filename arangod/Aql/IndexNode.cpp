@@ -192,7 +192,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
-
+  _options.forLateMaterialization = isLateMaterialized();
   prepareProjections();
 }
 

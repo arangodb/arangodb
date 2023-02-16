@@ -1015,9 +1015,9 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     auto resolveLateMaterialization =
         [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
       if (opts.forLateMaterialization) {
-        return factory(std::true_type{});
-      } else {
         return factory(std::false_type{});
+      } else {
+        return factory(std::true_type{});
       }
     };
     if (_meta._sort.empty()) {
