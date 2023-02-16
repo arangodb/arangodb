@@ -45,7 +45,6 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  ShardID const shardId;  // TODO we have to get rid of this member
   LoggerContext const loggerContext;
 
   // unprotected for gtests. TODO think about whether there's a better way
@@ -58,10 +57,11 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
-  auto forceLocalTransaction(OperationType opType,
+  auto forceLocalTransaction(ShardID shardId, OperationType opType,
                              velocypack::SharedSlice slice) -> Result;
-  auto truncateLocalShard() -> Result;
-  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  auto truncateLocalShard(ShardID const& shardId) -> Result;
+  auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
+      -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
