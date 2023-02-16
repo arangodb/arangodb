@@ -1,10 +1,10 @@
 v3.10.4 (XXXX-XX-XX)
 --------------------
 
-* Made all transactions used by the gharial API on coordinators and a few
-  others marked "globally managed". This fixes an issue where
-  transaction conflicts could lead to a silent out of sync situation
-  between a leader shard and its followers.
+* Made all transactions used by the gharial API on coordinators and a few others
+  marked "globally managed". This fixes an issue where transaction conflicts
+  could lead to a silent out of sync situation between a leader shard and its
+  followers.
 
 * BTS-1219: Fix cost estimation for geo index usage and for collection
   enumeration with included filtering. This fixes a regression from 3.9 where a
