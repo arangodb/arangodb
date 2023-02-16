@@ -347,7 +347,6 @@ RegisterId DocumentProducingFunctionContext::getOutputRegister()
   return _outputRegister;
 }
 
-
 ReadOwnWrites DocumentProducingFunctionContext::getReadOwnWrites()
     const noexcept {
   return _readOwnWrites;

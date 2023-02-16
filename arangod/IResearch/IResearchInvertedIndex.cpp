@@ -455,11 +455,13 @@ template<bool emitLocalDocumentId>
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexIterator(
-      ResourceMonitor& monitor, LogicalCollection* collection,
-      ViewSnapshot& state, transaction::Methods* trx,
-      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+  IResearchInvertedIndexIterator(ResourceMonitor& monitor,
+                                 LogicalCollection* collection,
+                                 ViewSnapshot& state, transaction::Methods* trx,
+                                 aql::AstNode const* condition,
+                                 IResearchInvertedIndexMeta const* meta,
+                                 aql::Variable const* variable,
+                                 int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _projections(*meta) {}
@@ -484,19 +486,18 @@ class IResearchInvertedIndexIterator final
     nextImplInternal<decltype(skipped), false, false>(skipped, count);
   }
 
-  bool nextDocumentImpl(DocumentCallback const& cb,
-                                       uint64_t limit) override {
+  bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextImpl(
         [this, &cb](LocalDocumentId const& token) {
           // we use here just first snapshot as they are all the same here.
           // iterator operates only one iresearch datastore
           return _collection->getPhysical()
-              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(), _snapshot.snapshot(0))
+              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
+                                 _snapshot.snapshot(0))
               .ok();
         },
         limit);
   }
-
 
   // FIXME: Evaluate buffering iresearch reads
   template<typename Callback, bool withCovering, bool produce>
@@ -668,18 +669,16 @@ class IResearchInvertedIndexMergeIterator final
         // Otherwise we read it only if required.
         constexpr bool needReadLocalDocumentId =
             !withCovering || emitLocalDocumentId;
-        if (!needReadLocalDocumentId || segment.doc->value ==
-            segment.pkDocItr->seek(segment.doc->value)) {
+        if (!needReadLocalDocumentId ||
+            segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
           LocalDocumentId documentId;
           bool const readSuccess =
-              !needReadLocalDocumentId || 
+              !needReadLocalDocumentId ||
               DocumentPrimaryKey::read(documentId, segment.pkValue->value);
           if (readSuccess) {
             if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
-              SearchDoc doc(
-                  _snapshot.segment(currentIdx),
-                  segment.doc->value);
+              SearchDoc doc(_snapshot.segment(currentIdx), segment.doc->value);
               TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
               bool emitRes{false};
               if constexpr (emitLocalDocumentId) {
@@ -991,7 +990,8 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       if (!selfLock) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to lock datastore for index '", index().name(), "'"));
+            absl::StrCat("Failed to lock datastore for index '", index().name(),
+                         "'"));
       }
       // TODO(MBkkt) Move it to optimization stage
       if (opts.waitForSync &&
@@ -1004,7 +1004,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       ViewSnapshot::Links links;
       links.push_back(std::move(selfLock));
       ctx = makeViewSnapshot(*trx, key, opts.waitForSync, index().name(),
-                                  std::move(links));
+                             std::move(links));
     }
     return *ctx;
   }();

@@ -354,7 +354,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
 
-
   auto const outRegister = variableToRegisterId(outVariable);
 
   auto numIndVarsRegisters =

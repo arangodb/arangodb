@@ -107,12 +107,13 @@ IndexIterator::CoveringCallback getCallback(
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   auto impl = [&context, &index, &outNonMaterializedIndVars,
-          &outNonMaterializedIndRegs]<typename TokenType>(TokenType&& token,
-                                      IndexIteratorCoveringData& covering) {
-    constexpr bool isLocalDocumentId = std::is_same_v <LocalDocumentId,
-                   std::decay_t<TokenType>>;
+               &outNonMaterializedIndRegs]<typename TokenType>(
+                  TokenType&& token, IndexIteratorCoveringData& covering) {
+    constexpr bool isLocalDocumentId =
+        std::is_same_v<LocalDocumentId, std::decay_t<TokenType>>;
     // can't be a static_assert as this implementation is still possible
-    // just can't be used right now as for restriction in late materialization rule
+    // just can't be used right now as for restriction in late materialization
+    // rule
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if constexpr (checkUniqueness && !isLocalDocumentId) {
       TRI_ASSERT(false);

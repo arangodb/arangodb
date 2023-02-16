@@ -69,7 +69,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
   bool covers(aql::Projections& projections) const;
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
-    const noexcept {
+      const noexcept {
     return _coveredFields;
   }
 

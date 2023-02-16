@@ -150,7 +150,6 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
-  
   // TODO: Move to iresearch
   template<typename... Funcs>
   class CallbackImpl : private fu2::function<Funcs...> {
@@ -158,26 +157,23 @@ class IndexIterator {
 
     struct DummyRetval {
       template<typename T>
-      operator T() const{
+      operator T() const {
         TRI_ASSERT(false);
         throw std::bad_function_call{};
       }
     };
+
    public:
     using Base::operator();
     using Base::operator bool;
 
-    bool operator==(std::nullptr_t) {
-      return !bool(*this);
-    }
+    bool operator==(std::nullptr_t) { return !bool(*this); }
 
-    bool operator!=(std::nullptr_t) {
-      return bool(*this);
-    }
+    bool operator!=(std::nullptr_t) { return bool(*this); }
 
     CallbackImpl() noexcept = default;
 
-    template<typename...Fs>
+    template<typename... Fs>
     CallbackImpl(Fs&&... fs)
         : Base{fu2::overload(std::forward<Fs>(fs)...,
                              [](auto&&...) { return DummyRetval{}; })} {}
@@ -186,8 +182,8 @@ class IndexIterator {
   using LocalDocumentIdCallback =
       CallbackImpl<bool(LocalDocumentId const& token) const>;
 
-  using DocumentCallback =
-      CallbackImpl<bool(LocalDocumentId const& token, velocypack::Slice doc) const>;
+  using DocumentCallback = CallbackImpl<bool(LocalDocumentId const& token,
+                                             velocypack::Slice doc) const>;
 
   using CoveringCallback =
       CallbackImpl<bool(LocalDocumentId const& token,

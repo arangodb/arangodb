@@ -1225,7 +1225,7 @@ class MaterializeSingleNode : public MaterializeNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-protected:
+ protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;

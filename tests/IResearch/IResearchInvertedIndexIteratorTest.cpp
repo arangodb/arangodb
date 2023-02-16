@@ -198,8 +198,7 @@ class IResearchInvertedIndexIteratorTestBase
       std::function<void(arangodb::IndexIterator* it)> const& test,
       std::string_view refName = "d",
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-      int mutableConditionIdx = -1,
-      bool forLateMaterialization = false) {
+      int mutableConditionIdx = -1, bool forLateMaterialization = false) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
     auto ctx =
@@ -406,7 +405,8 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
   executeIteratorTest(queryString, test);
 }
 
-TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_LateMaterialized) {
+TEST_F(IResearchInvertedIndexIteratorTest,
+       test_skip_nextCovering_LateMaterialized) {
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
   auto test = [this](arangodb::IndexIterator* iterator) {
@@ -423,12 +423,11 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_LateMaterializ
     ASSERT_TRUE(iterator->hasMore());
     unsigned docs{0};
 
-    auto docCallback = [&docs](
-                           arangodb::aql::AqlValue&& token,
-                           arangodb::IndexIteratorCoveringData& data) {
+    auto docCallback = [&docs](arangodb::aql::AqlValue&& token,
+                               arangodb::IndexIteratorCoveringData& data) {
       ++docs;
-      auto searchDoc = arangodb::iresearch::SearchDoc::decode(
-          token.slice().stringView());
+      auto searchDoc =
+          arangodb::iresearch::SearchDoc::decode(token.slice().stringView());
       token.destroy();
       EXPECT_TRUE(searchDoc.isValid());
       EXPECT_TRUE(data.isArray());
@@ -454,7 +453,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_LateMaterializ
     ASSERT_EQ(docs, 2);
     ASSERT_FALSE(iterator->hasMore());
   };
-  executeIteratorTest(queryString, test, "d", nullptr, - 1, true);
+  executeIteratorTest(queryString, test, "d", nullptr, -1, true);
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {

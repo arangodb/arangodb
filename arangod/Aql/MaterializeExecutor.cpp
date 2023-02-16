@@ -40,7 +40,8 @@ using namespace arangodb::aql;
 
 template<typename T, bool localDocumentId>
 arangodb::IndexIterator::DocumentCallback
-MaterializeExecutor<T, localDocumentId>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
+MaterializeExecutor<T, localDocumentId>::ReadContext::copyDocumentCallback(
+    ReadContext& ctx) {
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)>
       CallbackFactory;
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
@@ -74,7 +75,8 @@ MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
 }
 
 template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::fillBuffer(AqlItemBlockInputRange& inputRange) {
+void MaterializeExecutor<T, localDocumentId>::fillBuffer(
+    AqlItemBlockInputRange& inputRange) {
   TRI_ASSERT(!localDocumentId);
   _bufferedDocs.clear();
   auto const block = inputRange.getBlock();
@@ -191,8 +193,8 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(AqlItemBlockInputRange&
 
 template<typename T, bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-MaterializeExecutor<T, localDocumentId>::produceRows(AqlItemBlockInputRange& inputRange,
-                                    OutputAqlItemRow& output) {
+MaterializeExecutor<T, localDocumentId>::produceRows(
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   MaterializeStats stats;
 
   AqlCall upstreamCall{};
@@ -277,8 +279,8 @@ MaterializeExecutor<T, localDocumentId>::produceRows(AqlItemBlockInputRange& inp
 
 template<typename T, bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutor<T, localDocumentId>::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                      AqlCall& call) {
+MaterializeExecutor<T, localDocumentId>::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 
   // hasDataRow may only occur during fullCount due to previous overfetching

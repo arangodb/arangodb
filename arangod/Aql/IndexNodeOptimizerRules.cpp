@@ -122,7 +122,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
       auto& indexes = indexNode->getIndexes();
       TRI_ASSERT(!indexes.empty());
       if (indexes.size() != 1) {
-        // When enabling this please consider how inverted index would 
+        // When enabling this please consider how inverted index would
         // operate together with persistent as first produces
         // SearchDocs but latter LocalDocumentIds. Usage of
         // two separate variables might be the simplest solution
@@ -338,15 +338,13 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // insert a materialize node
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
           if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-            return std::make_unique <materialize::MaterializeSingleNode<false>>(
-                                          plan.get(), plan->nextId(),
-                                          indexNode->collection(),
-                                          *localDocIdTmp, *var);
+            return std::make_unique<materialize::MaterializeSingleNode<false>>(
+                plan.get(), plan->nextId(), indexNode->collection(),
+                *localDocIdTmp, *var);
           }
-          return std::make_unique <materialize::MaterializeSingleNode<true>>(
-                                        plan.get(), plan->nextId(),
-                                        indexNode->collection(), *localDocIdTmp,
-                                        *var);
+          return std::make_unique<materialize::MaterializeSingleNode<true>>(
+              plan.get(), plan->nextId(), indexNode->collection(),
+              *localDocIdTmp, *var);
         };
         auto* materializeNode = plan->registerNode(makeMaterializer());
         TRI_ASSERT(materializeNode);
