@@ -1546,7 +1546,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       [this, &operation, &options, &collection, &resultBuilder, &cid, &previous,
        &result](VPackSlice const newVal, bool isBabies) -> Result {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
 #endif
@@ -1806,7 +1806,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
       return {TRI_ERROR_DEBUG, "Intentional test error"};
     }
 #endif
