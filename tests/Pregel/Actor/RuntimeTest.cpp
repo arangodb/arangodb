@@ -78,6 +78,7 @@ TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
   auto actor =
       runtime->template getActorStateByID<pong_actor::Actor>(actorID).value();
   ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
@@ -93,6 +94,7 @@ TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
       R"({"pid":{"server":"PRMR-1234","id":0},"state":{"state":"foo","called":1},"batchsize":16})"_vpack;
   ASSERT_EQ(runtime->getSerializedActorByID(actor)->toJson(),
             expected.toJson());
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, spawns_actor) {
@@ -106,6 +108,7 @@ TYPED_TEST(ActorRuntimeTest, spawns_actor) {
   this->scheduler->stop();
   auto state = runtime->template getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foo", .called = 1}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
@@ -119,6 +122,7 @@ TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
   this->scheduler->stop();
   auto state = runtime->template getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobar", .called = 1}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
@@ -139,6 +143,7 @@ TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
   ASSERT_EQ(
       (std::unordered_set<ActorID>(allActorIDs.begin(), allActorIDs.end())),
       (std::unordered_set<ActorID>{actor_foo, actor_bar}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
@@ -155,6 +160,7 @@ TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
   this->scheduler->stop();
   auto state = runtime->template getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
+  runtime->softShutdown();
 }
 
 struct SomeMessage {};
@@ -187,6 +193,7 @@ TYPED_TEST(
       runtime->template getActorStateByID<TrivialActor>(actor_id),
       (TrivialState{.state = fmt::format("sent unknown message to {}", actor),
                     .called = 2}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(
@@ -208,6 +215,7 @@ TYPED_TEST(
             (TrivialState{.state = fmt::format("receiving actor {} not found",
                                                unknown_actor),
                           .called = 2}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
@@ -231,6 +239,7 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
   auto pong_actor_state =
       runtime->template getActorStateByID<pong_actor::Actor>(pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::PongState{.called = 2}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, spawn_game) {
@@ -250,6 +259,7 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
   ASSERT_EQ(runtime->getActorIDs().size(), 2);
   ASSERT_EQ(runtime->template getActorStateByID<SpawnActor>(spawn_actor),
             (SpawnState{.called = 2, .state = "baz"}));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
@@ -268,6 +278,7 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
   this->scheduler->stop();
   ASSERT_TRUE(
       runtime->actors.find(finishing_actor)->get()->isFinishedAndIdle());
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
@@ -289,6 +300,7 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
@@ -325,6 +337,7 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
                                         remaining_actor_ids.end());
   ASSERT_FALSE(actor_ids.contains(actor_to_be_finished));
   ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished));
+  runtime->softShutdown();
 }
 
 TYPED_TEST(ActorRuntimeTest,
@@ -342,10 +355,8 @@ TYPED_TEST(ActorRuntimeTest,
   // wait for actor to work off all messages
   while (not runtime->areAllActorsIdle()) {
   }
-
-  runtime->softShutdown();
-
   this->scheduler->stop();
+  runtime->softShutdown();
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
@@ -381,4 +392,5 @@ TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
     ASSERT_EQ(runtime->template getActorStateByID<TrivialActor>(ActorID{i}),
               (TrivialState{.state = std::to_string(i), .called = 2}));
   }
+  runtime->softShutdown();
 }
