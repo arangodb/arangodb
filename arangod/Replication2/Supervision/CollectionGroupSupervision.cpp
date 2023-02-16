@@ -104,7 +104,7 @@ auto computeShardList(
         << shardSheaves[i].replicatedLog
         << ") of collection group does not exist.";
     auto const& log = logs.at(shardSheaves[i].replicatedLog);
-    for (auto const& [pid, flags] : log.target.participants) {
+    for (auto const& [pid, flags] : log.plan->participantsConfig.participants) {
       servers.servers.push_back(pid);
     }
 
