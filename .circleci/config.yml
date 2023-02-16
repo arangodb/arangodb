@@ -2,11 +2,6 @@ version: 2.1
 
 setup: true
 
-parameters:
-  i-mean-it:
-    type: boolean
-    default: false
-
 orbs:
   continuation: circleci/continuation@0.3.1
 
@@ -37,6 +32,6 @@ jobs:
 workflows:
   setup:
     when:
-      equal: [ true, << pipeline.parameters.i-mean-it >> ]
+      equal: [ api, << pipeline.trigger_source >> ]
     jobs:
       - setup
