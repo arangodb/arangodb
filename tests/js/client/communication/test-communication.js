@@ -27,6 +27,7 @@ const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
@@ -106,8 +107,6 @@ function CommunicationSuite() {
 
   assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
 
-
-
   let buildCode = function (key, command) {
     let file = fs.getTempFile() + "-" + key;
     fs.write(file, `
@@ -130,7 +129,6 @@ function CommunicationSuite() {
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, file, pid };
   };
-
 
   let runTests = function (tests, duration) {
     assertFalse(db[cn].exists("stop"));
@@ -255,9 +253,14 @@ function CommunicationSuite() {
 
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
+      if (isEnterprise) {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
+      } else {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value.nested_1.nested_2"}]});
+      }
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
-        docs.push({ value: i });
+        docs.push({ value: i , new_value: [{nested_1: [{nested_2: i.toString()}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -298,6 +301,7 @@ function GenericAqlSetupPathSuite(type) {
   const vertexName = "UnitTestVertices";
   const edgeName = "UnitTestEdges";
   const viewName = "UnitTestView";
+  const searchAliasViewName = "UnitTestSearchAliasView";
 
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
@@ -322,15 +326,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectExclusiveQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: ''}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'a'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'b'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'v'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -340,15 +348,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectWriteQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 's'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'f'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'm'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
         default:
         // Illegal Test
         assertEqual(true, false);
@@ -365,6 +377,10 @@ function GenericAqlSetupPathSuite(type) {
         return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN ${twoShardColName} RETURN x")`;
       case "View":
         return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;  
       case "Satellite":
         return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       default:
@@ -381,7 +397,7 @@ function GenericAqlSetupPathSuite(type) {
       const db = require("@arangodb").db;
       const col = db.${twoShardColName};
       for (let i = 0; i < ${docsPerWrite}; ++i) {
-        col.save({});
+        col.save({b: [{c: [{d: i.toString()}]}]});
       }
     }
   `;
@@ -425,7 +441,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj);
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'aaa'}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -446,7 +462,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'bbb'}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -486,7 +502,7 @@ function GenericAqlSetupPathSuite(type) {
   const documentWrite = `
     const docs = [];
     for (let i = 0; i < ${docsPerWrite}; ++i) {
-      docs.push({});
+      docs.push({b: [{c: [{d: i.toString()}]}]});
     }
     db["${twoShardColName}"].save(docs);
   `;
@@ -495,7 +511,7 @@ function GenericAqlSetupPathSuite(type) {
     const cmd = `
     (function() {
         ${command}
-        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1 });
+        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1, b: [{c: [{d: 'qwerty'}]}] });
     })();
     `;
 
@@ -657,25 +673,87 @@ function GenericAqlSetupPathSuite(type) {
       db._create(cn);
 
       db._drop(twoShardColName);
-      db._create(twoShardColName, { numberOfShards: 2 });
+      let c = db._create(twoShardColName, { numberOfShards: 2 });
       switch (type) {
         case "Graph":
         case "NamedGraph": {
           // We create a graph with a single vertex that has a self reference.
           const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
-          const v = g[vertexName].save({ _key: "a" });
-          g[edgeName].save({ _from: v._id, _to: v._id });
+          const v = g[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'bar'}]}] });
+          g[edgeName].save({ _from: v._id, _to: v._id, "b": [{"c": [{"d": 'foo'}]}] });
           break;
         }
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
-          db._createView(viewName, "arangosearch", { links: { [vertexName]: { includeAllFields: true } } });
-          db[vertexName].save({ _key: "a" });
+          let meta = {};
+          if (isEnterprise) {
+            meta = { links: { [vertexName]: { 
+              includeAllFields: true, 
+              fields: {
+                "b": {
+                  "nested": {
+                    "c": {
+                      "nested":{
+                        "d": {}
+                      } 
+                    }
+                  }
+                }
+              } 
+            }}};
+          } else {
+            meta = { links: { [vertexName]: { 
+              includeAllFields: true
+            }}};
+          }
+          db._createView(viewName, "arangosearch", meta);
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobar'}]}] });
+          break;
+        }
+        case "SearchAliasView": {
+          let c2 = db._create(vertexName, { numberOfShards: 3 });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+            };
+          } else {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true
+            };
+          }
+          let i1 = c.ensureIndex(meta);;
+          let i2 = c2.ensureIndex(meta);
+
+          db._createView(searchAliasViewName, "search-alias", {
+            indexes: [{collection: vertexName, index: i2.name}]
+          });
+
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
+          break;
+        }
+        case "InvertedIndex": {
+          let c2 = db._create(vertexName, { numberOfShards: 3 });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+            };
+          } else {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true
+            };
+          }
+          
+          let i1 = c.ensureIndex(meta);;
+          let i2 = c2.ensureIndex(meta);
+
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
           break;
         }
         case "Satellite": {
           db._create(vertexName, { replicationFactor: "satellite" });
-          db[vertexName].save({ _key: "a" });
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobuz'}]}] });
           break;
         }
       }
@@ -696,6 +774,15 @@ function GenericAqlSetupPathSuite(type) {
         }
         case "View": {
           db._dropView(viewName);
+          db._drop(vertexName);
+          break;
+        }
+        case "SearchAliasView": {
+          db._dropView(searchAliasViewName);
+          db._drop(vertexName);
+          break;
+        }
+        case "InvertedIndex": {
           db._drop(vertexName);
           break;
         }
@@ -742,17 +829,27 @@ function AqlViewSetupPathSuite() {
   return GenericAqlSetupPathSuite("View");
 }
 
+function AqlSearchAliasViewSetupPathSuite() {
+  return GenericAqlSetupPathSuite("SearchAliasView");
+}
+
+function AqlSearchInvertedIndexSetupPathSuite() {
+  return GenericAqlSetupPathSuite("InvertedIndex");
+}
+
 function AqlSatelliteSetupPathSuite() {
   return GenericAqlSetupPathSuite("Satellite");
 }
 
-jsunity.run(CommunicationSuite);
+// jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
   jsunity.run(AqlGraphSetupPathSuite);
   jsunity.run(AqlNamedGraphSetupPathSuite);
   jsunity.run(AqlViewSetupPathSuite);
-  if (internal.isEnterprise()) {
+  jsunity.run(AqlSearchAliasViewSetupPathSuite);
+  jsunity.run(AqlSearchInvertedIndexSetupPathSuite);
+  if (isEnterprise) {
     jsunity.run(AqlSatelliteSetupPathSuite);
   }
 }

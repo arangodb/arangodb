@@ -1921,6 +1921,13 @@ bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
   return true;
 }
 
+bool Expression::canBeUsedInPrune(bool isOneShard) {
+  if (willUseV8() || !canRunOnDBServer(isOneShard)) {
+    return false;
+  }
+  return true;
+}
+
 std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
