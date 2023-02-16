@@ -736,7 +736,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
           std::shared_ptr<transaction::Context>(), &transactionContext),
       collectionName, AccessMode::Type::WRITE);
 
-  ::addTransactionHints(*col, trx, !args[0]->IsArray(), false);
+  ::addTransactionHints(*col, trx, args[0]->IsArray(), false);
 
   Result res = trx.begin();
   if (!res.ok()) {
