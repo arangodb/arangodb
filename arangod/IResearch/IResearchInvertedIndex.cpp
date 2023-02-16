@@ -542,7 +542,7 @@ class IResearchInvertedIndexIterator final
           // if combined with "produce".
           // And we must read LocalDocumentId anyway.
           // Otherwise we read it only if required.
-          constexpr bool needReadLocalDocumentId =
+          static constexpr bool needReadLocalDocumentId =
               !withCovering || emitLocalDocumentId;
           if (!needReadLocalDocumentId ||
               _doc->value == _pkDocItr->seek(_doc->value)) {
@@ -554,15 +554,16 @@ class IResearchInvertedIndexIterator final
                 _projections.seek(_doc->value);
                 TRI_ASSERT(_readerOffset > 0);
                 TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
-                bool emitRes{false};
-                if constexpr (emitLocalDocumentId) {
-                  emitRes = callback(documentId, _projections);
-                } else {
-                  SearchDoc doc(_snapshot.segment(_readerOffset - 1),
-                                _doc->value);
-                  emitRes =
-                      callback(aql::AqlValue{doc.encode(_buf)}, _projections);
-                }
+                bool emitRes = [&]() {
+                  if constexpr (emitLocalDocumentId) {
+                    return callback(documentId, _projections);
+                  } else {
+                    SearchDoc doc(_snapshot.segment(_readerOffset - 1),
+                                  _doc->value);
+                    return callback(aql::AqlValue{doc.encode(_buf)},
+                                    _projections);
+                  }
+                }();
                 if (emitRes) {
                   --limit;
                 }
@@ -667,7 +668,7 @@ class IResearchInvertedIndexMergeIterator final
         // if combined with "produce".
         // And we must read LocalDocumentId anyway.
         // Otherwise we read it only if required.
-        constexpr bool needReadLocalDocumentId =
+        static constexpr bool needReadLocalDocumentId =
             !withCovering || emitLocalDocumentId;
         if (!needReadLocalDocumentId ||
             segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
@@ -680,13 +681,14 @@ class IResearchInvertedIndexMergeIterator final
               segment.projections.seek(segment.doc->value);
               SearchDoc doc(_snapshot.segment(currentIdx), segment.doc->value);
               TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
-              bool emitRes{false};
-              if constexpr (emitLocalDocumentId) {
-                emitRes = callback(documentId, segment.projections);
-              } else {
-                emitRes = callback(aql::AqlValue{doc.encode(_buf)},
-                                   segment.projections);
-              }
+              bool emitRes = [&]() {
+                if constexpr (emitLocalDocumentId) {
+                  return callback(documentId, segment.projections);
+                } else {
+                  return callback(aql::AqlValue{doc.encode(_buf)},
+                                  segment.projections);
+                }
+              }();
               if (emitRes) {
                 --limit;
               }
@@ -986,13 +988,6 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     void const* key = reinterpret_cast<uint8_t const*>(this) + 1;
     auto* ctx = getViewSnapshot(*trx, key);
     if (!ctx) {
-      auto selfLock = this->self()->lock();
-      if (!selfLock) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to lock datastore for index '", index().name(),
-                         "'"));
-      }
       // TODO(MBkkt) Move it to optimization stage
       if (opts.waitForSync &&
           trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
@@ -1000,6 +995,13 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
             TRI_ERROR_BAD_PARAMETER,
             "cannot use waitForSync with inverted index and streaming or js "
             "transaction");
+      }
+      auto selfLock = this->self()->lock();
+      if (!selfLock) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            absl::StrCat("Failed to lock datastore for index '", index().name(),
+                         "'"));
       }
       ViewSnapshot::Links links;
       links.push_back(std::move(selfLock));
@@ -1010,28 +1012,34 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
   }();
 
   if (node) {
+    auto resolveLateMaterialization =
+        [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
+      if (opts.forLateMaterialization) {
+        return factory(std::true_type{});
+      } else {
+        return factory(std::false_type{});
+      }
+    };
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
-      if (opts.forLateMaterialization) {
-        return std::make_unique<IResearchInvertedIndexIterator<false>>(
-            monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
-      } else {
-        return std::make_unique<IResearchInvertedIndexIterator<true>>(
-            monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
-      }
+      return resolveLateMaterialization(
+          [&]<bool LateMaterialization>(
+              std::integral_constant<bool, LateMaterialization>) {
+            return std::make_unique<
+                IResearchInvertedIndexIterator<LateMaterialization>>(
+                monitor, collection, state, trx, node, &_meta, reference,
+                mutableConditionIdx);
+          });
     } else {
-      if (opts.forLateMaterialization) {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<false>>(
-            monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
-      } else {
-        return std::make_unique<IResearchInvertedIndexMergeIterator<true>>(
-            monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
-      }
+      return resolveLateMaterialization(
+          [&]<bool LateMaterialization>(
+              std::integral_constant<bool, LateMaterialization>) {
+            return std::make_unique<
+                IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+                monitor, collection, state, trx, node, &_meta, reference,
+                mutableConditionIdx);
+          });
     }
   } else {
     // sorting  case

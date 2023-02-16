@@ -151,7 +151,7 @@ IndexIterator::CoveringCallback getCallback(
     if constexpr (isLocalDocumentId) {
       TRI_ASSERT(token.isSet());
       AqlValue v(AqlValueHintUInt(token.id()));
-      AqlValueGuard guard{v, true};
+      AqlValueGuard guard{v, false};
       output.moveValueInto(registerId, input, guard);
     } else {
       AqlValueGuard guard{token, true};

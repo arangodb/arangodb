@@ -181,8 +181,8 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
       }
     }
     TRI_ASSERT(docValue);
-    if (std::get<0>(document).doc() ==
-        pkReader->seek(std::get<0>(document).doc())) {
+    if (const auto doc = std::get<0>(document).doc();
+        doc == pkReader->seek(doc)) {
       arangodb::iresearch::DocumentPrimaryKey::read(documentId,
                                                     docValue->value);
       std::get<1>(document) = documentId;
