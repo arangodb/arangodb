@@ -50,22 +50,23 @@ using namespace arangodb;
 
 namespace {
 
-auto reactToPreconditions(AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
+auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes) -> ResultT<uint64_t> {
   // We ordered the creation of collection, if this was not
   // successful we may try again, if it was, we continue with next
   // step.
-  if (res.fail()) {
-    if (GeneralResponse::responseCode(network::fuerteStatusToArangoErrorCode(
-            res.statusCode())) == rest::ResponseCode::PRECONDITION_FAILED) {
-      // If the precondition failed,
-      // we can retry o the next Plan version
-      return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED};
+  if (auto res = agencyRes.asResult(); res.fail()) {
+    if (res.is(TRI_ERROR_HTTP_PRECONDITION_FAILED)) {
+      // Unfortunately, we cannot know which precondition failed.
+      // We have two possible options here, either our name is used, or someone
+      // in parallel dropped the leading collection / collectionGroup.
+      // As the later is highly unlikely we will always report the first here.
+      return {TRI_ERROR_ARANGO_DUPLICATE_NAME};
     }
-    return res.asResult();
+    return res;
   }
 
   // extract raft index
-  auto slice = res.slice().get("results");
+  auto slice = agencyRes.slice().get("results");
   TRI_ASSERT(slice.isArray());
   TRI_ASSERT(!slice.isEmptyArray());
   return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
@@ -399,65 +400,55 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
-  while (true) {
-    auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
-    if (buildingTransaction.fail()) {
-      return buildingTransaction.result();
-    }
-    auto callbackInfos =
-        writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
-
-    std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
-        callbackList;
-    auto unregisterCallbacksGuard =
-        scopeGuard([&callbackList, &callbackRegistry]() noexcept {
-          try {
-            for (auto& [cb, _] : callbackList) {
-              callbackRegistry.unregisterCallback(cb);
-            }
-          } catch (std::exception const& ex) {
-            LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
-                << "Failed to unregister agency callback: " << ex.what();
-          } catch (...) {
-            // Should never be thrown, we only throw exceptions
-          }
-        });
-
-    // First register all callbacks
-    for (auto const& [path, identifier, cb] :
-         callbackInfos->getCallbackInfos()) {
-      auto agencyCallback =
-          std::make_shared<AgencyCallback>(server, path, cb, true, false);
-      Result r = callbackRegistry.registerCallback(agencyCallback);
-      if (r.fail()) {
-        return r;
-      }
-      callbackList.emplace_back(
-          std::make_pair(std::move(agencyCallback), identifier));
-    }
-    callbackInfos->clearCallbacks();
-    using namespace std::chrono_literals;
-    AsyncAgencyComm aac;
-    // TODO do we need to handle Error message (thenError?)
-
-    auto future =
-        aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
-            .thenValue(::reactToPreconditions)
-            .thenValue(waitForOperationRoundtrip(ci))
-            .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
-                                               callbackList, pollInterval));
-    // Wait synchronously here.
-    // We cannot easily return the future as the callbacks capture local
-    // variables.
-    Result finalResult = future.get();
-    if (finalResult.isNot(
-            TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
-      // If we do not end up in the special preconditionFailed phase, we have
-      // to report here If necessary the return will trigger the undo guard.
-      // Otherwise this will now either return success or non-retryable error.
-      return finalResult;
-    }
+  auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
+  if (buildingTransaction.fail()) {
+    return buildingTransaction.result();
   }
+  auto callbackInfos =
+      writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
+
+  std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
+      callbackList;
+  auto unregisterCallbacksGuard =
+      scopeGuard([&callbackList, &callbackRegistry]() noexcept {
+        try {
+          for (auto& [cb, _] : callbackList) {
+            callbackRegistry.unregisterCallback(cb);
+          }
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+              << "Failed to unregister agency callback: " << ex.what();
+        } catch (...) {
+          // Should never be thrown, we only throw exceptions
+        }
+      });
+
+  // First register all callbacks
+  for (auto const& [path, identifier, cb] : callbackInfos->getCallbackInfos()) {
+    auto agencyCallback =
+        std::make_shared<AgencyCallback>(server, path, cb, true, false);
+    Result r = callbackRegistry.registerCallback(agencyCallback);
+    if (r.fail()) {
+      return r;
+    }
+    callbackList.emplace_back(
+        std::make_pair(std::move(agencyCallback), identifier));
+  }
+  callbackInfos->clearCallbacks();
+  using namespace std::chrono_literals;
+  AsyncAgencyComm aac;
+  // TODO do we need to handle Error message (thenError?)
+
+  auto future =
+      aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
+          .thenValue(::reactToPreconditions)
+          .thenValue(waitForOperationRoundtrip(ci))
+          .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
+                                             callbackList, pollInterval));
+  // Wait synchronously here.
+  // We cannot easily return the future as the callbacks capture local
+  // variables.
+  return future.get();
 }
 
 template<replication::Version ReplicationVersion>

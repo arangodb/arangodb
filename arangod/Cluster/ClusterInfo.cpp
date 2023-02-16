@@ -3966,7 +3966,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   // monitor the entry for the collection
   std::string const where =
-      "Current/Collections/" + dbName + "/" + collectionID;
+      (coll->replicationVersion() == replication::Version::TWO)
+          ? "Plan/Collections/" + dbName + "/" + collectionID
+          : "Current/Collections/" + dbName + "/" + collectionID;
 
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
