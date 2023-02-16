@@ -255,7 +255,14 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
       }
     }
     if (this.results.status && this.options.cleanup) {
-      fs.removeDirectoryRecursive(tmpDir, true);
+      fs.list(tmpDir).forEach(file => {
+        let fullfile = fs.join(tmpDir, file);
+        if (fs.isDirectory(fullfile)) {
+          fs.removeDirectoryRecursive(fullfile, true);
+        } else {
+          fs.remove(fullfile);
+        }
+      });
     }
     return this.results;
   }
