@@ -72,6 +72,7 @@ IndexNode::IndexNode(
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
   TRI_ASSERT(_condition != nullptr);
+
   prepareProjections();
 }
 
@@ -353,9 +354,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
-
   auto const outRegister = variableToRegisterId(outVariable);
-
   auto numIndVarsRegisters =
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
@@ -536,6 +535,7 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
+
   return vars;
 }
 

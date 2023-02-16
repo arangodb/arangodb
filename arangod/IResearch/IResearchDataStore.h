@@ -133,10 +133,6 @@ class IResearchDataStore {
       return _snapshot->_reader;
     }
 
-    [[nodiscard]] auto const& getSnapshot() const noexcept {
-      return _snapshot->_snapshot;
-    }
-
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
