@@ -1,5 +1,6 @@
 devel
 -----
+* token
 
 * Made all transactions used by the gharial API on coordinators and a few
   others marked "globally managed". This fixes an issue where
