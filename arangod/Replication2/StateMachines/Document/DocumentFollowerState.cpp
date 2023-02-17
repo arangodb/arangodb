@@ -66,13 +66,14 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         }
 
         auto count = ++data.currentSnapshotVersion;
-        // TODO we're going to drop the shards when then snapshot transfer will
-        // handle multiple shards
-        if (auto truncateRes =
-                self->truncateLocalShard(data.core->getShardId());
-            truncateRes.fail()) {
-          return truncateRes;
+
+        for (auto const& [shardId, _] : data.core->getShardMap()) {
+          auto truncateRes = self->truncateLocalShard(shardId);
+          if (truncateRes.fail()) {
+            return truncateRes;
+          }
         }
+
         /*
         if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
           return dropAllRes;

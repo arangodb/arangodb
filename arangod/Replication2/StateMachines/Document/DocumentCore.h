@@ -38,6 +38,8 @@ struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
 
 struct DocumentCore {
+  using ShardMap = std::unordered_map<ShardID, ShardProperties>;
+
   explicit DocumentCore(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       DocumentCoreParameters coreParameters,
@@ -48,7 +50,6 @@ struct DocumentCore {
 
   auto getVocbase() -> TRI_vocbase_t&;
   auto getVocbase() const -> TRI_vocbase_t const&;
-  auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
   auto createShard(ShardID shardId, CollectionID collectionId,
                    velocypack::SharedSlice properties) -> Result;
@@ -58,12 +59,13 @@ struct DocumentCore {
                    velocypack::SharedSlice properties) -> Result;
   auto isShardAvailable(ShardID const& shardId) -> bool;
   void drop();
+  auto getShardMap() -> ShardMap const&;
 
  private:
   TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
-  std::unordered_map<ShardID, ShardProperties> _shards;
+  ShardMap _shards;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

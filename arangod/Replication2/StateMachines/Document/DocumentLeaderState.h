@@ -77,7 +77,6 @@ struct DocumentLeaderState
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  ShardID const shardId;
 
  private:
   struct GuardedData {

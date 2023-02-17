@@ -42,7 +42,6 @@ DocumentLeaderState::DocumentLeaderState(
     : gid(core->getGid()),
       loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      shardId(core->getShardId()),
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
@@ -220,8 +219,21 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 
 auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     -> ResultT<SnapshotBatch> {
+  auto const& shardMap = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+    return data.core->getShardMap();
+  });
+
+  std::vector<ShardID> shards;
+  for (auto const& [shard, _] : shardMap) {
+    shards.emplace_back(shard);
+  }
+
   return executeSnapshotOperation<ResultT<SnapshotBatch>>(
-      [&](auto& handler) { return handler->create(shardId); },
+      [&](auto& handler) { return handler->create(std::move(shards)); },
       [](auto& snapshot) { return snapshot->fetch(); });
 }
 
@@ -319,7 +331,7 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
       TRI_ERROR_INTERNAL,
       fmt::format("Snapshot not available for {}! Most often this happens "
                   "because the leader resigned in the meantime!",
-                  shardId));
+                  gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

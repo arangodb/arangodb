@@ -62,10 +62,6 @@ DocumentCore::DocumentCore(
       << "Created shard " << shardId << " for replicated state " << _gid;
 }
 
-auto DocumentCore::getShardId() -> ShardID const& {
-  return _shards.begin()->first;
-}
-
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
 void DocumentCore::drop() {
@@ -141,3 +137,5 @@ auto DocumentCore::ensureShard(ShardID shardId, CollectionID collectionId,
 auto DocumentCore::isShardAvailable(ShardID const& shardId) -> bool {
   return _shards.contains(shardId);
 }
+
+auto DocumentCore::getShardMap() -> ShardMap const& { return _shards; }

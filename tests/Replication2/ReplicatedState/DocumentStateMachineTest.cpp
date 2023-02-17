@@ -101,8 +101,8 @@ struct DocumentStateMachineTest : testing::Test {
     VPackBuilder builder;
     builder.openObject();
     builder.close();
-    auto entry = DocumentLogEntry{shard, op, builder.sharedSlice(),
-                                  TransactionId{}, collection};
+    auto entry = DocumentLogEntry{std::move(shard), op, builder.sharedSlice(),
+                                  TransactionId{}, std::move(collection)};
     entries.emplace_back(std::move(entry));
   }
 
@@ -494,7 +494,7 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_creation_error) {
                          replicated_state::document::IDatabaseSnapshot> {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_WAS_ERLAUBE);
       });
-  auto res = snapshotHandler.create(shardId);
+  auto res = snapshotHandler.create({shardId});
   ASSERT_TRUE(res.fail());
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 }
@@ -515,7 +515,7 @@ TEST_F(DocumentStateMachineTest,
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
 
-  auto res = snapshotHandler.create(shardId);
+  auto res = snapshotHandler.create({shardId});
   ASSERT_TRUE(res.ok()) << res.result();
 
   auto snapshot = res.get().lock();
@@ -1043,7 +1043,7 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock, transactionManagerMock);
 
-  EXPECT_CALL(*snapshotHandler, create(shardId)).Times(1);
+  EXPECT_CALL(*snapshotHandler, create(std::vector<ShardID>{shardId})).Times(1);
   auto snapshotStartRes =
       leader->snapshotStart(SnapshotParams::Start{LogIndex{1}});
   EXPECT_TRUE(snapshotStartRes.ok()) << snapshotStartRes.result();
@@ -1081,7 +1081,7 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
         return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
             snapshotHandler);
       });
-  ON_CALL(*snapshotHandler, create(shardId))
+  ON_CALL(*snapshotHandler, create(std::vector<ShardID>{shardId}))
       .WillByDefault(Return(
           ResultT<std::weak_ptr<Snapshot>>::error(TRI_ERROR_WAS_ERLAUBE)));
   ON_CALL(*snapshotHandler, find(SnapshotId{1}))
