@@ -67,32 +67,30 @@ MockDocumentStateSnapshotHandler::MockDocumentStateSnapshotHandler(
   });
 }
 
-MockCollectionReaderFactory::MockCollectionReaderFactory(
+MockDatabaseSnapshot::MockDatabaseSnapshot(
     std::shared_ptr<replicated_state::document::ICollectionReader> reader)
     : _reader(std::move(reader)) {
   ON_CALL(*this, createCollectionReader(testing::_))
       .WillByDefault([this](std::string_view collectionName) {
-        return ResultT<
-            std::unique_ptr<replicated_state::document::ICollectionReader>>(
-            std::make_unique<MockCollectionReaderDelegator>(_reader));
+        return std::make_unique<MockCollectionReaderDelegator>(_reader);
       });
 }
 
 MockDocumentStateHandlersFactory::MockDocumentStateHandlersFactory(
-    std::shared_ptr<MockCollectionReaderFactory> readerFactory)
-    : collectionReaderFactory(std::move(readerFactory)) {}
+    std::shared_ptr<MockDatabaseSnapshotFactory> snapshotFactory)
+    : databaseSnapshotFactory(std::move(snapshotFactory)) {}
 
-auto MockDocumentStateHandlersFactory::makeUniqueCollectionReaderFactory()
-    -> std::unique_ptr<replicated_state::document::ICollectionReaderFactory> {
-  return std::make_unique<MockCollectionReaderFactoryDelegator>(
-      collectionReaderFactory);
+auto MockDocumentStateHandlersFactory::makeUniqueDatabaseSnapshotFactory()
+    -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory> {
+  return std::make_unique<MockDatabaseSnapshotFactoryDelegator>(
+      databaseSnapshotFactory);
 }
 
 auto MockDocumentStateHandlersFactory::makeRealSnapshotHandler()
     -> std::shared_ptr<MockDocumentStateSnapshotHandler> {
   auto real = std::make_shared<
       replicated_state::document::DocumentStateSnapshotHandler>(
-      makeUniqueCollectionReaderFactory());
+      makeUniqueDatabaseSnapshotFactory());
   return std::make_shared<testing::NiceMock<MockDocumentStateSnapshotHandler>>(
       real);
 }

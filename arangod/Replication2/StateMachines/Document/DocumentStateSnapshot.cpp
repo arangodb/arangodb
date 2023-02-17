@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
+#include "Assertions/ProdAssert.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "VocBase/ticks.h"
 
@@ -46,29 +47,48 @@ auto to_string(SnapshotId snapshotId) -> std::string {
   return std::to_string(snapshotId.id());
 }
 
-Snapshot::Snapshot(SnapshotId id, ShardID shardId,
-                   std::unique_ptr<ICollectionReader> reader)
+Snapshot::Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+                   std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
     : _id(id),
-      _reader{std::move(reader)},
-      _state{state::Ongoing{}},
-      _statistics{std::move(shardId), _reader->getDocCount()} {}
+      _databaseSnapshot{std::move(databaseSnapshot)},
+      _state{state::Ongoing{}} {
+  for (auto it = shardIds.rbegin(); it != shardIds.rend(); ++it) {
+    auto reader = _databaseSnapshot->createCollectionReader(*it);
+    _statistics.shards.emplace(
+        *it, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
+    _shards.emplace_back(*it, std::move(reader));
+  }
+}
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
             ongoing.builder.clear();
-            _reader->read(ongoing.builder, kBatchSizeLimit);
+            if (_shards.empty()) {
+              auto batch = SnapshotBatch{
+                  .snapshotId = _id, .shardId = std::nullopt, .hasMore = false};
+              return ResultT<SnapshotBatch>::success(std::move(batch));
+            }
+
+            auto& shard = _shards.back();
+            auto& reader = *shard.second;
+            reader.read(ongoing.builder, kBatchSizeLimit);
+            auto readerHasMore = reader.hasMore();
             auto batch =
                 SnapshotBatch{.snapshotId = _id,
-                              .shardId = _statistics.shardId,
-                              .hasMore = _reader->hasMore(),
+                              .shardId = shard.first,
+                              .hasMore = readerHasMore || _shards.size() > 1,
                               .payload = ongoing.builder.sharedSlice()};
             ++_statistics.batchesSent;
             _statistics.bytesSent += batch.payload.byteSize();
-            _statistics.docsSent += batch.payload.length();
+            _statistics.shards[shard.first].docsSent += batch.payload.length();
             _statistics.lastBatchSent = _statistics.lastUpdated =
                 std::chrono::system_clock::now();
+
+            if (!readerHasMore && _shards.size() > 1) {
+              _shards.pop_back();
+            }
             return ResultT<SnapshotBatch>::success(std::move(batch));
           },
           [&](state::Finished const&) -> ResultT<SnapshotBatch> {
@@ -89,7 +109,7 @@ auto Snapshot::finish() -> Result {
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> Result {
-            if (_reader->hasMore()) {
+            if (!_shards.empty()) {
               LOG_TOPIC("23913", WARN, Logger::REPLICATION2)
                   << "Snapshot " << _id
                   << " is being finished, but still has more data!";
@@ -114,8 +134,8 @@ auto Snapshot::abort() -> Result {
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> Result {
-            if (_reader->hasMore()) {
-              LOG_TOPIC("5ce86", WARN, Logger::REPLICATION2)
+            if (!_shards.empty()) {
+              LOG_TOPIC("5ce86", INFO, Logger::REPLICATION2)
                   << "Snapshot " << _id
                   << " is being aborted, but still has more data!";
             }
