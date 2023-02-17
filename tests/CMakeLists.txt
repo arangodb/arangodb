@@ -301,8 +301,23 @@ endif ()
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
+
+# This is the default from the Jenkins setup
 add_test(NAME arangodbtests
-  COMMAND arangodbtests)
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning)
+
+# Run all tests
+add_test(NAME arangodbtests-full
+  COMMAND arangodbtests --gtest_output=xml)
+
+# An attempt at partitioning tests cases
+# for CircleCI
+add_test(NAME arangodbtests-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=IResearch*)
+
+add_test(NAME arangodbtests-non-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning:IResearch*)
+
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
