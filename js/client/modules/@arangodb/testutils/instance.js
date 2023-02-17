@@ -527,6 +527,7 @@ class instance {
         print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
       }
       return;
+    }
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
@@ -552,6 +553,9 @@ class instance {
               print("ERROR: " + line);
             }
             this.assertLines.push(line);
+            if (!expectAsserts) {
+              crashUtils.GDB_OUTPUT += line + '\n';
+            }
           }
         }
       }
@@ -635,7 +639,7 @@ class instance {
       argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      argv = [cmd].concat(args);
+      argv = [cmd].concat(toArgv(args));
       cmd = 'rr';
     } else {
       argv = toArgv(args);
@@ -714,12 +718,15 @@ class instance {
     try {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. anounce and force kill:
-      print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
-      killExternal(this.pid, abortSignal);
-      print(statusExternal(this.pid, true));
+      if (ret.status !== "ABORTED") {
+        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        killExternal(this.pid, abortSignal);
+        print(statusExternal(this.pid, true));
+      }
     } catch(ex) {
       print(ex);
     }
+    this.pid = null;
     print('done');
   }
   waitForExit() {
