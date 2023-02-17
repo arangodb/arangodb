@@ -50,7 +50,8 @@ using namespace arangodb;
 
 namespace {
 
-auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes) -> ResultT<uint64_t> {
+auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes)
+    -> ResultT<uint64_t> {
   // We ordered the creation of collection, if this was not
   // successful we may try again, if it was, we continue with next
   // step.

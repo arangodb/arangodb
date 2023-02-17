@@ -59,8 +59,7 @@ inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
 
 inline auto pathDatabaseInTarget(std::string_view databaseName) {
   // TODO: Make this target, as soon as databases are moved
-  return paths::plan()->databases()->database(
-      std::string{databaseName});
+  return paths::plan()->databases()->database(std::string{databaseName});
 }
 
 inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {

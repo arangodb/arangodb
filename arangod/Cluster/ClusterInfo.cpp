@@ -3012,8 +3012,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
                                    AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delTargetCollections("Target/Collections/" + name,
                                        AgencySimpleOperationType::DELETE_OP);
-  AgencyOperation delTargetCollectionNames("Target/CollectionNames/" + name,
-                                       AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delTargetCollectionNames(
+      "Target/CollectionNames/" + name, AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delTargetCollectionsGroup(
