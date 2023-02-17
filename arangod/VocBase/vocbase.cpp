@@ -381,7 +381,8 @@ struct arangodb::VocBaseLogManager {
 
         auto metadata = PersistedStateInfo{
             .stateId = id,
-            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
+            .snapshot = {.status =
+                             replicated_state::SnapshotStatus::kUninitialized,
                          .timestamp = {},
                          .error = {}},
             .generation = {},

@@ -578,7 +578,9 @@ replicated_log::LogFollower::LogFollower(
     if (snapshotStatus.fail()) {
       THROW_ARANGO_EXCEPTION(snapshotStatus.result());
     }
-    if (snapshotStatus == replicated_state::SnapshotStatus::kCompleted) {
+    bool const needSnapshot =
+        snapshotStatus != replicated_state::SnapshotStatus::kCompleted;
+    if (!needSnapshot) {
       guard->_snapshotProgress =
           GuardedFollowerData::SnapshotProgress::kCompleted;
     } else {
@@ -613,6 +615,12 @@ replicated_log::LogFollower::LogFollower(
     LOG_CTX("f3668", DEBUG, _loggerContext)
         << "calling becomeFollower on state handle";
     _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
+    if (needSnapshot && _leaderId) {
+      guard->_snapshotProgress =
+          GuardedFollowerData::SnapshotProgress::kInProgress;
+      _stateHandle->acquireSnapshot(*_leaderId,
+                                    guard->_inMemoryLog.getFirstIndex());
+    }
     _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
   } catch (...) {
     try {
