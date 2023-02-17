@@ -68,7 +68,7 @@ class DumpFeature final : public ArangoDumpFeature {
     std::string maskingsFile{};
     uint64_t initialChunkSize{1024 * 1024 * 8};
     uint64_t maxChunkSize{1024 * 1024 * 64};
-    uint32_t threadCount{2};
+    uint32_t threadCount{4};
     uint64_t tickStart{0};
     uint64_t tickEnd{0};
     bool allDatabases{false};

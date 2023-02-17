@@ -640,8 +640,6 @@ DumpFeature::DumpFeature(Server& server, int& exitCode)
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
   _options.outputPath = buildFilename(currentDirectory().result(), "dump");
-  // Default ThreadCount 4
-  _options.threadCount = std::max(uint32_t(_options.threadCount), 4);
 }
 
 void DumpFeature::collectOptions(

@@ -95,7 +95,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     uint64_t defaultReplicationFactor{1};  // deprecated
     std::vector<std::string> numberOfShards;
     std::vector<std::string> replicationFactor;
-    uint32_t threadCount{2};
+    uint32_t threadCount{4};
     uint32_t initialConnectRetries{3};
     bool clusterMode{false};
     bool createDatabase{false};
