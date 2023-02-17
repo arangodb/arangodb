@@ -2782,7 +2782,7 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
       }
     }
 
-    return std::move(spec);
+    return {std::move(spec)};
   } else {
     return std::nullopt;
   }
