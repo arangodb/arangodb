@@ -1,0 +1,227 @@
+version: 2.1
+
+jobs:
+  minimal-checkout:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run:
+          name: Checkout
+          command: |
+            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
+            git reset --hard "$CIRCLE_SHA1"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  check-log-ids:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install pyyaml
+          command: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
+      - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/checkLogIds.py
+
+  clang-format:
+    docker:
+      - image: alpine:3.15 # cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install clang-format
+          command: |
+            apk add --no-cache git bash coreutils grep clang-extra-tools=12.0.1-r1
+            # sudo apt-get -yy update
+            # sudo apt-get -yy install clang-format
+      - run:
+          name: Print clang-format version
+          command: clang-format --version
+      - run:
+          name: Run clang-format
+          command: |
+            utils/clang-format.sh
+      - run:
+          name: Store diff
+          command: |
+            git status
+            git diff --exit-code > /tmp/clang_format_outcome.txt
+      - store_artifacts:
+          path: /tmp/clang_format_outcome.txt
+
+  compile-linux:
+    parameters:
+      preset:
+        type: string
+      edition:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1s
+    resource_class: xlarge
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+      SCCACHE_ERROR_LOG: /tmp/sccache.log
+      SCCACHE_LOG: info,sccache::cache=info
+    steps:
+      - run:
+          name: Checkout
+          command: |
+            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
+            git reset --hard "$CIRCLE_SHA1"
+      - run:
+          name: Print SCCache Settings
+          command: sccache -s
+      - run:
+          name: Configure
+          command: |
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+      - run:
+          name: Build
+          command: |
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
+      - run:
+          name: Size leaderboard
+          command: |
+            ls -Ssha build/bin/*.a
+      - run:
+          name: Cleanup build directory
+          command: |
+            find build/ -iname *.a -delete || true
+            find build/ -iname *.o -delete || true
+      - run:
+          name: SCCache Statistics
+          command: sccache -s
+      - store_artifacts:
+          path: build/bin/arango*
+      - persist_to_workspace:
+          root: .
+          paths:
+            - CMakePresets.json
+            - build/
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+            - 3rdParty/iresearch/tests/resources
+
+  run-ctest:
+    parameters:
+      filter:
+        type: string
+      preset:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1s
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run CTest
+          command: |
+            ctest --preset << parameters.preset >> -R << parameters.filter >> -VV
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_test_results:
+          # this is where ctest stores the test_detail.xml produced
+          # by the googletest executable
+          path: build/tests/test_detail.xml
+
+  run-js-tests:
+    docker:
+      - image: cimg/python:3.11.1
+    parameters:
+      suiteName:
+        type: string
+      suites:
+        type: string
+      size:
+        type: string
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: boolean
+      testDefinitionLine:
+        type: integer
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Install dependencies
+          command: pip install psutil py7zr && sudo apt update && sudo apt install 7zip
+      - run:
+          name: Run << parameters.suiteName >> tests
+          command: |
+            mkdir work
+            python3 scripts/test/test_launch_controller.py << parameters.suites >> --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> --extraArgs "<< parameters.extraArgs >>" --definition tests/test-definitions.txt
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/
+      - store_test_results:
+          path: ./work/
+
+workflows:
+  lint:
+    jobs:
+      - minimal-checkout:
+          name: minimal-checkout
+      - check-log-ids:
+          name: check-log-ids
+          requires:
+            - minimal-checkout
+      - clang-format:
+          name: clang-format
+          requires:
+            - minimal-checkout
+  community-pr:
+    jobs:
+      - compile-linux:
+          name: build-community-pr
+          preset: community-pr
+          edition: x64-community
+      - run-ctest:
+          name: arangodbtests-non-iresearch
+          preset: community-pr
+          filter: "arangodbtests-non-iresearch"
+          requires:
+            - build-community-pr
+      - run-ctest:
+          name: arangodbtests-iresearch
+          preset: community-pr
+          filter: "arangodbtests-iresearch"
+          requires:
+            - build-community-pr
+# VS Code Extension Version: 1.5.1
