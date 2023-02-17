@@ -34,13 +34,13 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
 
   const [open, toggleDrawer] = useState(false);
 
-  const enterFullscreen = (element) => {
-    if(element.requestFullscreen) {
-      element.requestFullscreen();
-    } else if(element.msRequestFullscreen) {
-      element.msRequestFullscreen();
-    } else if(element.webkitRequestFullscreen) {
-      element.webkitRequestFullscreen();
+  const enterFullscreen = (elem) => {
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+      elem.msRequestFullscreen();
     }
   }
 
@@ -52,17 +52,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
           onNodeSelect={(node) => onDocumentSelect(node)}
         />
         <br />
-        <GraphLayoutSelector
-          onGraphLayoutChange={(layout) => {
-            onGraphLayoutChange(layout);
-          }}
-        />
-        <VisGraphLayoutSelector
-          onVisGraphLayoutChange={(layout) => {
-            console.log("VisGraphLayoutSelector recieved the layout: ", layout);
-            onVisGraphLayoutChange(layout);
-          }}
-        />
+        <GraphLayoutSelector />
         <ParameterDepth />
         <ParameterLimit />
       </>)
@@ -112,28 +102,104 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
     <>
       <div
         class="graphViewerNavbar"
-        style={{ 'width': '100%', 'height': '40px', 'background': '#ffffff', 'display': 'flex', 'padding': '8px' }}
+        style={{ 'width': '100%', 'height': '40px', 'background': '#ffffff', 'display': 'flex', 'alignItems': 'center', 'padding': '8px', 'marginBottom': '24px', 'borderBottom': '2px solid #d9dbdc' }}
       >
-        <IconButton icon={'bars'} onClick={() => toggleDrawer(!open)} style={{
+        {graphName}
+
+        <div style={{ 'marginLeft': 'auto' }}>
+          <ToolTip
+            title={"Download screenshot"}
+            setArrow={true}
+          >
+            <button
+              onClick={() => {
+                let canvas = document.getElementsByTagName('canvas')[0];
+                
+                // set canvas nackground to white for screenshot download
+                let context = canvas.getContext("2d");
+                context.globalCompositeOperation = "destination-over";
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                let canvasUrl = canvas.toDataURL("image/jpeg", 1);
+                const createEl = document.createElement('a');
+                createEl.style.backgroundColor = '#ffffff';
+                createEl.href = canvasUrl;
+                createEl.download = `${graphName}`;
+                createEl.click();
+                createEl.remove();
+              }}
+              style={{
+                'background': '#fff',
+                'border': 0,
+                'marginLeft': 'auto'
+              }}><i class="fa fa-download" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+            </button>
+          </ToolTip>
+
+          <ToolTip
+            title={"Enter full screen"}
+            setArrow={true}
+          >
+            <button
+              onClick={() => {
+                const elem = document.getElementById("visnetworkdiv");
+                enterFullscreen(elem);
+              }}
+              style={{
+                'background': '#fff',
+                'border': 0
+              }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+            </button>
+          </ToolTip>
+
+          <ToolTip
+            title={"Switch to the old graph viewer"}
+            setArrow={true}
+          >
+            <button
+              onClick={() => {
+                window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+              }}
+              style={{
+                'background': '#fff',
+                'border': 0
+              }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+            </button>
+          </ToolTip>
+
+          <ToolTip
+            title={"Get instructions and support on how to use the graph viewer"}
+            setArrow={true}
+          >
+            <button
+              onClick={() => {
+                setShowHelpModal(true);
+              }}
+              style={{
+                'background': '#fff',
+                'border': 0
+              }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+            </button>
+          </ToolTip>
+        
+        <IconButton icon={'bars'} onClick={() => {
+          toggleDrawer(!open)
+        }}
+          style={{
           background: '#2ECC71',
           color: 'white',
-          paddingLeft: 8,
-          paddingTop: 2,
+          paddingLeft: '14px',
           marginLeft: 'auto'
         }}>
           Settings
         </IconButton>
+        </div>
       </div>
       <Drawer
         position="right"
         open={open}
-        onClose={() => {
-          console.log("closed");
-        }}
-        onOpen={() => {
-          console.log("open");
-        }}
-      >
+       >
         <div style={{ 'background': '#404a53' }}>
           <div style={{ 'padding': '24px', 'display': 'flex' }}>
             <ButtonSave
@@ -181,51 +247,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         }}
       >
       </HelpModal>
-      <div id="page-header-temp">
-        <h2>{graphName}</h2>
-        <IconButton icon={'plus-circle'} onClick={() => console.log("clicked")} style={{
-          background: 'transparent',
-          border: '1px solid #333',
-          //color: 'white',
-          paddingLeft: 0,
-          paddingTop: 0
-        }}><i class="fa fa-download" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
-        </IconButton>
-
-        <ToolTip
-          title={"Enter full screen"}
-          setArrow={true}
-        >
-          <button
-            onClick={() => {
-              const elem = document.getElementById("graph-card");
-              enterFullscreen(elem);
-            }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
-          </button>
-        </ToolTip>
-
-        <ToolTip
-          title={"Switch to the old graph viewer"}
-          setArrow={true}
-        >
-          <button
-            onClick={() => {
-              window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
-            }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
-          </button>
-        </ToolTip>
-
-        <ToolTip
-          title={"Get instructions and support on how to use the graph viewer"}
-          setArrow={true}
-        >
-          <button
-            onClick={() => {
-              setShowHelpModal(true);
-            }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
-          </button>
-        </ToolTip>
-      </div>
       {isLoadingData ? <LoadingSpinner /> : null}
     </>
   );
