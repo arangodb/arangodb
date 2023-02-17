@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -829,6 +829,11 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
         _previousDocumentBuilder(&_methods) {}
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     std::string_view key;
 
     if (value.isString()) {
@@ -1126,6 +1131,11 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       // return an error *instead* of actually processing the value
       return TRI_ERROR_DEBUG;
     }
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
 
     _newDocumentBuilder->clear();
 
@@ -1399,6 +1409,11 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
         _isUpdate(isUpdate) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     _newDocumentBuilder->clear();
     _previousDocumentBuilder->clear();
 
@@ -2635,7 +2650,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       leaderState->replicateOperation(
           body.sharedSlice(),
           replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(),
+          state()->id(), trxColl->collectionName(),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return OperationResult(Result{e.code(), e.what()}, options);
@@ -3131,7 +3146,7 @@ Future<Result> Methods::replicateOperations(
           replicationData.sharedSlice(),
           replication2::replicated_state::document::fromDocumentOperation(
               operation),
-          state()->id(),
+          state()->id(), rtc.collectionName(),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return Result{e.code(), e.what()};

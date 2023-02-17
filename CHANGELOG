@@ -1,6 +1,67 @@
 devel
 -----
 
+* Made all transactions used by the gharial API on coordinators and a few
+  others marked "globally managed". This fixes an issue where
+  transaction conflicts could lead to a silent out of sync situation
+  between a leader shard and its followers.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
+
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
+* FE-131: Added search input for query page.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
+* FE-133: Alphabetical sorting for collections on user permissions page.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
+
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
+* BTS-1193: Fix for schema update. When removing a field and then inserting a 
+  new field into the schema, previously, both old and new schema would be 
+  merged, meaning it would maintain the old field and add the new one. 
+
+* Added startup option `--javascript.user-defined-functions`. 
+  This option controls whether JavaScript user-defined functions (UDFs) can
+  be used in AQL queries. The option defaults to `true`. The option can be
+  set to `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
+* Allowing enabling/disabling supervision maintenance mode also via followers
+  in active failover mode. Previously the supervision maintenance mode could
+  only be enabled/disabled by making a call to the active failover leader.
+
 * Activate RDB_CoveringIterator and use it for some geo index queries.
   This speeds up and simplifies geo queries with geo index which do not use
   GEO_DISTANCE.

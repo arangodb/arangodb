@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -407,8 +407,8 @@ static void handlePlanShard(
     }
   } else {  // Create the collection, if not a previous error stops us
     if (!errors.shards.contains(dbname + "/" + colname + "/" + shname)) {
-      if (replicationVersion != replication::Version::TWO) {
-        // Skip for replication 2 databases
+      if (replicationVersion != replication::Version::TWO || shouldBeLeading) {
+        // Skip for replication 2 databases on followers
         auto props = createProps(cprops);  // Only once might need often!
         description = std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
@@ -417,6 +417,9 @@ static void handlePlanShard(
                 {SHARD, shname},
                 {DATABASE, dbname},
                 {SERVER_ID, serverId},
+                {"from", "maintenance"},  // ugly hack - leader uses maintenance
+                                          // action as well. Used to distinguish
+                                          // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
             shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
             std::move(props));

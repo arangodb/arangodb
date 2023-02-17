@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
@@ -46,6 +47,7 @@ DocumentLeaderState::DocumentLeaderState(
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
+      _shardHandler(_handlersFactory->createShardHandler(gid)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager),
       _isResigning(false) {
@@ -119,10 +121,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    auto doc = DocumentLogEntry{std::string(self->shardId),
+    auto doc = DocumentLogEntry{{},  // this affects all shards
                                 OperationType::kAbortAllOngoingTrx,
                                 {},
-                                TransactionId{0}};
+                                TransactionId{0},
+                                {}};
     auto stream = self->getStream();
     stream->insert(doc);
 
@@ -147,6 +150,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              OperationType operation,
                                              TransactionId transactionId,
+                                             ShardID shard,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
   if (_isResigning.load()) {
@@ -168,9 +172,11 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   auto const& stream = getStream();
-  auto entry =
-      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
-                       transactionId.asFollowerTransactionId()};
+  auto entry = DocumentLogEntry{shard,
+                                operation,
+                                std::move(payload),
+                                transactionId.asFollowerTransactionId(),
+                                {}};
 
   // Insert and emplace must happen atomically
   auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
@@ -179,6 +185,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
         operation != OperationType::kAbort) {
       activeTransactions.emplace(transactionId, idx);
     } else {
+      // TODO - must not release commit entry before trx has actually been
+      // committed!
       stream->release(activeTransactions.getReleaseIndex(idx));
     }
     return idx;
@@ -232,6 +240,33 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
                 "Could not get snapshot statuses of {}, state resigned.",
                 to_string(gid))};
       });
+}
+
+auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
+                                      velocypack::SharedSlice properties)
+    -> futures::Future<Result> {
+  DocumentLogEntry entry;
+  entry.operation = OperationType::kCreateShard;
+  entry.shardId = shard;
+  entry.data = properties;
+  entry.collectionId = collectionId;
+
+  // TODO actually we have to block this log entry from release until the
+  // collection is actually created
+  auto const& stream = getStream();
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue([=, self = shared_from_this()](auto&&) {
+    auto guard = self->_shardHandler.getLockedGuard();
+    // TODO remove this unnecessary copy when api is better
+    auto propertiesCopy = std::make_shared<VPackBuilder>();
+    propertiesCopy->add(properties.slice());
+
+    auto result =
+        guard->get()->createLocalShard(shard, collectionId, propertiesCopy);
+    // TODO update internal shard map
+    return result;
+  });
 }
 
 template<class ResultType, class GetFunc, class ProcessFunc>

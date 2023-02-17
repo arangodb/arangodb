@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
+struct IDatabaseSnapshot;
 
 /*
  * Unique ID used to identify a snapshot between the leader and the follower.
@@ -77,6 +78,7 @@ struct std::hash<
 namespace arangodb::replication2::replicated_state::document {
 inline constexpr auto kStringSnapshotId = std::string_view{"snapshotId"};
 inline constexpr auto kStringShardId = std::string_view{"shardId"};
+inline constexpr auto kStringShards = std::string_view{"shards"};
 inline constexpr auto kStringHasMore = std::string_view{"hasMore"};
 inline constexpr auto kStringPayload = std::string_view{"payload"};
 inline constexpr auto kStringState = std::string_view{"state"};
@@ -126,7 +128,9 @@ struct SnapshotParams {
  */
 struct SnapshotBatch {
   SnapshotId snapshotId;
-  ShardID shardId;
+  // optional since we always have to send at least one batch, even though we
+  // might not have a single shard
+  std::optional<ShardID> shardId;
   bool hasMore{false};
   velocypack::SharedSlice payload{};
 
@@ -162,9 +166,18 @@ using SnapshotState =
  * Used to retrieve debug information about a snapshot.
  */
 struct SnapshotStatistics {
-  ShardID shardId{};
-  std::optional<uint64_t> totalDocs{std::nullopt};
-  uint64_t docsSent{0};
+  struct ShardStatistics {
+    std::optional<uint64_t> totalDocs{std::nullopt};
+    uint64_t docsSent{0};
+
+    template<class Inspector>
+    inline friend auto inspect(Inspector& f, ShardStatistics& s) {
+      return f.object(s).fields(f.field(kStringTotalDocsToBeSent, s.totalDocs),
+                                f.field(kStringDocsSent, s.docsSent));
+    }
+  };
+
+  std::unordered_map<ShardID, ShardStatistics> shards;
   std::size_t batchesSent{0};
   std::size_t bytesSent{0};
   std::chrono::system_clock::time_point startTime{
@@ -176,9 +189,7 @@ struct SnapshotStatistics {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotStatistics& s) {
     return f.object(s).fields(
-        f.field(kStringShardId, s.shardId),
-        f.field(kStringTotalDocsToBeSent, s.totalDocs),
-        f.field(kStringDocsSent, s.docsSent),
+        f.field(kStringShards, s.shards),
         f.field(kStringTotalBatches, s.batchesSent),
         f.field(kStringTotalBytes, s.bytesSent),
         f.field(kStringStartTime, s.startTime)
@@ -233,8 +244,8 @@ class Snapshot {
   static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
                                                       1024};  // 16MB
 
-  explicit Snapshot(SnapshotId id, ShardID shardId,
-                    std::unique_ptr<ICollectionReader> reader);
+  explicit Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
 
   Snapshot(Snapshot const&) = delete;
   Snapshot(Snapshot&&) = delete;
@@ -248,7 +259,8 @@ class Snapshot {
 
  private:
   SnapshotId _id;
-  std::unique_ptr<ICollectionReader> _reader;
+  std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
+  std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
   SnapshotState _state;
   SnapshotStatistics _statistics;
 };

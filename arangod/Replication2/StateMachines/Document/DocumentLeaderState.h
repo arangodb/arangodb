@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,14 @@ struct DocumentLeaderState
 
   auto replicateOperation(velocypack::SharedSlice payload,
                           OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+                          ShardID shard, ReplicationOptions opts)
+      -> futures::Future<LogIndex>;
+
+  auto createShard(ShardID shard, CollectionID collectionId,
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
+  auto dropShard(ShardID shard) -> futures::Future<Result>;
+  auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   std::size_t getActiveTransactionsCount() const noexcept {
     return _activeTransactions.getLockedGuard()->size();
@@ -89,6 +96,8 @@ struct DocumentLeaderState
   Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
+  Guarded<std::shared_ptr<IDocumentStateShardHandler>, basics::UnshackledMutex>
+      _shardHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;

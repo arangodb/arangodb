@@ -26,6 +26,7 @@
 // errors.
 #include "../3rdParty/iresearch/core/utils/string.hpp"
 
+#include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
@@ -34,6 +35,8 @@
 #include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "gmock/gmock.h"
 
 #include <thread>
 #include <vector>
@@ -50,10 +53,13 @@ struct DocumentStateMachineTest : testing::Test {
       collectionReaderMock =
           std::make_shared<testing::NiceMock<MockCollectionReader>>(
               collectionData);
-  std::shared_ptr<testing::NiceMock<MockCollectionReaderFactory>>
-      collectionReaderFactoryMock =
-          std::make_shared<testing::NiceMock<MockCollectionReaderFactory>>(
+  std::shared_ptr<testing::NiceMock<MockDatabaseSnapshot>>
+      databaseSnapshotMock =
+          std::make_shared<testing::NiceMock<MockDatabaseSnapshot>>(
               collectionReaderMock);
+  std::shared_ptr<testing::NiceMock<MockDatabaseSnapshotFactory>>
+      databaseSnapshotFactoryMock =
+          std::make_shared<testing::NiceMock<MockDatabaseSnapshotFactory>>();
 
   std::shared_ptr<testing::NiceMock<MockDocumentStateTransaction>>
       transactionMock =
@@ -74,7 +80,7 @@ struct DocumentStateMachineTest : testing::Test {
   std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
       handlersFactoryMock =
           std::make_shared<testing::NiceMock<MockDocumentStateHandlersFactory>>(
-              collectionReaderFactoryMock);
+              databaseSnapshotFactoryMock);
   MockTransactionManager transactionManagerMock;
   tests::mocks::MockServer mockServer = tests::mocks::MockServer();
   MockVocbase vocbaseMock =
@@ -85,7 +91,18 @@ struct DocumentStateMachineTest : testing::Test {
     VPackBuilder builder;
     builder.openObject();
     builder.close();
-    auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
+    auto entry =
+        DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId, {}};
+    entries.emplace_back(std::move(entry));
+  }
+
+  void addShardEntry(std::vector<DocumentLogEntry>& entries, OperationType op,
+                     ShardID shard, CollectionID collection) {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+    auto entry = DocumentLogEntry{shard, op, builder.sharedSlice(),
+                                  TransactionId{}, collection};
     entries.emplace_back(std::move(entry));
   }
 
@@ -96,12 +113,10 @@ struct DocumentStateMachineTest : testing::Test {
     collectionData.emplace_back("bar");
     collectionData.emplace_back("baz");
 
-    ON_CALL(*collectionReaderFactoryMock, createCollectionReader)
-        .WillByDefault([&]() {
-          return ResultT<std::unique_ptr<ICollectionReader>>::success(
-              std::make_unique<MockCollectionReaderDelegator>(
-                  collectionReaderMock));
-        });
+    ON_CALL(*databaseSnapshotFactoryMock, createSnapshot).WillByDefault([&]() {
+      return std::make_unique<MockDatabaseSnapshotDelegator>(
+          databaseSnapshotMock);
+    });
 
     ON_CALL(*transactionMock, commit).WillByDefault(Return(Result{}));
     ON_CALL(*transactionMock, abort).WillByDefault(Return(Result{}));
@@ -153,7 +168,7 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*handlersFactoryMock, createSnapshotHandler)
         .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           return std::make_unique<DocumentStateSnapshotHandler>(
-              handlersFactoryMock->makeUniqueCollectionReaderFactory());
+              handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
         });
 
     ON_CALL(*handlersFactoryMock, createTransaction)
@@ -174,7 +189,7 @@ struct DocumentStateMachineTest : testing::Test {
     Mock::VerifyAndClearExpectations(networkHandlerMock.get());
     Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());
     Mock::VerifyAndClearExpectations(collectionReaderMock.get());
-    Mock::VerifyAndClearExpectations(collectionReaderFactoryMock.get());
+    Mock::VerifyAndClearExpectations(databaseSnapshotFactoryMock.get());
   }
 
   const std::string collectionId = "testCollectionID";
@@ -188,8 +203,7 @@ struct DocumentStateMachineTest : testing::Test {
   const std::string leaderId = "leader";
 };
 
-TEST_F(DocumentStateMachineTest,
-       constructing_the_core_creates_shard_successfully) {
+TEST_F(DocumentStateMachineTest, constructing_the_core_does_not_create_shard) {
   using namespace testing;
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
@@ -197,17 +211,13 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
   EXPECT_CALL(*agencyHandlerMock,
               reportShardInCurrent(collectionId, shardId, _))
-      .Times(1);
+      .Times(0);
   EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .Times(1);
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
 
   Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
-
-  EXPECT_EQ(core->getShardId(), shardId);
-  EXPECT_EQ(core->getGid().database, dbName);
-  EXPECT_EQ(core->getGid().id, logId);
 }
 
 TEST_F(DocumentStateMachineTest, shard_is_dropped_during_cleanup) {
@@ -227,16 +237,18 @@ TEST_F(DocumentStateMachineTest, snapshot_has_valid_ongoing_state) {
 
   EXPECT_CALL(*collectionReaderMock, getDocCount()).Times(1);
   auto snapshot = Snapshot(
-      SnapshotId{12345}, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      SnapshotId{12345}, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
   auto status = snapshot.status();
   ASSERT_EQ(status.state,
             replication2::replicated_state::document::kStringOngoing);
-  EXPECT_EQ(status.statistics.shardId, shardId);
-  EXPECT_EQ(status.statistics.totalDocs, collectionReaderMock->getDocCount());
-  EXPECT_EQ(status.statistics.docsSent, 0);
+  EXPECT_EQ(status.statistics.shards.size(), 1);
+  EXPECT_TRUE(status.statistics.shards.contains(shardId));
+  EXPECT_EQ(status.statistics.shards[shardId].totalDocs,
+            collectionReaderMock->getDocCount());
+  EXPECT_EQ(status.statistics.shards[shardId].docsSent, 0);
   EXPECT_EQ(status.statistics.batchesSent, 0);
   EXPECT_EQ(status.statistics.bytesSent, 0);
 }
@@ -246,8 +258,8 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      snapshotId, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   std::size_t bytesSent{0};
 
   for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
@@ -266,7 +278,7 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
     auto status = snapshot.status();
     ASSERT_EQ(status.state,
               replication2::replicated_state::document::kStringOngoing);
-    EXPECT_EQ(status.statistics.docsSent, idx + 1);
+    EXPECT_EQ(status.statistics.shards[shardId].docsSent, idx + 1);
     EXPECT_EQ(status.statistics.batchesSent, idx + 1);
 
     bytesSent += batch.payload.byteSize();
@@ -274,13 +286,123 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
   }
 }
 
+TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
+  using namespace testing;
+
+  auto snapshotId = SnapshotId{12345};
+  const ShardID shardId1 = "s1";
+  const ShardID shardId2 = "s2";
+
+  std::shared_ptr<testing::NiceMock<MockCollectionReader>>
+      collectionReaderMock1 =
+          std::make_shared<testing::NiceMock<MockCollectionReader>>(
+              collectionData);
+  std::shared_ptr<testing::NiceMock<MockCollectionReader>>
+      collectionReaderMock2 =
+          std::make_shared<testing::NiceMock<MockCollectionReader>>(
+              collectionData);
+
+  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId1))
+      .WillOnce([&collectionReaderMock1](std::string_view collectionName) {
+        return std::make_unique<MockCollectionReaderDelegator>(
+            collectionReaderMock1);
+      });
+  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId2))
+      .WillOnce([&collectionReaderMock2](std::string_view collectionName) {
+        return std::make_unique<MockCollectionReaderDelegator>(
+            collectionReaderMock2);
+      });
+
+  auto snapshot = Snapshot(
+      snapshotId, {shardId1, shardId2},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+  std::size_t bytesSent{0};
+
+  // fetch data from shard1
+  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
+    EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
+    EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
+    auto batchRes = snapshot.fetch();
+    Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+
+    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+    auto batch = batchRes.get();
+    EXPECT_EQ(snapshotId, batch.snapshotId);
+    EXPECT_EQ(batch.shardId, shardId1);
+    EXPECT_TRUE(batch.hasMore);
+    EXPECT_TRUE(batch.payload.isArray());
+
+    auto status = snapshot.status();
+    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+              status.state);
+    EXPECT_EQ(2, status.statistics.shards.size());
+    EXPECT_EQ(idx + 1, status.statistics.shards[shardId1].docsSent);
+    EXPECT_EQ(idx + 1, status.statistics.batchesSent);
+
+    bytesSent += batch.payload.byteSize();
+    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
+  }
+
+  // fetch data from shard2
+  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
+    EXPECT_CALL(*collectionReaderMock2, read(_, _)).Times(1);
+    EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(1);
+    auto batchRes = snapshot.fetch();
+    Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+
+    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+    auto batch = batchRes.get();
+    EXPECT_EQ(snapshotId, batch.snapshotId);
+    EXPECT_EQ(batch.shardId, shardId2);
+    EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
+    EXPECT_TRUE(batch.payload.isArray());
+
+    auto status = snapshot.status();
+    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+              status.state);
+    EXPECT_EQ(idx + 1, status.statistics.shards[shardId2].docsSent);
+    EXPECT_EQ(collectionData.size() + idx + 1, status.statistics.batchesSent);
+
+    bytesSent += batch.payload.byteSize();
+    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
+  }
+}
+
+TEST_F(DocumentStateMachineTest, snapshot_fetch_empty) {
+  using namespace testing;
+
+  auto snapshotId = SnapshotId{12345};
+
+  auto databaseSnapshotMock =
+      std::make_shared<testing::StrictMock<MockDatabaseSnapshot>>(nullptr);
+
+  auto snapshot = Snapshot(
+      snapshotId, {},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+
+  auto batchRes = snapshot.fetch();
+
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  auto batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId);
+  EXPECT_FALSE(batch.shardId.has_value());
+  EXPECT_FALSE(batch.hasMore);
+  EXPECT_TRUE(batch.payload.isNone());
+
+  auto status = snapshot.status();
+  ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+            status.state);
+  EXPECT_EQ(0, status.statistics.shards.size());
+  EXPECT_EQ(0, status.statistics.batchesSent);
+}
+
 TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_finish) {
   using namespace testing;
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      snapshotId, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.finish();
   ASSERT_TRUE(res.ok()) << res;
@@ -301,8 +423,8 @@ TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      snapshotId, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.abort();
   ASSERT_TRUE(res.ok()) << res;
@@ -323,8 +445,8 @@ TEST_F(DocumentStateMachineTest, snapshot_try_finish_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      snapshotId, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.abort();
   ASSERT_TRUE(res.ok()) << res;
@@ -345,8 +467,8 @@ TEST_F(DocumentStateMachineTest, snapshot_try_abort_after_finish) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardId,
-      std::make_unique<MockCollectionReaderDelegator>(collectionReaderMock));
+      snapshotId, {shardId},
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
 
   auto res = snapshot.finish();
   ASSERT_TRUE(res.ok()) << res;
@@ -366,11 +488,11 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_creation_error) {
   using namespace testing;
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueCollectionReaderFactory());
-  EXPECT_CALL(*collectionReaderFactoryMock, createCollectionReader)
-      .WillOnce([]() {
-        return ResultT<std::unique_ptr<ICollectionReader>>::error(
-            TRI_ERROR_WAS_ERLAUBE);
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
+  EXPECT_CALL(*databaseSnapshotFactoryMock, createSnapshot)
+      .WillOnce([]() -> std::unique_ptr<
+                         replicated_state::document::IDatabaseSnapshot> {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_WAS_ERLAUBE);
       });
   auto res = snapshotHandler.create(shardId);
   ASSERT_TRUE(res.fail());
@@ -381,7 +503,7 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_cannot_find_snapshot) {
   using namespace testing;
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueCollectionReaderFactory());
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
   auto res = snapshotHandler.find(SnapshotId::create());
   ASSERT_TRUE(res.fail());
 }
@@ -391,7 +513,7 @@ TEST_F(DocumentStateMachineTest,
   using namespace testing;
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueCollectionReaderFactory());
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
 
   auto res = snapshotHandler.create(shardId);
   ASSERT_TRUE(res.ok()) << res.result();
@@ -426,8 +548,8 @@ TEST_F(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
 
   EXPECT_CALL(*handlersFactoryMock, createTransaction(_, _)).Times(1);
   auto trx = transactionHandler.ensureTransaction(doc);
@@ -446,8 +568,8 @@ TEST_F(DocumentStateMachineTest, test_transactionHandler_removeTransaction) {
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
   auto trx = transactionHandler.ensureTransaction(doc);
   EXPECT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
   transactionHandler.removeTransaction(tid);
@@ -462,8 +584,8 @@ TEST_F(DocumentStateMachineTest,
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   auto tid = TransactionId{6};
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), tid};
+  auto doc = DocumentLogEntry{
+      "s1234", OperationType::kInsert, velocypack::SharedSlice(), tid, {}};
   auto trx = transactionHandler.ensureTransaction(doc);
   ASSERT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
 
@@ -479,8 +601,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_commit) {
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{6}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kInsert,
+                              velocypack::SharedSlice(),
+                              TransactionId{6},
+                              {}};
 
   // Expect the transaction to be started an applied successfully
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
@@ -513,8 +638,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_apply_transaction_and_abort) {
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
 
   // Start a new transaction and then abort it.
-  auto doc = DocumentLogEntry{"s1234", OperationType::kRemove,
-                              velocypack::SharedSlice(), TransactionId{10}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kRemove,
+                              velocypack::SharedSlice(),
+                              TransactionId{10},
+                              {}};
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
   EXPECT_CALL(*transactionMock, apply).Times(1);
   auto res = transactionHandler.applyEntry(doc);
@@ -537,8 +665,11 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
 
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}}, nullptr, handlersFactoryMock);
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{6}};
+  auto doc = DocumentLogEntry{"s1234",
+                              OperationType::kInsert,
+                              velocypack::SharedSlice(),
+                              TransactionId{6},
+                              {}};
 
   // OperationResult failed, transaction should fail
   EXPECT_CALL(*transactionMock, apply(_))
@@ -850,17 +981,20 @@ TEST_F(DocumentStateMachineTest,
   follower->setStream(stream);
   EXPECT_CALL(*stream, release).Times(0);
 
+  ShardID const myShard = "s12";
+  CollectionID const myCollection = "myCollection";
+
   std::vector<DocumentLogEntry> entries;
-  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kCreateShard, myShard, myCollection);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(myShard, myCollection, _))
       .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
   entries.clear();
-  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kDropShard, myShard, myCollection);
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(myShard, myCollection))
       .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
@@ -879,14 +1013,14 @@ TEST_F(DocumentStateMachineTest,
   follower->setStream(stream);
 
   std::vector<DocumentLogEntry> entries;
-  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kCreateShard, shardId, collectionId);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ON_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 
   entries.clear();
-  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  addShardEntry(entries, OperationType::kDropShard, shardId, collectionId);
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ON_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
@@ -983,26 +1117,26 @@ TEST_F(DocumentStateMachineTest,
     builder.close();
 
     auto operation = OperationType::kInsert;
-    std::ignore =
-        leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{5}, ReplicationOptions{});
-    std::ignore =
-        leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{9}, ReplicationOptions{});
-    std::ignore = leaderState->replicateOperation(builder.sharedSlice(),
-                                                  operation, TransactionId{13},
-                                                  ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{5}, shardId,
+        ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{9}, shardId,
+        ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), operation, TransactionId{13}, shardId,
+        ReplicationOptions{});
   }
   EXPECT_EQ(3U, leaderState->getActiveTransactionsCount());
 
   {
     VPackBuilder builder;
     std::ignore = leaderState->replicateOperation(
-        builder.sharedSlice(), OperationType::kAbort, TransactionId{5},
+        builder.sharedSlice(), OperationType::kAbort, TransactionId{5}, shardId,
         ReplicationOptions{});
     std::ignore = leaderState->replicateOperation(
         builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
-        ReplicationOptions{});
+        shardId, ReplicationOptions{});
   }
   EXPECT_EQ(1U, leaderState->getActiveTransactionsCount());
 
@@ -1037,7 +1171,7 @@ TEST_F(DocumentStateMachineTest,
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
-    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.shardId, "");  // covers all shards
     EXPECT_EQ(entry.operation, OperationType::kAbortAllOngoingTrx);
     return LogIndex{entries.size() + 1};
   });
@@ -1074,10 +1208,43 @@ TEST_F(DocumentStateMachineTest,
   auto logIndex =
       leaderState
           ->replicateOperation(builder.sharedSlice(), operation,
-                               TransactionId{5}, ReplicationOptions{})
+                               TransactionId{5}, shardId, ReplicationOptions{})
           .get();
   EXPECT_CALL(*stream, insert).Times(0);
   EXPECT_EQ(logIndex, LogIndex{});
+}
+
+TEST_F(DocumentStateMachineTest, leader_create_shard) {
+  using namespace testing;
+
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
+
+  auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
+  leaderState->setStream(stream);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+
+  EXPECT_CALL(*stream, insert).Times(1).WillOnce([&](DocumentLogEntry entry) {
+    EXPECT_EQ(entry.operation, OperationType::kCreateShard);
+    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.collectionId, collectionId);
+    return LogIndex{12};
+  });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+      .Times(1);
+
+  leaderState->createShard(shardId, collectionId, velocypack::SharedSlice());
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {

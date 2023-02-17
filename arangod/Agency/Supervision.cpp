@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1804,7 +1804,6 @@ void Supervision::handleJobs() {
   LOG_TOPIC("83676", TRACE, Logger::SUPERVISION)
       << "Begin cleanupReplicatedLogs";
   cleanupReplicatedLogs();  // TODO do this only every x seconds?
-  cleanupReplicatedStates();
 
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
@@ -3013,54 +3012,6 @@ void Supervision::cleanupReplicatedLogs() {
   }
 }
 
-void Supervision::cleanupReplicatedStates() {
-  _lock.assertLockedByCurrentThread();
-
-  using namespace replication2::agency;
-
-  // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
-  if (!planNode) {
-    return;
-  }
-
-  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
-
-  velocypack::Builder builder;
-  auto envelope = arangodb::agency::envelope::into_builder(builder);
-
-  for (auto const& [dbName, db] : planNode->get().children()) {
-    for (auto const& [idString, node] : db->children()) {
-      // check if this node has an owner and the owner is 'target'
-      if (auto owner = node->hasAsString("owner");
-          !owner.has_value() || owner != "target") {
-        continue;
-      }
-
-      // now check if there is a replicated log in target with that id
-      if (targetNode.has_value() &&
-          targetNode->get().has(std::vector{dbName, idString})) {
-        continue;
-      }
-
-      // delete plan and target
-      auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-      envelope =
-          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
-    }
-  }
-
-  envelope.done();
-  if (builder.slice().length() > 0) {
-    write_ret_t res = _agent->write(builder.slice());
-    if (!res.successful()) {
-      LOG_TOPIC("df4c4", WARN, Logger::SUPERVISION)
-          << "failed to update replicated log in agency. Will retry. "
-          << builder.toJson();
-    }
-  }
-}
-
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
@@ -3347,8 +3298,6 @@ bool Supervision::start(Agent* agent) {
       _agent->config().supervisionFailedLeaderAddsFollower();
   return start();
 }
-
-static std::string const syncLatest = "/Sync/LatestID";
 
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();

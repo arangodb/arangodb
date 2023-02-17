@@ -60,10 +60,12 @@ function BaseTestConfig () {
   
   return {
     testFailureOnLeaderNoManagedTrx : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 200; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
@@ -124,10 +126,12 @@ function BaseTestConfig () {
     },
 
     testWrongCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -247,10 +251,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -384,10 +390,12 @@ function BaseTestConfig () {
         // we need at least 3 DB servers
         return;
       }
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -582,10 +590,12 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -638,10 +648,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -702,10 +714,11 @@ function BaseTestConfig () {
       assertEqual(2, shardInfo[shard].length);
       let leader = shardInfo[shard][0];
       let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       
       waitForShardsInSync(cn, 60); 
       

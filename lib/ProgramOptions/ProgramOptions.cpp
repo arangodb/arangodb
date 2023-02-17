@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ void ProgramOptions::ProcessingResult::touch(std::string const& name) {
 // whether or not an option was touched during options processing,
 // including the current pass
 bool ProgramOptions::ProcessingResult::touched(std::string const& name) const {
-  return _touched.find(Option::stripPrefix(name)) != _touched.end();
+  return _touched.contains(Option::stripPrefix(name));
 }
 
 // mark an option as being frozen
@@ -68,7 +68,7 @@ void ProgramOptions::ProcessingResult::freeze(std::string const& name) {
 // whether or not an option was touched during options processing,
 // not including the current pass
 bool ProgramOptions::ProcessingResult::frozen(std::string const& name) const {
-  return _frozen.find(Option::stripPrefix(name)) != _frozen.end();
+  return _frozen.contains(Option::stripPrefix(name));
 }
 
 // mark options processing as failed

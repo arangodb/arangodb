@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
@@ -228,6 +227,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
   }
+
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+  }
 }
 
 LogicalCollection::~LogicalCollection() = default;
@@ -273,16 +277,17 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  auto result =
-      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+  if (!computedValues.isNone()) {
+    auto result =
+        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-  if (result.fail()) {
-    return result.result();
+    if (result.fail()) {
+      return result.result();
+    }
+
+    std::atomic_store_explicit(&_computedValues, result.get(),
+                               std::memory_order_release);
   }
-
-  std::atomic_store_explicit(&_computedValues, result.get(),
-                             std::memory_order_release);
-
   return {};
 }
 
@@ -789,6 +794,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   _sharding->toVelocyPack(build, ctx != Serialization::List);
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
+
+  if (replicationVersion() == replication::Version::TWO &&
+      _groupId.has_value()) {
+    build.add("groupId", VPackValue(_groupId.value()));
+  }
   // We leave the object open
   return {};
 }
@@ -1324,3 +1334,10 @@ void LogicalCollection::decorateWithInternalEEValidators() {
   // Only available in Enterprise Mode
 }
 #endif
+
+auto LogicalCollection::groupID() const noexcept
+    -> arangodb::replication2::agency::CollectionGroupId {
+  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
+                  _groupId.has_value());
+  return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+}

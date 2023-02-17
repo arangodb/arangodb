@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,39 +104,39 @@ auto DocumentFollowerState::applyEntries(
             if (doc.operation == OperationType::kCreateShard) {
               auto collectionProperties =
                   std::make_shared<velocypack::Builder>(doc.data.slice());
-              auto const& collectionId = data.core->getCollectionId();
+              auto const& collectionId = doc.collectionId;
               auto res = self->_shardHandler->createLocalShard(
-                  self->shardId, collectionId, collectionProperties);
+                  doc.shardId, collectionId, collectionProperties);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
-                    << "Failed to create shard " << self->shardId
-                    << " of collection " << self->shardId
+                    << "Failed to create shard " << doc.shardId
+                    << " of collection " << collectionId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("d82d5", TRACE, self->loggerContext)
-                  << "Created local shard " << self->shardId
-                  << " of collection " << collectionId;
+                  << "Created local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
-              auto const& collectionId = data.core->getCollectionId();
-              auto res = self->_shardHandler->dropLocalShard(self->shardId,
+              auto const& collectionId = doc.collectionId;
+              auto res = self->_shardHandler->dropLocalShard(doc.shardId,
                                                              collectionId);
               if (res.fail()) {
                 LOG_CTX("8c7a0", FATAL, self->loggerContext)
-                    << "Failed to drop shard " << self->shardId
+                    << "Failed to drop shard " << doc.shardId
                     << " of collection " << collectionId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("cdc44", TRACE, self->loggerContext)
-                  << "Dropped local shard " << self->shardId
-                  << " of collection " << collectionId;
+                  << "Dropped local shard " << doc.shardId << " of collection "
+                  << collectionId;
             } else {
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
                 LOG_CTX("1b08f", FATAL, self->loggerContext)
                     << "Failed to apply entry " << entry->first
-                    << " to local shard " << self->shardId
+                    << " to local shard " << doc.shardId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
@@ -187,14 +187,14 @@ auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
   auto trxId = TransactionId::createFollower();
-  auto doc =
-      DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
+  auto doc = DocumentLogEntry{
+      std::string(shardId), opType, std::move(slice), trxId, {}};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(trxId);
     return applyRes;
   }
-  auto commit =
-      DocumentLogEntry{std::string(shardId), OperationType::kCommit, {}, trxId};
+  auto commit = DocumentLogEntry{
+      std::string(shardId), OperationType::kCommit, {}, trxId, {}};
   return _transactionHandler->applyEntry(commit);
 }
 
@@ -237,41 +237,45 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return snapshotRes.result();
         }
 
-        // Will be removed once we introduce collection groups
-        TRI_ASSERT(snapshotRes->shardId == self->shardId);
+        if (snapshotRes->shardId.has_value()) {
+          // Will be removed once we introduce collection groups
+          TRI_ASSERT(snapshotRes->shardId == self->shardId);
 
-        auto& docs = snapshotRes->payload;
-        auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
-                                                         snapshotVersion](
-                                                            auto& data)
-                                                            -> Result {
-          if (data.didResign()) {
-            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-          }
+          auto& docs = snapshotRes->payload;
+          auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                           snapshotVersion](
+                                                              auto& data)
+                                                              -> Result {
+            if (data.didResign()) {
+              return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+            }
 
-          // The user may remove and add the server again. The leader
-          // might do a compaction which the follower won't notice. Hence, a
-          // new snapshot is required. This can happen so quick, that one
-          // snapshot transfer is not yet completed before another one is
-          // requested. Before populating the shard, we have to make sure
-          // there's no new snapshot transfer in progress.
-          if (data.currentSnapshotVersion != snapshotVersion) {
-            return {
-                TRI_ERROR_INTERNAL,
-                "Snapshot transfer cancelled because a new one was started!"};
+            // The user may remove and add the server again. The leader
+            // might do a compaction which the follower won't notice. Hence, a
+            // new snapshot is required. This can happen so quick, that one
+            // snapshot transfer is not yet completed before another one is
+            // requested. Before populating the shard, we have to make sure
+            // there's no new snapshot transfer in progress.
+            if (data.currentSnapshotVersion != snapshotVersion) {
+              return {
+                  TRI_ERROR_INTERNAL,
+                  "Snapshot transfer cancelled because a new one was started!"};
+            }
+            return self->populateLocalShard(docs);
+          });
+          if (insertRes.fail()) {
+            LOG_CTX("d8b8a", ERR, self->loggerContext)
+                << "Failed to populate local shard: " << insertRes;
+            if (insertRes.isNot(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+              // TODO return result and let the leader clear the failed snapshot
+              // itself, or send an abort instead of finish?
+              return leader->finishSnapshot(snapshotRes->snapshotId);
+            }
+            return insertRes;
           }
-          return self->populateLocalShard(docs);
-        });
-        if (insertRes.fail()) {
-          LOG_CTX("d8b8a", ERR, self->loggerContext)
-              << "Failed to populate local shard: " << insertRes;
-          if (insertRes.isNot(
-                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
-            // TODO return result and let the leader clear the failed snapshot
-            // itself, or send an abort instead of finish?
-            return leader->finishSnapshot(snapshotRes->snapshotId);
-          }
-          return insertRes;
+        } else {
+          TRI_ASSERT(!snapshotRes->hasMore);
         }
 
         if (snapshotRes->hasMore) {

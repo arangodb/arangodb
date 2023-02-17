@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -226,9 +226,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
-
-  /// @brief Clean up replicated states
-  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;

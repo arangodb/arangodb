@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,7 +61,7 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::unique_ptr<IDocumentStateSnapshotHandler> {
   return std::make_unique<DocumentStateSnapshotHandler>(
-      std::make_unique<CollectionReaderFactory>(vocbase));
+      std::make_unique<DatabaseSnapshotFactory>(vocbase));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
