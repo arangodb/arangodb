@@ -24,6 +24,7 @@
 
 #include "Maintenance.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -421,8 +422,7 @@ static void handlePlanShard(
                                           // action as well. Used to distinguish
                                           // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
-            std::move(props));
+            SLOW_OP_PRIORITY, true, std::move(props));
         makeDirty.insert(dbname);
         callNotify = true;
         actions.emplace_back(std::move(description));
@@ -463,7 +463,7 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    if (replicationVersion != replication::Version::TWO) {
+    if (replicationVersion != replication::Version::TWO || isLeading) {
       // This collection is not planned anymore, can drop it
       description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{

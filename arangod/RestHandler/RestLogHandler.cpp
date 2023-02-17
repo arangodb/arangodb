@@ -33,6 +33,7 @@
 #include <Cluster/ClusterFeature.h>
 #include <Cluster/AgencyCache.h>
 
+#include "Agency/AgencyPaths.h"
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"

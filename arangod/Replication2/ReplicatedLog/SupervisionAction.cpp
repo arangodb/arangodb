@@ -29,6 +29,7 @@
 #include "Agency/TransactionBuilder.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 

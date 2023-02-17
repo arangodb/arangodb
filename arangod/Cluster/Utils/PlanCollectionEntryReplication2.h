@@ -24,12 +24,14 @@
 
 #include "Basics/Exceptions.h"
 
+#include "ShardDistribution.h"
 #include "Cluster/Utils/AgencyIsBuildingFlags.h"
 #include "VocBase/Properties/CollectionIndexesProperties.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
-#include "ShardDistribution.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -41,42 +43,19 @@ struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
-  PlanCollectionEntryReplication2(UserInputCollectionProperties collection,
-                                  ShardDistribution shardDistribution,
-                                  AgencyIsBuildingFlags isBuildingFlags);
+  explicit PlanCollectionEntryReplication2(
+      UserInputCollectionProperties collection);
 
   [[nodiscard]] std::string getCID() const;
 
   [[nodiscard]] std::string const& getName() const;
 
-  [[nodiscard]] bool requiresCurrentWatcher() const;
-
-  // To be replaced by Inspect below, as soon as same-level fields are merged.
-  [[nodiscard]] velocypack::Builder toVPackDeprecated() const;
-
-  [[nodiscard]] PlanShardToServerMapping getShardMapping() const;
-
-  [[nodiscard]] replication2::agency::LogTarget getReplicatedLogForTarget(
-      replication2::LogId const& logId, ResponsibleServerList const& servers,
-      std::string_view databaseName, ShardID const& shardId) const;
-
-  [[nodiscard]] std::size_t indexOfShardId(ShardID const& shard) const;
-
-  // Remove the isBuilding flags, call it if we are completed
-  void removeBuildingFlags();
-
- private:
-  UserInputCollectionProperties _properties{};
-  std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};
-  CollectionIndexesProperties _indexProperties{};
-  ShardDistribution _shardDistribution;
+  replication2::agency::CollectionTargetSpecification _properties{};
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, PlanCollectionEntryReplication2& planCollection) {
-  // TODO This is waiting on inspector with fields on same toplevel object
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return f.object(planCollection).fields();
+  return f.apply(planCollection._properties);
 }
 
 }  // namespace arangodb
