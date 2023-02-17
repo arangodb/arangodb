@@ -37,7 +37,7 @@ const {
   isEqual,
   compareStringIds,
   endpointToURL,
-  getInstanceInfo
+  getInstanceInfo,
   versionHas,
   isEnterprise,
 } = require('@arangodb/test-helper-common');
