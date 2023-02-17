@@ -366,7 +366,16 @@ class instance {
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
     }
 
-    this.args = Object.assign(this.args, this.options.extraArgs);
+    for (const [key, value] of Object.entries(this.options.extraArgs)) {
+      let splitkey = key.split('.');
+      if (splitkey.length !== 2) {
+        if (splitkey[0] === this.instanceRole) {
+          this.args[splitkey.slice(1).join('.')] = value;
+        }
+      } else {
+        this.args[key] = value;
+      }
+    }
 
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
@@ -385,7 +394,6 @@ class instance {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
         'agency.size': this.agencyConfig.agencySize,
-        'agency.pool-size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
@@ -782,7 +790,13 @@ class instance {
       return false;
     }
     const res = statusExternal(this.pid, false);
-    const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
+    const running = res.status === 'RUNNING';
+    if (!this.options.coreCheck && this.options.setInterruptable && !running) {
+      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      pu.killRemainingProcesses({status: false});
+      process.exit();
+    }
+    const ret = running && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
 
     if (!ret) {
       if (!this.hasOwnProperty('message')) {

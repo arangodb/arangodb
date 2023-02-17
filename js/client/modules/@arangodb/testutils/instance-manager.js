@@ -698,7 +698,7 @@ class instanceManager {
       print(Date() + ' If cluster - will now start killing the rest.');
       this.arangods.forEach((arangod) => {
         print(Date() + " Killing in the name of: ");
-        arangod.killWithCoreDump();
+        arangod.killWithCoreDump("health check failed, aborting everything");
       });
       this.arangods.forEach((arangod) => {
         crashUtils.aggregateDebugger(arangod, this.options);
@@ -780,19 +780,20 @@ class instanceManager {
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
 
-  shutdownInstance (forceTerminate) {
+  shutdownInstance (forceTerminate, moreReason="") {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
       print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      moreReason += "Deadline reached! ";
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
     try {
       if (forceTerminate) {
-        return this._forceTerminate();
+        return this._forceTerminate(moreReason);
       } else {
         return this._shutdownInstance();
       }
@@ -802,8 +803,9 @@ class instanceManager {
         let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
         if (timeoutReached) {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
+          moreReason += "Deadline reached! ";
         }
-        return this._forceTerminate(true);
+        return this._forceTerminate(true, moreReason);
       } else {
         print("caught error during shutdown: " + e);
         print(e.stack);
@@ -811,11 +813,15 @@ class instanceManager {
     }
   }
 
-  _forceTerminate() {
+  _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
     this.arangods.forEach((arangod) => {
-      arangod.killWithCoreDump('forced shutdown');
-      arangod.serverCrashedLocal = true;
+      if (arangod.pid !== null) {
+        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
+        arangod.serverCrashedLocal = true;
+      } else {
+        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
+      }
     });
     this.arangods.forEach((arangod) => {
       if (arangod.checkArangoAlive()) {
@@ -826,16 +832,25 @@ class instanceManager {
     return true;
   }
 
-  _shutdownInstance () {
+  _shutdownInstance (moreReason="") {
     let forceTerminate = false;  
     let crashed = false;
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
+    let allAlive = true;
+    this.arangods.forEach(arangod => {
+      if (arangod.pid === null) {
+        allAlive = false;
+      }});
+    if (!allAlive) {
+      return this._forceTerminate("not all instances are alive!");
+    }
     if (this.options.activefailover) {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
         print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
+        moreReason += "failover has happened, leader is no more!";
         d.serverCrashedLocal = true;
         forceTerminate = true;
         shutdownSuccess = false;
@@ -916,7 +931,7 @@ class instanceManager {
       this.dumpAgency();
     }
     if (forceTerminate) {
-      return this._forceTerminate();
+      return this._forceTerminate(moreReason);
     }
 
     var shutdownTime = internal.time();
@@ -958,7 +973,7 @@ class instanceManager {
             this.dumpAgency();
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump('forced shutdown');
+            arangod.killWithCoreDump(`taking coredump because of timeout ${internal.time()} - ${shutdownTime}) > ${localTimeout} during shutdown`);
             crashUtils.aggregateDebugger(arangod, this.options);
             crashed = true;
             if (!arangod.isAgent()) {
@@ -1020,7 +1035,7 @@ class instanceManager {
       });
     }
     this.arangods.forEach(arangod => {
-      arangod.readAssertLogLines();
+      arangod.readAssertLogLines(this.expectAsserts);
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1073,7 +1088,7 @@ class instanceManager {
       headers: {'content-type': 'application/json' }
     };
     let count = 60;
-    while (count > 0) {
+    while ((count > 0) && (this.agencyConfig.agencyInstances[0].pid !== null)) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
       if (!reply.error && reply.code === 200) {
@@ -1095,6 +1110,10 @@ class instanceManager {
     this.leader = null;
     while (this.leader === null) {
       this.urls.forEach(url => {
+        this.arangods.forEach(arangod => {
+          if ((arangod.url === url && arangod.pid === null)) {
+            throw new Error("detectCurrentleader: instance we attempt to query not alive");
+          }});
         opts['method'] = 'GET';
         let reply = download(url + '/_api/cluster/endpoints', '', opts);
         if (reply.code === 200) {
