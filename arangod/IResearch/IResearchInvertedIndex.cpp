@@ -1042,7 +1042,6 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     }
   } else {
     // sorting  case
-
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
     return resolveLateMaterialization(
