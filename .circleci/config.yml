@@ -34,6 +34,7 @@ workflows:
     when:
       or:
         - equal: [ devel, << pipeline.git.branch >> ]
+        - equal: [ staging/replication-2.0, << pipeline.git.branch >> ]
         - equal: [ api, << pipeline.trigger_source >> ]
     jobs:
       - setup
