@@ -25,12 +25,12 @@
 
 #include "Basics/Result.h"
 
+#include <string>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 namespace velocypack {
-
 class Builder;
 class Slice;
 

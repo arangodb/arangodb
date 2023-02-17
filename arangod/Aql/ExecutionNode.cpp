@@ -1770,7 +1770,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (_random) {
     // we retrieve at most one random document from the collection.
     // so the estimate is at most 1
-    estimatedNrItems = 1;
+    // estimatedNrItems = 1;
+    // Unnecessary to set, we just leave estimate.estimatedNrItems as it is.
   } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
@@ -1780,7 +1781,9 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
-  estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  estimate.estimatedCost += estimate.estimatedNrItems *
+                                (_random ? 1.005 : (hasFilter() ? 2.0 : 1.0)) +
+                            1.0;
 
   return estimate;
 }

@@ -66,7 +66,7 @@ function delaySupervisionFailoverActions(value) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function MovingShardsSuite({useData, replVersion}) {
+exports.MovingShardsSuite = function({useData, replVersion}) {
   if (typeof useData !== 'boolean') {
     throw new Error('MovingShardsSuite expects its parameter `useData` to be set and a boolean!');
   }
@@ -1340,28 +1340,4 @@ function MovingShardsSuite({useData, replVersion}) {
     },
 
   };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(function MovingShardsSuite_nodata_R1() {
-  let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
-  return derivedSuite;
-});
-
-jsunity.run(function MovingShardsSuite_data_R1() {
-  let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
-  return derivedSuite;
-});
-
-jsunity.run(function MovingShardsSuite_data_R2() {
-  let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({useData: true, replVersion: "2"}), derivedSuite, "_data_R2");
-  return derivedSuite;
-});
-
-return jsunity.done();
+};
