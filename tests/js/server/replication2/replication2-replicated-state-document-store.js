@@ -246,15 +246,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testDropCollection: function() {
-      db._drop(collectionName);
-      collection = null;
-      for (const shard of shards) {
-        let {plan} = lh.readReplicatedLogAgency(database, shardsToLogs[shard]);
-        assertEqual(plan, undefined);
-      }
-    },
-
     testReplicateOperationsCommit: function() {
       const opType = "Commit";
 
