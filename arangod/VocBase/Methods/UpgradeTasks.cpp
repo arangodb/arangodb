@@ -212,7 +212,9 @@ Result createSystemCollections(
 
   auto config = vocbase.getDatabaseConfiguration();
   // Override lookup for leading CollectionName
-  config.getCollectionGroupSharding = [&systemCollectionsToCreate, &vocbase] (std::string const& name)-> ResultT<UserInputCollectionProperties> {
+  config.getCollectionGroupSharding =
+      [&systemCollectionsToCreate, &vocbase](
+          std::string const& name) -> ResultT<UserInputCollectionProperties> {
     // For the time being the leading collection is created as standalone
     // before adding the others. So it has to be part of createdCollections.
     // So let us scan there
@@ -225,10 +227,9 @@ Result createSystemCollections(
         return c;
       }
     }
-    return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                  "Collection not found: " + name +
-                      " in database " + vocbase.name()};
-
+    return Result{
+        TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+        "Collection not found: " + name + " in database " + vocbase.name()};
   };
   // Now split all collections to be created into two groups:
   // a) already created, we can return those

@@ -978,8 +978,11 @@ void Collections::applySystemCollectionProperties(
     // Others only follow
     col.distributeShardsLike = designatedLeaderName;
   }
-  [[maybe_unused]] auto res = col.applyDefaultsAndValidateDatabaseConfiguration(config);
-  ADB_PROD_ASSERT(!res.fail()) << "Created illegal default system collection attributes: " << res.errorMessage();
+  [[maybe_unused]] auto res =
+      col.applyDefaultsAndValidateDatabaseConfiguration(config);
+  ADB_PROD_ASSERT(!res.fail())
+      << "Created illegal default system collection attributes: "
+      << res.errorMessage();
 }
 
 void Collections::createSystemCollectionProperties(

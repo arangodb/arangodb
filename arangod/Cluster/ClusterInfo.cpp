@@ -2249,7 +2249,8 @@ ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::ignore = agencyCache.get(collectionsBuilder, collectionsPath);
   auto collectionsSlice = collectionsBuilder.slice();
   for (auto const& [cid, colData] : VPackObjectIterator(collectionsSlice)) {
-    auto collection = database.createCollectionObject(colData, /*isAStub*/ true);
+    auto collection =
+        database.createCollectionObject(colData, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     result.emplace(collection->name(), collection);
   }
