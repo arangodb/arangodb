@@ -100,13 +100,13 @@ function indexHintSuite() {
 
       collection.insert({
         geo: {type: "Point", coordinates: [50, 51]},
-        otherGeo: {type: "Point", coordinates: [100, 101]},
+        otherGeo: {type: "Point", coordinates: [60, 61]},
         value1: 1,
         value2: "abc"
       });
       collection.insert({
         geo: {type: "Point", coordinates: [52, 53]},
-        otherGeo: {type: "Point", coordinates: [150, 151]},
+        otherGeo: {type: "Point", coordinates: [70, 71]},
         value1: 2,
         value2: "123"
       });
@@ -498,7 +498,7 @@ function indexHintSuite() {
 
     testForceInvertedIndexWithGeoPresent: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName}", forceIndexHint: true, waitForSync: true} 
-      FILTER GEO_DISTANCE([150, 160], d.geo) > 50 SORT d.geo.coordinates[0] ASC
+      FILTER GEO_DISTANCE([70, 170], d.geo) > 50 SORT d.geo.coordinates[0] ASC
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -517,9 +517,10 @@ function indexHintSuite() {
         assertEqual(result.geo.coordinates[0], 50 + (i * 2));
         assertEqual(result.geo.coordinates[1], 51 + (i * 2));
         assertEqual(result.otherGeo.type, "Point");
+
         assertEqual(result.otherGeo.coordinates.length, 2);
-        assertEqual(result.otherGeo.coordinates[0], 100 + (i * 50));
-        assertEqual(result.otherGeo.coordinates[1], 101 + (i * 50));
+        assertEqual(result.otherGeo.coordinates[0], 60 + (i * 10));
+        assertEqual(result.otherGeo.coordinates[1], 61 + (i * 10));
         assertEqual(result.value1, 1 + i);
         if (i === 0) {
           assertEqual(result.value2, "abc");
@@ -531,7 +532,7 @@ function indexHintSuite() {
 
     testNotForceInvertedIndexWithGeoPresent: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName}", waitForSync: true} 
-      FILTER GEO_DISTANCE([150, 160], d.geo) > 50 SORT d.geo.coordinates[0] ASC
+      FILTER GEO_DISTANCE([50, 50], d.geo) > 50 SORT d.geo.coordinates[0] ASC
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -551,8 +552,8 @@ function indexHintSuite() {
         assertEqual(result.geo.coordinates[1], 51 + (i * 2));
         assertEqual(result.otherGeo.type, "Point");
         assertEqual(result.otherGeo.coordinates.length, 2);
-        assertEqual(result.otherGeo.coordinates[0], 100 + (i * 50));
-        assertEqual(result.otherGeo.coordinates[1], 101 + (i * 50));
+        assertEqual(result.otherGeo.coordinates[0], 60 + (i * 10));
+        assertEqual(result.otherGeo.coordinates[1], 61 + (i * 10));
         assertEqual(result.value1, 1 + i);
         if (i === 0) {
           assertEqual(result.value2, "abc");
@@ -583,8 +584,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -610,8 +611,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -631,7 +632,7 @@ function indexHintSuite() {
 
     testForceInvertedIndexWithGeoPresent2: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName2}", forceIndexHint: true, waitForSync: true}
-     FILTER GEO_DISTANCE([150, 151], d.otherGeo) >= 0 SORT d.otherGeo.coordinates[0] ASC
+      FILTER GEO_DISTANCE([70, 71], d.otherGeo) >= 0 SORT d.otherGeo.coordinates[0] ASC
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -651,8 +652,8 @@ function indexHintSuite() {
         assertEqual(result.geo.coordinates[1], 51 + (i * 2));
         assertEqual(result.otherGeo.type, "Point");
         assertEqual(result.otherGeo.coordinates.length, 2);
-        assertEqual(result.otherGeo.coordinates[0], 100 + (i * 50));
-        assertEqual(result.otherGeo.coordinates[1], 101 + (i * 50));
+        assertEqual(result.otherGeo.coordinates[0], 60 + (i * 10));
+        assertEqual(result.otherGeo.coordinates[1], 61 + (i * 10));
         assertEqual(result.value1, 1 + i);
         if (i === 0) {
           assertEqual(result.value2, "abc");
@@ -664,7 +665,7 @@ function indexHintSuite() {
 
     testNotForceInvertedIndexWithGeoPresent2: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName2}", waitForSync: true}
-     FILTER GEO_DISTANCE([150, 151], d.otherGeo) >= 0 SORT d.otherGeo.coordinates[0] ASC
+      FILTER GEO_DISTANCE([70, 71], d.otherGeo) >= 0 SORT d.otherGeo.coordinates[0] ASC
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -684,8 +685,8 @@ function indexHintSuite() {
         assertEqual(result.geo.coordinates[1], 51 + (i * 2));
         assertEqual(result.otherGeo.type, "Point");
         assertEqual(result.otherGeo.coordinates.length, 2);
-        assertEqual(result.otherGeo.coordinates[0], 100 + (i * 50));
-        assertEqual(result.otherGeo.coordinates[1], 101 + (i * 50));
+        assertEqual(result.otherGeo.coordinates[0], 60 + (i * 10));
+        assertEqual(result.otherGeo.coordinates[1], 61 + (i * 10));
         assertEqual(result.value1, 1 + i);
         if (i === 0) {
           assertEqual(result.value2, "abc");
@@ -723,7 +724,7 @@ function indexHintSuite() {
 
     testForceInvertedIndexWithGeoPresent3: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName2}", forceIndexHint: true, waitForSync: true} 
-      FILTER GEO_DISTANCE([50, 51], d.geo) < 1 && GEO_DISTANCE([100, 101], d.otherGeo) < 1
+      FILTER GEO_DISTANCE([50, 51], d.geo) < 1 && GEO_DISTANCE([60, 61], d.otherGeo) < 1
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -742,15 +743,15 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
 
     testNotForceInvertedIndexWithGeoPresent3: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${invertedIdxName2}", waitForSync: true} 
-      FILTER GEO_DISTANCE([50, 51], d.geo) < 1 && GEO_DISTANCE([100, 101], d.otherGeo) < 1
+      FILTER GEO_DISTANCE([50, 51], d.geo) < 1 && GEO_DISTANCE([60, 61], d.otherGeo) < 1
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -769,8 +770,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -797,8 +798,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -825,8 +826,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -853,8 +854,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -881,15 +882,15 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
 
     testForceIndexWith2GeoPresent: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${geoIdxName2}", forceIndexHint: true, waitForSync: true} 
-      FILTER GEO_DISTANCE([50, 51], d.geo) <= 0 && GEO_DISTANCE([100, 101], d.otherGeo) <= 0
+      FILTER GEO_DISTANCE([50, 51], d.geo) <= 0 && GEO_DISTANCE([60, 61], d.otherGeo) <= 0
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -909,15 +910,15 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
 
     testNotForceIndexWith2GeoPresent: function () {
       const query = `FOR d IN ${cn2}  OPTIONS {indexHint: "${geoIdxName2}", waitForSync: true} 
-      FILTER GEO_DISTANCE([50, 51], d.geo) < 5000 && GEO_DISTANCE([100, 101], d.otherGeo) < 1000
+      FILTER GEO_DISTANCE([50, 51], d.geo) < 5000 && GEO_DISTANCE([60, 61], d.otherGeo) < 1000
       RETURN d`;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
@@ -937,8 +938,8 @@ function indexHintSuite() {
       assertEqual(result.geo.coordinates[1], 51);
       assertEqual(result.otherGeo.type, "Point");
       assertEqual(result.otherGeo.coordinates.length, 2);
-      assertEqual(result.otherGeo.coordinates[0], 100);
-      assertEqual(result.otherGeo.coordinates[1], 101);
+      assertEqual(result.otherGeo.coordinates[0], 60);
+      assertEqual(result.otherGeo.coordinates[1], 61);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
     },
@@ -955,7 +956,7 @@ function indexHintDisableIndexSuite() {
       let c = internal.db._create(cn);
       c.ensureIndex({type: 'persistent', name: 'value1', fields: ['value1']});
     },
-    
+
     tearDownAll: function () {
       internal.db._drop(cn);
     },
@@ -1004,7 +1005,7 @@ function indexHintDisableIndexSuite() {
         });
       });
     },
-    
+
     testDisableIndexOn : function () {
       const queries = [
         [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN 1`, [] ],
