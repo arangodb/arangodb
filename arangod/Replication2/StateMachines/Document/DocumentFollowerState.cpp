@@ -242,24 +242,43 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return leader->finishSnapshot(snapshotRes->snapshotId);
         }
 
-        auto res = self->_guardedData.doUnderLock(
-            [shards = std::move(snapshotRes->shards)](auto& data) -> Result {
-              for (auto const& [shardId, properties] : shards) {
-                auto res = data.core->ensureShard(
-                    shardId, properties.collectionId,
-                    properties.properties->sharedSlice());
-                if (res.fail()) {
-                  return Result{res.errorNumber(),
-                                fmt::format("Failed to ensure shard {}: {}",
-                                            shardId, res.errorMessage())};
-                }
-              }
-              return {};
-            });
+        auto res = self->_guardedData.doUnderLock([self,
+                                                   shards = std::move(
+                                                       snapshotRes->shards),
+                                                   snapshotVersion](
+                                                      auto& data) -> Result {
+          if (data.didResign()) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+          }
+
+          if (data.currentSnapshotVersion != snapshotVersion) {
+            return {
+                TRI_ERROR_INTERNAL,
+                "Snapshot transfer cancelled because a new one was started!"};
+          }
+
+          for (auto const& [shardId, properties] : shards) {
+            auto res =
+                data.core->ensureShard(shardId, properties.collectionId,
+                                       properties.properties->sharedSlice());
+            if (res.fail()) {
+              LOG_CTX("bd17c", ERR, self->loggerContext)
+                  << "Failed to ensure shard " << shardId << " " << res;
+              FATAL_ERROR_EXIT();
+            }
+          }
+
+          return {};
+        });
 
         if (res.fail()) {
-          LOG_CTX("d82d4", FATAL, self->loggerContext) << res;
-          FATAL_ERROR_EXIT();
+          LOG_CTX("d82d4", ERR, self->loggerContext) << res;
+          // TODO Handle resign
+          if (res.isNot(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            return leader->finishSnapshot(snapshotRes->snapshotId);
+          }
+          return res;
         }
 
         auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);

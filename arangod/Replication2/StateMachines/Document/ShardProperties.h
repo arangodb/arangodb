@@ -33,7 +33,7 @@ inline constexpr auto kStringProperties = std::string_view{"properties"};
 
 struct ShardProperties {
   CollectionID collectionId;
-  std::shared_ptr<velocypack::Builder> properties;
+  std::shared_ptr<VPackBuilder> properties;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, ShardProperties& s) {
