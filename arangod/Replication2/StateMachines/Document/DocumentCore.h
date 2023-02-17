@@ -38,8 +38,6 @@ struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
 
 struct DocumentCore {
-  using ShardMap = std::unordered_map<ShardID, ShardProperties>;
-
   explicit DocumentCore(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       DocumentCoreParameters coreParameters,

@@ -29,6 +29,7 @@
 #include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include <memory>
 #include <optional>
@@ -145,7 +146,7 @@ struct SnapshotBatch {
 
 struct SnapshotConfig {
   SnapshotId snapshotId;
-  std::unordered_map<ShardID, ShardID> shards;
+  ShardMap shards;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotConfig& s) {
@@ -255,7 +256,7 @@ class Snapshot {
   static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
                                                       1024};  // 16MB
 
-  explicit Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+  explicit Snapshot(SnapshotId id, ShardMap shardsConfig,
                     std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
 
   Snapshot(Snapshot const&) = delete;
@@ -273,6 +274,7 @@ class Snapshot {
   SnapshotId _id;
   std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
   std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
+  SnapshotConfig _config;
   SnapshotState _state;
   SnapshotStatistics _statistics;
 };

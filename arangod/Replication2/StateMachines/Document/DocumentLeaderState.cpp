@@ -227,13 +227,8 @@ auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     return data.core->getShardMap();
   });
 
-  std::vector<ShardID> shards;
-  for (auto const& [shard, _] : shardMap) {
-    shards.emplace_back(shard);
-  }
-
   return executeSnapshotOperation<ResultT<SnapshotConfig>>(
-      [&](auto& handler) { return handler->create(std::move(shards)); },
+      [&](auto& handler) { return handler->create(shardMap); },
       [](auto& snapshot) { return snapshot->config(); });
 }
 

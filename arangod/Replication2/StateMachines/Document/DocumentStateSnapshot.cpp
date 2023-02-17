@@ -47,24 +47,21 @@ auto to_string(SnapshotId snapshotId) -> std::string {
   return std::to_string(snapshotId.id());
 }
 
-Snapshot::Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+Snapshot::Snapshot(SnapshotId id, ShardMap shardsConfig,
                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
     : _id(id),
       _databaseSnapshot{std::move(databaseSnapshot)},
+      _config{id, ShardMap{std::move(shardsConfig)}},
       _state{state::Ongoing{}} {
-  for (auto it = shardIds.rbegin(); it != shardIds.rend(); ++it) {
-    auto reader = _databaseSnapshot->createCollectionReader(*it);
+  for (auto const& [shardId, properties] : _config.shards) {
+    auto reader = _databaseSnapshot->createCollectionReader(shardId);
     _statistics.shards.emplace(
-        *it, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
-    _shards.emplace_back(*it, std::move(reader));
+        shardId, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
+    _shards.emplace_back(shardId, std::move(reader));
   }
 }
 
-auto Snapshot::config() -> SnapshotConfig {
-  // TODO add meaningful data
-  return SnapshotConfig{.snapshotId = _id,
-                        .shards = std::unordered_map<ShardID, ShardID>{}};
-}
+auto Snapshot::config() -> SnapshotConfig { return _config; }
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(

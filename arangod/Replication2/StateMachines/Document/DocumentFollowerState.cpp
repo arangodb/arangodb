@@ -67,18 +67,11 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
         auto count = ++data.currentSnapshotVersion;
 
-        for (auto const& [shardId, _] : data.core->getShardMap()) {
-          auto truncateRes = self->truncateLocalShard(shardId);
-          if (truncateRes.fail()) {
-            return truncateRes;
-          }
-        }
-
-        /*
+        // Drop all shards, as we're going to recreate them with the first
+        // transfer
         if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
           return dropAllRes;
         }
-         */
         return count;
       });
 
@@ -255,8 +248,31 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return snapshotRes.result();
         }
 
-        // TODO create shards
-        // Make sure we call finish
+        if (snapshotRes->shards.empty()) {
+          // Nothing to do, just call finish
+          return leader->finishSnapshot(snapshotRes->snapshotId);
+        }
+
+        auto res = self->_guardedData.doUnderLock(
+            [shards = std::move(snapshotRes->shards)](auto& data) -> Result {
+              for (auto const& [shardId, properties] : shards) {
+                // TODO make ensureShard take ShardProperties
+                auto res = data.core->ensureShard(
+                    shardId, properties.collectionId,
+                    properties.properties->sharedSlice());
+                if (res.fail()) {
+                  return Result{res.errorNumber(),
+                                fmt::format("Failed to ensure shard {}: {}",
+                                            shardId, res.errorMessage())};
+                }
+              }
+              return {};
+            });
+
+        if (res.fail()) {
+          LOG_CTX("d82d4", FATAL, self->loggerContext) << res;
+          FATAL_ERROR_EXIT();
+        }
 
         auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
         return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
