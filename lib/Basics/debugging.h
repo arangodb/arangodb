@@ -62,9 +62,9 @@ inline void TRI_TerminateDebugging(char const*) {}
 
 /// @brief check whether we should fail at a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-bool TRI_ShouldFailDebugging(char const* value);
+bool TRI_ShouldFailDebugging(std::string_view value);
 #else
-inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
+inline constexpr bool TRI_ShouldFailDebugging(std::string_view) { return false; }
 #endif
 
 /// @brief add a failure point

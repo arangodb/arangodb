@@ -1128,6 +1128,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collection->name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     excludeFromReplication = false;
 
     if (!value.isObject()) {
@@ -1545,6 +1551,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   auto workForOneDocument =
       [this, &operation, &options, &collection, &resultBuilder, &cid, &previous,
        &result](VPackSlice const newVal, bool isBabies) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collection->name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1802,6 +1813,11 @@ Future<OperationResult> transaction::Methods::removeLocal(
   ManagedDocumentResult previous;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     transaction::BuilderLeaser builder(this);
     arangodb::velocypack::StringRef key;
     if (value.isString()) {

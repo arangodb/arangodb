@@ -73,6 +73,9 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus removeDocument();
 
  private:
+  void addTransactionHints(std::string const& collectionName, bool isMultiple,
+                           bool isOverwritingInsert);
+
   std::unique_ptr<transaction::Methods> _activeTrx;
 };
 }  // namespace arangodb
