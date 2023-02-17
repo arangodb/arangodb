@@ -1,6 +1,12 @@
 v3.9.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the smart edge caching
+  out-of-sync, which would yield different results for OUTBOUND/INBOUND search
+  over edges. This is now fixed, however there is now a slightly higher chance
+  to get a CONFLICT response back on those queries.
+
 * Made all transactions used by the gharial API on coordinators and a few others
   marked "globally managed". This fixes an issue where transaction conflicts
   could lead to a silent out of sync situation between a leader shard and its
@@ -13,13 +19,6 @@ v3.9.8 (2023-01-23)
 * BTS-1193: Fix for schema update. When removing a field and then inserting a
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
-
-* Fixed EE: Concurrent batch insert/update CRUD operations into
-  SmartEdgeCollections on conflicting edge keys could get the
-  smart edge caching out-of-sync, which would yield different results
-  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
-  is now a slightly higher chance to get a CONFLICT response back on those
-  queries.
 
 * BTS-266: When starting up a cluster without `--cluster.force-one-shard`,
   creating a database and then restarting the cluster with the startup option
