@@ -143,6 +143,17 @@ struct SnapshotBatch {
   }
 };
 
+struct SnapshotConfig {
+  SnapshotId snapshotId;
+  std::unordered_map<ShardID, ShardID> shards;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, SnapshotConfig& s) {
+    return f.object(s).fields(f.field(kStringSnapshotId, s.snapshotId),
+                              f.field(kStringShards, s.shards));
+  }
+};
+
 /*
  * This namespace encloses the different states a snapshot can be in.
  */
@@ -252,6 +263,7 @@ class Snapshot {
   Snapshot const& operator=(Snapshot const&) = delete;
   Snapshot const& operator=(Snapshot&&) = delete;
 
+  auto config() -> SnapshotConfig;
   auto fetch() -> ResultT<SnapshotBatch>;
   auto finish() -> Result;
   auto abort() -> Result;

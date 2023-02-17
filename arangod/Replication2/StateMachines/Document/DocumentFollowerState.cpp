@@ -214,6 +214,41 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     LogIndex waitForIndex, std::uint64_t snapshotVersion,
+    futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+    -> futures::Future<Result> {
+  return std::move(snapshotFuture)
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+             snapshotVersion](
+                futures::Try<ResultT<SnapshotConfig>>&& tryResult) mutable
+            -> futures::Future<Result> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+        }
+
+        auto catchRes =
+            basics::catchToResultT([&] { return std::move(tryResult).get(); });
+        if (catchRes.fail()) {
+          return catchRes.result();
+        }
+
+        auto snapshotRes = catchRes.get();
+        if (snapshotRes.fail()) {
+          return snapshotRes.result();
+        }
+
+        // TODO create shards
+        // Make sure we call finish
+
+        auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
+        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                            snapshotVersion, std::move(fut));
+      });
+}
+
+auto DocumentFollowerState::handleSnapshotTransfer(
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    LogIndex waitForIndex, std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
   return std::move(snapshotFuture)

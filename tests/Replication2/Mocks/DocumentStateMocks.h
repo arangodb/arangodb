@@ -264,7 +264,7 @@ struct MockDocumentStateSnapshotHandler
 struct MockDocumentStateLeaderInterface
     : replicated_state::document::IDocumentStateLeaderInterface {
   MOCK_METHOD(
-      futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
+      futures::Future<ResultT<replicated_state::document::SnapshotConfig>>,
       startSnapshot, (LogIndex), (override));
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,

@@ -201,10 +201,10 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 }
 
 auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
-    -> ResultT<SnapshotBatch> {
-  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
+    -> ResultT<SnapshotConfig> {
+  return executeSnapshotOperation<ResultT<SnapshotConfig>>(
       [&](auto& handler) { return handler->create(shardId); },
-      [](auto& snapshot) { return snapshot->fetch(); });
+      [](auto& snapshot) { return snapshot->config(); });
 }
 
 auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)

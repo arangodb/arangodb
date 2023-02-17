@@ -127,8 +127,8 @@ struct DocumentStateMachineTest : testing::Test {
         .WillByDefault(Return(Result{}));
 
     ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
-      return futures::Future<ResultT<SnapshotBatch>>{
-          std::in_place, SnapshotBatch{SnapshotId{1}, shardId}};
+      return futures::Future<ResultT<SnapshotConfig>>{
+          std::in_place, SnapshotConfig{SnapshotId{1}, {}}};
     });
     ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
         .WillByDefault([&](SnapshotId) {
@@ -732,17 +732,15 @@ TEST_F(
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock);
 
-  // 1 truncate, 2 inserts and 3 commits
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(6);
+  // 1 truncate + commit, 1 insert + commit due to the first batch
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(4);
 
   EXPECT_CALL(*networkHandlerMock, getLeaderInterface("participantId"))
       .Times(1);
 
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
-    return futures::Future<ResultT<SnapshotBatch>>{
-        std::in_place,
-        SnapshotBatch{
-            .snapshotId = SnapshotId{1}, .shardId = shardId, .hasMore = true}};
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{.snapshotId = SnapshotId{1}}};
   });
 
   EXPECT_CALL(*leaderInterfaceMock, startSnapshot(LogIndex{1})).Times(1);
@@ -794,10 +792,8 @@ TEST_F(DocumentStateMachineTest,
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
     acquireSnapshotCalled.store(true);
     acquireSnapshotCalled.notify_one();
-    return futures::Future<ResultT<SnapshotBatch>>{
-        std::in_place,
-        SnapshotBatch{
-            .snapshotId = SnapshotId{1}, .shardId = shardId, .hasMore = true}};
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{.snapshotId = SnapshotId{1}}};
   });
   ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
       .WillByDefault([&](SnapshotId id) {

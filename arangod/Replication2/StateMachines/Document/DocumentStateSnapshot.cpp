@@ -60,6 +60,12 @@ Snapshot::Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
   }
 }
 
+auto Snapshot::config() -> SnapshotConfig {
+  // TODO add meaningful data
+  return SnapshotConfig{.snapshotId = _id,
+                        .shards = std::unordered_map<ShardID, ShardID>{}};
+}
+
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
       overload{
