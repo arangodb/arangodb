@@ -910,3 +910,15 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   }
   return res;
 }
+
+arangodb::Index::FilterCosts RocksDBGeoIndex::supportsFilterCondition(
+    transaction::Methods& /*trx*/,
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
+  arangodb::Index::FilterCosts costs =
+      arangodb::Index::FilterCosts::defaultCosts(itemsInIndex, 1);
+  costs.estimatedItems /= 100;
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
+  return costs;
+}

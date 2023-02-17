@@ -61,7 +61,7 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::unique_ptr<IDocumentStateSnapshotHandler> {
   return std::make_unique<DocumentStateSnapshotHandler>(
-      std::make_unique<CollectionReaderFactory>(vocbase));
+      std::make_unique<DatabaseSnapshotFactory>(vocbase));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

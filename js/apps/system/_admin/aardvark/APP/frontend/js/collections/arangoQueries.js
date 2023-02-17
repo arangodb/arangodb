@@ -5,6 +5,9 @@
   'use strict';
 
   window.ArangoQueries = Backbone.Collection.extend({
+    searchOptions: {
+      searchPhrase: null,
+    },
 
     getQueryPath: function () {
       return frontendConfig.db + '-' + this.username + '-queries';
