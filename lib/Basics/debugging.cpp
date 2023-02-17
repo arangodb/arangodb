@@ -133,7 +133,7 @@ void TRI_TerminateDebugging(char const* message) {
 }
 
 /// @brief check whether we should fail at a specific failure point
-bool TRI_ShouldFailDebugging(char const* value) {
+bool TRI_ShouldFailDebugging(std::string_view value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
   return ::failurePoints.find(arangodb::velocypack::StringRef(value)) !=
          ::failurePoints.end();
