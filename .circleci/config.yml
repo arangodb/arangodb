@@ -1,0 +1,48 @@
+version: 2.1
+
+# NOTE:
+#
+# This file has been added to 3.10, 3.9, and 3.8 stable branches to prevent
+# CircleCI's Github integration from spamming PRs that are opened from these
+# branches with failures.
+#
+# For CircleCI to run successful testing on this branch the test setup from
+# the devel branch will have to be ported.
+#
+setup: true
+
+orbs:
+  continuation: circleci/continuation@0.3.1
+
+# our defined job, and its steps
+jobs:
+  setup:
+    docker:
+      - image: cimg/python:3.11.1
+    executor: continuation/default
+    steps:
+      - run:
+          name: Checkout
+          command: |
+            # We do not want to clone the whole repository since we only need a few files.
+            # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
+            (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
+            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/tests/test-definitions.txt)
+      - run:
+          name: Generate config
+          command: |
+            pip install pyyaml
+            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml "tests/test-definitions.txt"
+
+      - continuation/continue:
+          configuration_path: generated_config.yml # use newly generated config to continue
+
+# our single workflow, that triggers the setup job defined above
+workflows:
+  setup:
+    when:
+      or:
+        - equal: [ devel, << pipeline.git.branch >> ]
+        - equal: [ api, << pipeline.trigger_source >> ]
+    jobs:
+      - setup
