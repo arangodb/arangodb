@@ -2832,19 +2832,19 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
       return replication2::replicated_log::executeCheckReplicatedLog(
           dbName, idString, std::move(log), health, std::move(envelope));
     } catch (std::exception const& err) {
-      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+      LOG_TOPIC("b6d7e", ERR, Logger::REPLICATION2)
           << "Supervision caught exception while handling replicated log"
           << dbName << "/" << idString << ": " << err.what();
       throw;
     }
   } else {
-    LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("56a0d", ERR, Logger::REPLICATION2)
         << "Supervision could not parse Target node for replicated log "
         << dbName << "/" << idString;
     return envelope;
   }
 } catch (std::exception const& err) {
-  LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
+  LOG_TOPIC("9f7fc", ERR, Logger::REPLICATION2)
       << "Supervision caught exception while working with replicated log"
       << dbName << "/" << idString << ": " << err.what();
   return envelope;
@@ -2862,7 +2862,7 @@ auto handleCollectionGroup(Node const& snapshot, Node const& targetNode,
   try {
     maybeGroup = parseCollectionGroupAgency(snapshot, dbName, idString);
   } catch (std::exception const& err) {
-    LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("fe14f", ERR, Logger::REPLICATION2)
         << "Supervision caught exception while parsing collection group "
         << dbName << "/" << idString << ": " << err.what();
     throw;

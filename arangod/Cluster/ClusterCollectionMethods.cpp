@@ -185,7 +185,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
               callbackRegistry.unregisterCallback(cb);
             }
           } catch (std::exception const& ex) {
-            LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+            LOG_TOPIC("cc912", ERR, Logger::CLUSTER)
                 << "Failed to unregister agency callback: " << ex.what();
           } catch (...) {
             // Should never be thrown, we only throw exceptions
