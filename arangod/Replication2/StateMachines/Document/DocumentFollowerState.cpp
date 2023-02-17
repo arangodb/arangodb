@@ -194,31 +194,20 @@ auto DocumentFollowerState::forceLocalTransaction(ShardID shardId,
                                                   velocypack::SharedSlice slice)
     -> Result {
   auto trxId = TransactionId::createFollower();
-  auto doc = DocumentLogEntry{
-      std::string(shardId), opType, std::move(slice), trxId, {}};
+  auto doc = DocumentLogEntry{shardId, opType, std::move(slice), trxId, {}};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(trxId);
     return applyRes;
   }
   auto commit = DocumentLogEntry{
-      std::string(shardId), OperationType::kCommit, {}, trxId, {}};
+      std::move(shardId), OperationType::kCommit, {}, trxId, {}};
   return _transactionHandler->applyEntry(commit);
-}
-
-auto DocumentFollowerState::truncateLocalShard(ShardID const& shardId)
-    -> Result {
-  VPackBuilder b;
-  b.openObject();
-  b.add("collection", VPackValue(shardId));
-  b.close();
-  return forceLocalTransaction(shardId, OperationType::kTruncate,
-                               b.sharedSlice());
 }
 
 auto DocumentFollowerState::populateLocalShard(ShardID shardId,
                                                velocypack::SharedSlice slice)
     -> Result {
-  return forceLocalTransaction(shardId, OperationType::kInsert,
+  return forceLocalTransaction(std::move(shardId), OperationType::kInsert,
                                std::move(slice));
 }
 
@@ -256,7 +245,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         auto res = self->_guardedData.doUnderLock(
             [shards = std::move(snapshotRes->shards)](auto& data) -> Result {
               for (auto const& [shardId, properties] : shards) {
-                // TODO make ensureShard take ShardProperties
                 auto res = data.core->ensureShard(
                     shardId, properties.collectionId,
                     properties.properties->sharedSlice());

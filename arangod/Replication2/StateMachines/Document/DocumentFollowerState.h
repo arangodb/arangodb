@@ -60,7 +60,6 @@ struct DocumentFollowerState
  private:
   auto forceLocalTransaction(ShardID shardId, OperationType opType,
                              velocypack::SharedSlice slice) -> Result;
-  auto truncateLocalShard(ShardID const& shardId) -> Result;
   auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
       -> Result;
   auto handleSnapshotTransfer(

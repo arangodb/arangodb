@@ -269,9 +269,9 @@ class Snapshot {
   auto finish() -> Result;
   auto abort() -> Result;
   [[nodiscard]] auto status() const -> SnapshotStatus;
+  auto getId() const -> SnapshotId;
 
  private:
-  SnapshotId _id;
   std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
   std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
   SnapshotConfig _config;
