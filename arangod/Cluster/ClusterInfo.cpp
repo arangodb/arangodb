@@ -2228,6 +2228,34 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
   return result;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Generate Collection Stubs during Database buiding
+/// These stubs are no real collection, use this API with care
+/// and only if the database is in building state.
+//////////////////////////////////////////////////////////////////////////////
+
+[[nodiscard]] std::unordered_map<std::string,
+                                 std::shared_ptr<LogicalCollection>>
+ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
+  std::unordered_map<std::string, std::shared_ptr<LogicalCollection>> result;
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& agencyCache = clusterFeature.agencyCache();
+
+  // TODO: Make this an AgencyPath object
+  std::string collectionsPath = "Plan/Collections/" + database.name();
+  VPackBuilder collectionsBuilder;
+
+  // We really do not care for the Index.
+  std::ignore = agencyCache.get(collectionsBuilder, collectionsPath);
+  auto collectionsSlice = collectionsBuilder.slice();
+  for (auto const& [cid, colData] : VPackObjectIterator(collectionsSlice)) {
+    auto collection = database.createCollectionObject(colData, /*isAStub*/ true);
+    TRI_ASSERT(collection != nullptr);
+    result.emplace(collection->name(), collection);
+  }
+  return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection in current. This returns information about
 /// all shards in the collection.
@@ -2278,7 +2306,9 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
   auto const& colList = _plannedCollections.find(databaseName);
   if (colList == _plannedCollections.end()) {
     // If there are no collections in the Database, it is not there.
-    return Result{TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+    // So we are in the create New database case.
+    // We will protect against deleted database with Preconditions
+    return {_planVersion};
   }
 
   auto const& viewList = _plannedViews.find(databaseName);
