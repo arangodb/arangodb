@@ -42,7 +42,7 @@ struct CollectionIndexesProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionIndexesProperties& props) {
-  return f.object(props).fields(f.field(StaticStrings::Indexes, props.indexes));
+  return f.apply(props.indexes);
 }
 
 }  // namespace arangodb

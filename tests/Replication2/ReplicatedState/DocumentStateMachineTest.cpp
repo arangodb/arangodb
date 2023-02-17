@@ -198,7 +198,7 @@ struct DocumentStateMachineTest : testing::Test {
   const GlobalLogIdentifier globalId{dbName, logId};
   const ShardID shardId = "s1";
   const document::DocumentCoreParameters coreParams{collectionId, dbName,
-                                                    shardId};
+                                                    shardId, 0, 0};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
 };
