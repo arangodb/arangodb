@@ -106,7 +106,7 @@ auto DocumentFollowerState::applyEntries(
               auto res =
                   data.core->ensureShard(doc.shardId, collectionId, doc.data);
               if (res.fail()) {
-                LOG_CTX("d82d4", FATAL, self->loggerContext)
+                LOG_CTX("75cda", FATAL, self->loggerContext)
                     << "Failed to create shard " << doc.shardId
                     << " of collection " << collectionId
                     << " with error: " << res;
