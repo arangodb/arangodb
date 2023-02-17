@@ -78,6 +78,23 @@ const createCollectionTarget = function (gid, cid) {
   };
 };
 
+const getCollectionGroupServers = function (database, gid) {
+  const {plan} = readCollectionGroup(database, gid);
+  const logs = plan.shardSheaves.map((x) => x.replicatedLog);
+
+  const servers = logs.map(function (logId) {
+    const {target} = lh.readReplicatedLogAgency(database, logId);
+    return Object.keys(target.participants);
+  });
+
+  const leaders = logs.map(function (logId) {
+    const {plan} = lh.readReplicatedLogAgency(database, logId);
+    return plan.currentTerm.leader.serverId;
+  });
+
+  return {servers, leaders, logs};
+};
+
 const createCollectionGroupTarget = function (database, config) {
   const gid = lh.nextUniqueLogId();
 
@@ -113,7 +130,9 @@ const createCollectionGroupTarget = function (database, config) {
 
   serverHelper.agency.write([[agencyTrx]]);
   lh.waitFor(collectionGroupIsReady(database, gid));
-  return {gid, cid: cids[0], cids};
+
+  const {servers, leaders, logs} = getCollectionGroupServers(database, gid);
+  return {gid, cid: cids[0], cids, logs, servers, leaders};
 };
 
 const addCollectionToGroup = function (database, gid) {
@@ -152,6 +171,12 @@ const readCollection = function (database, cid) {
   const plan = lh.readAgencyValueAt(`Plan/Collections/${database}/${cid}`);
   const current = lh.readAgencyValueAt(`Current/Collections/${database}/${cid}`);
   return {target, plan, current};
+};
+
+const modifyCollectionGroupTarget = function (database, gid, cb) {
+  const {target} = readCollectionGroup(database, gid);
+  const res = cb(target) || target;
+  serverHelper.agency.set(`Target/CollectionGroups/${database}/${gid}`, res);
 };
 
 const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -207,7 +232,51 @@ const collectionGroupsSupervisionSuite = function () {
         const {plan} = readCollection(database, cid);
         assertTrue(plan === undefined);
       }
-    }
+    },
+
+    testIncreaseReplicationFactor: function () {
+      const {gid} = createCollectionGroupTarget(database, {
+        replicationFactor: 3,
+        numberOfShards: 3,
+        numberOfCollections: 2,
+      });
+
+      modifyCollectionGroupTarget(database, gid, function (target) {
+        target.attributes.mutable.replicationFactor = 4;
+        target.version = 2;
+      });
+
+      lh.waitFor(collectionGroupIsReady(database, gid));
+      {
+        const {servers} = getCollectionGroupServers(database, gid);
+        for (const shard of servers) {
+          assertEqual(shard.length, 4);
+        }
+      }
+    },
+
+    testDecreaseReplicationFactor: function () {
+      const {gid, leaders} = createCollectionGroupTarget(database, {
+        replicationFactor: 4,
+        numberOfShards: 3,
+        numberOfCollections: 2,
+      });
+
+      modifyCollectionGroupTarget(database, gid, function (target) {
+        target.attributes.mutable.replicationFactor = 2;
+        target.version = 2;
+      });
+
+      lh.waitFor(collectionGroupIsReady(database, gid));
+      {
+        const {servers, leaders: newLeaders} = getCollectionGroupServers(database, gid);
+        for (const shard of servers) {
+          assertEqual(shard.length, 2);
+        }
+        // leaders should be untouched
+        assertEqual(leaders, newLeaders);
+      }
+    },
   };
 };
 
