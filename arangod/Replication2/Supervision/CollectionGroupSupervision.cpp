@@ -38,7 +38,7 @@ using namespace arangodb::replication2::document::supervision;
 namespace ag = arangodb::replication2::agency;
 namespace {
 
-auto checkReplicatedLogConverged(ag::Log const& log) -> bool {
+auto checkReplicatedLogConverged(ag::Log const& log) {
   if (not log.current or not log.current->supervision) {
     return false;
   }
@@ -233,10 +233,15 @@ auto pickBestServerToRemoveFromLog(
     std::shuffle(servers.begin(), servers.end(), g);
   }
 
-  static_assert(false < true);
-  auto const cmpTriple = [&](auto const& server) {
-    return std::make_tuple(!health.notIsFailed(server), leader == server,
-                           log.target.leader == server);
+  auto const compareTuple = [&](auto const& server) {
+    bool const isHealthy = not health.notIsFailed(server);
+    bool const isPlanLeader = leader == server;
+    bool const isTargetLeader = log.target.leader == server;
+
+    // TODO prefer servers without snapshot over those with
+    // TODO report server snapshot initially as invalid?
+
+    return std::make_tuple(isHealthy, isPlanLeader, isTargetLeader);
   };
 
   std::stable_sort(servers.begin(), servers.end(),
@@ -244,7 +249,7 @@ auto pickBestServerToRemoveFromLog(
                      // remove failed servers first
                      // then remove non-leaders
                      // then remove leaders that are not Target leaders
-                     return cmpTriple(left) < cmpTriple(right);
+                     return compareTuple(left) < compareTuple(right);
                    });
   ADB_PROD_ASSERT(not log.target.leader or
                   servers.front() != log.target.leader);
@@ -360,11 +365,12 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
 
     // TODO compare mutable properties and update if necessary
 
-    // TODO remove deprecatedShardMap comparison
-    auto expectedShardMap = computeShardList(
-        group.logs, group.plan->shardSheaves, collection.shardList);
-    if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
-      return UpdateCollectionShardMap{cid, expectedShardMap};
+    {  // TODO remove deprecatedShardMap comparison
+      auto expectedShardMap = computeShardList(
+          group.logs, group.plan->shardSheaves, collection.shardList);
+      if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
+        return UpdateCollectionShardMap{cid, expectedShardMap};
+      }
     }
   }
 
