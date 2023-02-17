@@ -247,7 +247,7 @@ struct MockDocumentStateSnapshotHandler
           real);
 
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
-              create, (std::string_view), (override));
+              create, (std::vector<ShardID>), (override));
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               find, (replicated_state::document::SnapshotId const&),
               (override));

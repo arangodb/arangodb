@@ -67,7 +67,6 @@ auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
       LoggerContext(Logger::REPLICATED_STATE)
           .with<logContextKeyStateImpl>(DocumentState::NAME)
           .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
       vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
