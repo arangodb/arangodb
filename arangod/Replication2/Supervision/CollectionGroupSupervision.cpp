@@ -216,6 +216,41 @@ auto createCollectionGroupTarget(
                                   std::move(collections)};
 }
 
+auto pickBestServerToRemoveFromLog(
+    ag::Log const& log, replicated_log::ParticipantsHealth const& health)
+    -> ParticipantId {
+  auto const& leader = getReplicatedLogLeader(log);
+
+  std::vector<ParticipantId> servers;
+  for (auto const& [p, flags] : log.target.participants) {
+    servers.push_back(p);
+  }
+
+  {
+    // TODO reuse random device?
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(servers.begin(), servers.end(), g);
+  }
+
+  static_assert(false < true);
+  auto const cmpTriple = [&](auto const& server) {
+    return std::make_tuple(!health.notIsFailed(server), leader == server,
+                           log.target.leader == server);
+  };
+
+  std::stable_sort(servers.begin(), servers.end(),
+                   [&](auto const& left, auto const& right) {
+                     // remove failed servers first
+                     // then remove non-leaders
+                     // then remove leaders that are not Target leaders
+                     return cmpTriple(left) < cmpTriple(right);
+                   });
+  ADB_PROD_ASSERT(not log.target.leader or
+                  servers.front() != log.target.leader);
+  return servers.front();
+}
+
 auto checkAssociatedReplicatedLogs(
     ag::CollectionGroupTargetSpecification const& target,
     ag::CollectionGroupPlanSpecification const& plan,
@@ -262,13 +297,11 @@ auto checkAssociatedReplicatedLogs(
         // TODO add report that no server is available
       }
     } else if (currentReplicationFactor > expectedReplicationFactor) {
-      // TODO prefer an unhealthy participant over a healthy one
-      //  do not pick the current leader
       ADB_PROD_ASSERT(log.target.participants.size() > 1)
           << "refuse to remove the last remaining participant of replicated "
              "log "
           << log.target.id;
-      auto const& server = log.target.participants.begin()->first;
+      auto const& server = pickBestServerToRemoveFromLog(log, health);
       return RemoveParticipantFromLog{log.target.id, server};
     }
 
