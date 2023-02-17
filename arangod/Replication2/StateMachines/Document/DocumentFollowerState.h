@@ -48,8 +48,7 @@ struct DocumentFollowerState
 
   LoggerContext const loggerContext;
 
-  // unprotected for gtests. TODO think about whether there's a better way
-  // protected:
+ protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept

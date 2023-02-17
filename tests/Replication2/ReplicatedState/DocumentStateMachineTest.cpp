@@ -209,12 +209,6 @@ TEST_F(DocumentStateMachineTest, constructing_the_core_does_not_create_shard) {
 TEST_F(DocumentStateMachineTest, shard_is_dropped_during_cleanup) {
   using namespace testing;
 
-  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
-    return futures::Future<ResultT<SnapshotConfig>>{
-        std::in_place,
-        SnapshotConfig{.snapshotId = SnapshotId{1}, .shards = shardMap}};
-  });
-
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
       factory.constructCore(vocbaseMock, globalId, coreParams),
@@ -282,6 +276,48 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
     bytesSent += batch.payload.byteSize();
     EXPECT_EQ(status.statistics.bytesSent, bytesSent);
   }
+}
+
+TEST_F(DocumentStateMachineTest,
+       snapshot_remove_previous_shards_and_create_new_ones) {
+  using namespace testing;
+
+  // Acquire a snapshot containing a single shard
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(vocbaseMock, globalId, coreParams),
+      handlersFactoryMock);
+  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+
+  // We now acquire a second snapshot with a different set of shards
+  const ShardID shardId1 = "s123";
+  const ShardID shardId2 = "s345";
+  auto newShardMap = document::ShardMap{
+      {shardId1,
+       ShardProperties{.collectionId = collectionId,
+                       .properties = std::make_shared<VPackBuilder>()}},
+      {shardId2,
+       ShardProperties{.collectionId = collectionId,
+                       .properties = std::make_shared<VPackBuilder>()}}};
+
+  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{SnapshotId{12345}, newShardMap}};
+  });
+
+  // The previous shard should be dropped
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
+  // The new shards should be created
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId1, collectionId, _))
+      .Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId2, collectionId, _))
+      .Times(1);
+  follower->acquireSnapshot("participantId", LogIndex{1});
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 }
 
 TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
