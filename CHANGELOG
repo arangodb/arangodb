@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
 * Made all transactions used by the gharial API on coordinators and a few
   others marked "globally managed". This fixes an issue where
   transaction conflicts could lead to a silent out of sync situation
