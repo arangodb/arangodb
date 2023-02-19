@@ -1,6 +1,8 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.7.
+
 * Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
 
 * BTS-1193: Fix for schema update. When removing a field and then inserting a
@@ -16,8 +18,6 @@ v3.8.9 (XXXX-XX-XX)
   parameter being true as a condition to run optimizations was removed.
 
 * Updated arangosync to v2.14.0.
-
-* Updated ArangoDB Starter to 0.15.6.
 
 * ES-1396: under some rare circumstances it was possible that background index
   creation missed some documents in case the documents were inserted after
