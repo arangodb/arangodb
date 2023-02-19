@@ -108,7 +108,7 @@
       'change #querySearchInput': 'restrictToSearchPhrase',
       'keydown #querySearchInput': 'restrictToSearchPhraseKey',
       'click #sortOptionsToggle': 'toggleSortOptions',
-      'click #sortOrder': 'sortOrder',
+      'click #querySortOrder': 'sortOrder',
     },
     toggleSortOptions: function () {
       $('#sortOptionsToggle').toggleClass('activated');
@@ -195,7 +195,7 @@
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortOrder;
 
-      searchOptions.sortOrder = (($('#sortOrder').is(':checked') === true) ? -1 : 1);
+      searchOptions.sortOrder = (($('#querySortOrder').is(':checked') === true) ? -1 : 1);
       if (oldValue !== searchOptions.sortOrder) {
         this.updateQueryTable();
         this.resize();
@@ -1565,6 +1565,7 @@
         delete k.value;
       });
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1578,7 +1579,6 @@
 
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
-      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
@@ -1599,7 +1599,7 @@
           return rows.reverse();
         }
         if (this.collection.searchOptions.sortOrder === -1) {
-          return rows.reverse().reverse();
+          return rows;
         }
       }
       if (this.collection.searchOptions.sortOrder === 1) {
