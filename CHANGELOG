@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.7.
+
 * Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
 
 * Made all transactions used by the gharial API on coordinators and a few
