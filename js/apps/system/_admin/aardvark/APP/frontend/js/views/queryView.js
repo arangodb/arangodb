@@ -182,6 +182,15 @@
         this.resize();
       }
     },
+    sortDateModified: function () {
+      var searchOptions = this.collection.searchOptions;
+      var oldValue = searchOptions.sortBy;
+      searchOptions.sortBy = (($('#sortDateModified').is(':checked') === true) ? 'dateModified' : 'name');
+      if (oldValue !== searchOptions.sortBy) {
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
     sortDateAdded: function () {
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.sortBy;
@@ -397,7 +406,8 @@
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
         'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery',
         'searchQueryByNameContainer',
-        'sortOptionsToggle'
+        'sortOptionsToggle',
+        'sortOptionsDropdown'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -1552,6 +1562,8 @@
       // Reverse order: Last added query shall be displayed first
       // console.log({customQueries: self.customQueries, table: this.myQueriesTableDesc})
       // self.customQueries.reverse();
+      this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1563,9 +1575,9 @@
           delete k.parameter;
         }
         delete k.value;
+        delete k.modified_at;
       });
-      this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
-      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
+      
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1593,6 +1605,25 @@
           x = 0;
         }
         return x;
+      }
+      function sortByModifiedAt (a, b) {
+        var x;
+        if (a.modified_at > b.modified_at) {
+          x = -1;
+        } else if (a.modified_at < b.modified_at) {
+          x = 1;
+        } else {
+          x = 0;
+        }
+        return x;
+      }
+      if (this.collection.searchOptions.sortBy === 'dateModified') {
+        if (this.collection.searchOptions.sortOrder === 1) {
+          return rows.sort(sortByModifiedAt);
+        }
+        if (this.collection.searchOptions.sortOrder === -1) {
+          return rows.sort(sortByModifiedAt).reverse();
+        }
       }
       if (this.collection.searchOptions.sortBy === 'dateAdded') {
         if (this.collection.searchOptions.sortOrder === 1) {
@@ -2859,7 +2890,8 @@
         self.customQueries.push({
           name: model.get('name'),
           value: model.get('value'),
-          parameter: model.get('parameter')
+          parameter: model.get('parameter'),
+          modified_at: model.get('modified_at')
         });
       });
     },
