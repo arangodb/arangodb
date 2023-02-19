@@ -1,6 +1,8 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
 * BTS-1193: Fix for schema update. When removing a field and then inserting a
   new field into the schema, previously, both old and new schema would be
   merged, meaning it would maintain the old field and add the new one.
@@ -69,8 +71,6 @@ v3.8.9 (XXXX-XX-XX)
   for regular queries on single servers (a V8 context is only available if a
   query was executed inside Foxx or from inside a JS transaction, but not
   otherwise).
-
-* Updated OpenSSL to 1.1.1s.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
   filters with very long lists. Free sub-iterators as soon as they are
