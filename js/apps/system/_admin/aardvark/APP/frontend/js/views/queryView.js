@@ -372,6 +372,7 @@
     toggleQueries: function (e) {
       if (e) {
         if (e.currentTarget.id === 'toggleQueries1') {
+          // this means we are viewing a single query
           this.updateQueryTable();
           $('#bindParamAceEditor').hide();
           $('#bindParamEditor').show();
@@ -380,6 +381,11 @@
           this.queryPreview.setValue('No query selected.', 1);
           this.deselect(this.queryPreview);
         } else {
+          // this means we are viewing list of queries
+          if ($('#sortOptionsDropdown').is(':visible')) { 
+            $('#sortOptionsDropdown').hide();
+            $('#sortOptionsToggle').toggleClass('activated');
+          }
           $('#updateCurrentQuery').hide();
           if (this.settings.aqlWidth === undefined) {
             $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
@@ -392,6 +398,11 @@
           }
         }
       } else {
+        // this means toggle happend due to some other reason (copy button)
+        if ($('#sortOptionsDropdown').is(':visible')) { 
+          $('#sortOptionsDropdown').hide();
+          $('#sortOptionsToggle').toggleClass('activated');
+        }
         if (this.settings.aqlWidth === undefined) {
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
         } else {
@@ -406,8 +417,7 @@
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
         'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery',
         'searchQueryByNameContainer',
-        'sortOptionsToggle',
-        'sortOptionsDropdown'
+        'sortOptionsToggle'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
