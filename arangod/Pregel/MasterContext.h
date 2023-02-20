@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include <velocypack/Slice.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -41,7 +40,6 @@ class MasterContext {
   uint64_t _edgeCount = 0;
   // Should cause the master to tell everyone to enter the next phase
   AggregatorHandler* _aggregators = nullptr;
-  ReportManager* _reports;
 
  public:
   MasterContext() {}
@@ -102,8 +100,6 @@ class MasterContext {
   virtual bool postGlobalSuperstep() { return true; }
 
   virtual void postApplication() {}
-
-  ReportManager& getReportManager() { return *_reports; }
 
   virtual void serializeValues(VPackBuilder& b) {}
 

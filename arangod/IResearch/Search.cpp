@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -474,7 +474,8 @@ Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition)
         void const* key = static_cast<LogicalView*>(lock.get());
         auto* snapshot = getViewSnapshot(trx, key);
         if (snapshot == nullptr) {
-          makeViewSnapshot(trx, key, false, lock->name(), lock->getLinks());
+          makeViewSnapshot(trx, key, false, lock->name(),
+                           lock->getLinks(nullptr));
         }
       }
     };
@@ -497,14 +498,19 @@ bool Search::apply(transaction::Methods& trx) {
   return trx.addStatusChangeCallback(&_trxCallback);  // add snapshot
 }
 
-ViewSnapshot::Links Search::getLinks() const {
+ViewSnapshot::Links Search::getLinks(
+    containers::FlatHashSet<DataSourceId> const* sources) const {
   ViewSnapshot::Links indexes;
   std::shared_lock lock{_mutex};
   indexes.reserve(_indexes.size());
-  for (auto const& [_, handles] : _indexes) {
-    for (auto const& handle : handles) {
-      if (auto dataStore = handle->lock(); dataStore) {
-        indexes.push_back(std::move(dataStore));
+  for (auto const& [cid, handles] : _indexes) {
+    // FIXME: remove sources from this function as soon as ViewSnapshotView
+    // would be available again.
+    if (!sources || sources->contains(cid)) {
+      for (auto const& handle : handles) {
+        if (auto dataStore = handle->lock(); dataStore) {
+          indexes.push_back(std::move(dataStore));
+        }
       }
     }
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -288,7 +288,7 @@ struct EmbeddedFieldsWithObjectInvariant : EmbeddedFields<Inspector> {
   }
 
   Status checkInvariant() override {
-    return Inspector::Base::template checkInvariant<
+    return Inspector::Base::template doCheckInvariant<
         detail::ObjectInvariantFailedError>(std::forward<Invariant>(invariant),
                                             object);
   }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,20 +32,17 @@ struct IResearchDataStoreMeta {
   class ConsolidationPolicy {
    public:
     ConsolidationPolicy() = default;
-    ConsolidationPolicy(irs::index_writer::consolidation_policy_t&& policy,
+    ConsolidationPolicy(irs::ConsolidationPolicy&& policy,
                         VPackBuilder&& properties) noexcept
         : _policy(std::move(policy)), _properties(std::move(properties)) {}
 
-    irs::index_writer::consolidation_policy_t const& policy() const noexcept {
-      return _policy;
-    }
+    irs::ConsolidationPolicy const& policy() const noexcept { return _policy; }
 
     VPackSlice properties() const noexcept { return _properties.slice(); }
 
    private:
-    irs::index_writer::consolidation_policy_t
-        _policy;               // policy instance (false == disable)
-    VPackBuilder _properties;  // normalized policy definition
+    irs::ConsolidationPolicy _policy;  // policy instance (false == disable)
+    VPackBuilder _properties;          // normalized policy definition
   };
 
   IResearchDataStoreMeta();

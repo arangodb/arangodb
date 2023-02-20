@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,7 +116,7 @@ class NondeterministicExpressionIterator final
 
 class ExpressionQuery : public irs::filter::prepared {
  public:
-  void visit(irs::sub_reader const& segment, irs::PreparedStateVisitor& visitor,
+  void visit(irs::SubReader const& segment, irs::PreparedStateVisitor& visitor,
              irs::score_t boost) const final {
     return _allQuery->visit(segment, visitor, boost);
   }
@@ -230,7 +230,7 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::index_reader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Order const& order,
     irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter

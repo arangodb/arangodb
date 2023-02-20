@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,4 +80,10 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(
 
 void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
   _wb->PutLogData(blob);
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
+  return {};
 }

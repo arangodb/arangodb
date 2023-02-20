@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -332,6 +332,9 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
   _right.clear();
+
+  // 3.) Remove finished state
+  setAlgorithmUnfinished();
 }
 
 /**
@@ -344,7 +347,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::isDone() const {
-  return _results.empty() && searchDone();
+  return (_results.empty() && searchDone()) || isAlgorithmFinished();
 }
 
 /**
@@ -407,6 +410,16 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
       _resultPath.toVelocyPack(result);
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }
@@ -444,6 +457,27 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   fetchResults();
 }
 
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmFinished() {
+  _algorithmFinished = true;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmUnfinished() {
+  _algorithmFinished = false;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::isAlgorithmFinished() const {
+  return _algorithmFinished;
+}
+
 /**
  * @brief Skip the next Path, like getNextPath, but does not return the path.
  *
@@ -461,6 +495,16 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     while (!_results.empty()) {
       // just drop one result for skipping
       _results.pop_back();
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }
@@ -485,7 +529,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _baselineDepth;
+         (_left.getDepth() + _right.getDepth() > _baselineDepth) ||
+         isAlgorithmFinished();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,

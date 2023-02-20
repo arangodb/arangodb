@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,9 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;
 
@@ -50,7 +51,7 @@ class WorkerConfig {
 
  public:
   explicit WorkerConfig(TRI_vocbase_t* vocbase);
-  void updateConfig(PregelFeature& feature, VPackSlice updated);
+  void updateConfig(PregelFeature& feature, CreateWorker const& updated);
 
   // get effective parallelism from Pregel feature and params
   static size_t parallelism(PregelFeature& feature, VPackSlice params);
@@ -99,6 +100,9 @@ class WorkerConfig {
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
   }
+  [[nodiscard]] ShardID globalShardID(PregelShard shard) const {
+    return _globalShardIDs.at(shard.value);
+  }
 
   // convenvience access without guaranteed order, same values as in
   // vertexCollectionShards
@@ -132,7 +136,7 @@ class WorkerConfig {
       ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
-  PregelID documentIdToPregel(std::string const& documentID) const;
+  VertexID documentIdToPregel(std::string const& documentID) const;
 
  private:
   ExecutionNumber _executionNumber{};

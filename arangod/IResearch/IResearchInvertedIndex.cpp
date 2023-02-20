@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,11 @@
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
+#include "IResearch/IResearchReadUtils.h"
+#include "IResearch/SearchDoc.h"
+#include "IResearch/ViewSnapshot.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
@@ -132,14 +136,6 @@ bool supportsFilterNode(
   return rv.ok();
 }
 
-const irs::payload NoPayload;
-
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader = segment.column(DocumentPrimaryKey::PK());
-
-  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
-}
-
 /// @brief  Struct represents value of a Projections[i]
 ///         After the document id has beend found "get" method
 ///         could be used to get Slice for the Projections
@@ -147,7 +143,7 @@ struct CoveringValue {
   explicit CoveringValue(std::string_view col) : column(col) {}
   CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     itr.reset();
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
@@ -233,7 +229,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
     return res;
   }
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     std::for_each(
         _coverage.begin(), _coverage.end(),
         [&rdr](decltype(_coverage)::value_type& v) { v.second.reset(rdr); });
@@ -273,26 +269,18 @@ class CoveringVector final : public IndexIteratorCoveringData {
   velocypack::ValueLength _length{0};
 };
 
-struct IResearchSnapshotState final : TransactionState::Cookie {
-  using ImmutablePartCache =
-      std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>;
-
-  IResearchDataStore::Snapshot snapshot;
-  ImmutablePartCache immutablePartCache;
-};
-
 class IResearchInvertedIndexIteratorBase : public IndexIterator {
  public:
   IResearchInvertedIndexIteratorBase(LogicalCollection* collection,
-                                     IResearchSnapshotState* state,
+                                     ViewSnapshot& state,
                                      transaction::Methods* trx,
                                      aql::AstNode const* condition,
                                      IResearchInvertedIndexMeta const* meta,
                                      aql::Variable const* variable,
                                      int mutableConditionIdx)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
-        _reader(&state->snapshot.getDirectoryReader()),
-        _immutablePartCache(&state->immutablePartCache),
+        _snapshot(state),
+        _immutablePartCache(state.immutablePartCache()),
         _indexMeta(meta),
         _variable(variable),
         _mutableConditionIdx(mutableConditionIdx) {
@@ -326,7 +314,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     QueryContext const queryCtx{
         .trx = _trx,
-        .index = _reader,
+        .index = &_snapshot,
         .ref = _variable,
         .fields = _indexMeta->_fields,
         .namePrefix = nestedRoot(_indexMeta->hasNested()),
@@ -395,20 +383,20 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
         auto& proxy_filter =
             append<irs::proxy_filter>(*conditionJoiner, filterCtx);
-        auto existingCache = _immutablePartCache->find(condition);
-        if (existingCache != _immutablePartCache->end()) {
+        auto existingCache = _immutablePartCache.find(condition);
+        if (existingCache != _immutablePartCache.end()) {
           proxy_filter.set_cache(existingCache->second);
         } else {
           irs::boolean_filter* immutableRoot;
           irs::proxy_filter::cache_ptr newCache;
           if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
             auto res = proxy_filter.set_filter<irs::And>();
-            (*_immutablePartCache)[condition] = res.second;
+            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
           } else {
             TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
             auto res = proxy_filter.set_filter<irs::Or>();
-            (*_immutablePartCache)[condition] = res.second;
+            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
           }
 
@@ -438,7 +426,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(*_reader, irs::Order::kUnordered, irs::kNoBoost,
+    _filter = root.prepare(_snapshot, irs::Order::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
@@ -455,21 +443,25 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::index_reader const* _reader;
-  IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
+  ViewSnapshot const& _snapshot;
+  ViewSnapshot::ImmutablePartCache& _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
   int _mutableConditionIdx;
+  std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
 };
 
+template<bool emitLocalDocumentId>
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexIterator(
-      ResourceMonitor& monitor, LogicalCollection* collection,
-      IResearchSnapshotState* state, transaction::Methods* trx,
-      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+  IResearchInvertedIndexIterator(ResourceMonitor& monitor,
+                                 LogicalCollection* collection,
+                                 ViewSnapshot& state, transaction::Methods* trx,
+                                 aql::AstNode const* condition,
+                                 IResearchInvertedIndexMeta const* meta,
+                                 aql::Variable const* variable,
+                                 int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _projections(*meta) {}
@@ -494,6 +486,19 @@ class IResearchInvertedIndexIterator final
     nextImplInternal<decltype(skipped), false, false>(skipped, count);
   }
 
+  bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
+    return nextImpl(
+        [this, &cb](LocalDocumentId const& token) {
+          // we use here just first snapshot as they are all the same here.
+          // iterator operates only one iresearch datastore
+          return _collection->getPhysical()
+              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
+                                 _snapshot.snapshot(0))
+              .ok();
+        },
+        limit);
+  }
+
   // FIXME: Evaluate buffering iresearch reads
   template<typename Callback, bool withCovering, bool produce>
   bool nextImplInternal(Callback const& callback, uint64_t limit) {
@@ -504,14 +509,13 @@ class IResearchInvertedIndexIterator final
       TRI_ASSERT(_filter);  // _filter is not initialized (should not happen)
       return false;
     }
-    TRI_ASSERT(_reader);
-    auto const count = _reader->size();
+    auto const count = _snapshot.size();
     while (limit > 0) {
       if (!_itr || !_itr->next()) {
         if (_readerOffset >= count) {
           break;
         }
-        auto& segmentReader = (*_reader)[_readerOffset++];
+        auto& segmentReader = _snapshot[_readerOffset++];
         // always init all iterators as we do not know if it will be
         // skip-next-covering mixture of the calls
         _pkDocItr = pkColumn(segmentReader);
@@ -533,17 +537,38 @@ class IResearchInvertedIndexIterator final
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
-          if (_doc->value == _pkDocItr->seek(_doc->value)) {
-            LocalDocumentId documentId;
+          LocalDocumentId documentId;
+          // For !withCovering that means actual doc reading
+          // if combined with "produce".
+          // And we must read LocalDocumentId anyway.
+          // Otherwise we read it only if required.
+          static constexpr bool needReadLocalDocumentId =
+              !withCovering || emitLocalDocumentId;
+          if (!needReadLocalDocumentId ||
+              _doc->value == _pkDocItr->seek(_doc->value)) {
             bool const readSuccess =
+                !needReadLocalDocumentId ||
                 DocumentPrimaryKey::read(documentId, _pkValue->value);
             if (readSuccess) {
               if constexpr (withCovering) {
                 _projections.seek(_doc->value);
-                if (callback(documentId, _projections)) {
+                TRI_ASSERT(_readerOffset > 0);
+                TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
+                bool emitRes = [&]() {
+                  if constexpr (emitLocalDocumentId) {
+                    return callback(documentId, _projections);
+                  } else {
+                    SearchDoc doc(_snapshot.segment(_readerOffset - 1),
+                                  _doc->value);
+                    return callback(aql::AqlValue{doc.encode(_buf)},
+                                    _projections);
+                  }
+                }();
+                if (emitRes) {
                   --limit;
                 }
               } else {
+                TRI_ASSERT(documentId.isSet());
                 if (callback(documentId)) {
                   --limit;  // count only existing documents
                 }
@@ -575,12 +600,13 @@ class IResearchInvertedIndexIterator final
   CoveringVector _projections;
 };
 
+template<bool emitLocalDocumentId>
 class IResearchInvertedIndexMergeIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
   IResearchInvertedIndexMergeIterator(
       ResourceMonitor& monitor, LogicalCollection* collection,
-      IResearchSnapshotState* state, transaction::Methods* trx,
+      ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
@@ -595,10 +621,10 @@ class IResearchInvertedIndexMergeIterator final
  protected:
   void resetImpl() final {
     _segments.clear();
-    auto const size = _reader->size();
+    auto const size = _snapshot.size();
     _segments.reserve(size);
     for (size_t i = 0; i < size; ++i) {
-      auto& segment = (*_reader)[i];
+      auto& segment = _snapshot[i];
       irs::doc_iterator::ptr it = segment.mask(_filter->execute(segment));
       TRI_ASSERT(!_projectionsPrototype
                       .empty());  // at least sort column should be here
@@ -631,24 +657,43 @@ class IResearchInvertedIndexMergeIterator final
       TRI_ASSERT(_filter);  // _filter is not initialized (should not happen)
       return false;
     }
-    TRI_ASSERT(_reader);
-    if (_segments.empty() && _reader->size()) {
+    if (_segments.empty() && _snapshot.size()) {
       reset();
     }
     while (limit && _heap_it.next()) {
-      auto& segment = _segments[_heap_it.value()];
+      auto const currentIdx = _heap_it.value();
+      auto& segment = _segments[currentIdx];
       if constexpr (produce) {
-        if (segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
+        // For !withCovering that means actual doc reading
+        // if combined with "produce".
+        // And we must read LocalDocumentId anyway.
+        // Otherwise we read it only if required.
+        static constexpr bool needReadLocalDocumentId =
+            !withCovering || emitLocalDocumentId;
+        if (!needReadLocalDocumentId ||
+            segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
           LocalDocumentId documentId;
           bool const readSuccess =
+              !needReadLocalDocumentId ||
               DocumentPrimaryKey::read(documentId, segment.pkValue->value);
           if (readSuccess) {
             if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
-              if (callback(documentId, segment.projections)) {
+              SearchDoc doc(_snapshot.segment(currentIdx), segment.doc->value);
+              TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
+              bool emitRes = [&]() {
+                if constexpr (emitLocalDocumentId) {
+                  return callback(documentId, segment.projections);
+                } else {
+                  return callback(aql::AqlValue{doc.encode(_buf)},
+                                  segment.projections);
+                }
+              }();
+              if (emitRes) {
                 --limit;
               }
             } else {
+              TRI_ASSERT(documentId.isSet());
               if (callback(documentId)) {
                 --limit;  // count only existing documents
               }
@@ -665,7 +710,7 @@ class IResearchInvertedIndexMergeIterator final
 
  private:
   struct Segment {
-    Segment(irs::doc_iterator::ptr&& docs, irs::sub_reader const& segment,
+    Segment(irs::doc_iterator::ptr&& docs, irs::SubReader const& segment,
             CoveringVector const& prototype)
         : itr(std::move(docs)), projections(prototype.clone()) {
       projections.reset(segment);
@@ -790,6 +835,14 @@ Result IResearchInvertedIndex::init(
                                errField, "': ", definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
+  {
+    _coveredFields = _meta._sort.fields();
+    for (auto const& column : _meta._storedValues.columns()) {
+      for (auto const& fields : column.fields) {
+        _coveredFields.push_back(fields.second);
+      }
+    }
+  }
   auto& cf =
       index().collection().vocbase().server().getFeature<ClusterFeature>();
   if (cf.isEnabled() && ServerState::instance()->isDBServer()) {
@@ -804,7 +857,7 @@ Result IResearchInvertedIndex::init(
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());
-    irs::index_reader_options readerOptions;
+    irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions,
                                 index().collection().vocbase().server(), _meta);
@@ -927,56 +980,78 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
                      " has been marked as failed and needs to be recreated"));
   }
 
-  auto& state = [trx, this, &opts]() -> IResearchSnapshotState& {
-    auto& state = *(trx->state());
+  auto& state = [trx, this, &opts]() -> ViewSnapshot& {
     // TODO FIXME find a better way to look up a State
     // we cannot use _index pointer as key - the same is used for storing
     // removes/inserts so we add 1 to the value (we need just something unique
     // after all)
     void const* key = reinterpret_cast<uint8_t const*>(this) + 1;
-    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
+    auto* ctx = getViewSnapshot(*trx, key);
     if (!ctx) {
-      auto ptr = std::make_unique<IResearchSnapshotState>();
-      ctx = ptr.get();
-      state.cookie(key, std::move(ptr));
-
-      if (opts.waitForSync) {
-        // TODO(MBkkt) Move it to optimization stage
-        if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "cannot use waitForSync with inverted index and streaming or js "
-              "transaction");
-        }
-        commit();
+      // TODO(MBkkt) Move it to optimization stage
+      if (opts.waitForSync &&
+          trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "cannot use waitForSync with inverted index and streaming or js "
+            "transaction");
       }
-
-      ctx->snapshot = snapshot();
+      auto selfLock = this->self()->lock();
+      if (!selfLock) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            absl::StrCat("Failed to lock datastore for index '", index().name(),
+                         "'"));
+      }
+      ViewSnapshot::Links links;
+      links.push_back(std::move(selfLock));
+      ctx = makeViewSnapshot(*trx, key, opts.waitForSync, index().name(),
+                             std::move(links));
     }
     return *ctx;
   }();
-
+  auto resolveLateMaterialization =
+      [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
+    if (opts.forLateMaterialization) {
+      return factory(std::false_type{});
+    } else {
+      return factory(std::true_type{});
+    }
+  };
   if (node) {
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
-      return std::make_unique<IResearchInvertedIndexIterator>(
-          monitor, collection, &state, trx, node, &_meta, reference,
-          mutableConditionIdx);
+      return resolveLateMaterialization(
+          [&]<bool LateMaterialization>(
+              std::integral_constant<bool, LateMaterialization>) {
+            return std::make_unique<
+                IResearchInvertedIndexIterator<LateMaterialization>>(
+                monitor, collection, state, trx, node, &_meta, reference,
+                mutableConditionIdx);
+          });
     } else {
-      return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          monitor, collection, &state, trx, node, &_meta, reference,
-          mutableConditionIdx);
+      return resolveLateMaterialization(
+          [&]<bool LateMaterialization>(
+              std::integral_constant<bool, LateMaterialization>) {
+            return std::make_unique<
+                IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+                monitor, collection, state, trx, node, &_meta, reference,
+                mutableConditionIdx);
+          });
     }
   } else {
     // sorting  case
-
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
-
-    return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        monitor, collection, &state, trx, node, &_meta, reference,
-        transaction::Methods::kNoMutableConditionIdx);
+    return resolveLateMaterialization(
+        [&]<bool LateMaterialization>(
+            std::integral_constant<bool, LateMaterialization>) {
+          return std::make_unique<
+              IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+              monitor, collection, state, trx, node, &_meta, reference,
+              transaction::Methods::kNoMutableConditionIdx);
+        });
   }
 }
 

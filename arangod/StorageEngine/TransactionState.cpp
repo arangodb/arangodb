@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,7 +98,7 @@ TransactionCollection* TransactionState::collection(
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(
-    std::string const& name, AccessMode::Type accessType) const {
+    std::string_view name, AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 

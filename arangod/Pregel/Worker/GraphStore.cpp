@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -238,7 +238,7 @@ template<typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config,
                                     std::string const& documentID) {
   // figure out if we got this vertex locally
-  PregelID _id = config->documentIdToPregel(documentID);
+  VertexID _id = config->documentIdToPregel(documentID);
   if (config->isLocalVertexShard(_id.shard)) {
     loadDocument(config, _id.shard, std::string_view(_id.key));
   }
@@ -709,7 +709,7 @@ void GraphStore<V, E>::storeVertices(
       commitTransaction();
 
       currentShard = it->shard();
-      shard = globalShards[currentShard];
+      shard = globalShards[currentShard.value];
 
       auto ctx =
           transaction::StandaloneContext::Create(_vocbaseGuard.database());
@@ -731,7 +731,7 @@ void GraphStore<V, E>::storeVertices(
     V const& data = it->data();
     if (auto result = _graphFormat->buildVertexDocument(builder, &data);
         !result) {
-      _reports->report(ReportLevel::ERR) << "Failed to build vertex document";
+      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
     }
     builder.close();
     ++numDocs;

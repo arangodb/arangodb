@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1590,7 +1590,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
-  replicationManager()->drop(&database);
+  replicationManager()->drop(database);
 
   return dropDatabase(database.id());
 }
@@ -1602,8 +1602,7 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return TRI_voc_tick_t(
-      server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber());
+  return server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber();
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
@@ -1839,7 +1838,7 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 
 void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
                                           LogicalCollection& coll) {
-  replicationManager()->drop(&coll);
+  replicationManager()->drop(coll);
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -3357,7 +3356,7 @@ std::string RocksDBEngine::getCompressionSupport() const {
 
 // management methods for synchronizing with external persistent stores
 TRI_voc_tick_t RocksDBEngine::currentTick() const {
-  return static_cast<TRI_voc_tick_t>(_db->GetLatestSequenceNumber());
+  return _db->GetLatestSequenceNumber();
 }
 
 TRI_voc_tick_t RocksDBEngine::releasedTick() const {
@@ -3619,4 +3618,13 @@ auto RocksDBEngine::createReplicatedState(
   methods->updateMetadata(info);
   return {std::move(methods)};
 }
+
+std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
+  if (ADB_LIKELY(_db)) {
+    return std::make_shared<RocksDBSnapshot>(*_db);
+  } else {
+    return nullptr;
+  }
+}
+
 }  // namespace arangodb

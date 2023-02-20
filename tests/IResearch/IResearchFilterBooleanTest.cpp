@@ -1485,7 +1485,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1583,7 +1583,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1676,7 +1676,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1772,7 +1772,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1867,7 +1867,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1964,7 +1964,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -2058,7 +2058,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -3106,7 +3106,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -3211,7 +3211,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -3584,7 +3584,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -4015,7 +4015,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -4119,7 +4119,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -4486,7 +4486,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -4675,7 +4675,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -6778,7 +6778,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .trx = &trx,
           .ast = ast,
           .ctx = &exprCtx,
-          .index = &irs::sub_reader::empty(),
+          .index = &irs::SubReader::empty(),
           .ref = ref,
           .isSearchQuery = true};
       arangodb::iresearch::FieldMeta::Analyzer analyzer{

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <string_view>
 
 namespace arangodb {
 
@@ -39,71 +39,72 @@ class JavaScriptSecurityContext {
     RestAdminScriptAction
   };
 
-  explicit JavaScriptSecurityContext(Type type) : _type(type) {}
+  explicit JavaScriptSecurityContext(Type type) noexcept : _type(type) {}
 
   ~JavaScriptSecurityContext() = default;
 
   /// @brief return the context type as a string
-  char const* typeName() const;
+  std::string_view typeName() const noexcept;
 
   /// @brief resets context to most restrictive settings
-  void reset();
+  void reset() noexcept;
 
   /// @brief whether or not the context is an internal context
-  bool isInternal() const { return _type == Type::Internal; }
+  bool isInternal() const noexcept { return _type == Type::Internal; }
 
   /// @brief whether or not the context is an admin script
-  bool isAdminScript() const { return _type == Type::AdminScript; }
+  bool isAdminScript() const noexcept { return _type == Type::AdminScript; }
 
   /// @brief whether or not the context is an admin script
-  bool isRestAdminScript() const {
+  bool isRestAdminScript() const noexcept {
     return _type == Type::RestAdminScriptAction;
   }
 
   /// @brief whether or not db._useDatabase(...) is allowed
-  bool canUseDatabase() const { return _canUseDatabase; }
+  bool canUseDatabase() const noexcept { return _canUseDatabase; }
 
   /// @brief whether fs read is allowed
-  bool canReadFs() const;
+  bool canReadFs() const noexcept;
 
   /// @brief whether fs read is allowed
-  bool canWriteFs() const;
+  bool canWriteFs() const noexcept;
 
   /// @brief whether or not actions.defineAction(...) is allowed, which will
   /// add REST endpoints
   /// currently only internal operations are allowed to do this
-  bool canDefineHttpAction() const;
+  bool canDefineHttpAction() const noexcept;
 
   /// @brief whether or not execution or state-modification of external
   /// binaries is allowed.
-  bool canControlProcesses() const;
+  bool canControlProcesses() const noexcept;
 
   /// @brief create a security context that is most restricted
-  static JavaScriptSecurityContext createRestrictedContext();
+  static JavaScriptSecurityContext createRestrictedContext() noexcept;
 
   /// @brief create a security context for arangodb-internal
   /// operations, with non-restrictive settings
-  static JavaScriptSecurityContext createInternalContext();
+  static JavaScriptSecurityContext createInternalContext() noexcept;
 
   /// @brief create a security context for admin script operations,
   /// invoked by `--javascript.execute` or when running in --console mode
-  static JavaScriptSecurityContext createAdminScriptContext();
+  static JavaScriptSecurityContext createAdminScriptContext() noexcept;
 
   /// @brief create a security context for AQL queries,
   /// with restrictive settings
-  static JavaScriptSecurityContext createQueryContext();
+  static JavaScriptSecurityContext createQueryContext() noexcept;
 
   /// @brief create a security context for tasks actions
-  static JavaScriptSecurityContext createTaskContext(bool allowUseDatabase);
+  static JavaScriptSecurityContext createTaskContext(
+      bool allowUseDatabase) noexcept;
 
   /// @brief create a security context for REST actions
   static JavaScriptSecurityContext createRestActionContext(
-      bool allowUseDatabase);
+      bool allowUseDatabase) noexcept;
 
   /// @brief create a security context for admin script operations running
   /// via POST /_admin/execute
   static JavaScriptSecurityContext createRestAdminScriptActionContext(
-      bool allowUseDatabase);
+      bool allowUseDatabase) noexcept;
 
  private:
   Type _type;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,9 @@
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
+#include "ShortestPathExecutor.h"
 
 namespace arangodb {
 
@@ -35,6 +38,7 @@ class Builder;
 namespace graph {
 struct BaseOptions;
 struct ShortestPathOptions;
+struct IndexAccessor;
 }  // namespace graph
 namespace aql {
 
@@ -131,7 +135,13 @@ class ShortestPathNode : public virtual GraphNode {
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+
+  std::vector<arangodb::graph::IndexAccessor> buildReverseUsedIndexes() const;
+
  private:
+  std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
+
   void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
                                bool withProperties) const;
 
@@ -161,6 +171,25 @@ class ShortestPathNode : public virtual GraphNode {
   /// otherwise it will be discarded on coordinator (mapped to server), but the
   /// DBServer cannot map the Vertex to its shard.
   Variable const* _distributeVariable;
+
+  RegIdSet _buildVariableInformation() const;
+
+  template<typename ShortestPathEnumeratorType>
+  std::pair<RegIdSet, typename ShortestPathExecutorInfos<
+                          ShortestPathEnumeratorType>::RegisterMapping>
+  _buildOutputRegisters() const;
+
+  template<typename ShortestPathRefactored, typename Provider,
+           typename ProviderOptions>
+  std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
+      graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
+      ProviderOptions backwardProviderOptions,
+      arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
+      arangodb::graph::PathValidatorOptions validatorOptions,
+      typename ShortestPathExecutorInfos<
+          ShortestPathRefactored>::RegisterMapping&& outputRegister,
+      ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
+      RegisterInfos registerInfos) const;
 };
 
 }  // namespace aql

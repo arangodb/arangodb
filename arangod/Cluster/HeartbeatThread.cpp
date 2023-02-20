@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,8 +70,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
-
-std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
 namespace arangodb {
 
@@ -224,6 +222,7 @@ HeartbeatThread::HeartbeatThread(Server& server,
       _lastSuccessfulVersion(0),
       _currentPlanVersion(0),
       _ready(false),
+      _hasRunOnce(false),
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _backgroundJobsPosted(0),
@@ -1054,14 +1053,12 @@ void HeartbeatThread::runSingleServer() {
         }
 
         LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
-            << "Starting replication from " << endpoint;
+            << "starting replication initial sync from leader " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._jwt = af->tokenCache().jwtToken();
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT)
-            << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         config._idleMinWaitTime = 250 * 1000;       // 250ms
@@ -1401,14 +1398,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
               << "creating local database '" << dbName
               << "' failed: " << res.errorMessage();
         } else {
-          HasRunOnce.store(true, std::memory_order_release);
+          _hasRunOnce.store(true, std::memory_order_release);
         }
       } else {
         if (vocbase->isSystem()) {
           // workaround: _system collection already exists now on every
-          // coordinator setting HasRunOnce lets coordinator startup continue
+          // coordinator setting _hasRunOnce lets coordinator startup continue
           TRI_ASSERT(vocbase->id() == 1);
-          HasRunOnce.store(true, std::memory_order_release);
+          _hasRunOnce.store(true, std::memory_order_release);
         }
       }
     }

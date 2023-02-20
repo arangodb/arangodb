@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,7 @@ void ShortestPathResult::addVertex(std::string_view v) {
   TRI_ASSERT(_edges.size() == _vertices.size());
   _vertices.emplace_back(v);
 }
+
 void ShortestPathResult::addEdge(arangodb::graph::EdgeDocumentToken e) {
   TRI_ASSERT(_edges.size() + 1 == _vertices.size());
   _edges.emplace_back(e);

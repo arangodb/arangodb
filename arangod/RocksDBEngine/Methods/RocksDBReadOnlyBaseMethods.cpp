@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/db.h>
 #include <rocksdb/status.h>
 
@@ -107,6 +108,17 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::Delete(
 rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle*, RocksDBKey const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
+rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
+    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
+    rocksdb::Snapshot const* snapshot) {
+  auto oldSnapshot = _readOptions.snapshot;
+  auto restoreSnapshot =
+      absl::Cleanup{[&]() { _readOptions.snapshot = oldSnapshot; }};
+  _readOptions.snapshot = snapshot;
+  return Get(family, slice, pinnable, rw);
 }
 
 void RocksDBReadOnlyBaseMethods::PutLogData(rocksdb::Slice const& blob) {

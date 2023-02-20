@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,13 @@ namespace arangodb {
 class RocksDBBatchedMethods final : public RocksDBMethods {
  public:
   explicit RocksDBBatchedMethods(rocksdb::WriteBatch*);
+
+  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
+                                  rocksdb::Slice const&,
+                                  rocksdb::PinnableSlice*, ReadOwnWrites,
+                                  rocksdb::Snapshot const*) override {
+    return {};
+  }
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;

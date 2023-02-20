@@ -272,7 +272,7 @@ struct BoostScorer : public irs::sort {
    public:
     Prepared() = default;
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
@@ -293,7 +293,7 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+        irs::SubReader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_provider const&, irs::score_t boost) const override {
       struct ScoreCtx : public irs::score_ctx {
         explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
@@ -330,7 +330,7 @@ struct CustomScorer : public irs::sort {
    public:
     Prepared(float_t i) : i(i) {}
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
@@ -350,7 +350,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::ScoreFunction prepare_scorer(irs::sub_reader const&,
+    virtual irs::ScoreFunction prepare_scorer(irs::SubReader const&,
                                               irs::term_reader const&,
                                               irs::byte_type const*,
                                               irs::attribute_provider const&,
@@ -751,7 +751,7 @@ void assertFilterOptimized(
         .trx = &trx,
         .ast = plan->getAst(),
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = &viewNode->outVariable(),
         .filterOptimization = viewNode->filterOptimization(),
         .isSearchQuery = true};
@@ -844,7 +844,7 @@ void assertExpressionFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = &exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
 
@@ -984,7 +984,7 @@ void buildActualFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1089,7 +1089,7 @@ void assertFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
         .namePrefix = arangodb::iresearch::nestedRoot(hasNested),

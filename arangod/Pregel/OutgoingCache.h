@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -113,6 +113,9 @@ class ArrayOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
+  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
+                           messagesForVertices)
+      -> std::tuple<size_t, VPackBuilder>;
   void flushMessages() override;
 };
 
@@ -132,6 +135,9 @@ class CombiningOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
+  auto messagesToVPack(
+      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      -> VPackBuilder;
   void flushMessages() override;
 };
 }  // namespace pregel

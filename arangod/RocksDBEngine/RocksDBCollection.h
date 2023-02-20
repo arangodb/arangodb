@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,6 +102,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
+
+  Result readFromSnapshot(transaction::Methods* trx,
+                          LocalDocumentId const& token,
+                          IndexIterator::DocumentCallback const& cb,
+                          ReadOwnWrites readOwnWrites,
+                          StorageSnapshot const& snapshot) const override;
 
   /// @brief lookup with callback, not thread-safe on same transaction::Context
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
@@ -209,10 +215,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              rocksdb::PinnableSlice& ps, bool readCache,
                              bool fillCache, ReadOwnWrites readOwnWrites) const;
 
-  Result lookupDocumentVPack(transaction::Methods*,
-                             LocalDocumentId const& documentId,
-                             IndexIterator::DocumentCallback const& cb,
-                             bool withCache, ReadOwnWrites readOwnWrites) const;
+  Result lookupDocumentVPack(
+      transaction::Methods*, LocalDocumentId const& documentId,
+      IndexIterator::DocumentCallback const& cb, bool withCache,
+      ReadOwnWrites readOwnWrites,
+      RocksDBEngine::RocksDBSnapshot const* snapshot = nullptr) const;
 
   /// @brief create hash-cache
   void setupCache() const;

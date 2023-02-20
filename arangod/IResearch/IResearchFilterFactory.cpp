@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -2786,7 +2786,7 @@ Result fromFuncPhraseLevenshteinMatch(
       struct top_term_visitor final : irs::filter_visitor {
         explicit top_term_visitor(size_t size) : collector(size) {}
 
-        virtual void prepare(const irs::sub_reader& segment,
+        virtual void prepare(const irs::SubReader& segment,
                              const irs::term_reader& field,
                              const irs::seek_term_iterator& terms) override {
           collector.prepare(segment, field, terms);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +23,15 @@
 
 #include <cstring>
 
-#include <openssl/sha.h>
-
 #include "tri-strings.h"
 
-#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
-#include "Basics/debugging.h"
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a unicode escape sequence
@@ -264,53 +264,6 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeString(char* value) noexcept { TRI_Free(value); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha256 of a string
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
-  unsigned char* dst =
-      static_cast<unsigned char*>(TRI_Allocate(SHA256_DIGEST_LENGTH));
-  if (dst == nullptr) {
-    return nullptr;
-  }
-  *dstLen = SHA256_DIGEST_LENGTH;
-
-  SHA256((unsigned char const*)source, sourceLen, dst);
-
-  return (char*)dst;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unescapes unicode escape sequences
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
-                             bool normalize) {
-  char* buffer = static_cast<char*>(TRI_Allocate(inLength + 1));
-
-  if (buffer == nullptr) {
-    return nullptr;
-  }
-
-  *outLength = TRI_UnescapeUtf8StringInPlace(buffer, in, inLength);
-  buffer[*outLength] = '\0';
-
-  if (normalize && *outLength > 0) {
-    size_t tmpLength = 0;
-    char* utf8_nfc = TRI_normalize_utf8_to_NFC(buffer, *outLength, &tmpLength);
-
-    if (utf8_nfc != nullptr) {
-      *outLength = tmpLength;
-      TRI_Free(buffer);
-      buffer = utf8_nfc;
-    }
-    // intentionally falls through
-  }
-
-  return buffer;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences into buffer "buffer".

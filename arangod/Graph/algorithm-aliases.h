@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "Graph/Enumerators/OneSidedEnumerator.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
 
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
@@ -48,8 +49,24 @@ using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template<class Provider>
+using TwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
+    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
+    Provider,
+    PathValidator<Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template<class Provider>
 using TracedTwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     QueueTracer<FifoQueue<typename Provider::Step>>,
+    PathStoreTracer<PathStore<typename Provider::Step>>,
+    ProviderTracer<Provider>,
+    PathValidator<ProviderTracer<Provider>,
+                  PathStoreTracer<PathStore<typename Provider::Step>>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template<class Provider>
+using TracedTwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<typename Provider::Step>>,
     PathStoreTracer<PathStore<typename Provider::Step>>,
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
@@ -72,6 +89,23 @@ using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 template<class Provider>
 using TracedAllShortestPathsEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// SHORTEST_PATH implementation
+template<class Provider>
+using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+template<class Provider>
+using WeightedShortestPathEnumerator =
+    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+
+// SHORTEST_PATH implementation using Tracing
+template<class Provider>
+using TracedShortestPathEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+template<class Provider>
+using TracedWeightedShortestPathEnumerator =
+    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>

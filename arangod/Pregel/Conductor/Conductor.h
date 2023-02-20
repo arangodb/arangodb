@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,16 +28,18 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Reports.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 
 #include <chrono>
+#include <set>
 
 namespace arangodb {
 namespace pregel {
@@ -110,7 +112,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
-  ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
@@ -135,12 +136,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
+  void _ensureUniqueResponse(std::string const& sender);
 
   // === REST callbacks ===
-  void workerStatusUpdate(VPackSlice const& data);
-  void finishedWorkerStartup(VPackSlice const& data);
-  VPackBuilder finishedWorkerStep(VPackSlice const& data);
-  void finishedWorkerFinalize(VPackSlice data);
+  void workerStatusUpdate(StatusUpdated&& data);
+  void finishedWorkerStartup(GraphLoaded const& data);
+  void finishedWorkerStep(GlobalSuperStepFinished const& data);
+  void finishedWorkerFinalize(Finished const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 

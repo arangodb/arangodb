@@ -127,10 +127,9 @@ line in the import data is empty
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body)
-    assert(r.created === 2);
-    assert(r.errors === 0);
-    assert(r.empty === 1);
+    assert(response.parsedBody.created === 2);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 1);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -152,10 +151,9 @@ Importing into an edge collection, with attributes `_from`, `_to` and `name`
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body)
-    assert(r.created === 2);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 2);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -174,10 +172,9 @@ Importing into an edge collection, omitting `_from` or `_to`
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body)
-    assert(r.created === 0);
-    assert(r.errors === 2);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 0);
+    assert(response.parsedBody.errors === 2);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -197,10 +194,9 @@ Violating a unique constraint, but allow partial imports
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body)
-    assert(r.created === 1);
-    assert(r.errors === 1);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 1);
+    assert(response.parsedBody.errors === 1);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);

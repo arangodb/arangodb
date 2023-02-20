@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -178,7 +178,8 @@ class IResearchView final : public LogicalView {
   LinkLock linkLock(std::shared_lock<boost::upgrade_mutex> const& guard,
                     DataSourceId cid) const noexcept;
 
-  ViewSnapshot::Links getLinks() const noexcept;
+  ViewSnapshot::Links getLinks(
+      containers::FlatHashSet<DataSourceId> const* sources) const noexcept;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+#include <velocypack/SharedSlice.h>
 
 #include <atomic>
 #include <unordered_set>
@@ -39,15 +40,18 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -755,13 +759,45 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
+    auto message = inspection::deserializeWithErrorT<StatusUpdated>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize StatusUpdated message: {}",
+                      message.error().error()));
+    }
+    co->workerStatusUpdate(std::move(message.get()));
   } else if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
+    auto message = inspection::deserializeWithErrorT<GraphLoaded>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GraphLoaded message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStartup(message.get());
   } else if (path == Utils::finishedWorkerStepPath) {
-    outBuilder = co->finishedWorkerStep(body);
+    auto message = inspection::deserializeWithErrorT<GlobalSuperStepFinished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize GlobalSuperStepFinished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerStep(message.get());
   } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
+    auto message = inspection::deserializeWithErrorT<Finished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize Finished message: {}",
+                      message.error().error()));
+    }
+    co->finishedWorkerFinalize(message.get());
   }
 }
 
@@ -791,8 +827,17 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
+    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
+        velocypack::SharedSlice({}, body));
+    if (!createWorker.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize CreateWorker message: {}",
+                      createWorker.error().error()));
+    }
 
-    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
+    addWorker(AlgoRegistry::createWorker(vocbase, createWorker.get(), *this),
+              exeNum);
     worker(exeNum)->setupWorker();  // will call conductor
 
     return;
@@ -812,22 +857,72 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    w->prepareGlobalStep(body, outBuilder);
-  } else if (path == Utils::startGSSPath) {
-    w->startGlobalStep(body);
-  } else if (path == Utils::messagesPath) {
-    w->receivedMessages(body);
-  } else if (path == Utils::cancelGSSPath) {
-    w->cancelGlobalStep(body);
-  } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
-  } else if (path == Utils::aqlResultsPath) {
-    bool withId = false;
-    if (body.isObject()) {
-      VPackSlice slice = body.get("withId");
-      withId = slice.isBoolean() && slice.getBool();
+    auto message = inspection::deserializeWithErrorT<PrepareGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize PrepareGlobalSuperStep message: {}",
+                      message.error().error()));
     }
-    w->aqlResult(outBuilder, withId);
+    auto prepared = w->prepareGlobalStep(message.get());
+    auto response = inspection::serializeWithErrorT(prepared);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize GlobalSuperStepPrepared message: {}",
+                      message.error().error()));
+    }
+    outBuilder.add(response.get().slice());
+  } else if (path == Utils::startGSSPath) {
+    auto message = inspection::deserializeWithErrorT<RunGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize RunGlobalSuperStep message: {}",
+                      message.error().error()));
+    }
+    w->startGlobalStep(message.get());
+  } else if (path == Utils::messagesPath) {
+    auto message = inspection::deserializeWithErrorT<PregelMessage>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize PregelMessage message: {}",
+                      message.error().error()));
+    }
+    w->receivedMessages(message.get());
+  } else if (path == Utils::finalizeExecutionPath) {
+    auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize FinalizeExecution message: {}",
+                      message.error().error()));
+    }
+    w->finalizeExecution(message.get(),
+                         [this, exeNum]() { cleanupWorker(exeNum); });
+  } else if (path == Utils::aqlResultsPath) {
+    auto message = inspection::deserializeWithErrorT<CollectPregelResults>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot deserialize CollectPregelResults message: {}",
+                      message.error().error()));
+    }
+    auto results = w->aqlResult(message.get().withId);
+    auto response = inspection::serializeWithErrorT(results);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          fmt::format("Cannot serialize PregelResults message: {}",
+                      response.error().error()));
+    }
+    outBuilder.add(response.get().slice());
   }
 }
 

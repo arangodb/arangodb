@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::index_reader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const override;
 };
@@ -133,7 +133,7 @@ class GeoDistanceFilter final
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::index_reader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const final;
 };

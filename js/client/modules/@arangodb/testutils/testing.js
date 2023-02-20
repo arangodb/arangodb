@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -162,10 +163,9 @@ let optionsDocumentation = [
   ''
 ];
 
-const isSan = (
-  global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true');
-
+const isCoverage = versionHas('coverage');
+const isSan = versionHas('asan') || versionHas('tsan');
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -203,7 +203,7 @@ const optionsDefaults = {
   'rr': false,
   'exceptionFilter': null,
   'exceptionCount': 1,
-  'sanitizer': false,
+  'sanitizer': isSan,
   'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
@@ -219,8 +219,10 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': (isSan? 25 : 15) * 60,
+  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'isCov': isCoverage,
+  'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,

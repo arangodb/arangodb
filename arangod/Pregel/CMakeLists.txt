@@ -7,8 +7,6 @@ add_library(arango_pregel STATIC
   OutgoingCache.cpp
   PregelFeature.cpp
   PregelMetrics.cpp
-  Reports.cpp
-  Reports.h
   Utils.cpp)
 
 target_link_libraries(arango_pregel
@@ -21,6 +19,7 @@ target_include_directories(arango_pregel PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
+add_subdirectory(Actor)
 add_subdirectory(Algos)
 add_subdirectory(Conductor)
 add_subdirectory(REST)

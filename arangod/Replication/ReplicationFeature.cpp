@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,11 +48,11 @@ using namespace arangodb::options;
 namespace {
 // replace tcp:// with http://, and ssl:// with https://
 std::string fixEndpointProto(std::string const& endpoint) {
-  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
-    return "http://" + endpoint.substr(6);      // strlen("tcp://")
+  if (endpoint.starts_with("tcp://")) {
+    return "http://" + endpoint.substr(6);  // strlen("tcp://")
   }
-  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
-    return "https://" + endpoint.substr(6);     // strlen("ssl://")
+  if (endpoint.starts_with("ssl://")) {
+    return "https://" + endpoint.substr(6);  // strlen("ssl://")
   }
   return endpoint;
 }
