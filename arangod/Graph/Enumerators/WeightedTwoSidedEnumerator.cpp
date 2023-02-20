@@ -509,7 +509,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  LOG_DEVEL << "isDone? " << std::boolalpha << searchDone();
+  LOG_DEVEL << "searchDone? " << std::boolalpha << searchDone();
   LOG_DEVEL << "_results.empty? " << std::boolalpha << _results.empty();
   LOG_DEVEL << "isAlgorithmFinished? " << std::boolalpha
             << isAlgorithmFinished();
@@ -721,24 +721,29 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     if (!searchDone()) {
       LOG_DEVEL << "SEARCH IS NOT DONE!";
       searchMoreResults();
+    }
 
-      if (handleResult()) {
-        if (_options.onlyProduceOnePath()) {
-          // At this state we've produced a valid path result. In case we're
-          // using the path type "(Weighted)ShortestPath", the algorithm is
-          // finished. We need to store this information.
+    if (handleResult()) {
+      if (_options.onlyProduceOnePath()) {
+        // At this state we've produced a valid path result. In case we're
+        // using the path type "(Weighted)ShortestPath", the algorithm is
+        // finished. We need to store this information.
 
-          TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-          setAlgorithmFinished();
-          return false;
-        }
-        return true;
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+        return false;  // TODO THIS IS WRONG
       }
+      return true;
+    } else {
+      // Check candidates list
+      return checkKPathsCandidates();
     }
   }
 
   TRI_ASSERT(isDone());
   LOG_DEVEL << "We are done";
+  // TODO: logic above and logic below should be unified.
+  // TODO: begin
   if (_options.getPathType() == PathType::Type::KShortestPaths) {
     LOG_DEVEL << "III.";
     if (checkKPathsCandidates()) {
@@ -751,6 +756,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       return true;
     }
   }
+  // TODO: end
 
   LOG_DEVEL << "<1337> Returned false(3)";
   return false;
