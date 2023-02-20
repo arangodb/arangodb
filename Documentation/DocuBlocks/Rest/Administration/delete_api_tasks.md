@@ -35,7 +35,7 @@ A plain text message stating what went wrong.
 
 @EXAMPLES
 
-trying to delete nonexistent task
+Try to delete a non-existent task:
 
 @EXAMPLE_ARANGOSH_RUN{RestTasksDeleteFail}
     var url = "/_api/tasks/NoTaskWithThatName";
@@ -47,7 +47,7 @@ trying to delete nonexistent task
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Remove existing Task
+Remove existing task:
 
 @EXAMPLE_ARANGOSH_RUN{RestTasksDelete}
     var url = "/_api/tasks/";

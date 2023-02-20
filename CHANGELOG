@@ -3380,7 +3380,7 @@ devel
   whichever is lower.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
-  used as default weight in a SHORTEST_PATH or a K_SHORTEST_PAHS traversal.
+  used as default weight in a SHORTEST_PATH or a K_SHORTEST_PATHS traversal.
 
 * Fix BTS-446: When finding a not yet fully initialized agency, do not
   immediately fatal exit. Keep trying for (very generous) 5
@@ -4531,7 +4531,7 @@ devel
 
 * Allow {USER} placeholder string also in `--ldap.search-filter`.
 
-* Fix agency restart with mismatching computation and log indexes.
+* Fix agency restart with mismatching compaction and log indexes.
 
 * Added metrics for document read and write operations:
 
@@ -4607,7 +4607,7 @@ devel
   server are all using v3.8 or higher, and the dumps will never be stored into
   earlier versions.
   The default value for this option is `true`, meaning the JSON wrappers will
-  be stored as part of the dump. This is compatible with all previous version.
+  be stored as part of the dump. This is compatible with all previous versions.
 
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
@@ -6333,7 +6333,7 @@ devel
 
 * Fixed hotbackup agency lock cleanup procedure.
 
-* Only advance shard version after follower is reported in sync in agency.
+* Only advance shard version after follower is reported in-sync in agency.
 
 * Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
 
@@ -7584,7 +7584,7 @@ devel
 * Upgraded bundled Boost library version to 1.71.
 
 * The General Graph document API is now consistent with the document API in its error messages.
-  When attempting to create / modify edges pointing to nonexistent vertex collections
+  When attempting to create / modify edges pointing to non-existent vertex collections
   HTTP 400 is returned instead of 404.
 
 * Use `-std=c++17` for ArangoDB compilation.
@@ -7849,7 +7849,7 @@ v3.5.0-rc.5 (2019-07-22)
 * MinReplicationFactor:
   Collections can now be created with a minimal replication factor (minReplicationFactor), which defaults to 1.
   If minReplicationFactor > 1 a collection will go into "read-only" mode as soon as it has less than minReplicationFactor
-  many in sync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
+  many in-sync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
@@ -7872,7 +7872,7 @@ v3.5.0-rc.5 (2019-07-22)
 * The keep alive timeout specified via --http.keep-alive-timeout is now being honored
 
 * Replication requests on Document API are now on higher priority then client-triggered requests.
-  This should help to keep in sync replication up and running even if the server is overloaded.
+  This should help to keep in-sync replication up and running even if the server is overloaded.
 
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
   server. Also, when a follower is added for synchronous replication, the WAL
@@ -9244,7 +9244,7 @@ v3.4.0-rc.5 (2018-11-29)
 * fixed a bug where indexes are used in the cluster while still being
   built on the db servers
 
-* fix move leader shard: wait until all but the old leader are in sync.
+* fix move leader shard: wait until all but the old leader are in-sync.
   This fixes some unstable tests.
 
 * cluster health features more elaborate agent records
@@ -12714,7 +12714,7 @@ v3.1.20 (2016-05-16)
 
 * fix in SimpleHttpClient for correct advancement of readBufferOffset
 
-* forward SIG_HUP in supervisor process to the server process to fix logrotation
+* forward SIG_HUP in supervisor process to the server process to fix log rotation
   You need to stop the remaining arangod server process manually for the upgrade to work.
 
 
@@ -20206,7 +20206,7 @@ v1.4.0-alpha1 (2013-08-02)
 
 * issue #517: Foxx: Route parameters with capital letters fail
 
-* issue #512: Bound Parameters for LIMIT
+* issue #512: Bind Parameters for LIMIT
 
 
 v1.3.3 (2013-08-01)
@@ -20318,7 +20318,7 @@ v1.3.0-rc1 (2013-04-24)
 
 * added API for user-defined AQL functions
 
-* issue #475: A better error message for deleting a nonexistent graph
+* issue #475: A better error message for deleting a non-existent graph
 
 * issue #474: Web interface problems with the JS Shell
 

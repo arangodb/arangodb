@@ -125,13 +125,8 @@ The response also contains the following HTTP headers:
   You may use this value in the `lastScanned` header to allow the RocksDB storage engine
   to break up requests over multiple responses.
 
-<<<<<<< HEAD
 - `x-arango-replication-lasttick`: the last tick value the server has
   logged in its write ahead log (not necessarily included in the result). By comparing the last
-=======
-- *x-arango-replication-lasttick*: the last tick value the server has
-  logged in its write ahead log (not necessarily included in the result). By comparing the last
->>>>>>> 5daecb9bf (spelling: the)
   tick and last included tick values, clients have an approximate indication of
   how many events there are still left to fetch.
 

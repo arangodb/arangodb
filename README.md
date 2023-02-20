@@ -112,13 +112,8 @@ and the [Release Notes](https://www.arangodb.com/docs/stable/release-notes.html)
 Stay in Contact
 ---------------
 
-<<<<<<< HEAD
 - Please use GitHub for feature requests and bug reports:
- [https://github.com/arangodb/arangodb/issues](https://github.com/arangodb/arangodb/issues)
-=======
-We really appreciate feature requests and bug reports. Please use our GitHub
-issue tracker for reporting them:
->>>>>>> 98ef03ce6 (spelling: github)
+  [https://github.com/arangodb/arangodb/issues](https://github.com/arangodb/arangodb/issues)
 
 - Ask questions about AQL, usage scenarios, etc. on StackOverflow:
   [https://stackoverflow.com/questions/tagged/arangodb](https://stackoverflow.com/questions/tagged/arangodb)
