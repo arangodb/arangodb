@@ -83,63 +83,12 @@ bool S2MultiPolylineRegion::Contains(S2Point const& /*p*/) const {
 using namespace coding;
 
 void S2MultiPolylineRegion::Encode(Encoder& encoder, Options options) const {
-  TRI_ASSERT(isOptionsS2(options));
-  TRI_ASSERT(options != Options::kS2PointRegionCompact ||
-             options != Options::kS2PointShapeCompact)
-      << "In such case we need to serialize all vertices at once.";
-  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + Varint::kMax64);
-  encoder.put8(toTag(Type::kMultiPolyline, options));
-  auto const numPolylines = _impl.size();
-  if (numPolylines == 0) {
-    encoder.put_varint64(0);
-    return;
-  } else if (numPolylines == 1) {
-    auto const vertices = _impl[0].vertices_span();
-    TRI_ASSERT(!vertices.empty());
-    encoder.put_varint64(vertices.size() * 2);
-    encodeVertices(encoder, vertices);
-    return;
-  }
-  encoder.Ensure((1 + numPolylines) * Varint::kMax64 + 2 * toSize(options));
-  encoder.put_varint64(numPolylines * 2 + 1);
-  for (size_t i = 0; i != numPolylines; ++i) {
-    auto const vertices = _impl[i].vertices_span();
-    encoder.put_varint64(vertices.size());
-    encodeVertices(encoder, vertices);
-  }
+  encodePolylines(encoder, _impl, options);
 }
 
 bool S2MultiPolylineRegion::Decode(Decoder& decoder, uint8_t tag,
                                    std::vector<S2Point>& cache) {
-  _impl.clear();
-  uint64 size = 0;
-  if (!decoder.get_varint64(&size)) {
-    return false;
-  }
-  if (size == 0) {
-    return true;
-  } else if (size % 2 == 0) {
-    cache.resize(static_cast<size_t>(size / 2));
-    if (!decodeVertices(decoder, cache, tag)) {
-      return false;
-    }
-    _impl.emplace_back(cache, S2Debug::DISABLE);
-    return true;
-  }
-  auto const numPolylines = static_cast<size_t>(size / 2);
-  TRI_ASSERT(numPolylines >= 2);
-  _impl.reserve(numPolylines);
-  for (uint64 i = 0; i != numPolylines; ++i) {
-    if (!decoder.get_varint64(&size)) {
-      return false;
-    }
-    cache.resize(size);
-    if (!decodeVertices(decoder, cache, tag)) {
-      return false;
-    }
-    _impl.emplace_back(cache, S2Debug::DISABLE);
-  }
-  return true;
+  decodePolylines(decoder, _impl, tag, cache);
 }
 
 }  // namespace arangodb::geo

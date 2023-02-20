@@ -26,6 +26,9 @@
 
 #include "IResearch/common.h"
 #include "IResearch/GeoAnalyzer.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
+#endif
 #include "IResearch/GeoFilter.h"
 #include "Basics/DownCast.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -52,6 +55,7 @@ TEST(GeoOptionsTest, options) {
   ASSERT_EQ(GeoOptions::kDefaultMaxLevel, opts.maxLevel);
 }
 
+#ifdef USE_ENTERPRISE
 TEST(GeoBench, sizes) {
   GTEST_SKIP() << "It's just for check sizes, not comment out to allow compile";
   GeoVPackAnalyzer::Options vpackOptions;
@@ -189,6 +193,7 @@ TEST(GeoBench, sizes) {
   std::cerr << GeoS2Analyzer::store(&s2Analyzer, builder->slice()).size()
             << std::endl;
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       GeoPointAnalyzer test suite

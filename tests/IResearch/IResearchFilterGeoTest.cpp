@@ -788,30 +788,35 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
       vocbase(),
       R"(FOR d IN myView FILTER GEO_DISTANCE(d[*],  [ 1, 2 ] ) < 5000 RETURN d)");
 
-  // TODO(MBkkt) Fix it, now if parse ok,
-  //  but execution fail we still fallback on expression.
-  //  I don't sure it's a good idea.
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'],  [ 1, 2 ] ) < 5000 RETURN d)");
+
   // wrong second arg
-  // clang-format off
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], 1 ) < 5000 RETURN d)");
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], '[1,2]') < 5000 RETURN d)");
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], true) < 5000 RETURN d)");
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], null) < 5000 RETURN d)");
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], {foo:[1,2]}) < 5000 RETURN d)");
-  // assertExpressionFilter(
-  //     vocbase(),
-  //     R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], { "type": "Pointt", "coordinates": [ 1, 2 ] }) < 5000 RETURN d)");
-  // clang-format on
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], 1 ) < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], '[1,2]') < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], true) < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], null) < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], {foo:[1,2]}) < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER ANALYZER(GEO_DISTANCE(d['name'], { "type": "Pointt", "coordinates": [ 1, 2 ] }) < 5000, "mygeojson") RETURN d)",
+      irs::kNoBoost, wrappedExpressionExtractor);
 
   // wrong distance
   assertExpressionFilter(

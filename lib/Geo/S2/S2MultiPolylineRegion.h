@@ -65,13 +65,6 @@ class S2MultiPolylineRegion final : public S2Region {
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
 
-  /// Coding:
-  /// num_lines <= 1:
-  /// varint(line[0]_num_vertices << 1 | 0) + line[0]_vertices_data
-  ///
-  /// num_lines > 1:
-  /// varint(num_loops() << 1 | 1)
-  /// num_lines * (varint(line[i]_num_vertices) + line[i]_vertices_data)
   void Encode(Encoder& encoder, coding::Options options) const;
   bool Decode(Decoder& decoder, uint8_t tag, std::vector<S2Point>& cache);
 

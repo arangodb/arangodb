@@ -71,4 +71,13 @@ bool decodePolygon(Decoder& /*decoder*/, S2Polygon& /*polygon*/,
   return false;
 }
 
+void encodePolylines(Encoder& /*encoder*/,
+                     std::span<S2Polyline const> /*polylines*/,
+                     coding::Options /*options*/) {}
+
+bool decodePolylines(Decoder& /*decoder*/, std::vector<S2Polyline>& polylines,
+                     uint8_t /*tag*/, std::vector<S2Point>& /*cache*/) {
+  return false;
+}
+
 }  // namespace arangodb::geo

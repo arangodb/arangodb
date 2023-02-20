@@ -809,13 +809,11 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
 
-  tmpValue.reset(*centroidNode);
-  if (buildFilter || tmpValue.isConstant()) {
+  if (buildFilter) {
+    tmpValue.reset(*centroidNode);
     if (!tmpValue.execute(ctx)) {
       return error::failedToEvaluate(funcName, centroidNodeIdx);
     }
-  }
-  if (buildFilter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
@@ -917,63 +915,58 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
   }
 
-  tmpValue.reset(*centroidNode);
-  if (filter || tmpValue.isConstant()) {
+  if (filter) {
+    tmpValue.reset(*centroidNode);
     if (!tmpValue.execute(ctx)) {
       return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
     }
-  }
-  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
+    }
+    GeoDistanceFilterOptions options;
+    auto r = setupGeoFilter(analyzer, options);
+    if (!r.ok()) {
+      return r;
+    }
+    r = getLatLng(tmpValue, options.origin, GEO_DISTANCE_FUNC, centroidNodeIdx,
+                  options);
+    if (!r.ok()) {
+      return r;
+    }
+
+    switch (node.cmp) {
+      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+        options.range.min = distance;
+        options.range.min_type = irs::BoundType::INCLUSIVE;
+        options.range.max = distance;
+        options.range.max_type = irs::BoundType::INCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        options.range.max = distance;
+        options.range.max_type = aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp
+                                     ? irs::BoundType::INCLUSIVE
+                                     : irs::BoundType::EXCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        options.range.min = distance;
+        options.range.min_type = aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp
+                                     ? irs::BoundType::INCLUSIVE
+                                     : irs::BoundType::EXCLUSIVE;
+        break;
+      default:
+        TRI_ASSERT(false);
+        return {TRI_ERROR_BAD_PARAMETER};
     }
 
     auto& geo_filter = (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
                             ? appendNot<GeoDistanceFilter>(*filter, filterCtx)
                             : append<GeoDistanceFilter>(*filter, filterCtx));
     geo_filter.boost(filterCtx.boost);
-
-    auto* options = geo_filter.mutable_options();
-    auto r = setupGeoFilter(analyzer, *options);
-    if (!r.ok()) {
-      return r;
-    }
-
-    S2Point centroid;
-    r = getLatLng(tmpValue, centroid, GEO_DISTANCE_FUNC, centroidNodeIdx,
-                  *options);
-    if (!r.ok()) {
-      return r;
-    }
-
-    options->origin = centroid;
-    switch (node.cmp) {
-      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
-        options->range.min = distance;
-        options->range.min_type = irs::BoundType::INCLUSIVE;
-        options->range.max = distance;
-        options->range.max_type = irs::BoundType::INCLUSIVE;
-        break;
-      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        options->range.max = distance;
-        options->range.max_type = aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp
-                                      ? irs::BoundType::INCLUSIVE
-                                      : irs::BoundType::EXCLUSIVE;
-        break;
-      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        options->range.min = distance;
-        options->range.min_type = aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp
-                                      ? irs::BoundType::INCLUSIVE
-                                      : irs::BoundType::EXCLUSIVE;
-        break;
-      default:
-        TRI_ASSERT(false);
-        return {TRI_ERROR_BAD_PARAMETER};
-    }
+    *geo_filter.mutable_options() = std::move(options);
 
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
     *geo_filter.mutable_field() = std::move(name);

@@ -132,4 +132,9 @@ void encodePolygon(Encoder& encoder, S2Polygon const& polygon,
 bool decodePolygon(Decoder& decoder, S2Polygon& polygon, uint8_t tag,
                    std::vector<S2Point>& cache);
 
+void encodePolylines(Encoder& encoder, std::span<S2Polyline const> polylines,
+                     coding::Options options);
+bool decodePolylines(Decoder& decoder, std::vector<S2Polyline>& polylines,
+                     uint8_t tag, std::vector<S2Point>& cache);
+
 }  // namespace arangodb::geo

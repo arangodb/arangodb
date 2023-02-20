@@ -708,6 +708,7 @@ template<ShapeContainer::Type TypeT, typename T>
 void ShapeContainer::decodeImpl(Decoder& decoder) {
   if (ADB_UNLIKELY(_type != TypeT)) {
     if constexpr (std::is_same_v<T, S2PointRegion>) {
+      // Any S2Point, but should be unit length
       _data = std::make_unique<T>(S2Point{1, 0, 0});
     } else {
       auto data = std::make_unique<T>();

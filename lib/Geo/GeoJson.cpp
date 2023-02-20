@@ -67,6 +67,9 @@ S2Point encodePointImpl(S2LatLng latLng, coding::Options options,
     } else if (options == coding::Options::kS2LatLngInt) {
       toLatLngInt(latLng);
     }
+  } else {
+    TRI_ASSERT(encoder == nullptr);
+    TRI_ASSERT(options == coding::Options::kInvalid);
   }
   return latLng.ToPoint();
 }
@@ -306,7 +309,7 @@ Result parseLinesImpl(velocypack::Slice vpack, std::vector<S2Polyline>& lines,
                       Encoder* encoder) {
   TRI_ASSERT(vpack.isArray());
   velocypack::ArrayIterator it{vpack};
-  [[maybe_unused]] auto const n = it.size();
+  auto const n = it.size();
   if (Validation && ADB_UNLIKELY(n == 0)) {
     return {
         TRI_ERROR_BAD_PARAMETER,
@@ -486,7 +489,7 @@ Result parseLoopImpl(velocypack::Slice vpack,
   if constexpr (Validation) {
     if (ADB_UNLIKELY(first != &last && !first->Contains(last))) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Subsequent loop not a hole in polygon."};
+              "Subsequent loop is not a hole in a polygon."};
     }
     if (encoder != nullptr) {
       TRI_ASSERT(encoder->avail() >= Varint::kMax64);
