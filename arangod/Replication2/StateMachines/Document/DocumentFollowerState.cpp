@@ -124,6 +124,7 @@ auto DocumentFollowerState::applyEntries(
                   << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = doc.collectionId;
+              self->_transactionHandler->abortTransactionsForShard(doc.shardId);
               auto res = data.core->dropShard(doc.shardId, collectionId);
               if (res.fail()) {
                 LOG_CTX("8c7a0", FATAL, self->loggerContext)
