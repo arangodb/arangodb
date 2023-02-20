@@ -1770,7 +1770,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (_random) {
     // we retrieve at most one random document from the collection.
     // so the estimate is at most 1
-    estimatedNrItems = 1;
+    // estimatedNrItems = 1;
+    // Unnecessary to set, we just leave estimate.estimatedNrItems as it is.
   } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
@@ -1780,7 +1781,9 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
-  estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  estimate.estimatedCost += estimate.estimatedNrItems *
+                                (_random ? 1.005 : (hasFilter() ? 2.0 : 1.0)) +
+                            1.0;
 
   return estimate;
 }
@@ -2824,18 +2827,23 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 namespace {
-constexpr std::string_view MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
-constexpr std::string_view MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
-constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
+constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
+constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
+constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
+constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
-  auto isMulti = base.get(MATERIALIZE_NODE_MULTI_NODE_PARAM);
+  auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeMultiNode(plan, base);
   }
-  return new MaterializeSingleNode(plan, base);
+  auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
+  if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
+    return new MaterializeSingleNode<true>(plan, base);
+  }
+  return new MaterializeSingleNode<false>(plan, base);
 }
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2849,25 +2857,17 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _inNonMaterializedDocId(aql::Variable::varFromVPack(
-          plan->getAst(), base, MATERIALIZE_NODE_IN_NM_DOC_PARAM, true)),
+          plan->getAst(), base, kMaterializeNodeInNmDocParam, true)),
       _outVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
+          plan->getAst(), base, kMaterializeNodeOutVariableParam)) {}
 
 void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
-  nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
+  nodes.add(VPackValue(kMaterializeNodeInNmDocParam));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 
-  nodes.add(VPackValue(MATERIALIZE_NODE_OUT_VARIABLE_PARAM));
+  nodes.add(VPackValue(kMaterializeNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
-}
-
-auto MaterializeNode::getReadableInputRegisters(
-    RegisterId const inNmDocId) const -> RegIdSet {
-  // TODO (Dronplane) for index exectutor here we possibly will
-  // return additional SearchDoc register. So will keep this function for time
-  // being.
-  return RegIdSet{inNmDocId};
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
@@ -2904,7 +2904,7 @@ void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
-  nodes.add(MATERIALIZE_NODE_MULTI_NODE_PARAM, velocypack::Value(true));
+  nodes.add(kMaterializeNodeMultiNodeParam, velocypack::Value(true));
 }
 
 std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
@@ -2926,7 +2926,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
 
-  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
+  RegIdSet readableInputRegisters{inNmDocIdRegId};
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
@@ -2935,7 +2935,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos<void>(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void, false>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -2958,38 +2958,36 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan,
-                                             ExecutionNodeId id,
-                                             aql::Collection const* collection,
-                                             aql::Variable const& inDocId,
-                                             aql::Variable const& outVariable)
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+    ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
+    aql::Variable const& inDocId, aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable),
       CollectionAccessingNode(collection) {}
 
-MaterializeSingleNode::MaterializeSingleNode(
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-void MaterializeSingleNode::doToVelocyPack(velocypack::Builder& nodes,
-                                           unsigned flags) const {
+template<bool localDocumentId>
+void MaterializeSingleNode<localDocumentId>::doToVelocyPack(
+    velocypack::Builder& nodes, unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
+  nodes.add(kMaterializeNodeInLocalDocIdParam, localDocumentId);
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
+template<bool localDocumentId>
+std::unique_ptr<ExecutionBlock>
+MaterializeSingleNode<localDocumentId>::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inNmDocIdRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
   RegisterId outDocumentRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
@@ -2997,8 +2995,16 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
   auto const& name = collection()->name();
-
-  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
+  RegisterId inNmDocIdRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
+  RegIdSet readableInputRegisters;
+  if (inNmDocIdRegId.isValid()) {
+    readableInputRegisters.emplace(inNmDocIdRegId);
+  }
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
@@ -3007,13 +3013,13 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
   return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
+      ExecutionBlockImpl<MaterializeExecutor<decltype(name), localDocumentId>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan,
-                                            bool withDependencies,
-                                            bool withProperties) const {
+template<bool localDocumentId>
+ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
+    ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -3025,8 +3031,11 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan,
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeSingleNode>(
+  auto c = std::make_unique<MaterializeSingleNode<localDocumentId>>(
       plan, _id, collection(), *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+template class arangodb::aql::materialize::MaterializeSingleNode<false>;
+template class arangodb::aql::materialize::MaterializeSingleNode<true>;
