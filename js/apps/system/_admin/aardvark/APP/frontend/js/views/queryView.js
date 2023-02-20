@@ -1568,10 +1568,6 @@
       this.updateLocalQueries();
 
       this.myQueriesTableDesc.rows = this.customQueries;
-      
-      // Reverse order: Last added query shall be displayed first
-      // console.log({customQueries: self.customQueries, table: this.myQueriesTableDesc})
-      // self.customQueries.reverse();
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
       this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
@@ -1637,6 +1633,7 @@
       }
       if (this.collection.searchOptions.sortBy === 'dateAdded') {
         if (this.collection.searchOptions.sortOrder === 1) {
+          // Reverse order: Last added query shall be displayed first
           return rows.reverse();
         }
         if (this.collection.searchOptions.sortOrder === -1) {
