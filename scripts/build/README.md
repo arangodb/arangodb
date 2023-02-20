@@ -1,4 +1,4 @@
-To build a new docker image please use the following command (this folder as your working directory):
+To build a new docker image please use the following command (assuming this folder as your working directory):
 `docker build -t arangodb/build-alpine-x86_64:<alpine-version>-gcc<gcc-version>-openssl<openssl-version> --file arangodb-build.Dockerfile .`
 
 For example:
