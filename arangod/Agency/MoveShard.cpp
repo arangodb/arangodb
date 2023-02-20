@@ -23,6 +23,7 @@
 
 #include "MoveShard.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"

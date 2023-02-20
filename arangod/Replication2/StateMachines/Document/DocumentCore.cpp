@@ -47,30 +47,27 @@ DocumentCore::DocumentCore(
 
   // TODO this is currently still required. once the snapshot transfer contains
   //  a list of shards that exist for this log, we can remove this.
-  _shardId = _params.shardId;
+  auto shardId = _params.shardId;
   auto shardResult = _shardHandler->createLocalShard(
-      _shardId, _params.collectionId, collectionProperties);
+      shardId, _params.collectionId, collectionProperties);
   TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state"
                                << _gid << ": " << shardResult;
 
+  auto shardProperties = ShardProperties{
+      .collectionId = _params.collectionId,
+      .properties = std::move(collectionProperties),
+  };
+  _shards.emplace(shardId, std::move(shardProperties));
   LOG_CTX("b7e0d", TRACE, this->loggerContext)
-      << "Created shard " << _shardId << " for replicated state " << _gid;
+      << "Created shard " << shardId << " for replicated state " << _gid;
 }
-
-auto DocumentCore::getShardId() -> ShardID const& { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
-auto DocumentCore::getCollectionId() -> std::string const& {
-  return _params.collectionId;
-}
-
 void DocumentCore::drop() {
-  auto result = _shardHandler->dropLocalShard(_shardId, _params.collectionId);
-  if (result.fail()) {
+  if (auto result = dropAllShards(); result.fail()) {
     LOG_CTX("b7f0d", FATAL, this->loggerContext)
-        << "Failed to drop shard " << _shardId << " for replicated state "
-        << _gid << ": " << result;
+        << "Failed to drop all shards for replicated state: " << result;
     FATAL_ERROR_EXIT();
   }
 }
@@ -80,3 +77,65 @@ auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
 auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
   return _vocbase;
 }
+
+auto DocumentCore::createShard(ShardID shardId, CollectionID collectionId,
+                               velocypack::SharedSlice properties) -> Result {
+  // TODO remove this unnecessary copy when api is better
+  auto propertiesCopy = std::make_shared<VPackBuilder>();
+  propertiesCopy->add(properties.slice());
+
+  auto result =
+      _shardHandler->createLocalShard(shardId, collectionId, propertiesCopy);
+  if (result.ok()) {
+    auto shardProperties = ShardProperties{collectionId, propertiesCopy};
+    _shards.emplace(std::move(shardId), std::move(shardProperties));
+  }
+  return result;
+}
+
+auto DocumentCore::dropShard(ShardID shardId, CollectionID collectionId)
+    -> Result {
+  if (!_shards.contains(shardId)) {
+    LOG_CTX("d335b", DEBUG, loggerContext) << fmt::format(
+        "Skipping dropping of shard {}, because it is already dropped.",
+        shardId);
+    return {};
+  }
+  auto result = _shardHandler->dropLocalShard(shardId, collectionId);
+  if (result.ok()) {
+    _shards.erase(shardId);
+  }
+  return result;
+}
+
+auto DocumentCore::dropAllShards() -> Result {
+  for (auto it = _shards.begin(); it != _shards.end(); it = _shards.erase(it)) {
+    auto const& [shardId, shardProperties] = *it;
+    auto result =
+        _shardHandler->dropLocalShard(shardId, shardProperties.collectionId);
+    if (result.fail()) {
+      return Result{result.errorNumber(),
+                    fmt::format("Failed to drop shard {}: {}", shardId,
+                                result.errorMessage())};
+    }
+  }
+  return {};
+}
+
+auto DocumentCore::ensureShard(ShardID shardId, CollectionID collectionId,
+                               velocypack::SharedSlice properties) -> Result {
+  if (_shards.contains(shardId)) {
+    LOG_CTX("69bf5", DEBUG, loggerContext) << fmt::format(
+        "Skipping creation of shard {}, because it is already created.",
+        shardId);
+    return {};
+  }
+  return createShard(std::move(shardId), std::move(collectionId),
+                     std::move(properties));
+}
+
+auto DocumentCore::isShardAvailable(ShardID const& shardId) -> bool {
+  return _shards.contains(shardId);
+}
+
+auto DocumentCore::getShardMap() -> ShardMap const& { return _shards; }

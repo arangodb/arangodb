@@ -151,6 +151,10 @@ Agent::Agent(ArangodServer& server, config_t const& config)
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
                                    notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Target/CollectionGroups",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Plan/CollectionGroups",
+                                   notifySupervision);
 }
 
 /// Dtor shuts down thread

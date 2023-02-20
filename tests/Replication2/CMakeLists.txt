@@ -73,7 +73,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #ReplicatedState/ReplicatedStateTest.cpp
   #ReplicatedState/StateCleanupTest.cpp
   #ReplicatedState/StateMachines/MyStateMachine.cpp
-)
+  CollectionGroups/CollectionGroupsSupervision.cpp)
 
 add_library(arango_tests_replication2 OBJECT
   ${ARANGODB_REPLICATION2_TEST_SOURCES}

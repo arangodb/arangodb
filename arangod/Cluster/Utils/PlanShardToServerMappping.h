@@ -25,11 +25,12 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/ResponsibleServerList.h"
 #include "Containers/FlatHashMap.h"
+#include <unordered_map>
 
 namespace arangodb {
 
 struct PlanShardToServerMapping {
-  containers::FlatHashMap<ShardID, ResponsibleServerList> shards;
+  std::unordered_map<ShardID, ResponsibleServerList> shards;
 };
 
 template<class Inspector>

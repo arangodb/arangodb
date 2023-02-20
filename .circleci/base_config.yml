@@ -195,10 +195,6 @@ jobs:
 
 workflows:
   lint:
-    when:
-      matches:
-        pattern: /^(bug-fix|feature|chore)\/.*$/
-        value: << pipeline.git.branch >>
     jobs:
       - minimal-checkout:
           name: minimal-checkout
@@ -211,10 +207,6 @@ workflows:
           requires:
             - minimal-checkout
   community-pr:
-    when:
-      matches:
-        pattern: /^(bug-fix|feature|chore)\/.*$/
-        value: << pipeline.git.branch >>
     jobs:
       - compile-linux:
           name: build-community-pr

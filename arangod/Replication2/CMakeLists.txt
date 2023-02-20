@@ -1,5 +1,6 @@
 add_library(arango_replication2 STATIC
   AgencyCollectionSpecification.cpp
+  Supervision/CollectionGroupSupervision.cpp
   AgencyMethods.cpp
   Methods.cpp
   MetricsHelper.cpp
@@ -7,7 +8,7 @@ add_library(arango_replication2 STATIC
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp)
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp )
 
 target_link_libraries(arango_replication2
   arango
