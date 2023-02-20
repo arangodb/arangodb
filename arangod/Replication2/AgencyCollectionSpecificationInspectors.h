@@ -138,7 +138,7 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
       /* NOTE: shardsR2 is a temporary key. We plan to replace it by shards
          before release, which right now is occupied */
       f.field("shardsR2", x.shardList),
-      f.template embedFields(x.deprecatedShardMap));
+      f.template embedFields<PlanShardToServerMapping>(x.deprecatedShardMap));
 }
 
 }  // namespace arangodb::replication2::agency
