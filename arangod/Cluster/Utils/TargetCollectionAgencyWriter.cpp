@@ -164,8 +164,9 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
 
     // Insert an empty object, we basically want to occupy the key here for
     // preconditions
-    writes = std::move(writes).set(
-        collectionNamePath->collection(entry.getName())->str(), "");
+    writes = std::move(writes).emplace_object(
+        collectionNamePath->collection(entry.getName())->str(),
+        [](VPackBuilder& builder) {});
   }
 
   // Done with adding writes. Now add all preconditions
