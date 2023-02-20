@@ -28,8 +28,19 @@
 #include <unordered_map>
 
 namespace arangodb::replication2::replicated_state::document {
+inline constexpr auto kStringCollectionID = std::string_view{"collectionId"};
+inline constexpr auto kStringProperties = std::string_view{"properties"};
+
 struct ShardProperties {
   CollectionID collectionId;
-  std::shared_ptr<velocypack::Builder> properties;
+  std::shared_ptr<VPackBuilder> properties;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, ShardProperties& s) {
+    return f.object(s).fields(f.field(kStringCollectionID, s.collectionId),
+                              f.field(kStringProperties, s.properties));
+  }
 };
+
+using ShardMap = std::unordered_map<ShardID, ShardProperties>;
 }  // namespace arangodb::replication2::replicated_state::document

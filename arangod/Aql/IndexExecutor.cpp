@@ -106,10 +106,21 @@ IndexIterator::CoveringCallback getCallback(
     transaction::Methods::IndexHandle const& index,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndVars,
-          &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIteratorCoveringData& covering) {
-    if constexpr (checkUniqueness) {
+  auto impl = [&context, &index, &outNonMaterializedIndVars,
+               &outNonMaterializedIndRegs]<typename TokenType>(
+                  TokenType&& token, IndexIteratorCoveringData& covering) {
+    constexpr bool isLocalDocumentId =
+        std::is_same_v<LocalDocumentId, std::decay_t<TokenType>>;
+    // can't be a static_assert as this implementation is still possible
+    // just can't be used right now as for restriction in late materialization
+    // rule
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if constexpr (checkUniqueness && !isLocalDocumentId) {
+      TRI_ASSERT(false);
+    }
+#endif
+    if constexpr (checkUniqueness && isLocalDocumentId) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -135,11 +146,17 @@ IndexIterator::CoveringCallback getCallback(
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    // move a document id
-    AqlValue v(AqlValueHintUInt(token.id()));
-    AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
+    // move a document id
+    if constexpr (isLocalDocumentId) {
+      TRI_ASSERT(token.isSet());
+      AqlValue v(AqlValueHintUInt(token.id()));
+      AqlValueGuard guard{v, false};
+      output.moveValueInto(registerId, input, guard);
+    } else {
+      AqlValueGuard guard{token, true};
+      output.moveValueInto(registerId, input, guard);
+    }
 
     // hash/skiplist/persistent
     if (covering.isArray()) {
@@ -170,6 +187,7 @@ IndexIterator::CoveringCallback getCallback(
     output.advanceRow();
     return true;
   };
+  return impl;
 }
 
 }  // namespace

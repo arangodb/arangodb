@@ -31,15 +31,15 @@ DocumentStateSnapshotHandler::DocumentStateSnapshotHandler(
     std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory)
     : _databaseSnapshotFactory(std::move(databaseSnapshotFactory)) {}
 
-auto DocumentStateSnapshotHandler::create(std::vector<ShardID> shardIds)
+auto DocumentStateSnapshotHandler::create(ShardMap shards)
     -> ResultT<std::weak_ptr<Snapshot>> {
   try {
     auto snapshot = _databaseSnapshotFactory->createSnapshot();
 
     auto id = SnapshotId::create();
     auto emplacement = _snapshots.emplace(
-        id, std::make_shared<Snapshot>(id, std::move(shardIds),
-                                       std::move(snapshot)));
+        id,
+        std::make_shared<Snapshot>(id, std::move(shards), std::move(snapshot)));
     TRI_ASSERT(emplacement.second);
     return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
   } catch (basics::Exception const& ex) {

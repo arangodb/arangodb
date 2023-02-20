@@ -23,7 +23,6 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 
-#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -40,27 +39,7 @@ DocumentCore::DocumentCore(
       _vocbase(vocbase),
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
-      _agencyHandler(handlersFactory->createAgencyHandler(_gid)),
-      _shardHandler(handlersFactory->createShardHandler(_gid)) {
-  auto collectionProperties =
-      _agencyHandler->getCollectionPlan(_params.collectionId);
-
-  // TODO this is currently still required. once the snapshot transfer contains
-  //  a list of shards that exist for this log, we can remove this.
-  auto shardId = _params.shardId;
-  auto shardResult = _shardHandler->createLocalShard(
-      shardId, _params.collectionId, collectionProperties);
-  TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state"
-                               << _gid << ": " << shardResult;
-
-  auto shardProperties = ShardProperties{
-      .collectionId = _params.collectionId,
-      .properties = std::move(collectionProperties),
-  };
-  _shards.emplace(shardId, std::move(shardProperties));
-  LOG_CTX("b7e0d", TRACE, this->loggerContext)
-      << "Created shard " << shardId << " for replicated state " << _gid;
-}
+      _shardHandler(handlersFactory->createShardHandler(_gid)) {}
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
@@ -80,6 +59,9 @@ auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
 
 auto DocumentCore::createShard(ShardID shardId, CollectionID collectionId,
                                velocypack::SharedSlice properties) -> Result {
+  // TODO assertion should not fail, but it does
+  // TRI_ASSERT(!_shards.contains(shardId));
+
   // TODO remove this unnecessary copy when api is better
   auto propertiesCopy = std::make_shared<VPackBuilder>();
   propertiesCopy->add(properties.slice());

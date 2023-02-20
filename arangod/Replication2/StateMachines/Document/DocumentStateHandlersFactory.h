@@ -71,8 +71,6 @@ struct IDocumentStateTransaction;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
-  virtual auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
   virtual auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
@@ -92,11 +90,8 @@ class DocumentStateHandlersFactory
     : public IDocumentStateHandlersFactory,
       public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
-  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
-                               network::ConnectionPool* connectionPool,
+  DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
                                MaintenanceFeature& maintenanceFeature);
-  auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> override;
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
@@ -110,8 +105,6 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
 
  private:
-  ArangodServer& _server;
-  AgencyCache& _agencyCache;
   network::ConnectionPool* _connectionPool;
   MaintenanceFeature& _maintenanceFeature;
 };
