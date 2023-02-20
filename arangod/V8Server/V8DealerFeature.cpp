@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -81,6 +82,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -127,13 +129,14 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),
-      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
+      _copyInstallation(false),
       _allowAdminExecute(false),
       _allowJavaScriptTransactions(true),
+      _allowJavaScriptUdfs(true),
       _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
@@ -327,6 +330,17 @@ or teardown commands for execution on the server.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--javascript.user-defined-functions",
+          "Enable JavaScript user-defined functions (UDFs) in AQL queries.",
+          new BooleanParameter(&_allowJavaScriptUdfs),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31004);
 
   options
       ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
@@ -783,16 +797,15 @@ void V8DealerFeature::unprepare() {
   _gcThread.reset();
 }
 
-bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
+bool V8DealerFeature::addGlobalContextMethod(
+    GlobalContextMethods::MethodType type) {
   bool result = true;
 
   CONDITION_LOCKER(guard, _contextCondition);
 
   for (auto& context : _contexts) {
     try {
-      if (!context->addGlobalContextMethod(method)) {
-        result = false;
-      }
+      context->addGlobalContextMethod(type);
     } catch (...) {
       result = false;
     }

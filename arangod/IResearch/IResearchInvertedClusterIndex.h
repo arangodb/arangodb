@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,11 @@ class IResearchInvertedClusterIndex final : public Index,
 
   bool covers(aql::Projections& projections) const final {
     return IResearchInvertedIndex::covers(projections);
+  }
+
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const final {
+    return IResearchInvertedIndex::coveredFields();
   }
 
   Result drop() final {

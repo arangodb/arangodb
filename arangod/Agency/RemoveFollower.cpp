@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,7 +124,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("83bf8", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -193,18 +193,19 @@ bool RemoveFollower::start(bool&) {
   std::unordered_map<std::string, int>
       overview;  // get an overview over the servers
                  // -1 : not "GOOD", can be in sync, or leader, or not
-                 // >=0: number of servers for which it is in sync or confirmed
+                 // >=0: number of shards for which it is in sync or confirmed
                  // leader
   bool leaderBad = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
-    if (checkServerHealth(_snapshot, serverName) == "GOOD") {
-      overview.try_emplace(serverName, 0);
+    if (checkServerHealth(_snapshot, serverName) ==
+        Supervision::HEALTH_STATUS_GOOD) {
+      overview.try_emplace(std::move(serverName), 0);
     } else {
-      overview.try_emplace(serverName, -1);
-      if (serverName == planned[0].copyString()) {
+      if (serverName == planned[0].stringView()) {
         leaderBad = true;
       }
+      overview.try_emplace(std::move(serverName), -1);
     }
   }
   doForAllShards(_snapshot, _database, shardsLikeMe,
@@ -212,7 +213,7 @@ bool RemoveFollower::start(bool&) {
                                                    std::string& planPath,
                                                    std::string& curPath) {
                    if (current.length() > 0) {
-                     if (current[0].copyString() != planned[0].copyString()) {
+                     if (current[0].stringView() != planned[0].stringView()) {
                        leaderBad = true;
                      } else {
                        for (auto const s : VPackArrayIterator(current)) {
@@ -230,11 +231,9 @@ bool RemoveFollower::start(bool&) {
                  });
 
   size_t inSyncCount = 0;
-  size_t notGoodCount = 0;
   for (auto const& pair : overview) {
-    if (pair.second == -1) {
-      ++notGoodCount;
-    } else if (static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
+    if (pair.second >= 0 &&
+        static_cast<size_t>(pair.second) >= shardsLikeMe.size()) {
       ++inSyncCount;
     }
   }
@@ -312,7 +311,7 @@ bool RemoveFollower::start(bool&) {
           auto const pair = *overview.find(it);
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
-              pair.first != planned[0].copyString()) {
+              pair.first != planned[0].stringView()) {
             if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
                                     true) ||
                 Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
@@ -332,7 +331,7 @@ bool RemoveFollower::start(bool&) {
             auto const pair = *overview.find(it);
             if (pair.second >= 0 &&
                 static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
-                pair.first != planned[0].copyString()) {
+                pair.first != planned[0].stringView()) {
               if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
                                        true) &&
                   !Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
@@ -353,7 +352,7 @@ bool RemoveFollower::start(bool&) {
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (chosenToRemove.find(serverName) == chosenToRemove.end()) {
-      kept.push_back(serverName);
+      kept.push_back(std::move(serverName));
     }
   }
 
@@ -372,8 +371,8 @@ bool RemoveFollower::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -424,7 +423,7 @@ bool RemoveFollower::start(bool&) {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : kept) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
@@ -441,7 +440,7 @@ bool RemoveFollower::start(bool&) {
   }
 
   LOG_TOPIC("f2df8", INFO, Logger::SUPERVISION)
-      << "Start precondition failed for RemoveFollower Job " + _jobId;
+      << "Start precondition failed for RemoveFollower Job " << _jobId;
   return false;
 }
 

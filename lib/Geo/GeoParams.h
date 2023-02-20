@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -121,6 +121,10 @@ struct QueryParams {
   double maxDistance = kMaxDistanceBetweenPoints;
   bool maxInclusive = false;
 
+  /// Some condition on min and max distances are given, this starts out
+  /// as false and must be set whenever the values minDistance, minInclusive
+  /// maxDistance and maxInclusive are intended to take effect.
+  bool distanceRestricted = false;
   /// @brief results need to be sorted by distance to centroid
   bool sorted = false;
   /// @brief Default order is from closest to farthest

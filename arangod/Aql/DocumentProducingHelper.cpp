@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -153,7 +153,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 }
 
 template<bool checkUniqueness>
-std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
+IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
 
@@ -435,6 +435,7 @@ IndexIterator::CoveringCallback aql::getCallback(
                     IndexIteratorCoveringData& covering) {
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;

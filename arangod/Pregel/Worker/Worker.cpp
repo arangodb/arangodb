@@ -1,9 +1,7 @@
-#include "Cluster/ServerState.h"
-#include "Pregel/Conductor/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,33 +21,33 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/Worker.h"
-#include "Basics/voc-errors.h"
-#include "GeneralServer/RequestLane.h"
-#include "Pregel/Aggregator.h"
-#include "Pregel/CommonFormats.h"
-#include "Pregel/Worker/GraphStore.h"
-#include "Pregel/IncomingCache.h"
-#include "Pregel/OutgoingCache.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/VertexComputation.h"
-
-#include "Pregel/Status/Status.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/RequestLane.h"
+#include "Inspection/VPack.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/Aggregator.h"
+#include "Pregel/CommonFormats.h"
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/Worker.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/OutgoingCache.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/VertexComputation.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
-#include "Inspection/VPack.h"
-#include "Inspection/VPackWithErrorT.h"
-#include "velocypack/Builder.h"
+#include <velocypack/Builder.h>
 
 #include "fmt/core.h"
 
@@ -566,8 +564,8 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   for (; it.hasMore(); ++it) {
     Vertex<V, E> const* vertexEntry = *it;
 
-    TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
+    TRI_ASSERT(vertexEntry->shard().value < _config.globalShardIDs().size());
+    ShardID const& shardId = _config.globalShardID(vertexEntry->shard());
 
     results.openObject(/*unindexed*/ true);
 

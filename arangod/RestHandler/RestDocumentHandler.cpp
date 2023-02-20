@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
@@ -107,7 +108,15 @@ RequestLane RestDocumentHandler::lane() const {
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (!suffixes.empty()) {
+    TRI_IF_FAILURE("failOnCRUDAPI" + suffixes[0]) {
+      generateError(GeneralResponse::responseCode(TRI_ERROR_DEBUG),
+                    TRI_ERROR_DEBUG, "Intentional test error");
+    }
+  }
+#endif
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
@@ -254,9 +263,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
                                  std::move(trxOpts));
 
-  if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(cname, isMultiple,
+                      opOptions.isOverwriteModeUpdateReplace());
 
   Result res = _activeTrx->begin();
 
@@ -619,9 +627,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
                                  std::move(trxOpts));
 
-  if (!isArrayCase) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(cname, isArrayCase, false);
 
   // ...........................................................................
   // inside write transaction
@@ -784,9 +790,8 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
                                  std::move(trxOpts));
-  if (suffixes.size() == 2 || !search.isArray()) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+
+  addTransactionHints(cname, isMultiple, false);
 
   Result res = _activeTrx->begin();
 
@@ -920,4 +925,23 @@ RestStatus RestDocumentHandler::readManyDocuments() {
                       _activeTrx->transactionContextPtr()->getVPackOptions());
                 });
           }));
+}
+
+void RestDocumentHandler::addTransactionHints(std::string const& collectionName,
+                                              bool isMultiple,
+                                              bool isOverwritingInsert) {
+  if (ServerState::instance()->isCoordinator()) {
+    CollectionNameResolver resolver{_vocbase};
+    auto col = resolver.getCollection(collectionName);
+    if (col != nullptr && col->isSmartEdgeCollection()) {
+      // Smart Edge Collections hit multiple shards with dependent requests,
+      // they have to be globally managed.
+      _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+      return;
+    }
+  }
+  // For non multiple operations we can optimize to use SingleOperations.
+  if (!isMultiple && !isOverwritingInsert) {
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  }
 }

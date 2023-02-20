@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,10 +77,15 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return _segments[i];
   }
 
+  [[nodiscard]] ImmutablePartCache& immutablePartCache() noexcept final {
+    return _immutablePartCache;
+  }
+
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
   std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
   Segments _segments;
+  ImmutablePartCache _immutablePartCache;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
@@ -185,7 +190,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
   for (auto const& link : links) {
     if (!link) {
       LOG_TOPIC("fffff", WARN, TOPIC)
-          << "failed to lock a link for view '" << name << "'";
+          << "failed to lock ArangoSearch data source '" << name << "'";
       return nullptr;
     }
 
@@ -193,7 +198,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
       // link is out of sync, we cannot use it for querying
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          absl::StrCat("link ", link->index().id().id(),
+          absl::StrCat("ArangoSearch index ", link->index().id().id(),
                        " has been marked as failed and needs to be recreated"));
     }
   }

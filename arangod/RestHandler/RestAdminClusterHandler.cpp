@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
@@ -754,7 +755,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
     return futures::makeFuture();
   }
 
-  if (collection.hasKey("distributeShardsLike")) {
+  if (collection.hasKey(StaticStrings::DistributeShardsLike)) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "MoveShard only allowed for collections which have "
                   "distributeShardsLike unset.");
@@ -771,9 +772,9 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
 
   bool fromFound = false;
   bool isLeader = false;
-  for (VPackArrayIterator i(shard); i != i.end(); i++) {
-    if (i.value().isEqualString(ctx->fromServer)) {
-      isLeader = i.isFirst();
+  for (velocypack::ArrayIterator it(shard); it.valid(); it.next()) {
+    if (it.value().isEqualString(ctx->fromServer)) {
+      isLeader = it.index() == 0;
       fromFound = true;
     }
   }

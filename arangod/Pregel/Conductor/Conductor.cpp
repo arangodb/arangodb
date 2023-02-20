@@ -1,8 +1,7 @@
-#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +38,7 @@
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -326,8 +326,6 @@ bool Conductor::_startGlobalStep() {
 // to update its status
 void Conductor::workerStatusUpdate(StatusUpdated&& update) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  // TODO: for these updates we do not care about uniqueness of responses
-  // _ensureUniqueResponse(data);
 
   LOG_PREGEL("76632", TRACE) << fmt::format("Update received {}", update);
 
@@ -337,16 +335,15 @@ void Conductor::workerStatusUpdate(StatusUpdated&& update) {
 void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  auto sender = graphLoaded.sender;
-  _ensureUniqueResponse(sender);
+  _ensureUniqueResponse(graphLoaded.sender);
 
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
-  LOG_PREGEL("08142", WARN)
-      << fmt::format("finishedWorkerStartup, got response from {}.", sender);
+  LOG_PREGEL("08142", WARN) << fmt::format(
+      "finishedWorkerStartup, got response from {}.", graphLoaded.sender);
 
   _totalVerticesCount += graphLoaded.vertexCount;
   _totalEdgesCount += graphLoaded.edgeCount;
@@ -884,18 +881,6 @@ ErrorCode Conductor::_sendToAllDBServers(
       .wait();
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
-}
-
-void Conductor::_ensureUniqueResponse(VPackSlice body) {
-  _callbackMutex.assertLockedByCurrentThread();
-
-  // check if this the only time we received this
-  ServerID sender = body.get(Utils::senderKey).copyString();
-  if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
-  }
-  _respondedServers.insert(sender);
 }
 
 void Conductor::_ensureUniqueResponse(std::string const& sender) {

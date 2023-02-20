@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION)
-      << "Todo: Handle failover for leader " + _server;
+      << "Todo: Handle failover for leader " << _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -139,7 +139,7 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("3e5b0", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -182,8 +182,8 @@ bool ActiveFailoverJob::start(bool&) {
         _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
       } catch (std::exception const&) {
         LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -241,7 +241,7 @@ bool ActiveFailoverJob::start(bool&) {
   }
 
   LOG_TOPIC("bcf05", INFO, Logger::SUPERVISION)
-      << "Precondition failed for ActiveFailoverJob " + _jobId;
+      << "Precondition failed for ActiveFailoverJob " << _jobId;
   return false;
 }
 

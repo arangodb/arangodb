@@ -467,8 +467,12 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const stopServerWait = function (serverId) {
-    stopServer(serverId);
-    waitFor(lpreds.serverFailed(serverId));
+    stopServersWait([serverId]);
+  };
+
+  const stopServersWait = function (serverIds) {
+    serverIds.forEach(stopServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverFailed(serverId)));
   };
 
   const continueServer = function (serverId) {
@@ -480,14 +484,16 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const continueServerWait = function (serverId) {
-    continueServer(serverId);
-    waitFor(lpreds.serverHealthy(serverId));
+    continueServersWait([serverId]);
+  };
+
+  const continueServersWait = function (serverIds) {
+    serverIds.forEach(continueServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverHealthy(serverId)));
   };
 
   const resumeAll = function () {
-    Object.keys(stoppedServers).forEach(function (key) {
-      continueServerWait(key);
-    });
+    continueServersWait(Object.keys(stoppedServers));
     stoppedServers = {};
   };
 
@@ -536,8 +542,10 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   return {
     stopServer,
     stopServerWait,
+    stopServersWait,
     continueServer,
     continueServerWait,
+    continueServersWait,
     resumeAll,
     setUpAll,
     tearDownAll,

@@ -726,8 +726,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef USE_ENTERPRISE
                   arangodb::iresearch::OffsetMaterializeExecutor,
 #endif
-                  MaterializeExecutor<void>,
-                  MaterializeExecutor<std::string const&>>) ||
+                  MaterializeExecutor<void, false>,
+                  MaterializeExecutor<std::string const&, true>,
+                  MaterializeExecutor<std::string const&, false>>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 
