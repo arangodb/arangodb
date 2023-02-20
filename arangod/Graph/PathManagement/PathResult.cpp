@@ -34,8 +34,9 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
-#include "Logger/LogMacros.h"
 #endif
+
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 
