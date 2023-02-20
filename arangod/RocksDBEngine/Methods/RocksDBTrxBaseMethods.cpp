@@ -279,7 +279,7 @@ void RocksDBTrxBaseMethods::createTransaction() {
   } else {
     // when trying to lock the same keys, we want to return quickly and not
     // spend the default 1000ms before giving up
-    trxOpts.lock_timeout = 1;
+    // trxOpts.lock_timeout = 1;
   }
 
   // unclear performance implications do not use for now
