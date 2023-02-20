@@ -393,7 +393,7 @@ irs::bytes_view GeoVPackAnalyzer::store(irs::token_stream* ctx,
     slice = impl._builder.slice();
   }
   auto data = ref<irs::byte_type>(slice);
-  LOG_TOPIC("e8d26", TRACE, TOPIC)
+  LOG_TOPIC("e8d27", TRACE, TOPIC)
       << "VPackAnalyzer writes " << data.size() << " bytes to column";
   return data;
 }
