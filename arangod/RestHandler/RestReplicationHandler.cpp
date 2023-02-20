@@ -1427,6 +1427,8 @@ Result RestReplicationHandler::processRestoreCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
+  LOG_TOPIC("afe42", DEBUG, Logger::CLUSTER)
+      << "processRestoreData " << colName;
 #ifdef USE_ENTERPRISE
   bool force = _request->parsedValue("force", false);
   if (ignoreHiddenEnterpriseCollection(colName, force)) {
@@ -1442,10 +1444,16 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
+  LOG_TOPIC("afe43", DEBUG, Logger::CLUSTER)
+      << "processRestoreData2 " << colName;
+
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(generateNewRevisionIds);
   }
+
+  LOG_TOPIC("afe44", DEBUG, Logger::CLUSTER)
+      << "processRestoreData3 " << colName;
 
   if (colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isCoordinator() &&
@@ -1457,9 +1465,19 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
 
+  LOG_TOPIC("afe45", DEBUG, Logger::CLUSTER)
+      << "processRestoreData4 " << colName;
+
   Result res = trx.begin();
 
+  LOG_TOPIC("afe46", DEBUG, Logger::CLUSTER)
+      << "processRestoreData4 " << colName;
+
   if (!res.ok()) {
+    LOG_TOPIC("afe47", DEBUG, Logger::CLUSTER)
+        << "processRestoreData5 " << colName << " error: " << res.errorNumber()
+        << " msg: " << res.errorMessage();
+
     res.reset(res.errorNumber(),
               arangodb::basics::StringUtils::concatT(
                   "unable to start transaction: ", res.errorMessage()));
@@ -1467,7 +1485,13 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 
   res = processRestoreDataBatch(trx, colName, generateNewRevisionIds);
+  LOG_TOPIC("afe48", DEBUG, Logger::CLUSTER)
+      << "processRestoreData6 " << colName << " error: " << res.errorNumber()
+      << " msg: " << res.errorMessage();
   res = trx.finish(res);
+  LOG_TOPIC("afe49", DEBUG, Logger::CLUSTER)
+      << "processRestoreData6 " << colName << " error: " << res.errorNumber()
+      << " msg: " << res.errorMessage();
 
   // for single-server we just trigger analyzers cache reload
   // once replication updated _analyzers collection. This
