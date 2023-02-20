@@ -90,7 +90,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
-#include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -129,10 +128,6 @@ REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
 REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
                         GeoVPackAnalyzer::normalize);
-#ifdef USE_ENTERPRISE
-REGISTER_ANALYZER_VPACK(GeoS2Analyzer, GeoS2Analyzer::make,
-                        GeoS2Analyzer::normalize);
-#endif
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
