@@ -897,9 +897,9 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       INTERNAL_LOG_IDX
           << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
           << output.numRowsWritten();
-      // NOTE: more => output.isFull() does not hold, if we do uniqness checks.
+      // NOTE: more => output.isFull() does not hold, if we do uniqueness checks.
       // The index iterator does still count skipped rows for limit.
-      // Nevertheless loop here, the cursor has more so we will retigger
+      // Nevertheless loop here, the cursor has more so we will re-trigger
       // read more.
       // Loop here, either we have filled the output
       // Or the cursor is done, so we need to advance

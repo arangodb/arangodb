@@ -1158,7 +1158,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       velocypack::Options::PaddingBehavior::UsePadding;
   setSorted(sorted);
 
-  if (!vocbase.use()) {  // false if vobase was deleted
+  if (!vocbase.use()) {  // false if vocbase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   try {

@@ -137,7 +137,7 @@ window.define = function(id, deps, factory) {
             var returnExports = factory.apply(this, deps.map(function(dep) {
                 switch (dep) {
                     // Because "require", "exports" and "module" aren't actual
-                    // dependencies, we must handle them seperately.
+                    // dependencies, we must handle them separately.
                     case "require": return req;
                     case "exports": return module.exports;
                     case "module":  return module;

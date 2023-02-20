@@ -132,14 +132,14 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
 template<class StepImpl>
 void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
     std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
-  // slow path, sharding not deducable from _id
+  // slow path, sharding not deducible from _id
   bool mustSend = false;
 
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
 
   if (_opts.produceVertices()) {
-    // slow path, sharding not deducable from _id
+    // slow path, sharding not deducible from _id
     leased->add("keys", VPackValue(VPackValueType::Array));
     for (auto const& looseEnd : looseEnds) {
       TRI_ASSERT(looseEnd->isLooseEnd());

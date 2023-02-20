@@ -36,7 +36,7 @@ namespace arangodb {
 /// will report for them.
 struct CpuUsageSnapshot {
   /// @brief create a CpuUsageSnapshot from the contents of /proc/stat
-  /// expects an input buffer with 10 numbers, each seperated by a space
+  /// expects an input buffer with 10 numbers, each separated by a space
   /// characters
   static CpuUsageSnapshot fromString(char const* buffer,
                                      std::size_t bufferSize) noexcept;

@@ -99,7 +99,7 @@ void PathValidatorOptions::setPostFilterContext(
 
 void PathValidatorOptions::setVertexExpression(
     uint64_t depth, std::unique_ptr<aql::Expression> expression) {
-  // Should not respecifiy the condition on a certain depth
+  // Should not re-specify the condition on a certain depth
   TRI_ASSERT(_vertexExpressionOnDepth.find(depth) ==
              _vertexExpressionOnDepth.end());
   _vertexExpressionOnDepth.emplace(depth, std::move(expression));

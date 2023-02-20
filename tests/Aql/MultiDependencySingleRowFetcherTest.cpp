@@ -511,7 +511,7 @@ TEST_P(
     many_blocks_upstream_all_deps_differ_sequentially_using_shadowRows_no_callList) {
   // NOTE: The fetcher does NOT care to synchronize the shadowRows between
   // blocks. This has to be done by the InputRange hold externally. It has
-  // seperate tests
+  // separate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
   for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
@@ -617,7 +617,7 @@ TEST_P(
     many_blocks_upstream_all_deps_differ_sequentially_using_shadowRows_no_callList_reverse_order) {
   // NOTE: The fetcher does NOT care to synchronize the shadowRows between
   // blocks. This has to be done by the InputRange hold externally. It has
-  // seperate tests
+  // separate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
   for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
@@ -725,7 +725,7 @@ TEST_P(
     many_blocks_upstream_all_deps_differ_sequentially_using_shadowRows_no_callList_offset) {
   // NOTE: The fetcher does NOT care to synchronize the shadowRows between
   // blocks. This has to be done by the InputRange hold externally. It has
-  // seperate tests
+  // separate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
   for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};

@@ -1188,7 +1188,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
       try {
         // Always cancel the read lock.
-        // Reported seperately
+        // Reported separately
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
         auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,
@@ -1298,7 +1298,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
     try {
       // Always cancel the read lock.
-      // Reported seperately
+      // Reported separately
       NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
       network::ConnectionPool* pool = nf.pool();
       auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,

@@ -1569,7 +1569,7 @@ exports._listObjects = function () {
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Compatibility functions for 2.8
-// /        This function registeres user-defined functions that follow the
+// /        This function registers user-defined functions that follow the
 // /        same API as the former GRAPH_* functions did.
 // /        Most of these AQL functions can be simply replaced by calls to these.
 // //////////////////////////////////////////////////////////////////////////////

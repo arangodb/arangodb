@@ -61,7 +61,7 @@ RocksDBMetadata::DocCount::DocCount(velocypack::Slice slice) : DocCount{} {
   if (array.valid()) {
     _committedSeq = (*array).getUInt();
     // versions pre 3.4 stored only a single "count" value
-    // 3.4 and higher store "added" and "removed" seperately
+    // 3.4 and higher store "added" and "removed" separately
     _added = (*(++array)).getUInt();
     if (array.size() > 3) {
       TRI_ASSERT(array.size() == 4);

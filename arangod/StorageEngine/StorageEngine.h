@@ -262,7 +262,7 @@ class StorageEngine : public ArangodFeature {
   // in the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the
   // property changes and throw only then, so that subsequent operations will
-  // not fail. the WAL entry for the propery change will be written *after* the
+  // not fail. the WAL entry for the property change will be written *after* the
   // call to "changeCollection" returns
   virtual void changeCollection(TRI_vocbase_t& vocbase,
                                 LogicalCollection const& collection) = 0;

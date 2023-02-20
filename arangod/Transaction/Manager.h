@@ -289,7 +289,7 @@ class Manager final : public IManager {
     // a lock protecting _managed
     mutable basics::ReadWriteLock _lock;
 
-    // managed transactions, seperate lifetime from above
+    // managed transactions, separate lifetime from above
     std::unordered_map<TransactionId, ManagedTrx> _managed;
   } _transactions[numBuckets];
 

@@ -83,7 +83,7 @@ class ConnectionPool final {
   /// is always the same, we do not do any post-processing
   ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
-  /// @brief event loop service to create a connection seperately
+  /// @brief event loop service to create a connection separately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
 
