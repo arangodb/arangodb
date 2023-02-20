@@ -67,18 +67,11 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
         auto count = ++data.currentSnapshotVersion;
 
-        for (auto const& [shardId, _] : data.core->getShardMap()) {
-          auto truncateRes = self->truncateLocalShard(shardId);
-          if (truncateRes.fail()) {
-            return truncateRes;
-          }
-        }
-
-        /*
+        // Drop all shards, as we're going to recreate them with the first
+        // transfer
         if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
           return dropAllRes;
         }
-         */
         return count;
       });
 
@@ -113,7 +106,7 @@ auto DocumentFollowerState::applyEntries(
               auto res =
                   data.core->ensureShard(doc.shardId, collectionId, doc.data);
               if (res.fail()) {
-                LOG_CTX("d82d4", FATAL, self->loggerContext)
+                LOG_CTX("75cda", FATAL, self->loggerContext)
                     << "Failed to create shard " << doc.shardId
                     << " of collection " << collectionId
                     << " with error: " << res;
@@ -202,32 +195,97 @@ auto DocumentFollowerState::forceLocalTransaction(ShardID shardId,
                                                   velocypack::SharedSlice slice)
     -> Result {
   auto trxId = TransactionId::createFollower();
-  auto doc = DocumentLogEntry{
-      std::string(shardId), opType, std::move(slice), trxId, {}};
+  auto doc = DocumentLogEntry{shardId, opType, std::move(slice), trxId, {}};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(trxId);
     return applyRes;
   }
   auto commit = DocumentLogEntry{
-      std::string(shardId), OperationType::kCommit, {}, trxId, {}};
+      std::move(shardId), OperationType::kCommit, {}, trxId, {}};
   return _transactionHandler->applyEntry(commit);
-}
-
-auto DocumentFollowerState::truncateLocalShard(ShardID const& shardId)
-    -> Result {
-  VPackBuilder b;
-  b.openObject();
-  b.add("collection", VPackValue(shardId));
-  b.close();
-  return forceLocalTransaction(shardId, OperationType::kTruncate,
-                               b.sharedSlice());
 }
 
 auto DocumentFollowerState::populateLocalShard(ShardID shardId,
                                                velocypack::SharedSlice slice)
     -> Result {
-  return forceLocalTransaction(shardId, OperationType::kInsert,
+  return forceLocalTransaction(std::move(shardId), OperationType::kInsert,
                                std::move(slice));
+}
+
+auto DocumentFollowerState::handleSnapshotTransfer(
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    LogIndex waitForIndex, std::uint64_t snapshotVersion,
+    futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+    -> futures::Future<Result> {
+  return std::move(snapshotFuture)
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+             snapshotVersion](
+                futures::Try<ResultT<SnapshotConfig>>&& tryResult) mutable
+            -> futures::Future<Result> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+        }
+
+        auto catchRes =
+            basics::catchToResultT([&] { return std::move(tryResult).get(); });
+        if (catchRes.fail()) {
+          return catchRes.result();
+        }
+
+        auto snapshotRes = catchRes.get();
+        if (snapshotRes.fail()) {
+          return snapshotRes.result();
+        }
+
+        if (snapshotRes->shards.empty()) {
+          // Nothing to do, just call finish
+          return leader->finishSnapshot(snapshotRes->snapshotId);
+        }
+
+        auto res = self->_guardedData.doUnderLock([self,
+                                                   shards = std::move(
+                                                       snapshotRes->shards),
+                                                   snapshotVersion](
+                                                      auto& data) -> Result {
+          if (data.didResign()) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+          }
+
+          if (data.currentSnapshotVersion != snapshotVersion) {
+            return {
+                TRI_ERROR_INTERNAL,
+                "Snapshot transfer cancelled because a new one was started!"};
+          }
+
+          for (auto const& [shardId, properties] : shards) {
+            auto res =
+                data.core->ensureShard(shardId, properties.collectionId,
+                                       properties.properties->sharedSlice());
+            if (res.fail()) {
+              LOG_CTX("bd17c", ERR, self->loggerContext)
+                  << "Failed to ensure shard " << shardId << " " << res;
+              FATAL_ERROR_EXIT();
+            }
+          }
+
+          return {};
+        });
+
+        if (res.fail()) {
+          LOG_CTX("d82d4", ERR, self->loggerContext) << res;
+          // TODO Handle resign
+          if (res.isNot(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            return leader->finishSnapshot(snapshotRes->snapshotId);
+          }
+          return res;
+        }
+
+        auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
+        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                            snapshotVersion, std::move(fut));
+      });
 }
 
 auto DocumentFollowerState::handleSnapshotTransfer(

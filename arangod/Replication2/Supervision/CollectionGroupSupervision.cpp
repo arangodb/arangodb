@@ -202,10 +202,6 @@ auto createCollectionGroupTarget(
     auto& log = replicatedLogs[spec.shardSheaves[j].replicatedLog];
     replicated_state::document::DocumentCoreParameters parameters;
     parameters.databaseName = database;
-    parameters.collectionId =
-        collections.begin()->first;  // TODO remove - unused
-    parameters.shardId =
-        collections.begin()->second.shardList[j];  // TODO remove - unused
     parameters.shardSheafIndex = j;
     parameters.groupId = group.target.id.id();
     log.properties.implementation.parameters =

@@ -53,8 +53,8 @@ MockDocumentStateSnapshotHandler::MockDocumentStateSnapshotHandler(
         real)
     : _real(std::move(real)) {
   ON_CALL(*this, create(testing::_))
-      .WillByDefault([this](std::vector<ShardID> shardIds) {
-        return _real->create(std::move(shardIds));
+      .WillByDefault([this](replicated_state::document::ShardMap shards) {
+        return _real->create(std::move(shards));
       });
   ON_CALL(*this, find(testing::_))
       .WillByDefault(

@@ -218,7 +218,7 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 }
 
 auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
-    -> ResultT<SnapshotBatch> {
+    -> ResultT<SnapshotConfig> {
   auto const& shardMap = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(
@@ -227,14 +227,9 @@ auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     return data.core->getShardMap();
   });
 
-  std::vector<ShardID> shards;
-  for (auto const& [shard, _] : shardMap) {
-    shards.emplace_back(shard);
-  }
-
-  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
-      [&](auto& handler) { return handler->create(std::move(shards)); },
-      [](auto& snapshot) { return snapshot->fetch(); });
+  return executeSnapshotOperation<ResultT<SnapshotConfig>>(
+      [&](auto& handler) { return handler->create(shardMap); },
+      [](auto& snapshot) { return snapshot->config(); });
 }
 
 auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)

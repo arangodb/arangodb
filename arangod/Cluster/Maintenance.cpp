@@ -463,7 +463,7 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    if (replicationVersion != replication::Version::TWO || isLeading) {
+    if (replicationVersion != replication::Version::TWO) {
       // This collection is not planned anymore, can drop it
       description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
