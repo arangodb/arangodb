@@ -21,13 +21,13 @@
       'nodeStart': {
         type: 'string',
         name: 'Startnode',
-        desc: 'A valid node id or space seperated list of id\'s. If empty, a random node will be chosen.',
+        desc: 'A valid node id or space separated list of id\'s. If empty, a random node will be chosen.',
         value: 2
       },
       'layout': {
         type: 'select',
         name: 'Layout',
-        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes).',
+        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and Fruchterman is the slowest (less than 500 nodes).',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -36,9 +36,9 @@
           name: 'Force',
           val: 'force'
         },
-        fruchtermann: {
-          name: 'Fruchtermann',
-          val: 'fruchtermann'
+        fruchterman: {
+          name: 'Fruchterman',
+          val: 'fruchterman'
         }
       },
       'renderer': {
