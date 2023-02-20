@@ -730,7 +730,7 @@ bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
   }
   auto const tag = decoder.get8();
   switch (coding::toType(tag)) {
-    case coding::toTag<coding::Type::Point>(): {
+    case coding::toTag<coding::Type::kPoint>(): {
       decodeImpl<Type::S2_POINT, S2PointRegion>(decoder);
       auto& data = basics::downCast<S2PointRegion>(*_data);
       if (S2Point point; decodePoint(decoder, point, tag)) {
@@ -739,7 +739,7 @@ bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
         return true;
       }
     } break;
-    case coding::toTag<coding::Type::Polyline>(): {
+    case coding::toTag<coding::Type::kPolyline>(): {
       decodeImpl<Type::S2_POLYLINE, S2Polyline>(decoder);
       auto& polyline = basics::downCast<S2Polyline>(*_data);
       if (decodePolyline(decoder, polyline, tag, cache)) {
@@ -747,7 +747,7 @@ bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
         return true;
       }
     } break;
-    case coding::toTag<coding::Type::Polygon>(): {
+    case coding::toTag<coding::Type::kPolygon>(): {
       decodeImpl<Type::S2_POLYGON, S2Polygon>(decoder);
       auto& polygon = basics::downCast<S2Polygon>(*_data);
       if (decodePolygon(decoder, polygon, tag, cache)) {
@@ -755,7 +755,7 @@ bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
         return true;
       }
     } break;
-    case coding::toTag<coding::Type::MultiPoint>(): {
+    case coding::toTag<coding::Type::kMultiPoint>(): {
       decodeImpl<Type::S2_MULTIPOINT, S2MultiPointRegion>(decoder);
       auto& points = basics::downCast<S2MultiPointRegion>(*_data);
       if (points.Decode(decoder, tag)) {
@@ -763,7 +763,7 @@ bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
         return true;
       }
     } break;
-    case coding::toTag<coding::Type::MultiPolyline>(): {
+    case coding::toTag<coding::Type::kMultiPolyline>(): {
       decodeImpl<Type::S2_MULTIPOLYLINE, S2MultiPolylineRegion>(decoder);
       auto& polylines = basics::downCast<S2MultiPolylineRegion>(*_data);
       if (polylines.Decode(decoder, tag, cache)) {

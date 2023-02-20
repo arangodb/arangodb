@@ -55,16 +55,16 @@ S2Point encodePointImpl(S2LatLng latLng, coding::Options options,
                         Encoder* encoder) noexcept {
   if constexpr (Validation) {
     if (encoder != nullptr) {
-      TRI_ASSERT(options != coding::Options::Invalid);
+      TRI_ASSERT(options != coding::Options::kInvalid);
       TRI_ASSERT(encoder->avail() >= sizeof(uint8_t));
-      encoder->put8(coding::toTag(coding::Type::Point, options));
+      encoder->put8(coding::toTag(coding::Type::kPoint, options));
       if (coding::isOptionsS2(options)) {
         auto point = latLng.ToPoint();
         encodePoint(*encoder, point);
         return point;
       }
       encodeLatLng(*encoder, latLng, options);
-    } else if (options == coding::Options::S2LatLngInt) {
+    } else if (options == coding::Options::kS2LatLngInt) {
       toLatLngInt(latLng);
     }
   }
@@ -74,13 +74,13 @@ S2Point encodePointImpl(S2LatLng latLng, coding::Options options,
 void encodePointsImpl(std::span<S2LatLng> cache, coding::Options options,
                       Encoder* encoder) {
   if (encoder != nullptr) {
-    TRI_ASSERT(options != coding::Options::Invalid);
+    TRI_ASSERT(options != coding::Options::kInvalid);
     TRI_ASSERT(!coding::isOptionsS2(options));
     TRI_ASSERT(encoder->avail() >= sizeof(uint8_t) + Varint::kMax64);
-    encoder->put8(coding::toTag(coding::Type::MultiPoint, options));
+    encoder->put8(coding::toTag(coding::Type::kMultiPoint, options));
     encoder->put_varint64(cache.size());
     encodeVertices(*encoder, cache, options);
-  } else if (options == coding::Options::S2LatLngInt) {
+  } else if (options == coding::Options::kS2LatLngInt) {
     toLatLngInt(cache);
   }
 }
@@ -98,10 +98,10 @@ size_t encodeCount(size_t count, coding::Type type, coding::Options options,
                    Encoder* encoder) {
   TRI_ASSERT(count != 0);
   if (Validation && encoder != nullptr) {
-    TRI_ASSERT(options != coding::Options::Invalid);
+    TRI_ASSERT(options != coding::Options::kInvalid);
     TRI_ASSERT(!coding::isOptionsS2(options));
     encoder->Ensure(sizeof(uint8_t) + (1 + count) * Varint::kMax64 +
-                    (2 + static_cast<size_t>(type == coding::Type::Polygon)) *
+                    (2 + static_cast<size_t>(type == coding::Type::kPolygon)) *
                         coding::toSize(options));
     encoder->put8(coding::toTag(type, options));
     if (count != 1) {
@@ -312,8 +312,8 @@ Result parseLinesImpl(velocypack::Slice vpack, std::vector<S2Polyline>& lines,
         TRI_ERROR_BAD_PARAMETER,
         "Invalid MultiLinestring, it must contains at least one Linestring."};
   }
-  auto multiplier =
-      encodeCount<Validation>(n, coding::Type::MultiPolyline, options, encoder);
+  auto multiplier = encodeCount<Validation>(n, coding::Type::kMultiPolyline,
+                                            options, encoder);
   lines.clear();
   lines.reserve(n);
   for (; it.valid(); it.next()) {
@@ -330,7 +330,7 @@ Result parseLinesImpl(velocypack::Slice vpack, std::vector<S2Polyline>& lines,
         encoder->put_varint64(n * multiplier);
         multiplier = 1;
         encodeVertices(*encoder, vertices, options);
-      } else if (options == coding::Options::S2LatLngInt) {
+      } else if (options == coding::Options::kS2LatLngInt) {
         toLatLngInt(vertices);
       }
       auto& back = lines.emplace_back(vertices, S2Debug::DISABLE);
@@ -433,7 +433,7 @@ Result parseLoopImpl(velocypack::Slice vpack,
   if (Validation && ADB_UNLIKELY(!r.ok())) {
     return r;
   }
-  if (Validation && options == coding::Options::S2LatLngInt) {
+  if (Validation && options == coding::Options::kS2LatLngInt) {
     // TODO(MBkkt) remove unnecessary allocation
     auto copy = vertices;
     toLatLngInt(copy);
@@ -507,7 +507,7 @@ S2Polygon createPolygon(std::vector<std::unique_ptr<S2Loop>>&& loops,
   polygon.set_s2debug_override(S2Debug::DISABLE);
   if (encoder != nullptr) {
     encoder->clear();
-    encoder->put8(coding::toTag(coding::Type::Polygon, options));
+    encoder->put8(coding::toTag(coding::Type::kPolygon, options));
     encoder->put_varint64(0);
   }
   return polygon;
@@ -522,7 +522,7 @@ Result parsePolygonImpl(velocypack::ArrayIterator it, S2Polygon& region,
   std::vector<std::unique_ptr<S2Loop>> loops;
   loops.reserve(n);
   auto multiplier =
-      encodeCount<Validation>(n, coding::Type::Polygon, options, encoder);
+      encodeCount<Validation>(n, coding::Type::kPolygon, options, encoder);
   for (S2Loop* first = nullptr; it.valid(); it.next()) {
     auto r = parseLoopImpl<Validation, Legacy>(*it, loops, vertices, first,
                                                options, encoder, multiplier);
@@ -601,7 +601,7 @@ Result parseMultiPolygonImpl(velocypack::Slice vpack, S2Polygon& region,
   std::vector<std::unique_ptr<S2Loop>> loops;
   loops.reserve(n);
   auto multiplier =
-      encodeCount<Validation>(n, coding::Type::Polygon, options, encoder);
+      encodeCount<Validation>(n, coding::Type::kPolygon, options, encoder);
   for (S2Loop* first = nullptr; it.valid(); it.next()) {
     if (Validation && ADB_UNLIKELY(!(*it).isArray())) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -679,7 +679,7 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
       auto r =
           ADB_UNLIKELY(legacy)
               ? parsePolygonImpl<Validation, true>(
-                    vpack, region, cache, coding::Options::Invalid, nullptr)
+                    vpack, region, cache, coding::Options::kInvalid, nullptr)
               : parsePolygonImpl<Validation, false>(
                     vpack, region, cache, options, isS2 ? nullptr : encoder);
       if (Validation && ADB_UNLIKELY(!r.ok())) {
@@ -713,7 +713,7 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
       auto d = std::make_unique<S2Polygon>();
       auto r = ADB_UNLIKELY(legacy)
                    ? parseMultiPolygonImpl<Validation, true>(
-                         vpack, *d, cache, coding::Options::Invalid, nullptr)
+                         vpack, *d, cache, coding::Options::kInvalid, nullptr)
                    : parseMultiPolygonImpl<Validation, false>(
                          vpack, *d, cache, options, isS2 ? nullptr : encoder);
       if (Validation && ADB_UNLIKELY(!r.ok())) {
@@ -824,7 +824,7 @@ Result parseMultiLinestring(velocypack::Slice vpack,
   }
   auto& lines = region.Impl();
   std::vector<S2LatLng> vertices;
-  return parseLinesImpl<true>(vpack, lines, vertices, coding::Options::Invalid,
+  return parseLinesImpl<true>(vpack, lines, vertices, coding::Options::kInvalid,
                               nullptr);
 }
 
@@ -840,7 +840,7 @@ Result parsePolygon(velocypack::Slice vpack, S2Polygon& region) {
   }
   std::vector<S2LatLng> vertices;
   return parsePolygonImpl<true, false>(it, region, vertices,
-                                       coding::Options::Invalid, nullptr);
+                                       coding::Options::kInvalid, nullptr);
 }
 
 Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region) {
@@ -850,14 +850,14 @@ Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region) {
   }
   std::vector<S2LatLng> vertices;
   return parseMultiPolygonImpl<true, false>(vpack, region, vertices,
-                                            coding::Options::Invalid, nullptr);
+                                            coding::Options::kInvalid, nullptr);
 }
 
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
                    bool legacy) {
   std::vector<S2LatLng> cache;
   return parseRegionImpl<true>(vpack, region, cache, legacy,
-                               coding::Options::Invalid, nullptr);
+                               coding::Options::kInvalid, nullptr);
 }
 
 template<bool Valid>

@@ -185,7 +185,7 @@ Result getLatLng(ScopedAqlValue const& value, S2Point& point,
 
       auto latLng = S2LatLng::FromDegrees(lat, lon).Normalized();
       if (options.stored != StoredType::S2Centroid &&
-          options.coding == geo::coding::Options::S2LatLngInt) {
+          options.coding == geo::coding::Options::kS2LatLngInt) {
         geo::toLatLngInt(latLng);
       }
       point = latLng.ToPoint();
@@ -197,7 +197,7 @@ Result getLatLng(ScopedAqlValue const& value, S2Point& point,
       auto r = parseShape<Parsing::GeoJson>(
           json, shape, cache, options.stored == StoredType::VPackLegacy,
           (options.stored == StoredType::S2Centroid
-               ? geo::coding::Options::Invalid
+               ? geo::coding::Options::kInvalid
                : options.coding),
           nullptr);
       if (!r) {
@@ -212,7 +212,7 @@ Result getLatLng(ScopedAqlValue const& value, S2Point& point,
   if (options.stored == StoredType::S2Centroid &&
       !geo::coding::isOptionsS2(options.coding)) {
     S2LatLng latLng{point};
-    if (options.coding == geo::coding::Options::S2LatLngInt) {
+    if (options.coding == geo::coding::Options::kS2LatLngInt) {
       geo::toLatLngInt(latLng);
     }
     point = latLng.ToPoint();

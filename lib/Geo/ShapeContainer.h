@@ -67,7 +67,7 @@ class ShapeContainer final {
   ShapeContainer(ShapeContainer&& other) noexcept
       : _data{std::move(other._data)},
         _type{std::exchange(other._type, Type::EMPTY)},
-        _options{std::exchange(other._options, coding::Options::Invalid)} {}
+        _options{std::exchange(other._options, coding::Options::kInvalid)} {}
   ShapeContainer& operator=(ShapeContainer&& other) noexcept {
     std::swap(_data, other._data);
     std::swap(_type, other._type);
@@ -108,8 +108,9 @@ class ShapeContainer final {
   Type type() const noexcept { return _type; }
 
   void reset(std::unique_ptr<S2Region> region, Type type,
-             coding::Options options = coding::Options::Invalid) noexcept;
-  void reset(S2Point point, coding::Options options = coding::Options::Invalid);
+             coding::Options options = coding::Options::kInvalid) noexcept;
+  void reset(S2Point point,
+             coding::Options options = coding::Options::kInvalid);
 
   // Using s2 Encode/Decode
   void Encode(Encoder& encoder, coding::Options options) const;
@@ -123,7 +124,7 @@ class ShapeContainer final {
 
   std::unique_ptr<S2Region> _data;
   Type _type{Type::EMPTY};
-  coding::Options _options{coding::Options::Invalid};
+  coding::Options _options{coding::Options::kInvalid};
 };
 
 }  // namespace arangodb::geo

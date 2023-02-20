@@ -270,7 +270,7 @@ struct VPackParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     return parseShape<Parsing::FromIndex>(slice(value), shape, _cache, _legacy,
-                                          geo::coding::Options::Invalid,
+                                          geo::coding::Options::kInvalid,
                                           nullptr);
   }
 

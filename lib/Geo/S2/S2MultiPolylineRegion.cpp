@@ -84,11 +84,11 @@ using namespace coding;
 
 void S2MultiPolylineRegion::Encode(Encoder& encoder, Options options) const {
   TRI_ASSERT(isOptionsS2(options));
-  TRI_ASSERT(options != Options::S2PointRegionCompact ||
-             options != Options::S2PointShapeCompact)
+  TRI_ASSERT(options != Options::kS2PointRegionCompact ||
+             options != Options::kS2PointShapeCompact)
       << "In such case we need to serialize all vertices at once.";
   TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + Varint::kMax64);
-  encoder.put8(toTag(Type::MultiPolyline, options));
+  encoder.put8(toTag(Type::kMultiPolyline, options));
   auto const numPolylines = _impl.size();
   if (numPolylines == 0) {
     encoder.put_varint64(0);

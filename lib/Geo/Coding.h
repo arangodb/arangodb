@@ -37,24 +37,24 @@ namespace coding {
 // Numbers here used for serialization, you cannot change it!
 
 enum class Type : uint8_t {
-  Point = 0,
-  Polyline = 1,
-  Polygon = 2,
-  MultiPoint = 3,
-  MultiPolyline = 4,
+  kPoint = 0,
+  kPolyline = 1,
+  kPolygon = 2,
+  kMultiPoint = 3,
+  kMultiPolyline = 4,
   // kGeometryCollection = 5, TODO(MBkkt) implement it?
 };
 
 enum class Options : uint8_t {
   // Use S2Point representation, it's completely lossless
-  S2Point = 0,
-  S2PointRegionCompact = 1,
-  S2PointShapeCompact = 2,
+  kS2Point = 0,
+  kS2PointRegionCompact = 1,
+  kS2PointShapeCompact = 2,
   // Use S2LatLng representation, lossy
-  S2LatLng = 3,
-  S2LatLngInt = 4,
+  kS2LatLng = 3,
+  kS2LatLngInt = 4,
   // To use as invalid value in template
-  Invalid = 0xFF,
+  kInvalid = 0xFF,
 };
 
 constexpr bool isOptionsS2(Options options) noexcept {
@@ -72,7 +72,7 @@ constexpr auto toTag(Type t, Options o) noexcept {
                               static_cast<uint32_t>(o));
 }
 
-template<Type t, Options o = Options::S2Point>
+template<Type t, Options o = Options::kS2Point>
 consteval auto toTag() noexcept {
   static_assert(
       static_cast<std::underlying_type_t<Type>>(t) < 8,
@@ -93,11 +93,11 @@ constexpr auto toPoint(uint8_t tag) noexcept {
 
 constexpr size_t toSize(Options options) noexcept {
   switch (options) {
-    case Options::S2LatLngInt:
+    case Options::kS2LatLngInt:
       return 2 * sizeof(uint32);
-    case Options::S2LatLng:
+    case Options::kS2LatLng:
       return 2 * sizeof(double);
-    case Options::S2Point:
+    case Options::kS2Point:
       return 3 * sizeof(double);
     default:
       return 0;

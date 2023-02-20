@@ -51,7 +51,7 @@ struct GeoFilterOptionsBase {
   S2RegionTermIndexer::Options options;
   StoredType stored{StoredType::VPack};
   // Default value should be S2Point for bad written test
-  geo::coding::Options coding{geo::coding::Options::Invalid};
+  geo::coding::Options coding{geo::coding::Options::kInvalid};
 };
 
 enum class GeoFilterType : uint8_t {

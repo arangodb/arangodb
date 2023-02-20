@@ -686,7 +686,7 @@ TEST(GeoDistanceFilterTest, query) {
     std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin, lhs, cache, false, arangodb::geo::coding::Options::Invalid,
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
         nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -694,7 +694,7 @@ TEST(GeoDistanceFilterTest, query) {
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
                   arangodb::iresearch::Parsing::OnlyPoint>(
-          geo, rhs, cache, false, arangodb::geo::coding::Options::Invalid,
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
           nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist < 100 || dist > 2000) {
@@ -726,7 +726,7 @@ TEST(GeoDistanceFilterTest, query) {
     std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin, lhs, cache, false, arangodb::geo::coding::Options::Invalid,
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
         nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -734,7 +734,7 @@ TEST(GeoDistanceFilterTest, query) {
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
                   arangodb::iresearch::Parsing::OnlyPoint>(
-          geo, rhs, cache, false, arangodb::geo::coding::Options::Invalid,
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
           nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist >= 2000) {
@@ -857,7 +857,7 @@ TEST(GeoDistanceFilterTest, query) {
     std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin, lhs, cache, false, arangodb::geo::coding::Options::Invalid,
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
         nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -865,7 +865,7 @@ TEST(GeoDistanceFilterTest, query) {
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
                   arangodb::iresearch::Parsing::OnlyPoint>(
-          geo, rhs, cache, false, arangodb::geo::coding::Options::Invalid,
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
           nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist <= 2000) {

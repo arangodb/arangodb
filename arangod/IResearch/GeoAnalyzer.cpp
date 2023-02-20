@@ -403,7 +403,7 @@ GeoVPackAnalyzer::GeoVPackAnalyzer(Options const& options)
       _legacy{options.legacy} {}
 
 bool GeoVPackAnalyzer::reset(std::string_view value) {
-  return resetImpl(value, _legacy, geo::coding::Options::Invalid, nullptr);
+  return resetImpl(value, _legacy, geo::coding::Options::kInvalid, nullptr);
 }
 
 void GeoVPackAnalyzer::prepare(GeoFilterOptionsBase& options) const {

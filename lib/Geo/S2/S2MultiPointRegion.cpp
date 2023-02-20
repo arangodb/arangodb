@@ -82,11 +82,11 @@ using namespace coding;
 
 void S2MultiPointRegion::Encode(Encoder& encoder, Options options) const {
   TRI_ASSERT(isOptionsS2(options));
-  TRI_ASSERT(options != Options::S2PointRegionCompact ||
-             options != Options::S2PointShapeCompact)
+  TRI_ASSERT(options != Options::kS2PointRegionCompact ||
+             options != Options::kS2PointShapeCompact)
       << "Not implemented yet.";
   TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + Varint::kMax64);
-  encoder.put8(toTag(Type::MultiPoint, options));
+  encoder.put8(toTag(Type::kMultiPoint, options));
   encoder.put_varint64(_impl.size());
   encodeVertices(encoder, _impl);
 }

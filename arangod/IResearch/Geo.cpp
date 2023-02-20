@@ -49,11 +49,11 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
       S2LatLng latLng;
       r = geo::json::parsePoint(vpack, latLng);
       if (r.ok() && encoder != nullptr) {
-        TRI_ASSERT(options != geo::coding::Options::Invalid);
+        TRI_ASSERT(options != geo::coding::Options::kInvalid);
         TRI_ASSERT(encoder->avail() >= sizeof(uint8_t));
         // We store type, because parseCoordinates store it
         // In store to column we will remove it
-        encoder->put8(geo::coding::toTag(geo::coding::Type::Point, options));
+        encoder->put8(geo::coding::toTag(geo::coding::Type::kPoint, options));
         if (geo::coding::isOptionsS2(options)) {
           auto point = latLng.ToPoint();
           geo::encodePoint(*encoder, point);
@@ -61,7 +61,7 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
         } else {
           geo::encodeLatLng(*encoder, latLng, options);
         }
-      } else if (r.ok() && options == geo::coding::Options::S2LatLngInt) {
+      } else if (r.ok() && options == geo::coding::Options::kS2LatLngInt) {
         geo::toLatLngInt(latLng);
       }
       return latLng.ToPoint();

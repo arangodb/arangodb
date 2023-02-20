@@ -162,13 +162,13 @@ Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
 template<bool Valid = true>
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
                    std::vector<S2LatLng>& cache, bool legacy,
-                   coding::Options options = coding::Options::Invalid,
+                   coding::Options options = coding::Options::kInvalid,
                    Encoder* encoder = nullptr);
 
 template<bool Valid = true>
 Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
                         bool geoJson,
-                        coding::Options options = coding::Options::Invalid,
+                        coding::Options options = coding::Options::kInvalid,
                         Encoder* encoder = nullptr);
 
 /// @brief Parse a loop (LinearRing)
