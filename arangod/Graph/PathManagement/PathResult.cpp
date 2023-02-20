@@ -34,6 +34,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -106,19 +107,58 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
   }
 
   {
+    auto getActualWeight = [&](size_t position) {
+      LOG_DEVEL << "Get actual weight of : " << position;
+      VPackBuilder tmpBuilder;
+      LOG_DEVEL << " - 1 - ";
+
+      LOG_DEVEL << " - 2 - ";
+      // TODO 0.) I do not like the fact that we have to put it into a
+      //  tmpBuilder to be able to read it.
+
+      LOG_DEVEL << " - 3 - ";
+      _targetProvider.addEdgeToBuilder(_edges[position], tmpBuilder);
+
+      // TODO 1.): This is not true. It can be any value. For now ok.
+      LOG_DEVEL << tmpBuilder.toJson();
+      if (tmpBuilder.slice().hasKey(StaticStrings::GraphQueryWeight)) {
+        // TRI_ASSERT() <-- TODO: Add assert / ADD PROPER mechanism to read
+        //  default weight and weight attribute here
+        // TODO !IMPORTANT!
+        LOG_DEVEL << " - 4 - ";
+
+        if (tmpBuilder.slice()
+                .get(StaticStrings::GraphQueryWeight)
+                .isNumber()) {
+          double dummy = tmpBuilder.slice()
+                             .get(StaticStrings::GraphQueryWeight)
+                             .getNumber<double>();
+          LOG_DEVEL << " - 5 - ";
+          return dummy;
+        }
+      }
+
+      // TODO 2.): What if value is not inside the edge, we need to use default
+      // weight.
+      LOG_DEVEL << " - 6 - ";
+      return 1.0;
+    };
+
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
     // Write first part of the Path
     for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
       _sourceProvider.addEdgeToBuilder(_edges[i], builder);
+      if (weightType == WeightType::ACTUAL_WEIGHT) {
+        sumWeights += getActualWeight(i);
+      }
     }
     // Write second part of the Path
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
       _targetProvider.addEdgeToBuilder(_edges[i], builder);
-    }
-
-    if (weightType == WeightType::ACTUAL_WEIGHT) {
-      sumWeights += 1337;  // TODO: fixme this is wrong and just a placeholder
+      if (weightType == WeightType::ACTUAL_WEIGHT) {
+        sumWeights += getActualWeight(i);
+      }
     }
   }
 

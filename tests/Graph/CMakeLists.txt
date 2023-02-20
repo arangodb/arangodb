@@ -12,7 +12,7 @@ add_library(arango_tests_graph OBJECT
   FifoQueueTest.cpp
   LifoQueueTest.cpp
   WeightedQueueTest.cpp
-        KPathsFinderTest.cpp
+        KShortestPathsFinderTest.cpp
         WeightedShortestPathTest.cpp
         SingleServerProviderTest.cpp)
 
