@@ -12,4 +12,9 @@ RUN [ "/tools/install-openssl.sh", "1.1.1", "t" ]
 ENV OPENSSL_ROOT_DIR=/opt/openssl-1.1.1
 RUN apk --no-cache del perl
 
+RUN ln /usr/bin/sccache /usr/local/bin/gcc && \
+    ln /usr/bin/sccache /usr/local/bin/g++ && \
+    ln /usr/bin/sccache /usr/local/bin/clang-14 && \
+    ln /usr/bin/sccache /usr/local/bin/clang++-14
+
 CMD [ "sh" ]
