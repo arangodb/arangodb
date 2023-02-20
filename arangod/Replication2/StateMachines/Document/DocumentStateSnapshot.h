@@ -29,6 +29,7 @@
 #include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include <memory>
 #include <optional>
@@ -143,6 +144,17 @@ struct SnapshotBatch {
   }
 };
 
+struct SnapshotConfig {
+  SnapshotId snapshotId;
+  ShardMap shards;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, SnapshotConfig& s) {
+    return f.object(s).fields(f.field(kStringSnapshotId, s.snapshotId),
+                              f.field(kStringShards, s.shards));
+  }
+};
+
 /*
  * This namespace encloses the different states a snapshot can be in.
  */
@@ -244,7 +256,7 @@ class Snapshot {
   static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
                                                       1024};  // 16MB
 
-  explicit Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+  explicit Snapshot(SnapshotId id, ShardMap shardsConfig,
                     std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
 
   Snapshot(Snapshot const&) = delete;
@@ -252,15 +264,17 @@ class Snapshot {
   Snapshot const& operator=(Snapshot const&) = delete;
   Snapshot const& operator=(Snapshot&&) = delete;
 
+  auto config() -> SnapshotConfig;
   auto fetch() -> ResultT<SnapshotBatch>;
   auto finish() -> Result;
   auto abort() -> Result;
   [[nodiscard]] auto status() const -> SnapshotStatus;
+  auto getId() const -> SnapshotId;
 
  private:
-  SnapshotId _id;
   std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
   std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
+  SnapshotConfig _config;
   SnapshotState _state;
   SnapshotStatistics _statistics;
 };

@@ -47,18 +47,20 @@ auto to_string(SnapshotId snapshotId) -> std::string {
   return std::to_string(snapshotId.id());
 }
 
-Snapshot::Snapshot(SnapshotId id, std::vector<ShardID> shardIds,
+Snapshot::Snapshot(SnapshotId id, ShardMap shardsConfig,
                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
-    : _id(id),
-      _databaseSnapshot{std::move(databaseSnapshot)},
+    : _databaseSnapshot{std::move(databaseSnapshot)},
+      _config{id, ShardMap{std::move(shardsConfig)}},
       _state{state::Ongoing{}} {
-  for (auto it = shardIds.rbegin(); it != shardIds.rend(); ++it) {
-    auto reader = _databaseSnapshot->createCollectionReader(*it);
+  for (auto const& [shardId, properties] : _config.shards) {
+    auto reader = _databaseSnapshot->createCollectionReader(shardId);
     _statistics.shards.emplace(
-        *it, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
-    _shards.emplace_back(*it, std::move(reader));
+        shardId, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
+    _shards.emplace_back(shardId, std::move(reader));
   }
 }
+
+auto Snapshot::config() -> SnapshotConfig { return _config; }
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
@@ -66,8 +68,9 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
           [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
             ongoing.builder.clear();
             if (_shards.empty()) {
-              auto batch = SnapshotBatch{
-                  .snapshotId = _id, .shardId = std::nullopt, .hasMore = false};
+              auto batch = SnapshotBatch{.snapshotId = getId(),
+                                         .shardId = std::nullopt,
+                                         .hasMore = false};
               return ResultT<SnapshotBatch>::success(std::move(batch));
             }
 
@@ -76,7 +79,7 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
             reader.read(ongoing.builder, kBatchSizeLimit);
             auto readerHasMore = reader.hasMore();
             auto batch =
-                SnapshotBatch{.snapshotId = _id,
+                SnapshotBatch{.snapshotId = getId(),
                               .shardId = shard.first,
                               .hasMore = readerHasMore || _shards.size() > 1,
                               .payload = ongoing.builder.sharedSlice()};
@@ -94,12 +97,12 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
           [&](state::Finished const&) -> ResultT<SnapshotBatch> {
             return ResultT<SnapshotBatch>::error(
                 TRI_ERROR_INTERNAL,
-                fmt::format("Snapshot {} was finished!", _id));
+                fmt::format("Snapshot {} was finished!", getId()));
           },
           [&](state::Aborted const&) -> ResultT<SnapshotBatch> {
             return ResultT<SnapshotBatch>::error(
                 TRI_ERROR_INTERNAL,
-                fmt::format("Snapshot {} was aborted!", _id));
+                fmt::format("Snapshot {} was aborted!", getId()));
           },
       },
       _state);
@@ -111,7 +114,7 @@ auto Snapshot::finish() -> Result {
           [&](state::Ongoing& ongoing) -> Result {
             if (!_shards.empty()) {
               LOG_TOPIC("23913", WARN, Logger::REPLICATION2)
-                  << "Snapshot " << _id
+                  << "Snapshot " << getId()
                   << " is being finished, but still has more data!";
             }
             _state = state::Finished{};
@@ -119,12 +122,12 @@ auto Snapshot::finish() -> Result {
           },
           [&](state::Finished const&) -> Result {
             LOG_TOPIC("16d04", WARN, Logger::REPLICATION2)
-                << "Snapshot " << _id << " appears to be already finished!";
+                << "Snapshot " << getId() << " appears to be already finished!";
             return {};
           },
           [&](state::Aborted const&) -> Result {
             return Result{TRI_ERROR_INTERNAL,
-                          fmt::format("Snapshot {} was aborted!", _id)};
+                          fmt::format("Snapshot {} was aborted!", getId())};
           },
       },
       _state);
@@ -136,7 +139,7 @@ auto Snapshot::abort() -> Result {
           [&](state::Ongoing& ongoing) -> Result {
             if (!_shards.empty()) {
               LOG_TOPIC("5ce86", INFO, Logger::REPLICATION2)
-                  << "Snapshot " << _id
+                  << "Snapshot " << getId()
                   << " is being aborted, but still has more data!";
             }
             _state = state::Aborted{};
@@ -144,11 +147,11 @@ auto Snapshot::abort() -> Result {
           },
           [&](state::Finished const&) -> Result {
             return Result{TRI_ERROR_INTERNAL,
-                          fmt::format("Snapshot {} was finished!", _id)};
+                          fmt::format("Snapshot {} was finished!", getId())};
           },
           [&](state::Aborted const&) -> Result {
             LOG_TOPIC("4daf1", WARN, Logger::REPLICATION2)
-                << "Snapshot " << _id << " appears to be already aborted!";
+                << "Snapshot " << getId() << " appears to be already aborted!";
             return {};
           },
       },
@@ -158,4 +161,7 @@ auto Snapshot::abort() -> Result {
 [[nodiscard]] auto Snapshot::status() const -> SnapshotStatus {
   return SnapshotStatus(_state, _statistics);
 }
+
+auto Snapshot::getId() const -> SnapshotId { return _config.snapshotId; }
+
 }  // namespace arangodb::replication2::replicated_state::document
