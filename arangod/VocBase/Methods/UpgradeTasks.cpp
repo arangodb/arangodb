@@ -256,7 +256,7 @@ Result createSystemCollections(
     auto cols = methods::Collections::create(
         vocbase, options, systemCollectionsToCreate, true, true, true,
 
-        true /* allow system collection creation */);
+        false /* allow system collection creation */);
     if (cols.fail()) {
       return cols.result();
     }
