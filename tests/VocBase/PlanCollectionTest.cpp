@@ -60,7 +60,7 @@ namespace tests {
 
 #define GenerateFailsOnString(attributeName)                              \
   assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "")); \
-  GenerateFailsOnNonEmptyString(attribtueName)
+  GenerateFailsOnNonEmptyString(attributeName)
 
 #define GenerateFailsOnArray(attributeName)          \
   assertParsingThrows(createMinimumBodyWithOneValue( \

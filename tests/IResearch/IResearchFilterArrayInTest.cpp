@@ -1745,7 +1745,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  // nondeterministic value
+  // non-deterministic value
   {
     std::vector<std::pair<
         std::string,
@@ -1776,7 +1776,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     for (auto caseData : testCases) {
       const auto& queryString = caseData.first;
       SCOPED_TRACE(
-          testing::Message("Testing with non-determenistic value. Query: ")
+          testing::Message("Testing with non-deterministic value. Query: ")
           << queryString);
       std::string const refName = "d";
 
@@ -3742,7 +3742,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  // nondeterministic value
+  // non-deterministic value
   {
     std::vector<std::pair<
         std::string,
