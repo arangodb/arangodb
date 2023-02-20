@@ -1327,9 +1327,9 @@ authRouter.get('/visgraph/:name', function (req, res) {
         
       nodeObj = {
         id: node._id,
-        viking: 'Axe',
         label: nodeLabel,
         size: nodeSize || 20,
+        value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
         shape: "dot",
         //shape: "circle",
@@ -1347,42 +1347,11 @@ authRouter.get('/visgraph/:name', function (req, res) {
 
       if (config.nodeColorByCollection === 'true') {
         var coll = node._id.split('/')[0];
-        if (tmpObjNodes.hasOwnProperty(coll)) {
-          nodeObj.color = tmpObjNodes[coll];
-          nodeObj.style.fill = tmpObjNodes[coll] || '#ff0'; 
-        } else {
-          tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
-          nodeObj.color = tmpObjNodes[coll];
-        }
+        nodeObj.group = coll;
+        nodeObj.color = "";
       } else if (config.nodeColorAttribute !== '') {
-        if(node[config.nodeColorAttribute]) {
-          nodeObj.colorCategory = node[config.nodeColorAttribute] || '';
-          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-          
-          const value2 = {
-            'name': node[config.nodeColorAttribute] || '',
-            'color': tempNodeColor
-          };
-
-          const nodesColorAttributeIndex = nodesColorAttributes.findIndex(object => object.name === value2.name);
-          if (nodesColorAttributeIndex === -1) {
-            nodesColorAttributes.push(value2);
-          }
-        }
-
-        var attr = node[config.nodeColorAttribute];
-        if (attr) {
-          if (tmpObjNodes.hasOwnProperty(attr)) {
-            nodeObj.color = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
-            nodeObj.style.fill = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
-            nodeObj[config.nodeColorAttribute] = attr;
-            nodeObj.attributeColor = tmpObjNodes[attr];
-          } else {
-            tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
-            nodeObj.color = tmpObjNodes[attr];
-            nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
-          }
-        }
+        nodeObj.group = JSON.stringify(node[config.nodeColorAttribute]);
+        nodeObj.color = "";
       }
 
       nodeObj.sortColor = nodeObj.color;
@@ -1458,9 +1427,11 @@ authRouter.get('/visgraph/:name', function (req, res) {
             source: edge._from,
             from: edge._from,
             label: edgeLabel,
+            font: { align: 'top' },
             target: edge._to,
             to: edge._to,
             color: calculatedEdgeColor,
+            length: 500,
             ...edgestyle
           };
 
@@ -1472,9 +1443,10 @@ authRouter.get('/visgraph/:name', function (req, res) {
 
           if (config.edgeColorByCollection === 'true') {
             var coll = edge._id.split('/')[0];
+
             if (tmpObjEdges.hasOwnProperty(coll)) {
-              edgeObj.color = tmpObjEdges[coll];
-              edgeObj.style.stroke = tmpObjEdges[coll] || '#1D2A12';
+              edgeObj.colorfromedges = tmpObjEdges[coll];
+              edgeObj.color = tmpObjEdges[coll] || '#1D2A12'
             } else {
               tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
               edgeObj.color = tmpObjEdges[coll];
@@ -1499,13 +1471,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
             if (attr) {
               if (tmpObjEdges.hasOwnProperty(attr)) {
                 edgeObj.color = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
-                edgeObj.style.fill = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
+                //edgeObj.style.fill = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
                 edgeObj[config.edgeColorAttribute] = attr;
                 edgeObj.attributeColor = tmpObjEdges[attr];
               } else {
                 tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
                 edgeObj.color = tmpObjEdges[attr];
-                edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
+                //edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
               }
             }
           }
@@ -1531,6 +1503,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
         node.nodeEdgesCount = nodeEdgesCount[node.id];
+        node.value = nodeEdgesCount[node.id];
         connectionsCounts.push(nodeEdgesCount[node.id]);
 
         // if a node without edges is found, use def. size 10
@@ -1552,10 +1525,98 @@ authRouter.get('/visgraph/:name', function (req, res) {
         edgesArr.push(edge);
       }
     });
+
+    const interactionOptions = {
+      dragNodes: true,
+      dragView: true,
+      hideEdgesOnDrag: true,
+      hideNodesOnDrag: false,
+      hover: true,
+      hoverConnectedEdges: true,
+      keyboard: {
+        enabled: false,
+        speed: {x: 10, y: 10, zoom: 0.02},
+        bindToWindow: true
+      },
+      multiselect: false,
+      navigationButtons: true,
+      selectable: true,
+      selectConnectedEdges: true,
+      tooltipDelay: 300,
+      zoomSpeed: 0.25,
+      zoomView: true
+    };
+
+    const barnesHutOptions = {
+      interaction: interactionOptions,
+      layout: {
+          hierarchical: false
+      },
+      physics: {
+          barnesHut: {
+              gravitationalConstant: -2250,
+              centralGravity: 0.4,
+              springLength: 76,
+              damping: 0.095
+          },
+          solver: "barnesHut"
+      }
+    };
+
+    const hierarchicalOptions = {
+      interaction: interactionOptions,
+        layout: {
+          hierarchical: {
+            levelSeparation: 150,
+            nodeSpacing: 150,
+            direction: "UD"
+          },
+        },
+        physics: {
+          barnesHut: {
+            gravitationalConstant: -2250,
+            centralGravity: 0.4,
+            damping: 0.095
+          },
+          solver: "barnesHut"
+        }
+    };
+
+    const forceAtlas2BasedOptions = {
+      interaction: interactionOptions,
+          layout: {
+              hierarchical: false
+          },
+          "physics": {
+              "forceAtlas2Based": {
+                  "springLength": 100
+              },
+              "minVelocity": 0.75,
+              "solver": "forceAtlas2Based"
+          }
+      };
+
+      let layoutObject = hierarchicalOptions;
+      
+      switch (config.layout) {
+        case 'forceAtlas2':
+          layoutObject = forceAtlas2BasedOptions;
+        case 'barnesHut':
+          layoutObject = barnesHutOptions;
+          break;
+        case 'hierarchical':
+          layoutObject = hierarchicalOptions;
+          break;
+        default:
+          layoutObject = barnesHutOptions;
+      }
+
     toReturn = {
       nodes: nodesArr,
       edges: edgesArr,
       settings: {
+        configlayout: config.layout,
+        layout: layoutObject,
         vertexCollections: vertexCollections,
         startVertex: startVertex,
         nodesColorAttributes: nodesColorAttributes,
