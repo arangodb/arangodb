@@ -1614,30 +1614,50 @@
       }
       function sortByModifiedAt (a, b) {
         var x;
-        if (a.modified_at > b.modified_at) {
-          x = -1;
-        } else if (a.modified_at < b.modified_at) {
-          x = 1;
-        } else {
-          x = 0;
+        if (!a.modified_at) {
+          return 1;
         }
-        return x;
+        if (!b.modified_at) {
+          return -1;
+        }
+        if (a.modified_at < b.modified_at) {
+          return -1;
+        } else if (a.modified_at > b.modified_at) {
+          return 1;
+        }
+        return 0;
+      }
+      function sortByModifiedAtReverse (a, b) {
+        var x;
+        if (!a.modified_at) {
+          return 1;
+        }
+        if (!b.modified_at) {
+          return -1;
+        }
+        if (a.modified_at > b.modified_at) {
+          return -1;
+        } else if (a.modified_at < b.modified_at) {
+          return 1;
+        }
+        return 0;
       }
       if (this.collection.searchOptions.sortBy === 'dateModified') {
         if (this.collection.searchOptions.sortOrder === 1) {
-          return rows.sort(sortByModifiedAt);
+          // can't just do 'reverse()' because we need to handle missing data
+          return rows.sort(sortByModifiedAtReverse);
         }
         if (this.collection.searchOptions.sortOrder === -1) {
-          return rows.sort(sortByModifiedAt).reverse();
+          return rows.sort(sortByModifiedAt);
         }
       }
       if (this.collection.searchOptions.sortBy === 'dateAdded') {
         if (this.collection.searchOptions.sortOrder === 1) {
           // Reverse order: Last added query shall be displayed first
-          return rows.reverse();
+          return rows;
         }
         if (this.collection.searchOptions.sortOrder === -1) {
-          return rows;
+          return rows.reverse();
         }
       }
       if (this.collection.searchOptions.sortOrder === 1) {
