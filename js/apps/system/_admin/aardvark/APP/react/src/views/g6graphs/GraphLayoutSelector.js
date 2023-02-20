@@ -1,51 +1,38 @@
-import React, { useState } from 'react';
-import { Select, Tooltip } from 'antd';
-import PlainLabel from "./components/pure-css/form/PlainLabel";
-import { InfoCircleFilled } from '@ant-design/icons';
+import React, { useContext, useState } from 'react';
+import { Select } from 'antd';
+import ToolTip from '../../components/arango/tootip';
+import { UrlParametersContext } from "./url-parameters-context";
 
-const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
-  const [layout, setLayout] = useState('gForce');
+const GraphLayoutSelector = () => {
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [layout, setLayout] = useState(urlParameters.layout);
+
+  const newUrlParameters = { ...urlParameters };
+
   const SelectOption = Select.Option;
 
   const layouts = [
     {
-      layout: 'random'
+      layout: 'barnesHut'
     },
     {
-      layout: 'gForce'
+      layout: 'forceAtlas2'
     },
     {
-      layout: 'circular'
-    },
-    {
-      layout: 'radial'
-    },
-    {
-      layout: 'mds'
-    },
-    {
-      layout: 'dagre'
-    },
-    {
-      layout: 'concentric'
-    },
-    {
-      layout: 'comboForce'
-    },
-    {
-      layout: 'comboCombined'
+      layout: 'hierarchical'
     }
   ];
 
   const handleChange = layout => {
     setLayout(layout);
-    onGraphLayoutChange(layout);
+    newUrlParameters.layout = layout;
+    setUrlParameters(newUrlParameters);
   };
 
   return <>
     <form>
-      <div>
-        <PlainLabel htmlFor={'graphlayout'}>Layout</PlainLabel>
+    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+      <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Layout</label>
         <Select
           name="graphlayout"
           value={layout}
@@ -80,9 +67,12 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
             );
           })}
         </Select>
-        <Tooltip placement="bottom" title={"Graph layouts are the algorithms arranging the node positions."}>
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
+        <ToolTip
+          title={"Graph layouts are the algorithms arranging the node positions."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        </ToolTip>
       </div>
     </form>
   </>;
