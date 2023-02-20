@@ -25,7 +25,6 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/application-exit.h>
@@ -38,11 +37,9 @@ using namespace arangodb::replication2::replicated_state::document;
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
-    : shardId(core->getShardId()),
-      loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
+    : loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
-      _shardHandler(handlersFactory->createShardHandler(core->getGid())),
       _transactionHandler(handlersFactory->createTransactionHandler(
           core->getVocbase(), core->getGid())),
       _guardedData(std::move(core)) {}
@@ -69,9 +66,19 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         }
 
         auto count = ++data.currentSnapshotVersion;
-        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
-          return truncateRes;
+
+        for (auto const& [shardId, _] : data.core->getShardMap()) {
+          auto truncateRes = self->truncateLocalShard(shardId);
+          if (truncateRes.fail()) {
+            return truncateRes;
+          }
         }
+
+        /*
+        if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
+          return dropAllRes;
+        }
+         */
         return count;
       });
 
@@ -102,11 +109,9 @@ auto DocumentFollowerState::applyEntries(
           while (auto entry = ptr->next()) {
             auto doc = entry->second;
             if (doc.operation == OperationType::kCreateShard) {
-              auto collectionProperties =
-                  std::make_shared<velocypack::Builder>(doc.data.slice());
               auto const& collectionId = doc.collectionId;
-              auto res = self->_shardHandler->createLocalShard(
-                  doc.shardId, collectionId, collectionProperties);
+              auto res =
+                  data.core->ensureShard(doc.shardId, collectionId, doc.data);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
                     << "Failed to create shard " << doc.shardId
@@ -119,8 +124,7 @@ auto DocumentFollowerState::applyEntries(
                   << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = doc.collectionId;
-              auto res = self->_shardHandler->dropLocalShard(doc.shardId,
-                                                             collectionId);
+              auto res = data.core->dropShard(doc.shardId, collectionId);
               if (res.fail()) {
                 LOG_CTX("8c7a0", FATAL, self->loggerContext)
                     << "Failed to drop shard " << doc.shardId
@@ -132,6 +136,15 @@ auto DocumentFollowerState::applyEntries(
                   << "Dropped local shard " << doc.shardId << " of collection "
                   << collectionId;
             } else {
+              // Even though a shard was dropped before acquiring the snapshot,
+              // we could still see transactions referring to that shard.
+              if (!data.core->isShardAvailable(doc.shardId)) {
+                LOG_CTX("1970d", INFO, self->loggerContext)
+                    << "Will not apply transaction " << doc.tid << " for shard "
+                    << doc.shardId << " because it is not available";
+                continue;
+              }
+
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
                 LOG_CTX("1b08f", FATAL, self->loggerContext)
@@ -183,7 +196,8 @@ auto DocumentFollowerState::applyEntries(
  * @brief Using the underlying transaction handler to apply a local transaction,
  * for this follower only.
  */
-auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
+auto DocumentFollowerState::forceLocalTransaction(ShardID shardId,
+                                                  OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
   auto trxId = TransactionId::createFollower();
@@ -198,17 +212,21 @@ auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
   return _transactionHandler->applyEntry(commit);
 }
 
-auto DocumentFollowerState::truncateLocalShard() -> Result {
+auto DocumentFollowerState::truncateLocalShard(ShardID const& shardId)
+    -> Result {
   VPackBuilder b;
   b.openObject();
   b.add("collection", VPackValue(shardId));
   b.close();
-  return forceLocalTransaction(OperationType::kTruncate, b.sharedSlice());
+  return forceLocalTransaction(shardId, OperationType::kTruncate,
+                               b.sharedSlice());
 }
 
-auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
+auto DocumentFollowerState::populateLocalShard(ShardID shardId,
+                                               velocypack::SharedSlice slice)
     -> Result {
-  return forceLocalTransaction(OperationType::kInsert, std::move(slice));
+  return forceLocalTransaction(shardId, OperationType::kInsert,
+                               std::move(slice));
 }
 
 auto DocumentFollowerState::handleSnapshotTransfer(
@@ -238,11 +256,9 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         if (snapshotRes->shardId.has_value()) {
-          // Will be removed once we introduce collection groups
-          TRI_ASSERT(snapshotRes->shardId == self->shardId);
-
           auto& docs = snapshotRes->payload;
           auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                           &snapshotRes,
                                                            snapshotVersion](
                                                               auto& data)
                                                               -> Result {
@@ -261,7 +277,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   TRI_ERROR_INTERNAL,
                   "Snapshot transfer cancelled because a new one was started!"};
             }
-            return self->populateLocalShard(docs);
+            return self->populateLocalShard(*snapshotRes->shardId, docs);
           });
           if (insertRes.fail()) {
             LOG_CTX("d8b8a", ERR, self->loggerContext)

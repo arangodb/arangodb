@@ -1346,101 +1346,25 @@ function BaseTestConfig () {
   };
 }
 
-function ReplicationIncrementalMalarkeyOldFormat() {
-  'use strict';
+exports.BaseTestConfig = BaseTestConfig;
 
-  let suite = {
-    setUp: function () {
-      connectToFollower();
-      // clear all failure points, but enforce old-style collections
-      clearFailurePoints();
-      setFailurePoint("disableRevisionsAsDocumentIds");
+exports.connectToLeader = function () {
+  reconnectRetry(leaderEndpoint, db._name(), 'root', '');
+  db._flushCache();
+};
 
-      connectToLeader();
-      // clear all failure points, but enforce old-style collections
-      clearFailurePoints();
-      setFailurePoint("disableRevisionsAsDocumentIds");
-    },
-  };
+exports.connectToFollower = function () {
+  reconnectRetry(followerEndpoint, db._name(), 'root', '');
+  db._flushCache();
+};
+  
+exports.setFailurePoint = function(which) {
+  let res = arango.PUT("/_admin/debug/failat/" + encodeURIComponent(which), {});
+  if (res !== true) {
+    throw "unable to set failure point '" + which + "'";
+  }
+};
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');
-  return suite;
-}
-
-function ReplicationIncrementalMalarkeyNewFormat() {
-  'use strict';
-
-  let suite = {
-    setUp: function () {
-      connectToFollower();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-
-      connectToLeader();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-    },
-  };
-
-  deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');
-  return suite;
-}
-
-function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
-  'use strict';
-
-  let suite = {
-    setUp: function () {
-      connectToFollower();
-      // clear all failure points
-      clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount1000");
-      db._drop(cn);
-
-      connectToLeader();
-      // clear all failure points
-      clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount1000");
-      db._drop(cn);
-    },
-  };
-
-  deriveTestSuite(BaseTestConfig(), suite, '_NewFormatIntermediateCommit');
-  return suite;
-}
-
-function ReplicationIncrementalMalarkeyNoHLC() {
-  'use strict';
-
-  let suite = {
-    setUp: function () {
-      connectToFollower();
-      // clear all failure points except the one that will lead to the follower
-      // sending requests without forced HLCs
-      clearFailurePoints();
-      setFailurePoint("SyncerNoEncodeAsHLC");
-      db._drop(cn);
-
-      connectToLeader();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-    },
-  };
-
-  deriveTestSuite(BaseTestConfig(), suite, '_NoHLC');
-  return suite;
-}
-
-let res = arango.GET("/_admin/debug/failat");
-if (res === true) {
-  // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
-  jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
-  jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);
-  jsunity.run(ReplicationIncrementalMalarkeyNoHLC);
-}
-
-return jsunity.done();
+exports.clearFailurePoints = function() {
+  arango.DELETE("/_admin/debug/failat");
+};

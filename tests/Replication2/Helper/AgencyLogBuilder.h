@@ -171,6 +171,18 @@ struct AgencyLogBuilder {
     return _log.current.value();
   }
 
+  auto setPlanConfigGeneration(std::size_t generation) {
+    auto& plan = makePlan();
+    plan.participantsConfig.generation = generation;
+  }
+
+  auto commitCurrentParticipantsConfig() {
+    auto& plan = makePlan();
+    auto& current = makeCurrent();
+    establishLeadership();
+    current.leader->committedParticipantsConfig = plan.participantsConfig;
+  }
+
   auto get() const noexcept -> RLA::Log const& { return _log; }
   RLA::Log _log;
 };

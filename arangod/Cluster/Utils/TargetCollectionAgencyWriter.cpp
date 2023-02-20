@@ -42,35 +42,28 @@ using namespace arangodb;
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace {
-// Copy paste from ClusterInfo
-// TODO: make it dry
-inline arangodb::AgencyOperation IncreaseVersion() {
-  return arangodb::AgencyOperation{
-      paths::plan()->version(),
-      arangodb::AgencySimpleOperationType::INCREMENT_OP};
-}
 
-inline auto pathCollectionInPlan(std::string_view databaseName) {
-  return cluster::paths::root()->arango()->plan()->collections()->database(
+inline auto pathCollectionNamesInTarget(std::string_view databaseName) {
+  return paths::target()->collectionNames()->database(
       std::string{databaseName});
 }
 
-inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
-  return paths::target()->replicatedLogs()->database(std::string{databaseName});
+inline auto pathCollectionInTarget(std::string_view databaseName) {
+  return paths::target()->collections()->database(std::string{databaseName});
 }
 
 inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
-  // TODO: As soon as supervision is implemented, this write needs to go to
-  // TARGET
-  return paths::plan()->collectionGroups()->database(std::string{databaseName});
+  return paths::target()->collectionGroups()->database(
+      std::string{databaseName});
 }
 
-inline auto pathCollectionInCurrent(std::string_view databaseName) {
-  return paths::current()->collections()->database(std::string{databaseName});
+inline auto pathDatabaseInTarget(std::string_view databaseName) {
+  // TODO: Make this target, as soon as databases are moved
+  return paths::plan()->databases()->database(std::string{databaseName});
 }
 
-inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
-  return paths::current()->replicatedLogs()->database(
+inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
+  return paths::current()->collectionGroups()->database(
       std::string{databaseName});
 }
 
@@ -90,109 +83,49 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
     std::string_view databaseName, bool waitForSyncReplication) const {
   auto report = std::make_shared<CurrentWatcher>();
 
-  // One callback per collection
-  report->reserve(_collectionPlanEntries.size());
-  auto const baseCollectionPath = pathCollectionInCurrent(databaseName);
-  auto const baseStatePath = pathReplicatedLogInCurrent(databaseName);
-  for (auto const& entry : _collectionPlanEntries) {
-    if (entry.requiresCurrentWatcher()) {
-      // Add Shards Watcher
-      auto expectedShards = entry.getShardMapping();
-      {
-        // Add the Watcher for Collection Shards
-        auto cid = entry.getCID();
-        auto const collectionPath = baseCollectionPath->collection(cid);
-        auto callback = [cid, expectedShards, waitForSyncReplication,
-                         report](VPackSlice result) -> bool {
-          if (report->hasReported(cid)) {
-            // This collection has already reported
-            return true;
-          }
-          CurrentCollectionEntry state;
-          auto status = velocypack::deserializeWithStatus(result, state);
-          // We ignore parsing errors here, only react on positive case
-          if (status.ok()) {
-            if (state.haveAllShardsReported(expectedShards.shards.size())) {
-              if (state.hasError()) {
-                // At least on shard has reported an error.
-                report->addReport(
-                    cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                                state.createErrorReport()});
-                return true;
-              } else if (!waitForSyncReplication ||
-                         state.doExpectedServersMatch(expectedShards)) {
-                // All servers reported back without error.
-                // If waitForSyncReplication is requested full server lists
-                // match Let us return done!
-                report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
-                return true;
-              }
-            }
-          }
-          // TODO: Maybe we want to do trace-logging if current cannot be
-          // parsed?
+  auto const baseStatePath = pathCollectionGroupInCurrent(databaseName);
 
-          return true;
-        };
-        // Note we use SkipComponents here, as callbacks to not have "arangod"
-        // as prefix.
-        report->addWatchPath(
-            collectionPath->str(arangodb::cluster::paths::SkipComponents(1)),
-            cid, callback);
-      }
-    }
-  }
-
+  // One callback per New and one per Existing Group
+  report->reserve(_collectionGroups.newGroups.size() +
+                  _collectionGroups.additionsToGroup.size());
   for (auto const& group : _collectionGroups.newGroups) {
-    for (auto const& shardSheaf : group.shardSheaves) {
-      auto const& logId = shardSheaf.replicatedLog;
-
-      auto const statePath = baseStatePath->log(logId)->supervision();
-      auto callback = [report,
-                       id = to_string(logId)](velocypack::Slice slice) -> bool {
-        if (report->hasReported(id)) {
-          // This replicatedLog has already reported
-          return true;
-        }
-        if (slice.isNone()) {
-          return false;
-        }
-
-        auto supervision = velocypack::deserialize<
-            replication2::agency::LogCurrentSupervision>(slice);
-        if (supervision.targetVersion.has_value() &&
-            supervision.targetVersion >= 1) {
-          // Right now there cannot be any error on replicated states.
-          // SO if they show up in correct version we just take them.
-          report->addReport(id, TRI_ERROR_NO_ERROR);
-        }
+    auto gid = std::to_string(group.id.id());
+    auto const groupPath = baseStatePath->group(gid)->supervision();
+    auto callback = [report, gid, version = group.version.value()](
+                        velocypack::Slice slice) -> bool {
+      if (report->hasReported(gid)) {
+        // This replicatedLog has already reported
         return true;
-      };
-      report->addWatchPath(
-          statePath->str(arangodb::cluster::paths::SkipComponents(1)),
-          to_string(logId), callback);
-    }
+      }
+      if (slice.isNone()) {
+        return false;
+      }
+
+      auto supervision = velocypack::deserialize<
+          replication2::agency::CollectionGroupCurrentSpecification::
+              Supervision>(slice);
+      if (supervision.version.has_value() &&
+          supervision.version.value() >= version) {
+        // Right now there cannot be any error on replicated states.
+        // SO if they show up in correct version we just take them.
+        report->addReport(gid, TRI_ERROR_NO_ERROR);
+      }
+      return true;
+    };
+    report->addWatchPath(
+        groupPath->str(arangodb::cluster::paths::SkipComponents(1)),
+        std::move(gid), callback);
   }
 
   return report;
 }
 
 ResultT<VPackBufferUInt8>
-TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
-    std::string_view databaseName, uint64_t planVersion,
-    std::vector<std::string> serversAvailable) const {
-  // Distribute Shards onto servers
-  std::unordered_set<ServerID> serversPlanned;
-  for (auto& [_, dist] : _shardDistributionsUsed) {
-    auto res = dist->planShardsOnServers(serversAvailable, serversPlanned);
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
+TargetCollectionAgencyWriter::prepareCreateTransaction(
+    std::string_view databaseName) const {
+  auto const baseCollectionPath = pathCollectionInTarget(databaseName);
   auto const baseGroupPath = pathCollectionGroupInTarget(databaseName);
+  auto const collectionNamePath = pathCollectionNamesInTarget(databaseName);
 
   VPackBufferUInt8 data;
   VPackBuilder builder(data);
@@ -200,8 +133,6 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   // Envelope is not use able after this point
   // We started a write transaction, and now need to add all operations
   auto writes = std::move(envelope).write();
-  // Increase plan version
-  writes = std::move(writes).inc(paths::plan()->version()->str());
 
   // Write All new Collection Groups
   for (auto const& g : _collectionGroups.newGroups) {
@@ -229,42 +160,22 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
 
     writes = std::move(writes).emplace_object(
         baseCollectionPath->collection(entry.getCID())->str(),
-        [&](VPackBuilder& builder) {
-          // Temporary. It should be replaced by velocypack::serialize(builder,
-          // entry); This is not efficient we copy the builder twice
-          auto b = entry.toVPackDeprecated();
-          builder.add(b.slice());
-        });
+        [&](VPackBuilder& builder) { velocypack::serialize(builder, entry); });
 
-    // Create a replicated state for each shard.
-    for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-      // This code only works when every collection gets its own group.
-      auto const& collectionGroup = _collectionGroups.newGroups.at(it);
-      auto shardIdIndex = entry.indexOfShardId(shardId);
-      auto shardSheaf = collectionGroup.shardSheaves.at(shardIdIndex);
-      auto spec = entry.getReplicatedLogForTarget(
-          shardSheaf.replicatedLog, serverIds, databaseName, shardId);
-      writes = std::move(writes).emplace_object(
-          baseReplicatedLogsPath->log(spec.id)->str(),
-          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
-    }
+    // Insert an empty object, we basically want to occupy the key here for
+    // preconditions
+    writes = std::move(writes).set(
+        collectionNamePath->collection(entry.getName())->str(),
+        [](VPackBuilder& builder) {});
   }
 
   // Done with adding writes. Now add all preconditions
   // writes is not usable after this point
   auto preconditions = std::move(writes).precs();
+
+  // Make sure we have not lost our database yet
   preconditions = std::move(preconditions)
-                      .isEqual(paths::plan()->version()->str(), planVersion);
-  // Server should not be planned to be cleaned
-  preconditions =
-      std::move(preconditions)
-          .isIntersectionEmpty(paths::target()->toBeCleanedServers()->str(),
-                               serversPlanned);
-  // Servers should not be in cleaned state
-  preconditions =
-      std::move(preconditions)
-          .isIntersectionEmpty(paths::target()->cleanedServers()->str(),
-                               serversPlanned);
+                      .isNotEmpty(pathDatabaseInTarget(databaseName)->str());
 
   // Preconditions for Collection Groups
   for (auto const& g : _collectionGroups.newGroups) {
@@ -281,99 +192,20 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
             .isNotEmpty(baseGroupPath->group(std::to_string(g.id.id()))->str());
   }
 
-  // Created preconditions that no one has stolen our id
+  // Created preconditions that no one has stolen our collections id or name
   for (auto const& entry : _collectionPlanEntries) {
-    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
     preconditions =
         std::move(preconditions)
             .isEmpty(baseCollectionPath->collection(entry.getCID())->str());
+    preconditions =
+        std::move(preconditions)
+            .isEmpty(collectionNamePath->collection(entry.getName())->str());
   }
 
   // We are complete, add our ID and close the transaction;
   std::move(preconditions).end().done();
 
   return data;
-}
-
-[[nodiscard]] AgencyWriteTransaction
-TargetCollectionAgencyWriter::prepareUndoTransaction(
-    std::string_view databaseName) const {
-  std::vector<AgencyOperation> opers{};
-  std::vector<AgencyPrecondition> precs{};
-
-  // One per Collection, and the PlanVersion
-  opers.reserve(_collectionPlanEntries.size() + 1);
-  // One per Collection
-  precs.reserve(_collectionPlanEntries.size());
-
-  opers.push_back(IncreaseVersion());
-
-  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
-  for (auto& entry : _collectionPlanEntries) {
-    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
-
-    // Add a precondition that we are still building
-    precs.emplace_back(AgencyPrecondition{
-        collectionPath->isBuilding(), AgencyPrecondition::Type::EMPTY, false});
-
-    // Remove the entry
-    opers.emplace_back(
-        AgencyOperation{collectionPath, AgencySimpleOperationType::DELETE_OP});
-
-    // Delete the replicated state for each shard.
-    for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-      auto logId = LogicalCollection::shardIdToStateId(shardId);
-      // Remove the ReplicatedState
-      opers.emplace_back(AgencyOperation{baseReplicatedLogsPath->log(logId),
-                                         AgencySimpleOperationType::DELETE_OP});
-    }
-  }
-
-  // TODO: Check ownership
-  return AgencyWriteTransaction{opers, precs};
-}
-
-[[nodiscard]] AgencyWriteTransaction
-TargetCollectionAgencyWriter::prepareCompletedTransaction(
-    std::string_view databaseName) {
-  std::vector<AgencyOperation> opers{};
-  std::vector<AgencyPrecondition> precs{};
-
-  // One per Collection, and the PlanVersion
-  opers.reserve(_collectionPlanEntries.size() + 1);
-  // One per Collection
-  precs.reserve(_collectionPlanEntries.size());
-
-  opers.push_back(IncreaseVersion());
-
-  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  for (auto& entry : _collectionPlanEntries) {
-    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
-    {
-      // TODO: This is temporary
-      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
-      // velocypack::serialize(*builder, _entry);
-      // Add a precondition that no other code has modified our collection.
-      // Especially no failover has happend
-      precs.emplace_back(AgencyPrecondition{
-          collectionPath, AgencyPrecondition::Type::VALUE, std::move(builder)});
-    }
-    // Get out of is Building mode
-    entry.removeBuildingFlags();
-    {
-      // TODO: This is temporary
-      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
-      // velocypack::serialize(*builder, _entry);
-
-      // Create the operation to place our collection here
-      opers.emplace_back(AgencyOperation{
-          collectionPath, AgencyValueOperationType::SET, std::move(builder)});
-    }
-  }
-
-  // TODO: Check ownership
-  return AgencyWriteTransaction{opers, precs};
 }
 
 std::vector<std::string> TargetCollectionAgencyWriter::collectionNames() const {
@@ -384,24 +216,3 @@ std::vector<std::string> TargetCollectionAgencyWriter::collectionNames() const {
   }
   return names;
 }
-
-/*
-TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
-    CreateCollectionBody col, ShardDistribution shardDistribution)
-    : _entry(std::move(col), std::move(shardDistribution)) {}
-
-[[nodiscard]] AgencyOperation TargetCollectionAgencyWriter::prepareOperation(
-    std::string const& databaseName) const {
-  auto const collectionPath = cluster::paths::root()
-                                  ->arango()
-                                  ->plan()
-                                  ->collections()
-                                  ->database(databaseName)
-                                  ->collection(_entry.getCID());
-  // TODO: This is temporary
-  auto builder = std::make_shared<VPackBuilder>(_entry.toVPackDeprecated());
-  // velocypack::serialize(*builder, _entry);
-  return AgencyOperation{collectionPath, AgencyValueOperationType::SET,
-                         std::move(builder)};
-}
-*/

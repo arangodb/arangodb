@@ -24,6 +24,7 @@
 
 #include "Maintenance.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -421,8 +422,7 @@ static void handlePlanShard(
                                           // action as well. Used to distinguish
                                           // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
-            std::move(props));
+            SLOW_OP_PRIORITY, true, std::move(props));
         makeDirty.insert(dbname);
         callNotify = true;
         actions.emplace_back(std::move(description));

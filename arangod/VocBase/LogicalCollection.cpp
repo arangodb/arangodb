@@ -49,7 +49,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
@@ -1297,7 +1296,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available, accessed "
                      "from {}/{}. No status available.",
-                     shardIdToStateId(name()), vocbase().name(), name());
+                     *_replicatedStateId, vocbase().name(), name());
   }
 
   auto const* const leaderStatus = status->asLeaderStatus();
@@ -1305,7 +1304,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
-                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *_replicatedStateId, vocbase().name(), name(),
                      fmt::streamed(*status));
   }
 
@@ -1314,7 +1313,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
-                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *_replicatedStateId, vocbase().name(), name(),
                      /* to_string(leaderStatus->managerState.state) */ "n/a");
   }
 

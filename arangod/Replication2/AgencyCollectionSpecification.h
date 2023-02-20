@@ -33,6 +33,8 @@
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 
 namespace arangodb::replication2::agency {
 
@@ -67,13 +69,23 @@ struct CollectionGroup {
   Attributes attributes;
 };
 
-struct CollectionGroupTargetSpecification : public CollectionGroup {};
+struct CollectionGroupTargetSpecification : public CollectionGroup {
+  std::optional<uint64_t> version;
+};
 
 struct CollectionGroupPlanSpecification : public CollectionGroup {
   struct ShardSheaf {
     LogId replicatedLog;
   };
   std::vector<ShardSheaf> shardSheaves;
+};
+
+struct CollectionGroupCurrentSpecification {
+  struct Supervision {
+    std::optional<uint64_t> version;
+  };
+
+  Supervision supervision;
 };
 
 /***
@@ -99,7 +111,8 @@ struct Collection {
   struct ImmutableProperties : public CollectionInternalProperties {
     std::string name{StaticStrings::Empty};
     bool isSystem{false};
-    TRI_col_type_e type{TRI_col_type_e::TRI_COL_TYPE_DOCUMENT};
+    std::underlying_type_t<TRI_col_type_e> type =
+        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
     KeyGeneratorProperties keyOptions{};
     bool isSmart{false};
     bool isDisjoint{false};
@@ -111,6 +124,8 @@ struct Collection {
   };
 
   ImmutableProperties immutableProperties;
+
+  CollectionIndexesProperties indexes;
 };
 
 struct CollectionTargetSpecification : public Collection {};
