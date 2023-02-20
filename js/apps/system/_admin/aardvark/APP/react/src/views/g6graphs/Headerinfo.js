@@ -19,7 +19,6 @@ import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
-import VisGraphLayoutSelector from "./VisGraphLayoutSelector";
 import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
 import LoadingSpinner from './LoadingSpinner.js';
@@ -27,7 +26,7 @@ import AccordionView from './components/Accordion/Accordion';
 import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onVisGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -101,6 +100,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
   return (
     <>
       <div
+        id="graphViewerNavbarId"
         class="graphViewerNavbar"
         style={{ 'width': '100%', 'height': '40px', 'background': '#ffffff', 'display': 'flex', 'alignItems': 'center', 'padding': '8px', 'marginBottom': '24px', 'borderBottom': '2px solid #d9dbdc' }}
       >
