@@ -18,8 +18,8 @@ add_library(arango_tests_graph OBJECT
 
 target_link_libraries(arango_tests_graph
   PRIVATE
-    arango
-    arango_tests_basics
+        arango_lightweight
+        arango_tests_basics
     velocypack
     fmt)
 
@@ -28,13 +28,7 @@ add_executable(arangodbtests_graph
 
 target_link_libraries(arangodbtests_graph
         arango_tests_graph
-        arango_tests_basics
-        arango_agency
-        arango_cluster_engine
-        arango_rocksdb
-        arango_v8server
-        arangoserver
-        boost_boost)
+        arango_tests_basics)
 
 add_test(test_all_graphs arango_tests_graph)
 
