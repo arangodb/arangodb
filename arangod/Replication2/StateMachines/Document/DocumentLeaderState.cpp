@@ -115,6 +115,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         }
       } else if (doc.operation == OperationType::kDropShard) {
         auto const& collectionId = doc.collectionId;
+        transactionHandler->abortTransactionsForShard(doc.shardId);
         auto res = data.core->dropShard(doc.shardId, collectionId);
         if (res.fail()) {
           LOG_CTX("f1eb0", FATAL, self->loggerContext)
@@ -291,6 +292,31 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
           }
           return data.core->createShard(
               std::move(shard), std::move(collectionId), std::move(properties));
+        });
+      });
+}
+
+auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
+    -> futures::Future<Result> {
+  DocumentLogEntry entry;
+  entry.operation = OperationType::kDropShard;
+  entry.shardId = shard;
+  entry.collectionId = collectionId;
+
+  // TODO actually we have to block this log entry from release until the
+  // collection is actually created
+  auto const& stream = getStream();
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), shard = std::move(shard),
+       collectionId = std::move(collectionId)](auto&&) mutable {
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          return data.core->dropShard(std::move(shard),
+                                      std::move(collectionId));
         });
       });
 }

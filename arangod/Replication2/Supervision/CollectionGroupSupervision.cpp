@@ -319,6 +319,14 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
       }
     }
 
+    // check collection is in current
+    for (auto const& [cid, coll] : group.target.collections) {
+      if (not group.currentCollections.contains(cid)) {
+        return NoActionPossible{basics::StringUtils::concatT(
+            "collection  ", cid, " not yet in current.")};
+      }
+    }
+
     return UpdateConvergedVersion{group.target.version};
   }
 
@@ -540,7 +548,7 @@ auto document::supervision::executeCheckCollectionGroup(
     // TODO remove logging later?
     LOG_TOPIC("33547", WARN, Logger::SUPERVISION)
         << "no progress possible for collection group " << database << "/"
-        << group.target.id;
+        << group.target.id << ": " << std::get<NoActionPossible>(action).reason;
     return envelope;
   }
 
