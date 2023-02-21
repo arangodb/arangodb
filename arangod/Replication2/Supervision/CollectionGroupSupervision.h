@@ -47,6 +47,7 @@ struct DropCollectionPlan {
 };
 struct DropCollectionGroup {
   agency::CollectionGroupId gid;
+  std::vector<agency::CollectionGroupPlanSpecification::ShardSheaf> logs;
 };
 struct AddCollectionToPlan {
   CollectionID cid;

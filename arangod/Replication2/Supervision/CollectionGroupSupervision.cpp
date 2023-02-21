@@ -387,6 +387,16 @@ auto document::supervision::checkCollectionGroup(
     DatabaseID const& database, CollectionGroup const& group,
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
     -> Action {
+  if (group.target.collections.empty()) {
+    if (group.plan.has_value()) {
+      if (group.plan->collections.empty()) {
+        return DropCollectionGroup{group.target.id, group.plan->shardSheaves};
+      }  // else first drop collections
+    } else {
+      return DropCollectionGroup{group.target.id, {}};
+    }
+  }
+
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
@@ -425,6 +435,24 @@ struct TransactionBuilder {
 
   // TODO do we need preconditions here?
   // TODO use agency paths
+
+  void operator()(DropCollectionGroup const& action) {
+    auto write = env.write()
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Target/CollectionGroup/", database, "/",
+                         action.gid.id()))
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Plan/CollectionGroup/", database, "/",
+                         action.gid.id()));
+
+    for (auto sheaf : action.logs) {
+      write = std::move(write).remove(
+          basics::StringUtils::concatT("/arango/Target/ReplicatedLogs/",
+                                       database, "/", sheaf.replicatedLog));
+    }
+
+    env = write.end();
+  }
 
   void operator()(UpdateReplicatedLogConfig const& action) {
     env = env.write()
