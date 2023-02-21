@@ -103,6 +103,8 @@ class QueryContext {
 
   aql::Ast* ast();
 
+  std::mutex& mutex() { return _mutex; }
+
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
@@ -180,6 +182,8 @@ class QueryContext {
   std::unique_ptr<Ast> _ast;
 
   std::atomic<unsigned> _numRequests;
+
+  std::mutex _mutex;
 };
 
 }  // namespace aql

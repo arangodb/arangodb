@@ -138,6 +138,14 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
+  struct EngineGuard {
+    explicit EngineGuard(aql::ExecutionEngine* engine);
+    ~EngineGuard();
+
+   private:
+    aql::ExecutionEngine* _engine = nullptr;
+  };
+
   aql::ExecutionEngine* _engine;
 };
 }  // namespace aql
