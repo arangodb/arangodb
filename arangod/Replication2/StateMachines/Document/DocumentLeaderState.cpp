@@ -115,6 +115,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         }
       } else if (doc.operation == OperationType::kDropShard) {
         auto const& collectionId = doc.collectionId;
+        transactionHandler->abortTransactionsForShard(doc.shardId);
         auto res = data.core->dropShard(doc.shardId, collectionId);
         if (res.fail()) {
           LOG_CTX("f1eb0", FATAL, self->loggerContext)
