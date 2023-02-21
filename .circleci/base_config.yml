@@ -120,38 +120,7 @@ jobs:
             - UnitTests
             - 3rdParty/iresearch/tests/resources
 
-  run-ctest:
-    parameters:
-      filter:
-        type: string
-      preset:
-        type: string
-    docker:
-      - image: cimg/base:current
-    resource_class: large
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
-      - run:
-          name: Run CTest
-          command: |
-            ctest --preset << parameters.preset >> -R << parameters.filter >> -VV
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-      - store_test_results:
-          # this is where ctest stores the test_detail.xml produced
-          # by the googletest executable
-          path: build/tests/test_detail.xml
-
-  run-js-tests:
+  run-tests:
     docker:
       - image: cimg/python:3.11.1
     parameters:
@@ -212,15 +181,3 @@ workflows:
           name: build-community-pr
           preset: community-pr
           edition: x64-community
-      - run-ctest:
-          name: arangodbtests-non-iresearch
-          preset: community-pr
-          filter: "arangodbtests-non-iresearch"
-          requires:
-            - build-community-pr
-      - run-ctest:
-          name: arangodbtests-iresearch
-          preset: community-pr
-          filter: "arangodbtests-iresearch"
-          requires:
-            - build-community-pr
