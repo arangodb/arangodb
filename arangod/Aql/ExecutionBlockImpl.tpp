@@ -673,8 +673,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ShortestPathExecutor<WeightedShortestPathTracer>,
                   ShortestPathExecutor<WeightedShortestPathCluster>,
                   ShortestPathExecutor<WeightedShortestPathClusterTracer>,
-                  ReturnExecutor,
-                  EnumeratePathsExecutor<KPath>,
+                  ReturnExecutor, EnumeratePathsExecutor<KPath>,
                   EnumeratePathsExecutor<KPathTracer>,
                   EnumeratePathsExecutor<KPathCluster>,
                   EnumeratePathsExecutor<KPathClusterTracer>,
@@ -1037,9 +1036,8 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
-    AqlCallStack& stack) -> ExecState
-  requires std::same_as<Executor, SubqueryStartExecutor>
-{
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1106,9 +1104,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
-    AqlCallStack& stack) -> ExecState
-  requires std::same_as<Executor, SubqueryEndExecutor>
-{
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1418,7 +1415,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
-        constexpr static int depthOffset = ([]() consteval -> int {
+        constexpr static int depthOffset = ([]() consteval->int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
           } else {
@@ -2385,9 +2382,8 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
 //       ScatterExecutor and in DistributeClientExecutor
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
-    SharedAqlItemBlockPtr block, SkipResult skipped) -> void
-  requires std::same_as<Executor, IdExecutor<ConstFetcher>>
-{
+    SharedAqlItemBlockPtr block, SkipResult skipped)
+    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -2422,9 +2418,7 @@ auto ExecutionBlockImpl<Executor>::injectConstantBlock(
 // this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
-    -> RegisterId
-  requires std::same_as<Executor,
-                        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>
-{
+    -> RegisterId requires std::same_as<
+        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
   return _executorInfos.getOutputRegister();
 }
