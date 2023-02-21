@@ -612,7 +612,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   std::unordered_map<std::string, replication2::agency::CollectionGroupId>
       selfCreatedGroups;
   for (auto& col : collections) {
-#if false
+#if true
     if (col.distributeShardsLike.has_value()) {
       auto const& leadingName = col.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
