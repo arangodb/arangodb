@@ -33,6 +33,7 @@
 #include "analysis/analyzers.hpp"
 
 #include "Geo/GeoParams.h"
+#include "Geo/GeoJson.h"
 #include "IResearch/Geo.h"
 #include "IResearch/GeoFilter.h"
 #include "IResearch/IResearchCommon.h"
@@ -345,8 +346,14 @@ bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
                                     Encoder* encoder) {
   auto const data = slice(value);
   if (_type != Type::POINT) {
-    if (!parseShape<Parsing::GeoJson>(data, _shape, _cache, legacy, options,
-                                      encoder)) {
+    const auto type = geo::json::type(data);
+    const bool withoutSerialization =
+        _type == Type::CENTROID && type != geo::json::Type::POINT &&
+        type != geo::json::Type::UNKNOWN;  // UNKNOWN same as isArray for us
+    if (!parseShape<Parsing::GeoJson>(
+            data, _shape, _cache, legacy,
+            withoutSerialization ? geo::coding::Options::kInvalid : options,
+            withoutSerialization ? nullptr : encoder)) {
       return false;
     }
   } else if (!parseShape<Parsing::OnlyPoint>(data, _shape, _cache, legacy,

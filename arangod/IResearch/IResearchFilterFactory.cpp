@@ -164,6 +164,12 @@ Result setupGeoFilter(FieldMeta::Analyzer const& a,
 Result getLatLng(ScopedAqlValue const& value, S2Point& point,
                  char const* funcName, size_t argIdx,
                  GeoFilterOptionsBase const& options) {
+  auto to_point = [&](S2LatLng& latLng) noexcept {
+    if (options.coding == geo::coding::Options::kS2LatLngInt) {
+      geo::toLatLngInt(latLng);
+    }
+    point = latLng.ToPoint();
+  };
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {  // [lng, lat] is valid input
       if (value.size() != 2) {
@@ -184,38 +190,33 @@ Result getLatLng(ScopedAqlValue const& value, S2Point& point,
       }
 
       auto latLng = S2LatLng::FromDegrees(lat, lon).Normalized();
-      if (options.stored != StoredType::S2Centroid &&
-          options.coding == geo::coding::Options::kS2LatLngInt) {
-        geo::toLatLngInt(latLng);
-      }
-      point = latLng.ToPoint();
+      to_point(latLng);
     } break;
     case SCOPED_VALUE_TYPE_OBJECT: {
-      VPackSlice const json = value.slice();
-      geo::ShapeContainer shape;
+      auto const json = value.slice();
+      TRI_ASSERT(json.isObject());
+      const bool withoutSerialization =
+          options.stored == StoredType::S2Centroid &&
+          geo::json::type(json) != geo::json::Type::POINT &&
+          !geo::coding::isOptionsS2(options.coding);
+      geo::ShapeContainer region;
       std::vector<S2LatLng> cache;
-      auto r = parseShape<Parsing::GeoJson>(
-          json, shape, cache, options.stored == StoredType::VPackLegacy,
-          (options.stored == StoredType::S2Centroid
-               ? geo::coding::Options::kInvalid
-               : options.coding),
+      auto r = geo::json::parseRegion<true>(
+          json, region, cache, options.stored == StoredType::VPackLegacy,
+          withoutSerialization ? geo::coding::Options::kInvalid
+                               : options.coding,
           nullptr);
-      if (!r) {
+      if (!r.ok()) {
         return error::failedToEvaluate(funcName, argIdx);
       }
-      point = shape.centroid();
-      TRI_ASSERT(S2::IsUnitLength(point));
+      point = region.centroid();
+      if (withoutSerialization) {
+        S2LatLng latLng{point};
+        to_point(latLng);
+      }
     } break;
     default:
       return error::invalidArgument(funcName, argIdx);
-  }
-  if (options.stored == StoredType::S2Centroid &&
-      !geo::coding::isOptionsS2(options.coding)) {
-    S2LatLng latLng{point};
-    if (options.coding == geo::coding::Options::kS2LatLngInt) {
-      geo::toLatLngInt(latLng);
-    }
-    point = latLng.ToPoint();
   }
   return {};
 }

@@ -187,7 +187,7 @@ class QueryGeoDistance : public QueryTest {
     }
   }
 
-  void queryTestsGeoJson(bool isVPack) {
+  void queryTestsGeoJson(bool isVPack, bool isInt = false) {
     // ensure presence of special a column for geo indices
     {
       auto collection = _vocbase.lookupCollection("testCollection0");
@@ -299,12 +299,14 @@ class QueryGeoDistance : public QueryTest {
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice()};
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      EXPECT_TRUE(runQuery(
+          absl::Substitute(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
-        SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 180.24, 'mygeojson')
+        SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < $0, 'mygeojson')
         SORT d.id ASC
         RETURN d)",
-                           expected));
+                           (isInt ? "180.25" : "180.24")),
+          expected));
     }
     //
     {
@@ -391,7 +393,7 @@ class QueryGeoDistance : public QueryTest {
     }
   }
 
-  void queryTestsGeoCentroid() {
+  void queryTestsGeoCentroid(bool isInt = false) {
     // EXISTS will also work
     {
       EXPECT_TRUE(
@@ -438,9 +440,21 @@ class QueryGeoDistance : public QueryTest {
         RETURN d)",
                            expected));
     }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice()};
+      EXPECT_TRUE(runQuery(
+          absl::Substitute(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < $0, 'mygeocentroid')
+        SORT d.id ASC
+        RETURN d)",
+                           (isInt ? "180.25" : "180.24")),
+          expected));
+    }
   }
 
-  void queryTestsGeoPoint() {
+  void queryTestsGeoPoint(bool isInt = false) {
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
@@ -476,6 +490,18 @@ class QueryGeoDistance : public QueryTest {
         SORT d.id ASC
         RETURN d)",
                            expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice()};
+      EXPECT_TRUE(runQuery(
+          absl::Substitute(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < $0, 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           (isInt ? "180.25" : "180.24")),
+          expected));
     }
   }
 
@@ -632,9 +658,9 @@ TEST_P(QueryGeoDistanceView, TestS2LatLngInt) {
   createCollections();
   createView();
   queryTests();
-  queryTestsGeoJson(false);
-  queryTestsGeoCentroid();
-  queryTestsGeoPoint();
+  queryTestsGeoJson(false, true);
+  queryTestsGeoCentroid(true);
+  queryTestsGeoPoint(true);
   queryTestsMulti();
 }
 
@@ -644,7 +670,7 @@ TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2LatLngInt) {
   createIndexes("mygeojson");
   createSearch();
   queryTests();
-  queryTestsGeoJson(false);
+  queryTestsGeoJson(false, true);
 }
 
 TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2LatLngInt) {
@@ -653,7 +679,7 @@ TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2LatLngInt) {
   createIndexes("mygeocentroid");
   createSearch();
   queryTests();
-  queryTestsGeoCentroid();
+  queryTestsGeoCentroid(true);
 }
 
 TEST_P(QueryGeoDistanceSearch, TestGeoPointS2LatLngInt) {
@@ -662,7 +688,7 @@ TEST_P(QueryGeoDistanceSearch, TestGeoPointS2LatLngInt) {
   createIndexes("mygeopoint");
   createSearch();
   queryTests();
-  queryTestsGeoPoint();
+  queryTestsGeoPoint(true);
 }
 
 TEST_P(QueryGeoDistanceView, TestS2Point) {
