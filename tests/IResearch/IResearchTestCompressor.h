@@ -44,8 +44,7 @@ namespace irs {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  class test_compressor_compressor final
-      : public ::irs::compression::compressor {
+  class test_compressor_compressor : public ::irs::compression::compressor {
    public:
     bytes_view compress(byte_type* src, size_t size, bstring& out) override {
       return test_compressor::functions().compress_mock
@@ -54,8 +53,7 @@ struct test_compressor {
     }
   };
 
-  class test_compressor_decompressor final
-      : public ::irs::compression::decompressor {
+  class test_compressor_decompressor : public ::irs::compression::decompressor {
    public:
     bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
                           size_t dst_size) override {

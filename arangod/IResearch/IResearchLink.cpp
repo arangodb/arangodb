@@ -82,7 +82,7 @@ namespace {
                                                       auto&& self) -> void {
     assertAnalyzerFeatures(fieldMeta._analyzers);
     for (auto const& entry : fieldMeta._fields) {
-      self(*entry.value(), self);
+      self(*entry.second, self);
     }
   };
   assertAnalyzerFeatures(meta._analyzerDefinitions);

@@ -36,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 
 #include "utils/hash_utils.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
@@ -237,248 +236,273 @@ class UniqueHeapInstance {
  private:
   std::unique_ptr<T> _instance;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a base class for UnorderedRefKeyMap providing implementation for
-///        KeyHasher and KeyGenerator
-////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
-struct UnorderedRefKeyMapBase {
- public:
-  using MapType = std::unordered_map<irs::hashed_basic_string_view<CharType>,
-                                     std::pair<std::basic_string<CharType>, V>>;
-
-  using KeyType = typename MapType::key_type;
-  using value_type = V;
-  using KeyHasher = std::hash<typename MapType::key_type::base_t>;
-
-  struct KeyGenerator {
-    KeyType operator()(KeyType const& key,
-                       typename MapType::mapped_type const& value) const {
-      return KeyType(value.first, key.hash());
-    }
-  };
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a map whose key is an irs::hashed_basic_string_view and the actual
-///        key memory is in an std::pair beside the value
-///        allowing the use of the map with an std::basic_string_view without
-///        the need to allocaate memmory during find(...)
-////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
-class UnorderedRefKeyMap
-    : public UnorderedRefKeyMapBase<CharType, V>,
-      private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
-      private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
- public:
-  using MyBase = UnorderedRefKeyMapBase<CharType, V>;
-  using MapType = typename MyBase::MapType;
-  using KeyType = typename MyBase::KeyType;
-  using KeyGenerator = typename MyBase::KeyGenerator;
-  using KeyHasher = typename MyBase::KeyHasher;
-
-  class ConstIterator {
-   public:
-    using iterator_category = std::forward_iterator_tag;
-    using value_type = const V;
-    using pointer = value_type*;
-    using reference = value_type&;
-    using difference_type = ptrdiff_t;
-    using const_pointer = const value_type*;
-
-    bool operator==(ConstIterator const& other) const noexcept {
-      return _itr == other._itr;
-    }
-
-    bool operator!=(ConstIterator const& other) const noexcept {
-      return !(*this == other);
-    }
-
-    ConstIterator& operator*() noexcept { return *this; }
-
-    ConstIterator& operator++() {
-      ++_itr;
-
-      return *this;
-    }
-
-    const KeyType& key() const noexcept { return _itr->first; }
-    const V& value() const noexcept { return _itr->second.second; }
-
-   private:
-    friend UnorderedRefKeyMap;
-    typename MapType::const_iterator _itr;
-
-    explicit ConstIterator(typename MapType::const_iterator const& itr)
-        : _itr(itr) {}
-  };
-
-  class Iterator {
-   public:
-    using iterator_category = std::forward_iterator_tag;
-    using value_type = V;
-    using pointer = value_type*;
-    using reference = value_type&;
-    using difference_type = ptrdiff_t;
-    using const_pointer = const value_type*;
-
-    bool operator==(Iterator const& other) const noexcept {
-      return _itr == other._itr;
-    }
-
-    bool operator!=(Iterator const& other) const noexcept {
-      return !(*this == other);
-    }
-
-    Iterator& operator*() noexcept { return *this; }
-
-    Iterator& operator++() {
-      ++_itr;
-
-      return *this;
-    }
-
-    const KeyType& key() const noexcept { return _itr->first; }
-    V& value() const noexcept { return _itr->second.second; }
-
-   private:
-    friend UnorderedRefKeyMap;
-    typename MapType::iterator _itr;
-
-    explicit Iterator(typename MapType::iterator const& itr) : _itr(itr) {}
-  };
-
-  UnorderedRefKeyMap() = default;
-  ~UnorderedRefKeyMap() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // ensure every key points to valid data
-    for (auto& entry : _map) {
-      TRI_ASSERT(entry.first.data() == entry.second.first.data());
-    }
-#endif
-  }
-  UnorderedRefKeyMap(UnorderedRefKeyMap const& other) { *this = other; }
-  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) noexcept
-      : _map(std::move(other._map)) {}
-
-  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
-    if (this != &other) {
-      _map.clear();
-      _map.reserve(other._map.size());
-
-      for (auto& entry : other._map) {
-        emplace(entry.first,
-                entry.second.second);  // ensure that the key is regenerated
-      }
-    }
-
-    return *this;
-  }
-
-  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) {
-    if (this != &other) {
-      _map = std::move(other._map);
-    }
-
-    return *this;
-  }
-
-  V& operator[](KeyType const& key) {
-    return irs::map_utils::try_emplace_update_key(
-               _map, keyGenerator(),
-               key,  // use same key for MapType::key_type and
-                     // MapType::value_type.first
-               std::piecewise_construct, std::forward_as_tuple(key),
-               std::forward_as_tuple()  // MapType::value_type
-               )
-        .first->second.second;
-  }
-
-  V& operator[](typename KeyType::base_t const& key) {
-    return (*this)[irs::hashed_basic_string_view{key, keyHasher()}];
-  }
-
-  Iterator begin() noexcept { return Iterator(_map.begin()); }
-  ConstIterator begin() const noexcept { return ConstIterator(_map.begin()); }
-
-  void clear() noexcept { _map.clear(); }
-
-  template<typename... Args>
-  std::pair<Iterator, bool> emplace(KeyType const& key, Args&&... args) {
-    auto res = irs::map_utils::try_emplace_update_key(
-        _map, keyGenerator(),
-        key,  // use same key for MapType::key_type and
-              // MapType::value_type.first
-        std::piecewise_construct, std::forward_as_tuple(key),
-        std::forward_as_tuple(
-            std::forward<Args>(args)...)  // MapType::value_type
-    );
-
-    return std::make_pair(Iterator(res.first), res.second);
-  }
-
-  template<typename... Args>
-  std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
-                                    Args&&... args) {
-    return emplace(irs::hashed_basic_string_view{key, keyHasher()},
-                   std::forward<Args>(args)...);
-  }
-
-  bool empty() const noexcept { return _map.empty(); }
-
-  Iterator end() noexcept { return Iterator(_map.end()); }
-  ConstIterator end() const noexcept { return ConstIterator(_map.end()); }
-
-  Iterator find(KeyType const& key) noexcept {
-    return Iterator(_map.find(key));
-  }
-
-  Iterator find(typename KeyType::base_t const& key) noexcept {
-    return find(irs::hashed_basic_string_view{key, keyHasher()});
-  }
-
-  ConstIterator find(KeyType const& key) const noexcept {
-    return ConstIterator(_map.find(key));
-  }
-
-  ConstIterator find(typename KeyType::base_t const& key) const noexcept {
-    return find(irs::hashed_basic_string_view{key, keyHasher()});
-  }
-
-  V* findPtr(KeyType const& key) noexcept {
-    auto itr = _map.find(key);
-
-    return itr == _map.end() ? nullptr : &(itr->second.second);
-  }
-
-  V* findPtr(typename KeyType::base_t const& key) noexcept {
-    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
-  }
-
-  V const* findPtr(KeyType const& key) const noexcept {
-    auto itr = _map.find(key);
-
-    return itr == _map.end() ? nullptr : &(itr->second.second);
-  }
-
-  V const* findPtr(typename KeyType::base_t const& key) const noexcept {
-    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
-  }
-
-  size_t size() const noexcept { return _map.size(); }
-
- private:
-  MapType _map;
-
-  constexpr KeyGenerator const& keyGenerator() const noexcept {
-    return static_cast<KeyGenerator const&>(*this);
-  }
-
-  constexpr KeyHasher const& keyHasher() const noexcept {
-    return static_cast<KeyHasher const&>(*this);
-  }
-};
+//
+//////////////////////////////////////////////////////////////////////////////////
+///// @brief a base class for UnorderedRefKeyMap providing implementation for
+/////        KeyHasher and KeyGenerator
+//////////////////////////////////////////////////////////////////////////////////
+// template<typename CharType, typename V>
+// struct UnorderedRefKeyMapBase {
+// public:
+//  using MapType = std::unordered_map<irs::hashed_basic_string_view<CharType>,
+//                                     std::pair<std::basic_string<CharType>,
+//                                     V>>;
+//
+//  using KeyType = typename MapType::key_type;
+//  using value_type = V;
+//  using KeyHasher = std::hash<typename MapType::key_type::base_t>;
+//
+//  struct KeyGenerator {
+//    KeyType operator()(KeyType const& key,
+//                       typename MapType::mapped_type const& value) const {
+//      return KeyType(value.first, key.hash());
+//    }
+//  };
+//};
+//
+//////////////////////////////////////////////////////////////////////////////////
+///// @brief a map whose key is an irs::hashed_basic_string_view and the actual
+/////        key memory is in an std::pair beside the value
+/////        allowing the use of the map with an std::basic_string_view without
+/////        the need to allocaate memmory during find(...)
+//////////////////////////////////////////////////////////////////////////////////
+// template<typename CharType, typename V>
+// class UnorderedRefKeyMap
+//    : public UnorderedRefKeyMapBase<CharType, V>,
+//      private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
+//      private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
+// public:
+//  using MyBase = UnorderedRefKeyMapBase<CharType, V>;
+//  using MapType = typename MyBase::MapType;
+//  using KeyType = typename MyBase::KeyType;
+//  using KeyGenerator = typename MyBase::KeyGenerator;
+//  using KeyHasher = typename MyBase::KeyHasher;
+//
+//  class ConstIterator {
+//   public:
+//    using iterator_category = std::forward_iterator_tag;
+//    using value_type = const V;
+//    using pointer = value_type*;
+//    using reference = value_type&;
+//    using difference_type = ptrdiff_t;
+//    using const_pointer = const value_type*;
+//
+//    bool operator==(ConstIterator const& other) const noexcept {
+//      return _itr == other._itr;
+//    }
+//
+//    bool operator!=(ConstIterator const& other) const noexcept {
+//      return !(*this == other);
+//    }
+//
+//    ConstIterator& operator*() noexcept { return *this; }
+//
+//    ConstIterator& operator++() {
+//      ++_itr;
+//
+//      return *this;
+//    }
+//
+//    const KeyType& key() const noexcept { return _itr->first; }
+//    const V& value() const noexcept { return _itr->second.second; }
+//
+//   private:
+//    friend UnorderedRefKeyMap;
+//    typename MapType::const_iterator _itr;
+//
+//    explicit ConstIterator(typename MapType::const_iterator const& itr)
+//        : _itr(itr) {}
+//  };
+//
+//  class Iterator {
+//   public:
+//    using iterator_category = std::forward_iterator_tag;
+//    using value_type = V;
+//    using pointer = value_type*;
+//    using reference = value_type&;
+//    using difference_type = ptrdiff_t;
+//    using const_pointer = const value_type*;
+//
+//    bool operator==(Iterator const& other) const noexcept {
+//      return _itr == other._itr;
+//    }
+//
+//    bool operator!=(Iterator const& other) const noexcept {
+//      return !(*this == other);
+//    }
+//
+//    Iterator& operator*() noexcept { return *this; }
+//
+//    Iterator& operator++() {
+//      ++_itr;
+//
+//      return *this;
+//    }
+//
+//    const KeyType& key() const noexcept { return _itr->first; }
+//    V& value() const noexcept { return _itr->second.second; }
+//
+//   private:
+//    friend UnorderedRefKeyMap;
+//    typename MapType::iterator _itr;
+//
+//    explicit Iterator(typename MapType::iterator const& itr) : _itr(itr) {}
+//  };
+//
+//  UnorderedRefKeyMap() = default;
+//  ~UnorderedRefKeyMap() {
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//    // ensure every key points to valid data
+//    for (auto& entry : _map) {
+//      TRI_ASSERT(entry.first.data() == entry.second.first.data());
+//    }
+//#endif
+//  }
+//  UnorderedRefKeyMap(UnorderedRefKeyMap const& other) { *this = other; }
+//  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) noexcept
+//      : _map(std::move(other._map)) {}
+//
+//  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
+//    if (this != &other) {
+//      _map.clear();
+//      _map.reserve(other._map.size());
+//
+//      for (auto& entry : other._map) {
+//        emplace(entry.first,
+//                entry.second.second);  // ensure that the key is regenerated
+//      }
+//    }
+//
+//    return *this;
+//  }
+//
+//  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) {
+//    if (this != &other) {
+//      _map = std::move(other._map);
+//    }
+//
+//    return *this;
+//  }
+//
+//  V& operator[](KeyType const& key) {
+//    return try_emplace_update_key(
+//               _map, keyGenerator(),
+//               key,  // use same key for MapType::key_type and
+//                     // MapType::value_type.first
+//               std::piecewise_construct, std::forward_as_tuple(key),
+//               std::forward_as_tuple()  // MapType::value_type
+//               )
+//        .first->second.second;
+//  }
+//
+//  V& operator[](typename KeyType::base_t const& key) {
+//    return (*this)[irs::hashed_basic_string_view{key, keyHasher()}];
+//  }
+//
+//  Iterator begin() noexcept { return Iterator(_map.begin()); }
+//  ConstIterator begin() const noexcept { return ConstIterator(_map.begin()); }
+//
+//  void clear() noexcept { _map.clear(); }
+//
+//  template<typename... Args>
+//  std::pair<Iterator, bool> emplace(KeyType const& key, Args&&... args) {
+//    auto res = try_emplace_update_key(
+//        _map, keyGenerator(),
+//        key,  // use same key for MapType::key_type and
+//              // MapType::value_type.first
+//        std::piecewise_construct, std::forward_as_tuple(key),
+//        std::forward_as_tuple(
+//            std::forward<Args>(args)...)  // MapType::value_type
+//    );
+//
+//    return std::make_pair(Iterator(res.first), res.second);
+//  }
+//
+//  template<typename... Args>
+//  std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
+//                                    Args&&... args) {
+//    return emplace(irs::hashed_basic_string_view{key, keyHasher()},
+//                   std::forward<Args>(args)...);
+//  }
+//
+//  bool empty() const noexcept { return _map.empty(); }
+//
+//  Iterator end() noexcept { return Iterator(_map.end()); }
+//  ConstIterator end() const noexcept { return ConstIterator(_map.end()); }
+//
+//  Iterator find(KeyType const& key) noexcept {
+//    return Iterator(_map.find(key));
+//  }
+//
+//  Iterator find(typename KeyType::base_t const& key) noexcept {
+//    return find(irs::hashed_basic_string_view{key, keyHasher()});
+//  }
+//
+//  ConstIterator find(KeyType const& key) const noexcept {
+//    return ConstIterator(_map.find(key));
+//  }
+//
+//  ConstIterator find(typename KeyType::base_t const& key) const noexcept {
+//    return find(irs::hashed_basic_string_view{key, keyHasher()});
+//  }
+//
+//  V* findPtr(KeyType const& key) noexcept {
+//    auto itr = _map.find(key);
+//
+//    return itr == _map.end() ? nullptr : &(itr->second.second);
+//  }
+//
+//  V* findPtr(typename KeyType::base_t const& key) noexcept {
+//    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
+//  }
+//
+//  V const* findPtr(KeyType const& key) const noexcept {
+//    auto itr = _map.find(key);
+//
+//    return itr == _map.end() ? nullptr : &(itr->second.second);
+//  }
+//
+//  V const* findPtr(typename KeyType::base_t const& key) const noexcept {
+//    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
+//  }
+//
+//  size_t size() const noexcept { return _map.size(); }
+//
+// private:
+//  MapType _map;
+//
+//  constexpr KeyGenerator const& keyGenerator() const noexcept {
+//    return static_cast<KeyGenerator const&>(*this);
+//  }
+//
+//  constexpr KeyHasher const& keyHasher() const noexcept {
+//    return static_cast<KeyHasher const&>(*this);
+//  }
+//
+//  template<typename... Args>
+//  inline std::pair<typename MapType::iterator, bool>
+//  try_emplace_update_key(const KeyGenerator& generator, KeyType&& key,
+//      Args&&... args) {
+//    // cppcheck-suppress redundantAssignment
+//    const auto res = _map.try_emplace(std::forward<KeyType>(key),
+//                                           std::forward<Args>(args)...);
+//
+//    if (res.second) {
+//      auto& existing =
+//          const_cast<typename MapType::key_type&>(res.first->first);
+//
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//      auto generated = generator(res.first->first, res.first->second);
+//      TRI_ASSERT(existing == generated);
+//      existing = generated;
+//#else
+//      existing = generator(res.first->first, res.first->second);
+//#endif
+//    }
+//    return res;
+//  }
+//
+//};
 
 }  // namespace iresearch
 }  // namespace arangodb

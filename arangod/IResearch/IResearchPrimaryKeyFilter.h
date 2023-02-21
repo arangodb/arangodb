@@ -67,7 +67,7 @@ class PrimaryKeyFilter final : public irs::filter,
   bool equals(filter const& rhs) const noexcept override;
 
  private:
-  struct PrimaryKeyIterator final : public irs::doc_iterator {
+  struct PrimaryKeyIterator : public irs::doc_iterator {
     PrimaryKeyIterator() = default;
 
     bool next() noexcept override {

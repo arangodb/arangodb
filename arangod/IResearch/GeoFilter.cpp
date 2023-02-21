@@ -74,7 +74,7 @@ inline S2Cap fromPoint(S2Point const& origin) {
 struct S2PointParser;
 
 template<typename Parser, typename Acceptor>
-class GeoIterator final : public irs::doc_iterator {
+class GeoIterator : public irs::doc_iterator {
   // Two phase iterator is heavier than a usual disjunction
   static constexpr irs::cost::cost_t kExtraCost = 2;
 
@@ -202,7 +202,7 @@ using GeoStates = irs::StatesCache<GeoState>;
 
 // Compiled GeoFilter
 template<typename Parser, typename Acceptor>
-class GeoQuery final : public irs::filter::prepared {
+class GeoQuery : public irs::filter::prepared {
  public:
   GeoQuery(GeoStates&& states, irs::bstring&& stats, Parser&& parser,
            Acceptor&& acceptor, irs::score_t boost) noexcept

@@ -1267,19 +1267,15 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
                          ANALYZER_PROPERTIES_SIZE_MAX, "'")};
   }
 
-  auto generator =
-      [](irs::hashed_string_view const& key,
-         AnalyzerPool::ptr const& value) -> irs::hashed_string_view {
-    auto pool = std::make_shared<AnalyzerPool>(key);  // allocate pool
-    const_cast<AnalyzerPool::ptr&>(value) =
-        pool;  // lazy-instantiate pool to avoid allocation if pool is already
-               // present
-    return pool ? irs::hashed_string_view{pool->name(), key.hash()}
-                : key;  // reuse hash but point ref at value in pool
+  bool isNew{false};
+  irs::hashed_string_view hashed_key{name};
+  auto generator = [&isNew, &hashed_key](const auto& map_ctor) {
+    isNew = true;
+    auto pool = std::make_shared<AnalyzerPool>(hashed_key);  // allocate pool
+    map_ctor(irs::hashed_string_view{pool->name(), hashed_key.hash()}, pool);
   };
-  auto emplaceRes = irs::map_utils::try_emplace_update_key(
-      analyzers, generator, irs::hashed_string_view{name});
-  auto analyzer = emplaceRes.first->second;
+  auto emplaceRes = analyzers.lazy_emplace(hashed_key, generator);
+  auto analyzer = emplaceRes->second;
 
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -1290,13 +1286,13 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   }
 
   // new analyzer creation, validate
-  if (emplaceRes.second) {
+  if (isNew) {
     bool erase = true;  // potentially invalid insertion took place
     irs::Finally cleanup = [&erase, &analyzers, &emplaceRes]() noexcept {
       // cppcheck-suppress knownConditionTrueFalse
       if (erase) {
         // ensure no broken analyzers are left behind
-        analyzers.erase(emplaceRes.first);
+        analyzers.erase(emplaceRes->first);
       }
     };
 
@@ -1350,7 +1346,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return {TRI_ERROR_BAD_PARAMETER, errorText.str()};
   }
 
-  result = emplaceRes;
+  result = {emplaceRes, isNew};
 
   return {};
 }

@@ -165,8 +165,8 @@ arangodb::iresearch::FieldMeta const* findMeta(
     std::string_view key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
-  auto const* meta = context->_fields.findPtr(key);
-  return meta ? meta->get() : context;
+  auto meta = context->_fields.find(key);
+  return meta != context->_fields.end() ? meta->second.get() : context;
 }
 
 bool inObjectFiltered(std::string& buffer,
