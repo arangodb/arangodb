@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "RestServer/arangod.h"
@@ -70,12 +69,8 @@ class SchedulerFeature final : public ArangodFeature {
 
   std::unique_ptr<Scheduler> _scheduler;
 
-  std::function<void(asio_ns::error_code const&, int)> _signalHandler;
-  std::function<void(asio_ns::error_code const&, int)> _exitHandler;
-  std::shared_ptr<asio_ns::signal_set> _exitSignals;
-
-  std::function<void(asio_ns::error_code const&, int)> _hangupHandler;
-  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+  struct AsioHandler;
+  std::unique_ptr<AsioHandler> _asioHandler;
 };
 
 }  // namespace arangodb
