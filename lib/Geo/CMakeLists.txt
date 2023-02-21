@@ -5,7 +5,7 @@ add_library(arango_geo STATIC
   Utils.cpp)
 
 if (NOT USE_ENTERPRISE)
-  target_sources(arango_geo Coding.cpp)
+  target_sources(arango_geo PRIVATE Coding.cpp)
 endif ()
 
 target_link_libraries(arango_geo

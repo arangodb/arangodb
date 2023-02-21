@@ -3839,7 +3839,6 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
       return r;
     }
 
-    // TODO(MBkkt) S2Centroid case are missed!
     geo::ShapeContainer shape;
     std::vector<S2LatLng> cache;
     auto res = parseShape<Parsing::GeoJson>(
