@@ -439,10 +439,13 @@ struct TransactionBuilder {
   void operator()(DropCollectionGroup const& action) {
     auto write = env.write()
                      .remove(basics::StringUtils::concatT(
-                         "/arango/Target/CollectionGroup/", database, "/",
+                         "/arango/Target/CollectionGroups/", database, "/",
                          action.gid.id()))
                      .remove(basics::StringUtils::concatT(
-                         "/arango/Plan/CollectionGroup/", database, "/",
+                         "/arango/Plan/CollectionGroups/", database, "/",
+                         action.gid.id()))
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Current/CollectionGroups/", database, "/",
                          action.gid.id()));
 
     for (auto sheaf : action.logs) {
