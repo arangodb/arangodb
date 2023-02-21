@@ -70,6 +70,7 @@ const createCollectionTarget = function (gid, cid) {
     isSmart: false,
     isDisjoint: false,
     cacheEnabled: false,
+    shardKeys: ["_key"],
     type: 2,
     keyOptions: {
       allowUserKeys: true,

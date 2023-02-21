@@ -28,6 +28,7 @@
 #include "Utils/OperationResult.h"
 
 #include <memory>
+#include "Cluster/ClusterTypes.h"
 
 namespace arangodb::transaction {
 class Methods;
@@ -43,6 +44,7 @@ struct IDocumentStateTransaction {
   [[nodiscard]] virtual auto intermediateCommit() -> Result = 0;
   [[nodiscard]] virtual auto commit() -> Result = 0;
   [[nodiscard]] virtual auto abort() -> Result = 0;
+  [[nodiscard]] virtual auto containsShard(ShardID const&) -> bool = 0;
 };
 
 class DocumentStateTransaction
@@ -55,6 +57,7 @@ class DocumentStateTransaction
   auto intermediateCommit() -> Result override;
   auto commit() -> Result override;
   auto abort() -> Result override;
+  auto containsShard(ShardID const&) -> bool override;
 
  private:
   std::unique_ptr<transaction::Methods> _methods;

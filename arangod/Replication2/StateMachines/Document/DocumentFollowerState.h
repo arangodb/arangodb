@@ -35,6 +35,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 enum class OperationType;
+struct SnapshotConfig;
 struct SnapshotBatch;
 
 struct DocumentFollowerState
@@ -47,8 +48,7 @@ struct DocumentFollowerState
 
   LoggerContext const loggerContext;
 
-  // unprotected for gtests. TODO think about whether there's a better way
-  // protected:
+ protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
@@ -59,9 +59,13 @@ struct DocumentFollowerState
  private:
   auto forceLocalTransaction(ShardID shardId, OperationType opType,
                              velocypack::SharedSlice slice) -> Result;
-  auto truncateLocalShard(ShardID const& shardId) -> Result;
   auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
       -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,

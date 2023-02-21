@@ -44,6 +44,7 @@
 
 #pragma once
 
+#include "Aql/AqlValue.h"
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
@@ -53,7 +54,7 @@
 #include <cstdint>
 #include <functional>
 #include <string_view>
-
+#include <function2/function2.hpp>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 
@@ -149,14 +150,46 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
-  typedef std::function<bool(LocalDocumentId const& token)>
-      LocalDocumentIdCallback;
-  typedef std::function<bool(LocalDocumentId const& token,
-                             velocypack::Slice doc)>
-      DocumentCallback;
-  typedef std::function<bool(LocalDocumentId const& token,
-                             IndexIteratorCoveringData& covering)>
-      CoveringCallback;
+  // TODO: Move to iresearch
+  template<typename... Funcs>
+  class CallbackImpl : private fu2::function<Funcs...> {
+    using Base = fu2::function<Funcs...>;
+
+    struct DummyRetval {
+      template<typename T>
+      operator T() const {
+        TRI_ASSERT(false);
+        throw std::bad_function_call{};
+      }
+    };
+
+   public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
+    CallbackImpl() noexcept = default;
+
+    template<typename... Fs>
+    CallbackImpl(Fs&&... fs)
+        : Base{fu2::overload(std::forward<Fs>(fs)...,
+                             [](auto&&...) { return DummyRetval{}; })} {}
+  };
+
+  using LocalDocumentIdCallback =
+      CallbackImpl<bool(LocalDocumentId const& token) const>;
+
+  using DocumentCallback = CallbackImpl<bool(LocalDocumentId const& token,
+                                             velocypack::Slice doc) const>;
+
+  using CoveringCallback =
+      CallbackImpl<bool(LocalDocumentId const& token,
+                        IndexIteratorCoveringData& covering) const,
+                   bool(aql::AqlValue&& searchDoc,
+                        IndexIteratorCoveringData& covering) const>;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -382,6 +415,8 @@ struct IndexIteratorOptions {
   bool useCache = true;
   /// @brief forcefully synchronize external indexes
   bool waitForSync = false;
+  /// @brief iterator will be used with late materialization
+  bool forLateMaterialization{false};
 };
 
 /// index estimate map, defined here because it was convenient

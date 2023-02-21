@@ -38,8 +38,6 @@ struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
 
 struct DocumentCore {
-  using ShardMap = std::unordered_map<ShardID, ShardProperties>;
-
   explicit DocumentCore(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       DocumentCoreParameters coreParameters,
@@ -51,8 +49,6 @@ struct DocumentCore {
   auto getVocbase() -> TRI_vocbase_t&;
   auto getVocbase() const -> TRI_vocbase_t const&;
   auto getGid() -> GlobalLogIdentifier;
-  auto createShard(ShardID shardId, CollectionID collectionId,
-                   velocypack::SharedSlice properties) -> Result;
   auto dropShard(ShardID shardId, CollectionID collectionId) -> Result;
   auto dropAllShards() -> Result;
   auto ensureShard(ShardID shardId, CollectionID collectionId,
@@ -60,13 +56,14 @@ struct DocumentCore {
   auto isShardAvailable(ShardID const& shardId) -> bool;
   void drop();
   auto getShardMap() -> ShardMap const&;
+  auto createShard(ShardID shardId, CollectionID collectionId,
+                   velocypack::SharedSlice properties) -> Result;
 
  private:
   TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
   ShardMap _shards;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

@@ -202,10 +202,6 @@ auto createCollectionGroupTarget(
     auto& log = replicatedLogs[spec.shardSheaves[j].replicatedLog];
     replicated_state::document::DocumentCoreParameters parameters;
     parameters.databaseName = database;
-    parameters.collectionId =
-        collections.begin()->first;  // TODO remove - unused
-    parameters.shardId =
-        collections.begin()->second.shardList[j];  // TODO remove - unused
     parameters.shardSheafIndex = j;
     parameters.groupId = group.target.id.id();
     log.properties.implementation.parameters =
@@ -325,6 +321,14 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
       if (not checkReplicatedLogConverged(log)) {
         return NoActionPossible{basics::StringUtils::concatT(
             "replicated log ", id, " not yet converged.")};
+      }
+    }
+
+    // check collection is in current
+    for (auto const& [cid, coll] : group.target.collections) {
+      if (not group.currentCollections.contains(cid)) {
+        return NoActionPossible{basics::StringUtils::concatT(
+            "collection  ", cid, " not yet in current.")};
       }
     }
 
@@ -550,7 +554,7 @@ auto document::supervision::executeCheckCollectionGroup(
     // TODO remove logging later?
     LOG_TOPIC("33547", WARN, Logger::SUPERVISION)
         << "no progress possible for collection group " << database << "/"
-        << group.target.id;
+        << group.target.id << ": " << std::get<NoActionPossible>(action).reason;
     return envelope;
   }
 
