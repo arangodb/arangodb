@@ -191,6 +191,173 @@ function geoSuite(isSearchAlias, analyzerType) {
     return {cmpResFullScanWithIndexes, cmpResView, cmpResInvertedIndex};
   }
 
+  function createNearGrid() {
+    let l = [];
+    for (let lat = 9; lat <= 21; lat += 0.1) {
+      for (let lon = 9; lon <= 21; lon += 0.1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+    }
+    if (l.length > 0) {
+      insertAll(l);
+    }
+    waitForArangoSearch();
+  }
+  function createBiggerGrid() {
+    let l = [];
+    for (let lat = 45; lat <= 55; lat += 1) {
+      for (let lon = 90; lon <= 100; lon += 1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+    }
+    if (l.length > 0) {
+      insertAll(l);
+    }
+    waitForArangoSearch();
+  }
+  function createEnormousGrid() {
+    let l = [];
+    for (let lat = 85; lat < 90; lat += 1) {
+      for (let lon = 175; lon < 180; lon += 1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+      for (let lon = -179; lon <= -170; lon += 1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+    }
+    if (l.length > 0) {
+      insertAll(l);
+    }
+    waitForArangoSearch();
+  }
+  function createBiggerDoubleGrid() {
+    let l = [];
+    for (let lat = 45; lat <= 55; lat += 1) {
+      for (let lon = 175; lon < 180; lon += 1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+      for (let lon = -179; lon <= -170; lon += 1) {
+        l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+    }
+    if (l.length > 0) {
+      insertAll(l);
+    }
+    waitForArangoSearch();
+  }
+  function createNarrowGrid() {
+    let l = [];
+    for (let size = 0.0001; size <= 10; size *= 10) {
+      for (let lon = 14.8; lon <= 15.2; lon += 0.04) {
+        l.push({geo:{type:"Polygon", 
+                     coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
+                                   [lon+size, 10+size], [lon-size, 10+size],
+                                   [lon-size, 10-size]]]},
+                centroid:{type:"Point", coordinates:[lon, 10]}});
+        if (l.length % 1000 === 0) {
+          insertAll(l);
+          l = [];
+        }
+      }
+    }
+    if (l.length > 0) {
+      insertAll(l);
+    }
+    waitForArangoSearch();
+  }
+  function createSomePolygons() {
+    let lat = 6.537;
+    let long = 50.332;
+    for (let x = 0; x < 100; ++x) {
+      let points = [];
+      for (let y = 0; y < 100; ++y) {
+        points.push({ geo: { type: "Point",
+                             coordinates: [lat + x/1000, long + y/1000] } });
+      }
+      insertAll(points);
+    }
+    insertAll([{ geo: { "type": "Polygon", "coordinates": [
+      [[ 37.614323, 55.705898 ],
+       [ 37.615825, 55.705898 ],
+       [ 37.615825, 55.70652  ],
+       [ 37.614323, 55.70652  ],
+       [ 37.614323, 55.705898 ]]
+    ]}}]);
+    insertAll([{ geo: {"type": "LineString", "coordinates": [
+      [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
+                      }}]);
+    insertAll([{ geo: { "type": "MultiLineString", "coordinates": [
+      [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+      [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+    ]}}]);
+    insertAll([{ geo: { "type": "MultiPoint", "coordinates": [
+      [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+      [ 6.621, 50.332 ], [ 6.621, 50.376 ]
+    ]}}]);
+    insertAll([{ geo: { "type": "MultiPolygon", "coordinates": [
+      [[[ 37.614323, 55.705898 ],
+        [ 37.615825, 55.705898 ],
+        [ 37.615825, 55.70652  ],
+        [ 37.614323, 55.70652  ],
+        [ 37.614323, 55.705898 ]]],
+      [[[ 37.614, 55.7050 ],
+        [ 37.615, 55.7050 ],
+        [ 37.615, 55.7058 ],
+        [ 37.614, 55.7058 ],
+        [ 37.614, 55.7050 ]]]
+    ]}}]);
+    waitForArangoSearch();
+  }
+  function createOnePolygon() {
+    insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
+    waitForArangoSearch();
+  }
+  function createTwoPolygons() {
+      insertAll([
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
+      ]);
+      // Centroid will be at approx. [7,10]
+      waitForArangoSearch();
+  }
+  function createThreePolygons() {
+    insertAll([
+      {geo:{type:"Polygon",
+            coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,10]]]}},
+      {geo:{type:"Polygon",
+            coordinates:[[[10,10],[20,10],[30,20],[10,20],[10,10]]]}},
+      {geo:{type:"Polygon",
+            coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
+                          [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
+    ]);
+    waitForArangoSearch();
+  }
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,8 +467,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
-      waitForArangoSearch();
+      createOnePolygon();
       let c = compare(
         `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
@@ -314,16 +480,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPointNearCentroidOfPolygon : function () {
-      insertAll([
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,10]]]}},
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[30,20],[10,20],[10,10]]]}},
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
-                [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
-      ]);
-      waitForArangoSearch();
+      createThreePolygons();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
@@ -336,20 +493,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGrid : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")`
@@ -362,20 +506,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGridRingArea : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                 GEO_DISTANCE([15, 15], d.geo) >= 300000`,
@@ -390,20 +521,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGridOuterArea : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
@@ -416,20 +534,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGridDescending : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
@@ -444,20 +549,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGridRingAreaDescending : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                 GEO_DISTANCE([15, 15], d.geo) >= 300000
@@ -474,20 +566,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearGridOuterAreaDescending : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
@@ -500,24 +579,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearObjectsSizes : function () {
-      let l = [];
-      for (let size = 0.0001; size <= 10; size *= 10) {
-        for (let lon = 14.8; lon <= 15.2; lon += 0.04) {
-          l.push({geo:{type:"Polygon", 
-            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
-                          [lon+size, 10+size], [lon-size, 10+size],
-                          [lon-size, 10-size]]]},
-            centroid:{type:"Point", coordinates:[lon, 10]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNarrowGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
         `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
@@ -530,24 +592,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearSlidingLargeObject : function () {
-      let l = [];
-      for (let size = 1; size <= 11; size += 1) {
-        for (let lon = 11; lon <= 30; lon += 0.1) {
-          l.push({geo:{type:"Polygon", 
-            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
-                          [lon+size, 10+size], [lon-size, 10+size],
-                          [lon-size, 10-size]]]},
-            centroid:{type:"Point", coordinates:[lon, 10]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNarrowGrid();
       let c = compare(
         `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
         `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
@@ -561,12 +606,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearNonConvexObject : function () {
-      insertAll([
-        {geo:{type:"Polygon",
-         coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
-        {geo:{type:"Polygon",
-         coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
-      ]);
+      createTwoPolygons();
       // Centroid will be at approx. [7,10]
       waitForArangoSearch();
       for (let dist = 1000; dist <= 100000; dist += 100) {
@@ -584,14 +624,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsWithSmallPoly : function () {
-      let l = [];
-      for (let lat = 9; lat <= 11; lat += 0.1) {
-        for (let lon = 9; lon <= 11; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-        }
-      }
-      insertAll(l);
-      waitForArangoSearch();
+      createNearGrid(); // this is a superset of what we replace
       let d = 0.001;
       for (let lat = 9; lat <= 11; lat += 0.4) {
         for (let lon = 9; lon <= 11; lon += 0.4) {
@@ -612,20 +645,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsGrid : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
           [15,15+d], [15-d,15]]]};
@@ -644,20 +664,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsGridComplement : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
           [15,15-d], [15-d,15]]]};
@@ -675,14 +682,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsWithSmallPoly : function () {
-      let l = [];
-      for (let lat = 9; lat <= 11; lat += 0.1) {
-        for (let lon = 9; lon <= 11; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-        }
-      }
-      insertAll(l);
-      waitForArangoSearch();
+      createNearGrid(); // this is a superset of the previous testdata
       let d = 0.001;
       for (let lat = 9; lat <= 11; lat += 0.4) {
         for (let lon = 9; lon <= 11; lon += 0.4) {
@@ -703,20 +703,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsGrid : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
           [15,15+d], [15-d,15]]]};
@@ -735,20 +722,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsGridComplement : function () {
-      let l = [];
-      for (let lat = 9; lat <= 21; lat += 0.1) {
-        for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createNearGrid();
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
           [15,15-d], [15-d,15]]]};
@@ -767,14 +741,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsNonConvexObject : function () {
-      insertAll([
-        {geo:{type:"Polygon",
-         coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
-        {geo:{type:"Polygon",
-         coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
-      ]);
-      // Centroid will be at approx. [7,10]
-      waitForArangoSearch();
+      createTwoPolygons();
       let smallPoly = {type:"Polygon",
         coordinates:[[[4.7873, 10.0734], [4.7875, 10.0734], [4.7875, 10.0736],
                       [4.7873, 10.0736], [4.7873, 10.0734]]]};
@@ -790,20 +757,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoreThanHalf1 : function () {
-      let l = [];
-      for (let lat = 45; lat <= 55; lat += 1) {
-        for (let lon = 90; lon <= 100; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createBiggerGrid();
       let polys = [
         makePolyInside([-85, 95], [-80, 50]),
         makePolyOutside([-85, 95], [-80, 50]),
@@ -835,27 +789,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoreThanHalf2 : function () {
-      let l = [];
-      for (let lat = 45; lat <= 55; lat += 1) {
-        for (let lon = 175; lon < 180; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-        for (let lon = -179; lon <= -170; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createBiggerDoubleGrid();
       let polys = [
         makePolyInside([-85, 95], [-80, 50]),
         makePolyOutside([-85, 95], [-80, 50]),
@@ -887,27 +821,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoreThanHalf3 : function () {
-      let l = [];
-      for (let lat = 85; lat < 90; lat += 1) {
-        for (let lon = 175; lon < 180; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-        for (let lon = -179; lon <= -170; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
-          if (l.length % 1000 === 0) {
-            insertAll(l);
-            l = [];
-          }
-        }
-      }
-      if (l.length > 0) {
-        insertAll(l);
-      }
-      waitForArangoSearch();
+      createEnormousGrid();
       let polys = [
         makePolyInside([-85, 95], [-80, 87]),
         makePolyOutside([-85, 95], [-80, 87]),
@@ -938,47 +852,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoreNonConvex : function () {
-      let lat = 6.537;
-      let long = 50.332;
-      for (let x = 0; x < 100; ++x) {
-        let points = [];
-        for (let y = 0; y < 100; ++y) {
-          points.push({ geo: { type: "Point",
-              coordinates: [lat + x/1000, long + y/1000] } });
-        }
-        insertAll(points);
-      }
-      insertAll([{ geo: { "type": "Polygon", "coordinates": [
-        [[ 37.614323, 55.705898 ],
-          [ 37.615825, 55.705898 ],
-          [ 37.615825, 55.70652  ],
-          [ 37.614323, 55.70652  ],
-          [ 37.614323, 55.705898 ]]
-      ]}}]);
-      insertAll([{ geo: {"type": "LineString", "coordinates": [
-        [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
-      }}]);
-      insertAll([{ geo: { "type": "MultiLineString", "coordinates": [
-        [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
-        [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
-      ]}}]);
-      insertAll([{ geo: { "type": "MultiPoint", "coordinates": [
-        [ 6.537, 50.332 ], [ 6.537, 50.376 ],
-        [ 6.621, 50.332 ], [ 6.621, 50.376 ]
-      ]}}]);
-      insertAll([{ geo: { "type": "MultiPolygon", "coordinates": [
-        [[[ 37.614323, 55.705898 ],
-          [ 37.615825, 55.705898 ],
-          [ 37.615825, 55.70652  ],
-          [ 37.614323, 55.70652  ],
-          [ 37.614323, 55.705898 ]]],
-        [[[ 37.614, 55.7050 ],
-          [ 37.615, 55.7050 ],
-          [ 37.615, 55.7058 ],
-          [ 37.614, 55.7058 ],
-          [ 37.614, 55.7050 ]]]
-      ]}}]);
-      waitForArangoSearch();
+      createSomePolygons();
       let multiLineString = {
         "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
@@ -1022,47 +896,7 @@ function geoSuite(isSearchAlias, analyzerType) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoreNonConvexGeoInRange : function () {
-      let lat = 6.537;
-      let long = 50.332;
-      for (let x = 0; x < 100; ++x) {
-        let points = [];
-        for (let y = 0; y < 100; ++y) {
-          points.push({ geo: { type: "Point",
-              coordinates: [lat + x/1000, long + y/1000] } });
-        }
-        insertAll(points);
-      }
-      insertAll([{ geo: { "type": "Polygon", "coordinates": [
-        [[ 37.614323, 55.705898 ],
-          [ 37.615825, 55.705898 ],
-          [ 37.615825, 55.70652  ],
-          [ 37.614323, 55.70652  ],
-          [ 37.614323, 55.705898 ]]
-      ]}}]);
-      insertAll([{ geo: {"type": "LineString", "coordinates": [
-        [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
-      }}]);
-      insertAll([{ geo: { "type": "MultiLineString", "coordinates": [
-        [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
-        [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
-      ]}}]);
-      insertAll([{ geo: { "type": "MultiPoint", "coordinates": [
-        [ 6.537, 50.332 ], [ 6.537, 50.376 ],
-        [ 6.621, 50.332 ], [ 6.621, 50.376 ]
-      ]}}]);
-      insertAll([{ geo: { "type": "MultiPolygon", "coordinates": [
-        [[[ 37.614323, 55.705898 ],
-          [ 37.615825, 55.705898 ],
-          [ 37.615825, 55.70652  ],
-          [ 37.614323, 55.70652  ],
-          [ 37.614323, 55.705898 ]]],
-        [[[ 37.614, 55.7050 ],
-          [ 37.615, 55.7050 ],
-          [ 37.615, 55.7058 ],
-          [ 37.614, 55.7058 ],
-          [ 37.614, 55.7050 ]]]
-      ]}}]);
-      waitForArangoSearch();
+      createSomePolygons();
       let multiLineString = {
         "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
