@@ -1,22 +1,29 @@
 [submodule "iresearch"]
 	path = 3rdParty/iresearch
 	url = https://github.com/iresearch-toolkit/iresearch.git
+	shallow = true
 [submodule "velocypack"]
 	path = 3rdParty/velocypack
 	url = https://github.com/arangodb/velocypack.git
+	shallow = true
 [submodule "3rdParty/fmt"]
 	path = 3rdParty/fmt
 	url = https://github.com/fmtlib/fmt
+	shallow = true
 [submodule "3rdParty/rocksdb"]
 	path = 3rdParty/rocksdb
 	url = https://github.com/arangodb/rocksdb.git
+	shallow = true
 [submodule "3rdParty/gtest"]
 	path = 3rdParty/gtest
 	url = https://github.com/arangodb/googletest.git
+	shallow = true
 [submodule "3rdParty/abseil-cpp"]
 	path = 3rdParty/abseil-cpp
 	url = https://github.com/arangodb/abseil-cpp.git
+	shallow = true
 [submodule "3rdParty/immer"]
 	path = 3rdParty/immer
 	url = https://github.com/arangodb/immer
 	branch = release-v0.8
+	shallow = true
