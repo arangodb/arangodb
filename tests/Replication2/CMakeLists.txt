@@ -28,7 +28,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         ReplicatedState/DocumentStateMachineTest.cpp
         ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
 
-        )
+        CollectionGroups/CollectionGroupsSupervision.cpp)
 
 add_library(arango_tests_replication2 OBJECT
         ${ARANGODB_REPLICATION2_TEST_SOURCES}

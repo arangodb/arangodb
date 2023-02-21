@@ -1,5 +1,6 @@
 add_library(arango_replication2 STATIC
         AgencyCollectionSpecification.cpp
+        Supervision/CollectionGroupSupervision.cpp
         AgencyMethods.cpp
         Methods.cpp
         MetricsHelper.cpp

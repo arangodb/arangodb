@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 #include <string_view>
@@ -30,15 +32,15 @@ struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
-struct ICollectionReaderFactory;
+struct IDatabaseSnapshot;
+struct IDatabaseSnapshotFactory;
 
 /*
  * Manages snapshots on the leader.
  */
 struct IDocumentStateSnapshotHandler {
   virtual ~IDocumentStateSnapshotHandler() = default;
-  virtual auto create(std::string_view shardId)
-      -> ResultT<std::weak_ptr<Snapshot>> = 0;
+  virtual auto create(ShardMap shards) -> ResultT<std::weak_ptr<Snapshot>> = 0;
   virtual auto find(SnapshotId const& id)
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
@@ -49,11 +51,10 @@ struct IDocumentStateSnapshotHandler {
 class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
  public:
   explicit DocumentStateSnapshotHandler(
-      std::unique_ptr<ICollectionReaderFactory> collectionReaderFactory);
+      std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory);
 
   // Create a new snapshot
-  auto create(std::string_view shardId)
-      -> ResultT<std::weak_ptr<Snapshot>> override;
+  auto create(ShardMap shards) -> ResultT<std::weak_ptr<Snapshot>> override;
 
   // Find a snapshot by id
   auto find(SnapshotId const& id) -> ResultT<std::weak_ptr<Snapshot>> override;
@@ -68,7 +69,7 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
   void clearInactiveSnapshots() override;
 
  private:
-  std::unique_ptr<ICollectionReaderFactory> _collectionReaderFactory;
+  std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
   std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,6 +122,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
       auto& indexes = indexNode->getIndexes();
       TRI_ASSERT(!indexes.empty());
       if (indexes.size() != 1) {
+        // When enabling this please consider how inverted index would
+        // operate together with persistent as first produces
+        // SearchDocs but latter LocalDocumentIds. Usage of
+        // two separate variables might be the simplest solution
         continue;  // several indexes are not supported
       }
       auto& index = indexes.front();
@@ -326,15 +330,23 @@ void arangodb::aql::lateDocumentMaterializationRule(
 
         // we could apply late materialization
         // 1. We need to notify index node - it should not materialize
-        // documents, but produce only localDocIds
+        // documents, but produce only localDocIds or SearchDocs
+        // in case of inverted index
         indexNode->setLateMaterialized(localDocIdTmp, index->id(),
                                        uniqueVariables);
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
-        auto* materializeNode = plan->registerNode(
-            std::make_unique<materialize::MaterializeSingleNode>(
+        auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
+          if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+            return std::make_unique<materialize::MaterializeSingleNode<false>>(
                 plan.get(), plan->nextId(), indexNode->collection(),
-                *localDocIdTmp, *var));
+                *localDocIdTmp, *var);
+          }
+          return std::make_unique<materialize::MaterializeSingleNode<true>>(
+              plan.get(), plan->nextId(), indexNode->collection(),
+              *localDocIdTmp, *var);
+        };
+        auto* materializeNode = plan->registerNode(makeMaterializer());
         TRI_ASSERT(materializeNode);
 
         // on cluster we need to materialize node stay close to sort node on db

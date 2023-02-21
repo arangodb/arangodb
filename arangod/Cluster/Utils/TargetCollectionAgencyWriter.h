@@ -62,16 +62,8 @@ struct TargetCollectionAgencyWriter {
   [[nodiscard]] std::shared_ptr<CurrentWatcher> prepareCurrentWatcher(
       std::string_view databaseName, bool waitForSyncReplication) const;
 
-  [[nodiscard]] AgencyWriteTransaction prepareUndoTransaction(
+  [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>> prepareCreateTransaction(
       std::string_view databaseName) const;
-
-  [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>>
-  prepareStartBuildingTransaction(
-      std::string_view databaseName, uint64_t planVersion,
-      std::vector<std::string> serversAvailable) const;
-
-  [[nodiscard]] AgencyWriteTransaction prepareCompletedTransaction(
-      std::string_view databaseName);
 
   [[nodiscard]] std::vector<std::string> collectionNames() const;
 

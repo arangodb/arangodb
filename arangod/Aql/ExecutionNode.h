@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1170,8 +1170,6 @@ class MaterializeNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  auto getReadableInputRegisters(RegisterId inNmDocId) const -> RegIdSet;
-
  protected:
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
@@ -1205,6 +1203,7 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
+template<bool localDocumentId>
 class MaterializeSingleNode : public MaterializeNode,
                               public CollectionAccessingNode {
  public:

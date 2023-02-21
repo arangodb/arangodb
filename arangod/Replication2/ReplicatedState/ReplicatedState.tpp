@@ -429,6 +429,7 @@ auto LeaderStateManager<S>::resign() && noexcept
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
+
   // TODO remove
   return StateStatus{.variant = std::move(status)};
 }

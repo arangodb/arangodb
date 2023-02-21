@@ -264,10 +264,28 @@
       // sort permission databases
       var sortedArr = _.pairs(permissions);
       sortedArr.sort();
-      sortedArr = _.object(sortedArr);
+      var sortedObj = _.object(sortedArr);
+      var newObj = sortedObj;
+
+      _.each(sortedObj, (obj, key) => {
+        // converts collections to an array and sorts it according to collection name
+        const sortedCollections = obj.collections && _.pairs(obj.collections).sort(function (a, b) {
+          // ignores '*'
+          if (a[0] === '*') {
+            return 1;
+          }
+          return a[0].localeCompare(b[0]);
+        });
+        newObj = {...newObj,
+          [key]: {
+            ...obj,
+            collections: sortedCollections
+          }
+        };
+      });
 
       $(this.el).html(this.template.render({
-        permissions: sortedArr
+        permissions: newObj
       }));
       // * wildcard at the end
       $('.noAction').first().appendTo('.pure-table-body');

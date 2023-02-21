@@ -1,5 +1,7 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <chrono>
 #include <compare>
 #include <cstddef>
@@ -50,6 +54,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Inspection/Format.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "Basics/ErrorCode.h"
@@ -585,6 +590,10 @@ struct velocypack::Extractor<replication2::LogId> {
 template<>
 struct fmt::formatter<arangodb::replication2::LogId>
     : fmt::formatter<arangodb::basics::Identifier> {};
+
+template<>
+struct fmt::formatter<arangodb::replication2::GlobalLogIdentifier>
+    : arangodb::inspection::inspection_formatter {};
 
 template<>
 struct std::hash<arangodb::replication2::LogIndex> {

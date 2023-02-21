@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,14 +54,22 @@ struct DocumentLeaderState
 
   auto replicateOperation(velocypack::SharedSlice payload,
                           OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+                          ShardID shard, ReplicationOptions opts)
+      -> futures::Future<LogIndex>;
+
+  auto createShard(ShardID shard, CollectionID collectionId,
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
+  auto dropShard(ShardID shard, CollectionID collectionId)
+      -> futures::Future<Result>;
+  auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   std::size_t getActiveTransactionsCount() const noexcept {
     return _activeTransactions.getLockedGuard()->size();
   }
 
   auto snapshotStart(SnapshotParams::Start const& params)
-      -> ResultT<SnapshotBatch>;
+      -> ResultT<SnapshotConfig>;
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
@@ -70,7 +78,6 @@ struct DocumentLeaderState
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  ShardID const shardId;
 
  private:
   struct GuardedData {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,6 +68,11 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   bool covers(aql::Projections& projections) const;
 
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const noexcept {
+    return _coveredFields;
+  }
+
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, LogicalCollection* collection,
       transaction::Methods* trx, aql::AstNode const* node,
@@ -97,6 +102,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
   irs::Comparer const* getComparator() const noexcept final {
     return &_comparer;
   }
+
+  std::vector<std::vector<basics::AttributeName>> _coveredFields;
 
  private:
   IResearchInvertedIndexMeta _meta;

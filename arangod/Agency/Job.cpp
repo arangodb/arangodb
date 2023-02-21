@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1101,16 +1101,6 @@ void Job::addPreconditionServerReadLocked(Builder& pre,
   }
 }
 
-void Job::addPreconditionServerWriteLockable(Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId) {
-  pre.add(VPackValue(blockedServersPrefix + server));
-  {
-    VPackObjectBuilder shardLockEmpty(&pre);
-    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
-  }
-}
-
 void Job::addPreconditionServerWriteLocked(Builder& pre,
                                            std::string const& server,
                                            std::string const& jobId) {
@@ -1213,12 +1203,13 @@ std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
 
   // Get the collection group
   auto groupPath =
-      "Target/CollectionGroups/" + db + "/" + std::to_string(groupId.getUInt());
+      "Plan/CollectionGroups/" + db + "/" + std::to_string(groupId.getUInt());
   auto groupNode = snap.get(groupPath);
   if (not groupNode.has_value()) {
     return std::nullopt;
   }
-  auto group = velocypack::deserialize<replication2::agency::CollectionGroup>(
+  auto group = velocypack::deserialize<
+      replication2::agency::CollectionGroupPlanSpecification>(
       groupNode->get().toBuilder().slice());
   TRI_ASSERT(shardIndex < group.shardSheaves.size());
   auto logId = group.shardSheaves.at(shardIndex).replicatedLog;

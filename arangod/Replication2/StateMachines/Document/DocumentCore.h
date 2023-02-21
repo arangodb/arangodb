@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -47,18 +48,22 @@ struct DocumentCore {
 
   auto getVocbase() -> TRI_vocbase_t&;
   auto getVocbase() const -> TRI_vocbase_t const&;
-  auto getShardId() -> ShardID const&;
   auto getGid() -> GlobalLogIdentifier;
-  auto getCollectionId() -> std::string const&;
-
+  auto dropShard(ShardID shardId, CollectionID collectionId) -> Result;
+  auto dropAllShards() -> Result;
+  auto ensureShard(ShardID shardId, CollectionID collectionId,
+                   velocypack::SharedSlice properties) -> Result;
+  auto isShardAvailable(ShardID const& shardId) -> bool;
   void drop();
+  auto getShardMap() -> ShardMap const&;
+  auto createShard(ShardID shardId, CollectionID collectionId,
+                   velocypack::SharedSlice properties) -> Result;
 
  private:
   TRI_vocbase_t& _vocbase;
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
-  ShardID _shardId;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
+  ShardMap _shards;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

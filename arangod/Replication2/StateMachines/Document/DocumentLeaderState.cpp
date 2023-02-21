@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Basics/application-exit.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -42,7 +42,6 @@ DocumentLeaderState::DocumentLeaderState(
     : gid(core->getGid()),
       loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      shardId(core->getShardId()),
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
@@ -105,24 +104,46 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
-      if (doc.operation == OperationType::kCreateShard ||
-          doc.operation == OperationType::kDropShard) {
-        // TODO
-        // If the maintenance sees that shards are missing, it is going to
-        // create them on the leader.
-        // Perhaps we should check that they're already created.
-        continue;
-      }
-      auto res = transactionHandler->applyEntry(doc);
-      if (res.fail()) {
-        return res;
+      if (doc.operation == OperationType::kCreateShard) {
+        auto const& collectionId = doc.collectionId;
+        auto res = data.core->ensureShard(doc.shardId, collectionId, doc.data);
+        if (res.fail()) {
+          LOG_CTX("9e993", FATAL, self->loggerContext)
+              << "Failed to create shard " << doc.shardId << " of collection "
+              << collectionId << " with error: " << res;
+          FATAL_ERROR_EXIT();
+        }
+      } else if (doc.operation == OperationType::kDropShard) {
+        auto const& collectionId = doc.collectionId;
+        transactionHandler->abortTransactionsForShard(doc.shardId);
+        auto res = data.core->dropShard(doc.shardId, collectionId);
+        if (res.fail()) {
+          LOG_CTX("f1eb0", FATAL, self->loggerContext)
+              << "Failed to drop shard " << doc.shardId << " of collection "
+              << collectionId << " with error: " << res;
+          FATAL_ERROR_EXIT();
+        }
+      } else {
+        // Note that the shard could've been dropped before doing recovery.
+        if (!data.core->isShardAvailable(doc.shardId)) {
+          LOG_CTX("bee57", INFO, self->loggerContext)
+              << "Will not apply transaction " << doc.tid << " for shard "
+              << doc.shardId << " because it is not available";
+          continue;
+        }
+
+        auto res = transactionHandler->applyEntry(doc);
+        if (res.fail()) {
+          return res;
+        }
       }
     }
 
-    auto doc = DocumentLogEntry{std::string(self->shardId),
+    auto doc = DocumentLogEntry{{},  // this affects all shards
                                 OperationType::kAbortAllOngoingTrx,
                                 {},
-                                TransactionId{0}};
+                                TransactionId{0},
+                                {}};
     auto stream = self->getStream();
     stream->insert(doc);
 
@@ -147,6 +168,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              OperationType operation,
                                              TransactionId transactionId,
+                                             ShardID shard,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
   if (_isResigning.load()) {
@@ -168,9 +190,11 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   auto const& stream = getStream();
-  auto entry =
-      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
-                       transactionId.asFollowerTransactionId()};
+  auto entry = DocumentLogEntry{shard,
+                                operation,
+                                std::move(payload),
+                                transactionId.asFollowerTransactionId(),
+                                {}};
 
   // Insert and emplace must happen atomically
   auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
@@ -179,6 +203,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
         operation != OperationType::kAbort) {
       activeTransactions.emplace(transactionId, idx);
     } else {
+      // TODO - must not release commit entry before trx has actually been
+      // committed!
       stream->release(activeTransactions.getReleaseIndex(idx));
     }
     return idx;
@@ -193,10 +219,18 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 }
 
 auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
-    -> ResultT<SnapshotBatch> {
-  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
-      [&](auto& handler) { return handler->create(shardId); },
-      [](auto& snapshot) { return snapshot->fetch(); });
+    -> ResultT<SnapshotConfig> {
+  auto const& shardMap = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+    return data.core->getShardMap();
+  });
+
+  return executeSnapshotOperation<ResultT<SnapshotConfig>>(
+      [&](auto& handler) { return handler->create(shardMap); },
+      [](auto& snapshot) { return snapshot->config(); });
 }
 
 auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
@@ -234,6 +268,59 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
       });
 }
 
+auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
+                                      velocypack::SharedSlice properties)
+    -> futures::Future<Result> {
+  DocumentLogEntry entry;
+  entry.operation = OperationType::kCreateShard;
+  entry.shardId = shard;
+  entry.data = properties;
+  entry.collectionId = collectionId;
+
+  // TODO actually we have to block this log entry from release until the
+  // collection is actually created
+  auto const& stream = getStream();
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), shard = std::move(shard),
+       collectionId = std::move(collectionId),
+       properties = std::move(properties)](auto&&) mutable {
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          return data.core->createShard(
+              std::move(shard), std::move(collectionId), std::move(properties));
+        });
+      });
+}
+
+auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
+    -> futures::Future<Result> {
+  DocumentLogEntry entry;
+  entry.operation = OperationType::kDropShard;
+  entry.shardId = shard;
+  entry.collectionId = collectionId;
+
+  // TODO actually we have to block this log entry from release until the
+  // collection is actually created
+  auto const& stream = getStream();
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), shard = std::move(shard),
+       collectionId = std::move(collectionId)](auto&&) mutable {
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          return data.core->dropShard(std::move(shard),
+                                      std::move(collectionId));
+        });
+      });
+}
+
 template<class ResultType, class GetFunc, class ProcessFunc>
 auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
                                                    ProcessFunc processSnapshot)
@@ -245,12 +332,12 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
               fmt::format(
                   "Could not get snapshot statuses of {}, state resigned.",
-                  to_string(gid))};
+                  gid)};
         }
         if (_isResigning.load()) {
           return ResultT<std::weak_ptr<Snapshot>>::error(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-              fmt::format("Leader resigned for shard {}", shardId));
+              fmt::format("Leader resigned for state {}", gid));
         }
         return getSnapshot(handler);
       });
@@ -265,7 +352,7 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
       TRI_ERROR_INTERNAL,
       fmt::format("Snapshot not available for {}! Most often this happens "
                   "because the leader resigned in the meantime!",
-                  shardId));
+                  gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

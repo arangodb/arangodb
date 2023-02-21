@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -182,6 +183,21 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
 auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
     -> TransactionMap const& {
   return _transactions;
+}
+
+void DocumentStateTransactionHandler::abortTransactionsForShard(
+    ShardID const& sid) {
+  for (auto it = _transactions.begin(); it != _transactions.end();) {
+    auto const& [tid, trx] = *it;
+    if (it->second->containsShard(sid)) {
+      auto result = trx->abort();
+      ADB_PROD_ASSERT(result.ok())
+          << result.errorMessage();  // TODO error handling
+      it = _transactions.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +24,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
-#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
@@ -36,19 +36,10 @@
 
 namespace arangodb::replication2::replicated_state::document {
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
-    ArangodServer& server, AgencyCache& agencyCache,
     network::ConnectionPool* connectionPool,
     MaintenanceFeature& maintenanceFeature)
-    : _server(server),
-      _agencyCache(agencyCache),
-      _connectionPool(connectionPool),
+    : _connectionPool(connectionPool),
       _maintenanceFeature(maintenanceFeature) {}
-
-auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
-    -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return std::make_shared<DocumentStateAgencyHandler>(std::move(gid), _server,
-                                                      _agencyCache);
-}
 
 auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
@@ -60,7 +51,7 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::unique_ptr<IDocumentStateSnapshotHandler> {
   return std::make_unique<DocumentStateSnapshotHandler>(
-      std::make_unique<CollectionReaderFactory>(vocbase));
+      std::make_unique<DatabaseSnapshotFactory>(vocbase));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

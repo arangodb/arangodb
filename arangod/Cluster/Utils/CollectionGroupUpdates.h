@@ -38,7 +38,7 @@ struct AddCollectionToGroup {
 };
 
 struct CollectionGroupUpdates {
-  std::vector<agency::CollectionGroup> newGroups;
+  std::vector<agency::CollectionGroupTargetSpecification> newGroups;
   std::vector<AddCollectionToGroup> additionsToGroup;
 
   agency::CollectionGroupId addNewGroup(

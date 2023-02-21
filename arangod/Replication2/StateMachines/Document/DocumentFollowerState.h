@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 enum class OperationType;
+struct SnapshotConfig;
 struct SnapshotBatch;
 
 struct DocumentFollowerState
@@ -45,11 +46,9 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  ShardID const shardId;  // TODO we have to get rid of this member
   LoggerContext const loggerContext;
 
-  // unprotected for gtests. TODO think about whether there's a better way
-  // protected:
+ protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
@@ -58,10 +57,15 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
-  auto forceLocalTransaction(OperationType opType,
+  auto forceLocalTransaction(ShardID shardId, OperationType opType,
                              velocypack::SharedSlice slice) -> Result;
-  auto truncateLocalShard() -> Result;
-  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
+      -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
@@ -79,7 +83,6 @@ struct DocumentFollowerState
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;

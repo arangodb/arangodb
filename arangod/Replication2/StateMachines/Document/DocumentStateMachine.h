@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,15 +71,15 @@ struct DocumentState {
 };
 
 struct DocumentCoreParameters {
-  std::string collectionId;
   std::string databaseName;
-  std::string shardId;
+  std::uint64_t groupId;  // TODO use CollectionGroupId type
+  std::size_t shardSheafIndex;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("databaseName", p.databaseName),
-                              f.field("shardId", p.shardId));
+    return f.object(p).fields(f.field("databaseName", p.databaseName),
+                              f.field("groupId", p.groupId),
+                              f.field("shardSheafIndex", p.shardSheafIndex));
   }
 
   [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
