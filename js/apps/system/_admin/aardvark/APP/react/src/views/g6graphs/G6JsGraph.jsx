@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { GraphView } from './GraphView';
 import { AttributesInfo } from './AttributesInfo';
+import { DocumentInfo } from './DocumentInfo';
 import { data } from './data';
 import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
@@ -463,6 +464,31 @@ const G6JsGraph = () => {
     drawnGraph.downloadImage();
   }
 
+  const lookUpDocumentForVis = (document) => {
+    const slashPos = document.indexOf("/");
+    const documentDataObject = {
+      "keys": [
+        document.substring(slashPos + 1)
+      ],
+      "collection": document.substring(0, slashPos)
+    };
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(documentDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const attributes = data.documents[0];
+      const allowedAttributesList = omit(attributes, '_rev', '_key');
+      setLookedUpData(allowedAttributesList);
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this document.');
+      console.log(err);
+    });
+  }
+
   const lookUpDocument = (document) => {
     const documentId = document.item._cfg.id;
     const slashPos = documentId.indexOf("/");
@@ -650,6 +676,7 @@ const G6JsGraph = () => {
               responseDuration={responseTimes.fetchDuration}
               onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
               onClickDocument={(document) => lookUpDocument(document)}
+              onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
                 setVisGraphData(newGraphData);
@@ -680,6 +707,8 @@ const G6JsGraph = () => {
               nodesSizeMinMax={nodesSizeMinMax}
               connectionsMinMax={connectionsMinMax}
         />
+
+        <DocumentInfo attributes={lookedUpData} />
         <AttributesInfo attributes={lookedUpData} />
       </UrlParametersContext.Provider>
     </div>

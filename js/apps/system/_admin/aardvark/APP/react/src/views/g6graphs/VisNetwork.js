@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Network } from "vis-network";
 
-const VisNetwork = ({graphData, graphName, options}) => {
+const VisNetwork = ({graphData, graphName, options, onSelectNode}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
 
 	const nodes = [
@@ -24,8 +24,7 @@ const VisNetwork = ({graphData, graphName, options}) => {
 		// Use `network` here to configure events, etc
 		network.on("selectNode", (event, params) => {
 			if (event.nodes.length === 1) {
-				console.log("selectNode (event): ", event);
-				console.log("selectNode (params): ", params);
+				onSelectNode(event.nodes[0]);
 			} else {
 				console.log("selectNode (event) ELSE: ", event);
 				console.log("selectNode (params) ELSE: ", params);
@@ -51,7 +50,6 @@ const VisNetwork = ({graphData, graphName, options}) => {
 			//network.redraw();
 			//console.log("Is network redrawn?");
 		});
-
 		network.on("oncontext", (event) => {
 			console.log("ONCONTEXT: ", event);
 		});
