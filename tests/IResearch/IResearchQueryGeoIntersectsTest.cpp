@@ -392,14 +392,14 @@ TEST_P(QueryGeoIntersectsSearch, Test) {
 #ifdef USE_ENTERPRISE
 
 TEST_P(QueryGeoIntersectsView, TestS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createView();
   queryTests(false);
 }
 
 TEST_P(QueryGeoIntersectsSearch, TestS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes();
   createSearch();
@@ -407,14 +407,14 @@ TEST_P(QueryGeoIntersectsSearch, TestS2LatLng) {
 }
 
 TEST_P(QueryGeoIntersectsView, TestS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createView();
   queryTests(false);
 }
 
 TEST_P(QueryGeoIntersectsSearch, TestS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createIndexes();
   createSearch();
@@ -422,14 +422,14 @@ TEST_P(QueryGeoIntersectsSearch, TestS2LatLngInt) {
 }
 
 TEST_P(QueryGeoIntersectsView, TestS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createView();
   queryTests(false);
 }
 
 TEST_P(QueryGeoIntersectsSearch, TestS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createIndexes();
   createSearch();

@@ -34,7 +34,7 @@ const isEnterprise = require("internal").isEnterprise();
 function testGeo() {
   let suite = {};
   deriveTestSuite(
-    geoSuite(true, "geobinary", {"format": "latLngInt"}, true),
+    geoSuite(true, "geo_s2", {"format": "latLngInt"}, true),
     suite,
     "_s2_latLngInt_search-alias"
   );

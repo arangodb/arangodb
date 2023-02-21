@@ -34,7 +34,7 @@ const isEnterprise = require("internal").isEnterprise();
 function testGeo() {
   let suite = {};
   deriveTestSuite(
-    geoSuite(false, "geobinary", {}),
+    geoSuite(false, "geo_s2", {}),
     suite,
     "_s2_latLngDouble_arangosearch"
   );

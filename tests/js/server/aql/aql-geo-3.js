@@ -34,7 +34,7 @@ const isEnterprise = require("internal").isEnterprise();
 function testGeo() {
   let suite = {};
   deriveTestSuite(
-    geoSuite(true, "geobinary", {"format": "s2Point"}),
+    geoSuite(true, "geo_s2", {"format": "s2Point"}),
     suite,
     "_s2_s2Point_search-alias"
   );

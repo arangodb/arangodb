@@ -678,7 +678,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoPoint) {
 #ifdef USE_ENTERPRISE
 
 TEST_P(QueryGeoContainsView, TestS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createView();
   queryTests();
@@ -689,7 +689,7 @@ TEST_P(QueryGeoContainsView, TestS2LatLng) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoJsonS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
@@ -698,7 +698,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoJsonS2LatLng) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -707,7 +707,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2LatLng) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoPointS2LatLng) {
-  createAnalyzers("geobinary", R"("format":"latLngDouble",)");
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();
@@ -716,7 +716,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoPointS2LatLng) {
 }
 
 TEST_P(QueryGeoContainsView, TestS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createView();
   queryTests();
@@ -727,7 +727,7 @@ TEST_P(QueryGeoContainsView, TestS2Point) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoJsonS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
@@ -736,7 +736,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoJsonS2Point) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -745,7 +745,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2Point) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoPointS2Point) {
-  createAnalyzers("geobinary", R"("format":"s2Point",)");
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();
@@ -754,7 +754,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoPointS2Point) {
 }
 
 TEST_P(QueryGeoContainsView, TestS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createView();
   queryTests();
@@ -765,7 +765,7 @@ TEST_P(QueryGeoContainsView, TestS2LatLngInt) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoJsonS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
@@ -774,7 +774,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoJsonS2LatLngInt) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -783,7 +783,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2LatLngInt) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoPointS2LatLngInt) {
-  createAnalyzers("geobinary", R"("format":"latLngInt",)");
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();
