@@ -132,6 +132,9 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
           receiving_actor_id);
   ASSERT_EQ(receiving_actor_state,
             (TrivialActor::State{.state = "foobaz", .called = 2}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 struct SomeMessage {};
@@ -201,6 +204,9 @@ TYPED_TEST(
       (TrivialActor::State{
           .state = fmt::format("sent unknown message to {}", receiving_actor),
           .called = 2}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(
@@ -246,6 +252,9 @@ TYPED_TEST(
       (TrivialActor::State{
           .state = fmt::format("receiving actor {} not found", unknown_actor),
           .called = 2}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(
@@ -284,6 +293,9 @@ TYPED_TEST(
       (TrivialActor::State{
           .state = fmt::format("receiving server {} not found", unknown_server),
           .called = 2}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
@@ -326,4 +338,7 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
           ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::PingState{.called = 2, .message = "hello world"}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
