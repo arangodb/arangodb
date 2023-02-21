@@ -38,14 +38,14 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _pool(pool) {}
 
 auto DocumentStateLeaderInterface::startSnapshot(LogIndex waitForIndex)
-    -> futures::Future<ResultT<SnapshotBatch>> {
+    -> futures::Future<ResultT<SnapshotConfig>> {
   auto path =
       basics::StringUtils::joinT("/", StaticStrings::ApiDocumentStateExternal,
                                  _gid.id, "snapshot", "start");
   network::RequestOptions opts;
   opts.database = _gid.database;
   opts.param("waitForIndex", std::to_string(waitForIndex.value));
-  return postSnapshotRequest(std::move(path), opts);
+  return postSnapshotRequest<SnapshotConfig>(std::move(path), opts);
 }
 
 auto DocumentStateLeaderInterface::nextSnapshotBatch(SnapshotId id)
@@ -55,7 +55,7 @@ auto DocumentStateLeaderInterface::nextSnapshotBatch(SnapshotId id)
                                  _gid.id, "snapshot", "next", to_string(id));
   network::RequestOptions opts;
   opts.database = _gid.database;
-  return postSnapshotRequest(std::move(path), opts);
+  return postSnapshotRequest<SnapshotBatch>(std::move(path), opts);
 }
 
 auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
@@ -76,17 +76,18 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
       });
 }
 
+template<class T>
 auto DocumentStateLeaderInterface::postSnapshotRequest(
     std::string path, network::RequestOptions const& opts)
-    -> futures::Future<ResultT<SnapshotBatch>> {
+    -> futures::Future<ResultT<T>> {
   return network::sendRequest(_pool, "server:" + _participantId,
                               fuerte::RestVerb::Post, std::move(path), {}, opts)
-      .thenValue([](network::Response&& resp) -> ResultT<SnapshotBatch> {
+      .thenValue([](network::Response&& resp) -> ResultT<T> {
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           return resp.combinedResult();
         }
         auto slice = resp.slice();
-        return velocypack::deserialize<SnapshotBatch>(slice.get("result"));
+        return velocypack::deserialize<T>(slice.get("result"));
       });
 }
 

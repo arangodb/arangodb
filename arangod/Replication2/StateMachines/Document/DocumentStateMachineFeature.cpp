@@ -47,14 +47,12 @@ void DocumentStateMachineFeature::start() {
   ArangodServer& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = s.getFeature<NetworkFeature>();
-  auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
-      std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature.agencyCache(), networkFeature.pool(),
-          maintenanceFeature),
+      std::make_shared<DocumentStateHandlersFactory>(networkFeature.pool(),
+                                                     maintenanceFeature),
       *transaction::ManagerFeature::manager());
 }
 

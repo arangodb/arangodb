@@ -40,8 +40,7 @@ struct IDatabaseSnapshotFactory;
  */
 struct IDocumentStateSnapshotHandler {
   virtual ~IDocumentStateSnapshotHandler() = default;
-  virtual auto create(std::vector<ShardID> shardIds)
-      -> ResultT<std::weak_ptr<Snapshot>> = 0;
+  virtual auto create(ShardMap shards) -> ResultT<std::weak_ptr<Snapshot>> = 0;
   virtual auto find(SnapshotId const& id)
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
@@ -55,8 +54,7 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
       std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory);
 
   // Create a new snapshot
-  auto create(std::vector<ShardID> shardIds)
-      -> ResultT<std::weak_ptr<Snapshot>> override;
+  auto create(ShardMap shards) -> ResultT<std::weak_ptr<Snapshot>> override;
 
   // Find a snapshot by id
   auto find(SnapshotId const& id) -> ResultT<std::weak_ptr<Snapshot>> override;
