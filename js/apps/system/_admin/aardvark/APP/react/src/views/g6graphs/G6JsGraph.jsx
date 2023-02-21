@@ -13,7 +13,6 @@ import { FetchFullGraphModal } from './FetchFullGraphModal';
 import { omit, pick, uniqBy } from "lodash";
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
-import ButtonScrollTo from "./ButtonScrollTo";
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -61,7 +60,10 @@ const G6JsGraph = () => {
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
   let [queryString, setQueryString] = useState(`/_admin/aardvark/g6graph/${graphName}`);
   let [queryMethod, setQueryMethod] = useState("GET");
+  let [visQueryString, setVisQueryString] = useState(`/_admin/aardvark/visgraph/${graphName}`);
+  let [visQueryMethod, setVisQueryMethod] = useState("GET");
   let [graphData, setGraphData] = useState(data);
+  let [visGraphData, setVisGraphData] = useState(data);
   const [showFetchFullGraphModal, setShowFetchFullGraphModal] = useState(false);
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
@@ -140,6 +142,55 @@ const G6JsGraph = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchVisData = useCallback(() => {
+    responseTimesObject.fetchStarted = new Date();
+    $.ajax({
+      type: visQueryMethod,
+      url: arangoHelper.databaseUrl(visQueryString),
+      contentType: 'application/json',
+      data: urlParameters,
+      success: function (data) {
+        
+        
+        responseTimesObject.fetchFinished = new Date();
+        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        setResponseTimes(responseTimesObject);
+        setVertexCollections(data.settings.vertexCollections);
+        if(data.settings.connectionsMinMax) {
+          setConnectionsMinMax(data.settings.connectionsMinMax);
+        }
+        if(data.settings.nodesColorAttributes) {
+          setNodesColorAttributes(data.settings.nodesColorAttributes);
+        }
+        if(data.settings.nodesSizeMinMax) {
+          setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
+        if(data.settings.edgesColorAttributes) {
+          setEdgesColorAttributes(data.settings.edgesColorAttributes);
+        }
+        const collectionColors = [];
+        Object.keys(data.settings.vertexCollections)
+        .map((key, i) => {
+          collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
+          return true;
+        });
+        setVertexCollectionsColors(collectionColors);
+        
+
+        setEdgeCollections(data.settings.edgeCollections);
+        setVisGraphData(data);
+      },
+      error: function (e) {
+        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
+        console.log(e);
+      }
+    });
+  }, [visQueryString]);
+
+  useEffect(() => {
+    fetchVisData();
+  }, [fetchVisData]);
 
   const fetchEdgeCollections = useCallback(() => {
     arangoFetch(arangoHelper.databaseUrl('/_api/collection'), {
@@ -458,7 +509,7 @@ const G6JsGraph = () => {
 
     setGraphData(newGraphData);
   }
-        
+
   return (
     <div>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
@@ -577,6 +628,7 @@ const G6JsGraph = () => {
 
         <GraphView
               data={graphData}
+              visGraphData={visGraphData}
               vertexCollections={vertexCollections}
               onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
               onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
@@ -600,6 +652,7 @@ const G6JsGraph = () => {
               onClickDocument={(document) => lookUpDocument(document)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
+                setVisGraphData(newGraphData);
                 if(newGraphData.settings.nodesColorAttributes) {
                   setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
                 }
@@ -628,7 +681,6 @@ const G6JsGraph = () => {
               connectionsMinMax={connectionsMinMax}
         />
         <AttributesInfo attributes={lookedUpData} />
-        <ButtonScrollTo />
       </UrlParametersContext.Provider>
     </div>
   );
