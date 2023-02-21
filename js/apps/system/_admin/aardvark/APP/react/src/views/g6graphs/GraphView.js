@@ -709,9 +709,7 @@ export class GraphView extends React.Component {
         <Tag label={`${this.props.visGraphData.nodes.length} nodes`}/><Tag label={`${this.props.visGraphData.edges.length} edges`}/><Tag style='transparent' label={`Response time: ${this.props.responseDuration}ms`}/>
       </GraphInfo>
 
-      <hr/>
-
-      <div ref={this.ref} className={styles.graphContainer}> </div>
+      <div ref={this.ref} className={styles.graphContainer} style={{ display: 'none' }}> </div>
     </>;
   }
 }
