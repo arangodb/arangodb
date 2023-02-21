@@ -203,4 +203,11 @@ struct ReplicatedOperation {
   template<typename... Args>
   explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept;
 };
+
+auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 }  // namespace arangodb::replication2::replicated_state::document
+
+template<>
+struct fmt::formatter<
+    arangodb::replication2::replicated_state::document::ReplicatedOperation>
+    : arangodb::inspection::inspection_formatter {};

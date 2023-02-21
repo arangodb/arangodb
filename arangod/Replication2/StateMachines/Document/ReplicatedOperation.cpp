@@ -25,6 +25,7 @@
 
 #include "Assertions/AssertionLogger.h"
 #include "Assertions/ProdAssert.h"
+#include "Inspection/VPack.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -102,5 +103,10 @@ auto ReplicatedOperation::buildDocumentOperation(
   }
   return {};  // should never be reached, but compiler complains about
               // missing return
+}
+
+auto operator<<(std::ostream& ostream, ReplicatedOperation const& operation)
+    -> std::ostream& {
+  return ostream << velocypack::serialize(operation).toJson();
 }
 }  // namespace arangodb::replication2::replicated_state::document
