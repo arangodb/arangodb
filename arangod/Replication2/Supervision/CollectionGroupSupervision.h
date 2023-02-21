@@ -89,12 +89,16 @@ struct CollectionGroup {
   std::optional<agency::CollectionGroupCurrentSpecification> current;
 
   std::unordered_map<LogId, agency::Log> logs;
+  // TODO Make one map with optional plan and current?
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionTargetSpecification>
       targetCollections;
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionPlanSpecification>
       planCollections;
+  struct CollectionCurrent {};
+  std::unordered_map<arangodb::CollectionID, CollectionCurrent>
+      currentCollections;
 };
 
 struct UniqueIdProvider {

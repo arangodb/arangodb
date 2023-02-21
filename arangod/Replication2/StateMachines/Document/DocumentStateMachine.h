@@ -71,17 +71,13 @@ struct DocumentState {
 };
 
 struct DocumentCoreParameters {
-  std::string collectionId;  // TODO drop this one
   std::string databaseName;
-  std::string shardId;    // TODO drop this one
   std::uint64_t groupId;  // TODO use CollectionGroupId type
   std::size_t shardSheafIndex;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("databaseName", p.databaseName),
-                              f.field("shardId", p.shardId),
+    return f.object(p).fields(f.field("databaseName", p.databaseName),
                               f.field("groupId", p.groupId),
                               f.field("shardSheafIndex", p.shardSheafIndex));
   }

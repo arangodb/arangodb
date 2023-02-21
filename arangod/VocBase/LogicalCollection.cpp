@@ -1269,7 +1269,8 @@ auto LogicalCollection::getDocumentState()
   // TODO If we have to remove the assert, we must make sure that the caller (or
   //      callers) are prepared for that (they currently aren't).
   ADB_PROD_ASSERT(maybeState.ok())
-      << "Missing document state in shard " << name();
+      << "Missing document state in shard " << name() << " and log "
+      << _replicatedStateId.value();
   auto stateMachine =
       basics::downCast<ReplicatedState<document::DocumentState>>(
           std::move(maybeState).get());

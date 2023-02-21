@@ -26,7 +26,6 @@
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -34,6 +33,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
@@ -148,9 +148,6 @@ struct MockDocumentStateHandlersFactory
       std::shared_ptr<MockDatabaseSnapshotFactory> snapshotFactory);
 
   MOCK_METHOD(
-      std::shared_ptr<replicated_state::document::IDocumentStateAgencyHandler>,
-      createAgencyHandler, (GlobalLogIdentifier), (override));
-  MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>,
       createShardHandler, (GlobalLogIdentifier), (override));
   MOCK_METHOD(std::unique_ptr<
@@ -188,6 +185,7 @@ struct MockDocumentStateTransaction
   MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
+  MOCK_METHOD(bool, containsShard, (ShardID const&), (override));
 };
 
 struct MockDocumentStateTransactionHandler
@@ -208,22 +206,14 @@ struct MockDocumentStateTransactionHandler
       ensureTransaction,
       (replicated_state::document::DocumentLogEntry const& doc), (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
+  MOCK_METHOD(void, abortTransactionsForShard, (ShardID const& tid),
+              (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
       _real;
-};
-
-struct MockDocumentStateAgencyHandler
-    : replicated_state::document::IDocumentStateAgencyHandler {
-  MOCK_METHOD(std::shared_ptr<velocypack::Builder>, getCollectionPlan,
-              (std::string const&), (override));
-  MOCK_METHOD(Result, reportShardInCurrent,
-              (std::string const&, std::string const&,
-               std::shared_ptr<velocypack::Builder> const&),
-              (override));
 };
 
 struct MockDocumentStateShardHandler
@@ -247,7 +237,7 @@ struct MockDocumentStateSnapshotHandler
           real);
 
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
-              create, (std::vector<ShardID>), (override));
+              create, (replicated_state::document::ShardMap), (override));
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               find, (replicated_state::document::SnapshotId const&),
               (override));
@@ -264,7 +254,7 @@ struct MockDocumentStateSnapshotHandler
 struct MockDocumentStateLeaderInterface
     : replicated_state::document::IDocumentStateLeaderInterface {
   MOCK_METHOD(
-      futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
+      futures::Future<ResultT<replicated_state::document::SnapshotConfig>>,
       startSnapshot, (LogIndex), (override));
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,

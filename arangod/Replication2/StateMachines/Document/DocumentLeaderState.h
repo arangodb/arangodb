@@ -60,7 +60,8 @@ struct DocumentLeaderState
   auto createShard(ShardID shard, CollectionID collectionId,
                    velocypack::SharedSlice properties)
       -> futures::Future<Result>;
-  auto dropShard(ShardID shard) -> futures::Future<Result>;
+  auto dropShard(ShardID shard, CollectionID collectionId)
+      -> futures::Future<Result>;
   auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   std::size_t getActiveTransactionsCount() const noexcept {
@@ -68,7 +69,7 @@ struct DocumentLeaderState
   }
 
   auto snapshotStart(SnapshotParams::Start const& params)
-      -> ResultT<SnapshotBatch>;
+      -> ResultT<SnapshotConfig>;
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;

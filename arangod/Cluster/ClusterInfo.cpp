@@ -568,11 +568,11 @@ auto ClusterInfo::createDocumentStateSpec(
 
   replication2::agency::LogTarget spec;
 
+  // TODO remove this once we have the group ID
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{
-      info.collectionID, databaseName, shardId, 0, 0};  // TODO remove
+  auto parameters = document::DocumentCoreParameters{databaseName, 0, 0};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
