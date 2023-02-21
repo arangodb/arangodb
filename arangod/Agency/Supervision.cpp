@@ -2767,7 +2767,7 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
           log = parseReplicatedLogAgency(root, dbName,
                                          to_string(logId.replicatedLog));
         } catch (std::exception const& ex) {
-          LOG_TOPIC("46716", ERR, Logger::SUPERVISION)
+          LOG_TOPIC("46717", ERR, Logger::SUPERVISION)
               << "failed to parse replicated log " << dbName << "/"
               << logId.replicatedLog << ": " << ex.what();
           throw;
