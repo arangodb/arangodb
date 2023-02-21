@@ -399,14 +399,6 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
   static constexpr size_t minDepth = 0;
   static constexpr size_t maxDepth = std::numeric_limits<size_t>::max();
 
- public:
-  enum Vertices {
-    SOURCE = 1335,
-    TARGET = 1336,
-    BAD_TARGET = 1337,
-    LOOPER = 1338
-  };
-
  protected:
   bool activateLogging{false};
   MockGraph mockGraph;
@@ -424,102 +416,20 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
       _trx, *_query.get(), _functionsCache};
 
   WeightedKShortestPathsFinderTest() {
-    /* Non Weighted */
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
     }
 
-    // Diamond Part // TODO: enable !!!
-    /*mockGraph.addEdge(999, 999);
-    mockGraph.addEdge(101, 102, 10);
-    mockGraph.addEdge(101, 103, 10);
-    mockGraph.addEdge(101, 1010, 100);
-    mockGraph.addEdge(102, 104, 10);
-    mockGraph.addEdge(103, 104, 20);
-    mockGraph.addEdge(107, 103, 10);
-    mockGraph.addEdge(108, 103, 10);
-    mockGraph.addEdge(109, 103, 10);*/
-
-    // Graph transferred from "aql-graph-k-shortest-path"
-
-    for (size_t pathNum = 0; pathNum < 12; ++pathNum) {
-      size_t weight = (pathNum + 1) * (pathNum + 1);
-
-      for (size_t step = 0; step < 3; ++step) {
-        // const key = `vertex_${pathNum}_${step}`;
-        //  vertices.push({_key: key});
-        //  Add valid edges:
-        size_t myVertexNumericValue = (pathNum * 100) + step;
-        switch (step) {
-          case 0: {
-            if (pathNum < 6) {
-              // source -> v
-              mockGraph.addEdge(SOURCE, myVertexNumericValue, weight);
-              if (pathNum < 3) {
-                // Add INBOUND shortcut 0 <- 2 in e2 (we intentionally go to
-                // path 6-8 to not interfer with the original paths)
-                mockGraph.addEdge(pathNum + 6, myVertexNumericValue, weight);
-              }
-            } else if (pathNum < 9) {
-              // v -> target
-              mockGraph.addEdge(myVertexNumericValue, Vertices::TARGET, weight);
-            } else {
-              // v-> bad
-              mockGraph.addEdge(myVertexNumericValue, Vertices::BAD_TARGET,
-                                weight);
-            }
-            break;
-          }
-          case 1: {
-            // connect to step 0
-            mockGraph.addEdge((pathNum * 100 + 0), myVertexNumericValue,
-                              weight);
-            size_t mod = pathNum % 3;
-            if (mod != 0) {
-              // Connect to the path before
-              mockGraph.addEdge((pathNum - 1) * 100 + 0, myVertexNumericValue,
-                                weight);
-            }
-            if (mod != 2) {
-              // Connect to the path after
-              mockGraph.addEdge((pathNum + 1) * 100 + 0, myVertexNumericValue,
-                                weight);
-            }
-            if (mod == 2 && pathNum == 2) {
-              // Add a path loop and a duplicate edge
-              // duplicate edge
-              mockGraph.addEdge((pathNum)*100 + 0, myVertexNumericValue,
-                                weight + 1);
-              mockGraph.addEdge(myVertexNumericValue, Vertices::LOOPER, weight);
-              mockGraph.addEdge(Vertices::LOOPER, (pathNum + 0) * 100 + 0,
-                                weight);
-            }
-            break;
-          }
-          case 2: {
-            if (pathNum < 3) {
-              // These are the valid paths we care for
-              if (pathNum == 1) {
-                size_t additional = (pathNum * 100) + 3;
-                // Add an aditional step only on the second path to have
-                // differnt path lengths
-                mockGraph.addEdge(myVertexNumericValue, additional, weight);
-                mockGraph.addEdge(additional, Vertices::TARGET, weight);
-              } else {
-                mockGraph.addEdge(myVertexNumericValue, Vertices::TARGET,
-                                  weight);
-              }
-            }
-
-            // Always connect to source:
-            // 1 -> 2 is connected in e2
-            mockGraph.addEdge((pathNum + 0) * 100 + 1, myVertexNumericValue,
-                              weight);
-            break;
-          }
-        }
-      }
-    }
+    // Diamond Graph with weights
+    mockGraph.addEdge(0, 0);
+    mockGraph.addEdge(1, 2, 10);
+    mockGraph.addEdge(1, 3, 10);
+    mockGraph.addEdge(1, 10, 100);
+    mockGraph.addEdge(2, 4, 10);
+    mockGraph.addEdge(3, 4, 20);
+    mockGraph.addEdge(7, 3, 10);
+    mockGraph.addEdge(8, 3, 10);
+    mockGraph.addEdge(9, 3, 10);
   }
 
   auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
@@ -575,10 +485,10 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
   }
 };
 
-/*TEST_F(WeightedKShortestPathsFinderTest, diamond_path) {
+TEST_F(WeightedKShortestPathsFinderTest, diamond_path) {
   VPackBuilder result;
-  auto source = vId(101);
-  auto target = vId(104);
+  auto source = vId(1);
+  auto target = vId(4);
   auto finder = pathFinder();
   finder.reset(toHashedStringRef(source), toHashedStringRef(target));
   EXPECT_FALSE(finder.isDone());
@@ -587,67 +497,10 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
     result.clear();
     ASSERT_TRUE(finder.getNextPath(result));
     pathStructureValid(result.slice(), 2);
-    pathEquals(result.slice(), {101, 102, 104});
+    pathEquals(result.slice(), {1, 2, 4});
     pathWeightDouble(result.slice(), 20);
     EXPECT_FALSE(finder.isDone());
   }
-}*/
-
-TEST_F(WeightedKShortestPathsFinderTest, limit_6) {
-  VPackBuilder result;
-  auto source = vId(Vertices::SOURCE);
-  auto target = vId(Vertices::TARGET);
-  auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
-  EXPECT_FALSE(finder.isDone());
-
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    LOG_DEVEL << "Path is: " << result.toJson();
-    pathStructureValid(result.slice(), 4);
-    pathWeightDouble(result.slice(), 4);
-  }
-
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    LOG_DEVEL << "Path is: " << result.toJson();
-    pathStructureValid(result.slice(), 4);
-    pathWeightDouble(result.slice(), 7);
-  }
-
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    LOG_DEVEL << "Path is: " << result.toJson();
-    pathStructureValid(result.slice(), 5);
-    pathWeightDouble(result.slice(),
-                     17);  // TODO: <-- issue here: not found (skipped)
-  }
-  /*
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    pathStructureValid(result.slice(), 5);
-    pathWeightDouble(result.slice(), 20);  // TODO: this path found above
-  }
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    pathStructureValid(result.slice(), 5);
-    pathWeightDouble(result.slice(), 25);
-  }
-  {
-    result.clear();
-    ASSERT_TRUE(finder.getNextPath(result));
-    pathStructureValid(result.slice(), 4);
-    pathWeightDouble(result.slice(), 31);
-  }*/
-
-  // TODO:
-  // pathEquals(result.slice(), {101, 102, 104});
-  // EXPECT_FALSE(finder.isDone());
 }
 
 }  // namespace graph

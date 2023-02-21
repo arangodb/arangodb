@@ -109,24 +109,17 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
 
   {
     auto getActualWeight = [&](size_t position) {
-      LOG_DEVEL << "Get actual weight of : " << position;
       VPackBuilder tmpBuilder;
-      LOG_DEVEL << " - 1 - ";
 
-      LOG_DEVEL << " - 2 - ";
       // TODO 0.) I do not like the fact that we have to put it into a
       //  tmpBuilder to be able to read it.
-
-      LOG_DEVEL << " - 3 - ";
       _targetProvider.addEdgeToBuilder(_edges[position], tmpBuilder);
 
       // TODO 1.): This is not true. It can be any value. For now ok.
-      LOG_DEVEL << tmpBuilder.toJson();
       if (tmpBuilder.slice().hasKey(StaticStrings::GraphQueryWeight)) {
         // TRI_ASSERT() <-- TODO: Add assert / ADD PROPER mechanism to read
         //  default weight and weight attribute here
         // TODO !IMPORTANT!
-        LOG_DEVEL << " - 4 - ";
 
         if (tmpBuilder.slice()
                 .get(StaticStrings::GraphQueryWeight)
@@ -134,14 +127,12 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
           double dummy = tmpBuilder.slice()
                              .get(StaticStrings::GraphQueryWeight)
                              .getNumber<double>();
-          LOG_DEVEL << " - 5 - ";
           return dummy;
         }
       }
 
       // TODO 2.): What if value is not inside the edge, we need to use default
       // weight.
-      LOG_DEVEL << " - 6 - ";
       return 1.0;
     };
 

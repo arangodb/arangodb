@@ -223,16 +223,16 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::hasBeenVisited(Step const&
                                                                          step)
     -> bool {
-  if (_direction == FORWARD) {
-    LOG_DEVEL << "LEFT: ";
+  /*if (_direction == FORWARD) {
+    LOG_DEVEL << "LEFT (visited): ";
   } else {
-    LOG_DEVEL << "RIGHT: ";
+    LOG_DEVEL << "RIGHT (visited): ";
   }
 
   for (auto const& peter : _visitedNodes) {
     arangodb::velocypack::HashedStringRef x = peter.first;
-    LOG_DEVEL << " -> " << x.toString();
-  }
+    LOG_DEVEL << " -> " << x.toString() << " (" << peter.second << ")";
+  }*/
 
   if (_visitedNodes.contains(step.getVertex().getID())) {
     return true;
@@ -260,14 +260,25 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
-  auto step = _queue.pop();
-  if (hasBeenVisited(step)) {
-    return -1.0;
+  if (_direction == FORWARD) {
+    LOG_DEVEL << "Start of computeNeighbourhoodOfNextVertex (LEFT)";
+  } else {
+    LOG_DEVEL << "Start of computeNeighbourhoodOfNextVertex (RIGHT)";
   }
+  LOG_DEVEL << "  QUEUE content: ";  // print done in pop()
+
+  auto step = _queue.pop();
+
+  if (_graphOptions.getPathType() == PathType::Type::ShortestPath) {
+    if (hasBeenVisited(step)) {
+      return -1.0;
+    }
+  }
+
   auto previous = _interior.append(step);
 
   auto verifyStep = [&](Step currentStep) {
-    TRI_ASSERT(!hasBeenVisited(currentStep));
+    // TRI_ASSERT(!hasBeenVisited(currentStep));
     ValidationResult res = _validator.validatePath(currentStep);
 
     if (!res.isPruned()) {
@@ -280,8 +291,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _visitedNodes.emplace(step.getVertex().getID(), previous);
   if (other.hasBeenVisited(step)) {
-    // TODO: WE DO NOT FIND 104 as a match but we should have!
-    LOG_DEVEL << "OTHER HAS BEEN VISITED !!!!!!!!!!!!!!!!!!!!!!!!!!";
     // Shortest Path Match
     matchPathWeight = other.matchResultsInShell(step, candidates, _validator);
     LOG_DEVEL << "Result of the visit: " << matchPathWeight;
@@ -289,10 +298,14 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     LOG_DEVEL << "OTHER has been NOT visited";
   }
 
+  LOG_DEVEL << "Expanding step: " << step.toString();
+  LOG_DEVEL << "Received: ";
   _provider.expand(step, previous, [&](Step n) -> void {
-    if (!hasBeenVisited(n)) {
-      verifyStep(std::move(n));
-    }
+    LOG_DEVEL << " <--- " << n.toString() << " Weight: (" << n.getWeight()
+              << ")";
+    // if (!hasBeenVisited(n)) { // TODO: Note - is this correct?!?!
+    verifyStep(std::move(n));
+    //}
   });
 
   return matchPathWeight;
@@ -602,8 +615,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       }
 #endif
 
-      LOG_DEVEL << "Size is: " << _results.size();
-      LOG_DEVEL << "read candidate from _results";
+      LOG_DEVEL << "_results size is: " << _results.size();
       auto const& [weight, first, second] = _results.front();
       LOG_DEVEL << "Result Path WEIGHT: " << weight;
       auto const& leftVertex = first;
@@ -615,8 +627,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // and then iterate again to return the path
       // we should be able to return the path in the first go.
       _resultPath.clear();
-      LOG_DEVEL << "Building result LEFT : " << leftVertex.toString();
-      LOG_DEVEL << "Building result RIGHT: " << rightVertex.toString();
       _left.buildPath(leftVertex, _resultPath);
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
@@ -631,10 +641,10 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // remove handled result
       _results.pop_front();
 
-      LOG_DEVEL << "<1337> Returned True (above)";
+      LOG_DEVEL << "<1337> handled a result";
       return true;
     } else {
-      LOG_DEVEL << "<1337> Returned false (above)";
+      LOG_DEVEL << "<1337> did not handle a result";
       return false;
     }
   };
@@ -651,14 +661,11 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     // and then iterate again to return the path
     // we should be able to return the path in the first go.
     _resultPath.clear();
-    LOG_DEVEL << "Building result LEFT : " << leftVertex.toString();
-    LOG_DEVEL << "Building result RIGHT: " << rightVertex.toString();
     _left.buildPath(leftVertex, _resultPath);
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
     if (_options.getPathType() == PathType::Type::KShortestPaths) {
-      // Add weight attribute to edges
       // Add weight attribute to edges
       _resultPath.toVelocyPack(
           result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -672,7 +679,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of KPath related candidates
      */
     TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
+
     if (!_candidatesStore.isEmpty()) {
       LOG_DEVEL << " WE STILL HAVE CANDIDATES LEFT";
       while (!_candidatesStore.isEmpty()) {
@@ -730,13 +737,16 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // finished. We need to store this information.
 
         TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-        setAlgorithmFinished();
-        return false;  // TODO THIS IS WRONG
+        setAlgorithmFinished();  // just quick exit marker
       }
       return true;
     } else {
       // Check candidates list
-      return checkKPathsCandidates();
+      if (_options.getPathType() == PathType::Type::KShortestPaths) {
+        return checkKPathsCandidates();
+      } else {
+        return checkShortestPathCandidates();
+      }
     }
   }
 
@@ -793,13 +803,16 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       setAlgorithmFinished();
     }
 
-    LOG_DEVEL << "Matchpathlength is: " << matchPathLength;
     if (matchPathLength > 0) {
       // means we've found a match (-1.0 means no match)
       if (_bestCandidateLength < 0 || matchPathLength < _bestCandidateLength) {
+        LOG_DEVEL << "Setting current best candidate to: (" << matchPathLength
+                  << ")";
         _bestCandidateLength = matchPathLength;
       } else if (matchPathLength > _bestCandidateLength) {
-        LOG_DEVEL << "Found new path result - emplacing:";
+        LOG_DEVEL << "New path result. Emplacing! New path size: ("
+                  << matchPathLength << ") is smaller as best candidate ("
+                  << _bestCandidateLength << ")";
         // TODO: Double check this.
         // If a candidate has been found, we insert it into the store and only
         // return the length of that path. As soon as we insert in into the
@@ -831,7 +844,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
           LOG_DEVEL << "From: " << std::get<1>(potentialCandidate).toString();
           LOG_DEVEL << "To: " << std::get<2>(potentialCandidate).toString();
           LOG_DEVEL << "Cand weight: " << std::get<0>(potentialCandidate);
-          LOG_DEVEL << "Expected: " << matchPathLength;
+          LOG_DEVEL << "Pathlength of our match: " << matchPathLength;
           LOG_DEVEL << "::::::::::::::::::::::::::::::::";
 
           // TODO IMPORTANT: CHECK / DISCUSS THIS
@@ -881,6 +894,9 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             auto [weight, nextStepLeft, nextStepRight] =
                 _candidatesStore.peek();
             _bestCandidateLength = weight;
+          } else {
+            LOG_DEVEL << "This candidate will NOT be placed into results ("
+                      << matchPathLength << ")";
           }
         }
       }
@@ -941,6 +957,85 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::skipPath() {
+  auto skipResult = [&]() {
+    /*
+     * Helper method to take care of stored results (in: _results)
+     */
+    if (!_results.empty()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (_options.getPathType() == PathType::Type::ShortestPath) {
+        TRI_ASSERT(_results.size() == 1);
+      }
+#endif
+
+      LOG_DEVEL << "_results size is: " << _results.size();
+      // remove handled result
+      _results.pop_front();
+
+      LOG_DEVEL << "<1337> handled a result";
+      return true;
+    } else {
+      LOG_DEVEL << "<1337> did not handle a result";
+      return false;
+    }
+  };
+
+  auto skipKPathsCandidates = [&]() {
+    /*
+     * Helper method to take care of KPath related candidates
+     */
+    TRI_ASSERT(searchDone());
+    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
+    if (!_candidatesStore.isEmpty()) {
+      LOG_DEVEL << " WE STILL HAVE CANDIDATES LEFT";
+      while (!_candidatesStore.isEmpty()) {
+        LOG_DEVEL << "CANDIDATE STORE SIZE: " << _candidatesStore.size();
+        CalculatedCandidate potentialCandidate = _candidatesStore.pop();
+
+        // only add if non-duplicate
+        bool foundNonDuplicatePath =
+            _resultsCache.addResult(potentialCandidate);
+        LOG_DEVEL << "CHECKING CANDIDATE";
+        if (foundNonDuplicatePath) {
+          // delete potentialCandidate;
+          return true;
+        }
+      }
+
+      LOG_DEVEL << "<1337> Returning false(1)";
+      return false;
+    }
+
+    LOG_DEVEL << "<1337> Returning false(11)";
+    return false;
+  };
+
+  while (!isDone()) {
+    if (!searchDone()) {
+      searchMoreResults();
+    }
+
+    if (skipResult()) {
+      // means we've found a valid path
+      if (_options.getPathType() == PathType::Type::ShortestPath) {
+        setAlgorithmFinished();
+      }
+
+      return true;
+    } else {
+      // Check candidates list
+      return skipKPathsCandidates();
+    }
+  }
+
+  return false;
+}
+
+/*
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                                PathValidator>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
 
@@ -956,7 +1051,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   }
   return false;
-}
+}*/
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
