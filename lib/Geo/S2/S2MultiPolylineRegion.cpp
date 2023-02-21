@@ -88,7 +88,7 @@ void S2MultiPolylineRegion::Encode(Encoder& encoder, Options options) const {
 
 bool S2MultiPolylineRegion::Decode(Decoder& decoder, uint8_t tag,
                                    std::vector<S2Point>& cache) {
-  decodePolylines(decoder, _impl, tag, cache);
+  return decodePolylines(decoder, _impl, tag, cache);
 }
 
 }  // namespace arangodb::geo
