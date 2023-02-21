@@ -1,6 +1,5 @@
 import React, { useContext, useState } from 'react';
 import { Select, Tooltip } from 'antd';
-import PlainLabel from "./components/pure-css/form/PlainLabel";
 import { InfoCircleFilled } from '@ant-design/icons';
 import { UrlParametersContext } from "./url-parameters-context";
 
@@ -35,8 +34,8 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   };
 
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <PlainLabel htmlFor={'edgeType'}>Type</PlainLabel>
+    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+      <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Type</label>
       <Select
         name="edgeType"
         value={type}
