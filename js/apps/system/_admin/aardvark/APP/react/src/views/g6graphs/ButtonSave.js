@@ -21,31 +21,6 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
     onIsLoadingData(true);
     responseTimesObject.fetchStarted = new Date();
 
-    /*
-    $.ajax({
-      type: 'GET',
-      url: arangoHelper.databaseUrl(`/_admin/aardvark/g6graph/${graphName}`),
-      contentType: 'application/json',
-      data: urlParameters[0],
-      success: function (data) {
-        responseTimesObject.fetchFinished = new Date();
-        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
-        setResponseTimes(responseTimesObject);
-        const element = document.getElementById("graph-card");
-        element.scrollIntoView({ behavior: "smooth" });
-        setIsLoadingData(false);
-        onIsLoadingData(false);
-        onGraphDataLoaded(data, responseTimesObject);
-      },
-      error: function (e) {
-        console.log(e);
-        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
-        setIsLoadingData(false);
-        onIsLoadingData(false);
-      }
-    });
-    */
-
     $.ajax({
       type: 'GET',
       url: arangoHelper.databaseUrl(`/_admin/aardvark/visgraph/${graphName}`),
