@@ -271,6 +271,21 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const removeNodeInVis = (nodeId) => {
+    const nodes = visGraphData.nodes;
+    const updatedNodes = nodes.filter(item => item.id !== nodeId);
+    const currentEdges = visGraphData.edges;
+    const newGraphData = {
+      nodes: [
+        ...updatedNodes
+      ],
+      edges: [
+        ...currentEdges
+      ]
+    };
+    setVisGraphData(newGraphData);
+  }
+
   const removeNode = (nodeId) => {
     const nodes = graphData.nodes;
     const updatedNodes = nodes.filter(item => item.id !== nodeId);
@@ -678,6 +693,7 @@ const G6JsGraph = () => {
               onClickDocument={(document) => lookUpDocument(document)}
               onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
               onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
+              onDeleteNode={(nodeId) => removeNodeInVis(nodeId)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
                 setVisGraphData(newGraphData);
