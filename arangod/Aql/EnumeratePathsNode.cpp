@@ -379,49 +379,6 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
   GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
   GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);
-  /*auto checkWeight = [&]<typename ProviderOptionsType>(
-                         ProviderOptionsType& forwardProviderOptions,
-                         ProviderOptionsType& backwardProviderOptions) {
-    if (opts->useWeight()) {
-      double defaultWeight = opts->getDefaultWeight();
-      if (opts->getWeightAttribute().empty()) {
-        forwardProviderOptions.setWeightEdgeCallback(
-            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
-              return previousWeight + defaultWeight;
-            });
-        backwardProviderOptions.setWeightEdgeCallback(
-            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
-              return previousWeight + defaultWeight;
-            });
-      } else {
-        std::string weightAttribute = opts->getWeightAttribute();
-        forwardProviderOptions.setWeightEdgeCallback(
-            [weightAttribute = weightAttribute, defaultWeight](
-                double previousWeight, VPackSlice edge) -> double {
-              auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
-              if (weight < 0.) {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-              }
-
-              return previousWeight + weight;
-            });
-        backwardProviderOptions.setWeightEdgeCallback(
-            [weightAttribute = weightAttribute, defaultWeight](
-                double previousWeight, VPackSlice edge) -> double {
-              auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
-              if (weight < 0.) {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-              }
-
-              return previousWeight + weight;
-            });
-      }
-    }
-  };*/
 
 #ifdef USE_ENTERPRISE
   waitForSatelliteIfRequired(&engine);
@@ -536,7 +493,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           }
 
         default:
-          TRI_ASSERT(false);
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
           std::abort();
       }
     } else {
@@ -558,8 +516,63 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
         case arangodb::graph::PathType::Type::KShortestPaths:
-          std::abort();
+          // TODO: deduplicate with non-traced variant. Too much code
+          //  duplication right now.
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+
+          if (!opts->useWeight()) {
+            // Non-Weighted Variant
+            return _makeExecutionBlockImpl<
+                TracedKShortestPathsEnumerator<Provider>,
+                ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+            enumeratorOptions.setHasWeightCallback(true);
+
+            return _makeExecutionBlockImpl<
+                WeightedKShortestPathsEnumerator<Provider>, Provider,
+                SingleServerBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
         default:
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
           std::abort();
       }
     }
@@ -590,11 +603,67 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                         outputRegister, engine, sourceInput,
                                         targetInput, registerInfos);
       case arangodb::graph::PathType::Type::KShortestPaths:
-        std::abort();
+        // TODO: deduplicate with SingleServer && SingleServer non-traced
+        //  variant. Too much code duplication right now.
+        enumeratorOptions.setMinDepth(0);
+        enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+
+        if (!opts->useWeight()) {
+          // Non-Weighted Variant
+          return _makeExecutionBlockImpl<
+              KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+              ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        } else {
+          // Weighted Variant
+          double defaultWeight = opts->getDefaultWeight();
+          std::string weightAttribute = opts->getWeightAttribute();
+          forwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          enumeratorOptions.setHasWeightCallback(true);
+
+          return _makeExecutionBlockImpl<
+              WeightedKShortestPathsEnumerator<ClusterProvider>,
+              ClusterProvider, ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        }
       default:
-        std::abort();
+        ADB_PROD_ASSERT(false)
+            << "unknown PathType in EnumeratePathsNode::createBlock";
     }
   }
+
+  ADB_PROD_ASSERT(false)
+      << "unknown PathType in EnumeratePathsNode::createBlock";
+  std::abort();
 }
 
 ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
