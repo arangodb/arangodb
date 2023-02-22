@@ -417,9 +417,7 @@ bool Worker<V, E, M>::_processVertices() {
   inCache->clear();
   outCache->clear();
 
-  {  // only one thread at a time
-    MUTEX_LOCKER(guard, _threadMutex);
-
+  {
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
@@ -432,15 +430,6 @@ bool Worker<V, E, M>::_processVertices() {
 // called at the end of a worker thread, needs mutex
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
-  {
-    MUTEX_LOCKER(guard, _threadMutex);
-    /*    if (_runningThreads != 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "only one thread should ever enter this
-       region");
-        } */
-  }
-
   // only lock after there are no more processing threads
   MUTEX_LOCKER(guard, _commandMutex);
   _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
