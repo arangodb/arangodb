@@ -177,43 +177,66 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::FrontendCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
-    // TODO: This failure is copy pasted as-is from original, need to check if
-    // this does what we want it to do.
-    VPackBuilder testOptions;
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
-    std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
+    std::vector<CreateCollectionBody> testSystemCollectionsToCreate;
     std::vector<std::string> testSystemCollections = {
         StaticStrings::GraphsCollection, StaticStrings::AqlFunctionsCollection};
 
-    for (auto const& collection : testSystemCollections) {
-      VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(collection,
-                                                             options, vocbase);
+    auto config = vocbase.getDatabaseConfiguration();
+    // Override lookup for leading CollectionName
+    config.getCollectionGroupSharding =
+        [&testSystemCollectionsToCreate, &createdCollections, &vocbase](
+            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      // For the time being the leading collection is created as standalone
+      // before adding the others. So it has to be part of createdCollections.
+      // So let us scan there
+      for (auto const& c : testSystemCollectionsToCreate) {
+        if (c.name == name) {
+          // On new databases the leading collection is in the first position.
+          // So we will quickly loop here.
+          // During upgrades there may be some collections before, however
+          // it is not performance critical.
+          return c;
+        }
+      }
 
-      testSystemCollectionsToCreate.emplace_back(CollectionCreationInfo{
-          collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
-      testBuffers.emplace_back(options.steal());
+      for (auto const& c : createdCollections) {
+        if (c->name() == name) {
+          // On new databases the leading collection is in the first position.
+          // So we will quickly loop here.
+          // During upgrades there may be some collections before, however
+          // it is not performance critical.
+          return c->getCollectionProperties();
+        }
+      }
+      return Result{
+          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+          "Collection not found: " + name + " in database " + vocbase.name()};
+    };
+
+    for (auto const& cname : testSystemCollections) {
+      CreateCollectionBody newCollection;
+      newCollection.name = cname;
+      methods::Collections::applySystemCollectionProperties(
+          newCollection, vocbase, config, legacyMode);
+      testSystemCollectionsToCreate.emplace_back(std::move(newCollection));
     }
 
-    std::vector<std::shared_ptr<LogicalCollection>> cols;
-    auto res = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate,
-        /*createWaitsForSyncReplication*/ true,
-        /*enforceReplicationFactor*/ true, /*isNewDatabase*/ true,
-        colToDistributeShardsLike, cols,
-        /*allowSystem*/ true);
-    if (res.fail()) {
-      return res;
+    auto cols = methods::Collections::create(
+        vocbase, options, testSystemCollectionsToCreate, true, true, true,
+
+        false /* allow system collection creation */);
+    if (cols.fail()) {
+      return cols.result();
     }
     // capture created collection vector
-    createdCollections.insert(std::end(createdCollections), std::begin(cols),
-                              std::end(cols));
+    createdCollections.insert(std::end(createdCollections),
+                              std::begin(cols.get()), std::end(cols.get()));
   }
 
   auto config = vocbase.getDatabaseConfiguration();
   // Override lookup for leading CollectionName
   config.getCollectionGroupSharding =
-      [&systemCollectionsToCreate, &vocbase](
+      [&systemCollectionsToCreate, &createdCollections, &vocbase](
           std::string const& name) -> ResultT<UserInputCollectionProperties> {
     // For the time being the leading collection is created as standalone
     // before adding the others. So it has to be part of createdCollections.
@@ -225,6 +248,16 @@ Result createSystemCollections(
         // During upgrades there may be some collections before, however
         // it is not performance critical.
         return c;
+      }
+    }
+
+    for (auto const& c : createdCollections) {
+      if (c->name() == name) {
+        // On new databases the leading collection is in the first position.
+        // So we will quickly loop here.
+        // During upgrades there may be some collections before, however
+        // it is not performance critical.
+        return c->getCollectionProperties();
       }
     }
     return Result{
