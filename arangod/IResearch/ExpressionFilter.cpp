@@ -220,9 +220,11 @@ void ByExpression::init(QueryContext const& ctx,
 }
 
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
+  if (!irs::filter::equals(rhs)) {
+    return false;
+  }
   auto const& impl = static_cast<ByExpression const&>(rhs);
-  return irs::filter::equals(rhs) && _ctx == impl._ctx &&
-         _allColumn == impl._allColumn;
+  return _ctx == impl._ctx && _allColumn == impl._allColumn;
 }
 
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
