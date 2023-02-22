@@ -53,13 +53,13 @@ const ViewSettingsReactView = ({ name }) => {
             {formState.name}
           </div>
           {!frontendConfig.isCluster ?
-            <i class="fa fa-edit" onClick={handleEditName} style={{paddingTop: '14px'}}></i> :
+            <i className="fa fa-edit" onClick={handleEditName} style={{paddingTop: '14px'}}></i> :
             null}
           </>
       ) : (
         <>
           <Textbox type={'text'} value={formState.name} onChange={updateName}
-              required={true} disabled={nameEditDisabled}/> <i class="fa fa-check" onClick={closeEditName} style={{paddingTop: '14px'}}></i>
+              required={true} disabled={nameEditDisabled}/> <i className="fa fa-check" onClick={closeEditName} style={{paddingTop: '14px'}}></i>
         </>
       )}
       </div>
@@ -136,7 +136,7 @@ const ViewSettingsReactView = ({ name }) => {
                   }}
                 >
       <HashRouter basename={`view/${name}`} hashType={'noslash'}>
-      <div class="viewsstickyheader">
+      <div className="viewsstickyheader">
         <EditableViewName />
         {
           isAdminUser && views.length
