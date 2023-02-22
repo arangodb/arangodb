@@ -388,12 +388,8 @@ auto document::supervision::checkCollectionGroup(
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
     -> Action {
   if (group.target.collections.empty()) {
-    if (group.plan.has_value()) {
-      if (group.plan->collections.empty()) {
-        return DropCollectionGroup{group.target.id, group.plan->shardSheaves};
-      }  // else first drop collections
-    } else {
-      return DropCollectionGroup{group.target.id, {}};
+    if (group.plan.has_value() and group.plan->collections.empty()) {
+      return DropCollectionGroup{group.target.id, group.plan->shardSheaves};
     }
   }
 
