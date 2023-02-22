@@ -263,7 +263,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     // TRI_ASSERT(!hasBeenVisited(currentStep));
     ValidationResult res = _validator.validatePath(currentStep);
 
-    if (!res.isPruned()) {
+    if (!res.isPruned() && !res.isFiltered()) {
       // Add the step to our shell
       _queue.append(std::move(currentStep));
     }
@@ -308,23 +308,12 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   auto position = _visitedNodes.at(otherStep.getVertex().getID());
   auto ourStep = _interior.getStepReference(position);
 
-  // TODO: Check Prune + Filter - Currently, not supported, but could be (!) as
-  //  a new feature.
-  // auto res = _validator.validatePath(ourStep, otherSideValidator);
-  // TRI_ASSERT(!res.isFiltered());
-  // if (!res.isFiltered()) {
-  // }
+  auto res = _validator.validatePath(ourStep, otherSideValidator);
+  if (res.isPruned() || res.isFiltered()) {
+    // This validator e.g. checks for path uniqueness violations.
+    return -1.0;
+  }
 
-  // if (ourStep.isFirst() || otherStep.isFirst()) {
-  //  TODO IMPORTANT
-  //  TODO IMPORTANT
-  //   this has been an opt. approach - but is wrong.
-  //  TODO IMPORTANT
-  //  TODO: Check this. Without this code snippet - we polluted the candidates
-  //   store. We need to exclude special cases more carefully.
-  //  return -1.0; <-- this whole body of the code is just wrong. We cannot
-  //  exclude first or last
-  //}
   double fullPathWeight = ourStep.getWeight() + otherStep.getWeight();
 
   if (_direction == FORWARD) {
