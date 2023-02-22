@@ -28,13 +28,22 @@
 
 namespace arangodb::pregel {
 
+/*
+ * A quiver stores a bit of a graph; currently it stores vertex-centric: it
+ * stores vertices together with outgoing edges;
+ * the reason for this is mostly for backwards-compatibility with other
+ * Pregel code, and might change in future
+ */
 template<typename V, typename E>
 struct Quiver {
   using VertexType = Vertex<V, E>;
   using EdgeType = Edge<E>;
 
-  auto emplace(VertexType&& v) -> void { vertices.emplace(v); }
+  auto emplace(VertexType&& v) -> void { vertices.emplace_back(std::move(v)); }
   auto numberOfVertices() -> size_t { return vertices.size(); }
+
+  auto begin() { return std::begin(vertices); }
+  auto end() { return std::end(vertices); }
 
   std::vector<VertexType> vertices;
 };

@@ -64,6 +64,12 @@ struct ColorPropagationValue {
     return result;
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ColorPropagationValue& x) {
+  return f.object(x).fields(
+      f.field(Utils::equivalenceClass, x.equivalenceClass),
+      f.field(Utils::colors, x.colors));
+}
 
 struct ColorPropagationMessageValue {
   CollectionIdType equivalenceClass = 0;

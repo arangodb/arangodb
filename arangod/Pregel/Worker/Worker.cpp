@@ -325,43 +325,20 @@ void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
-  size_t total = _graphStore->localVertexCount();
-  size_t numSegments = _graphStore->numberVertexSegments();
-
-  if (total > 100000) {
-    _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
-  } else {
-    _runningThreads = 1;
-  }
-  _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
-  TRI_ASSERT(_runningThreads >= 1);
-  TRI_ASSERT(_runningThreads <= _config.parallelism());
-  size_t numT = _runningThreads;
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
 
   auto self = shared_from_this();
-  for (size_t i = 0; i < numT; i++) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT,
-                                                 numSegments] {
-      if (_state != WorkerState::COMPUTING) {
-        LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
-        return;
-      }
-      size_t dividend = numSegments / numT;
-      size_t remainder = numSegments % numT;
-      size_t startI = (i * dividend) + std::min(i, remainder);
-      size_t endI = ((i + 1) * dividend) + std::min(i + 1, remainder);
-      TRI_ASSERT(endI <= numSegments);
+  scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
+    if (_state != WorkerState::COMPUTING) {
+      LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
+      return;
+    }
+    if (_processVertices() && _state == WorkerState::COMPUTING) {
+      _finishedProcessing();  // last thread turns the lights out
+    }
+  });
 
-      auto vertices = _graphStore->vertexIterator(startI, endI);
-      // should work like a join operation
-      if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
-        _finishedProcessing();  // last thread turns the lights out
-      }
-    });
-  }
-
-  LOG_PREGEL("425c3", DEBUG)
-      << "Starting processing using " << numT << " threads";
+  LOG_PREGEL("425c3", DEBUG) << "Starting processing using " << 1 << " threads";
 }
 
 template<typename V, typename E, typename M>
@@ -375,19 +352,18 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices(
-    size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator) {
+bool Worker<V, E, M>::_processVertices() {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[threadId];
-  OutCache<M>* outCache = _outCaches[threadId];
+  InCache<M>* inCache = _inCaches[0];
+  OutCache<M>* outCache = _outCaches[0];
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
 
   AggregatorHandler workerAggregator(_algorithm.get());
-  // TODO look if we can avoid instantiating this
+
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
       _algorithm->createComputation(&_config));
   _initializeVertexContext(vertexComputation.get());
@@ -395,18 +371,17 @@ bool Worker<V, E, M>::_processVertices(
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (; vertexIterator.hasMore(); ++vertexIterator) {
-    Vertex<V, E>* vertexEntry = *vertexIterator;
+  for (auto& vertexEntry : _graphStore->quiver()) {
     MessageIterator<M> messages =
-        _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
+        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
     _currentGssObservables.messagesReceived += messages.size();
     _currentGssObservables.memoryBytesUsedForMessages +=
         messages.size() * sizeof(M);
 
-    if (messages.size() > 0 || vertexEntry->active()) {
-      vertexComputation->_vertexEntry = vertexEntry;
+    if (messages.size() > 0 || vertexEntry.active()) {
+      vertexComputation->_vertexEntry = &vertexEntry;
       vertexComputation->compute(messages);
-      if (vertexEntry->active()) {
+      if (vertexEntry.active()) {
         activeCount++;
       }
     }
@@ -421,6 +396,7 @@ bool Worker<V, E, M>::_processVertices(
       _makeStatusCallback()();
     }
   }
+
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
@@ -428,13 +404,10 @@ bool Worker<V, E, M>::_processVertices(
     return false;
   }
 
-  // double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
-  // TODO ask how to implement message sending without waiting for a response
-  // t = TRI_microtime() - t;
-
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
+
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   _currentGssObservables.messagesSent += outCache->sendCount();
@@ -444,7 +417,6 @@ bool Worker<V, E, M>::_processVertices(
   inCache->clear();
   outCache->clear();
 
-  bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
 
@@ -452,11 +424,9 @@ bool Worker<V, E, M>::_processVertices(
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
-    _runningThreads--;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-    lastThread = _runningThreads == 0;  // should work like a join operation
   }
-  return lastThread;
+  return true;
 }
 
 // called at the end of a worker thread, needs mutex
@@ -464,10 +434,11 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
   {
     MUTEX_LOCKER(guard, _threadMutex);
-    if (_runningThreads != 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "only one thread should ever enter this region");
-    }
+    /*    if (_runningThreads != 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "only one thread should ever enter this
+       region");
+        } */
   }
 
   // only lock after there are no more processing threads
@@ -569,12 +540,9 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
 
   VPackBuilder results;
   results.openArray(/*unindexed*/ true);
-  auto it = _graphStore->vertexIterator();
-  for (; it.hasMore(); ++it) {
-    Vertex<V, E> const* vertexEntry = *it;
-
-    TRI_ASSERT(vertexEntry->shard().value < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardID(vertexEntry->shard());
+  for (auto& vertex : _graphStore->quiver()) {
+    TRI_ASSERT(vertex.shard().value < _config.globalShardIDs().size());
+    ShardID const& shardId = _config.globalShardID(vertex.shard());
 
     results.openObject(/*unindexed*/ true);
 
@@ -584,17 +552,16 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
         tmp.clear();
         tmp.append(cname);
         tmp.push_back('/');
-        tmp.append(vertexEntry->key().data(), vertexEntry->key().size());
+        tmp.append(vertex.key().data(), vertex.key().size());
         results.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
 
-    results.add(
-        StaticStrings::KeyString,
-        VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
-                       VPackValueType::String));
+    results.add(StaticStrings::KeyString,
+                VPackValuePair(vertex.key().data(), vertex.key().size(),
+                               VPackValueType::String));
 
-    V const& data = vertexEntry->data();
+    V const& data = vertex.data();
     if (auto res =
             _graphStore->graphFormat()->buildVertexDocument(results, &data);
         !res) {
