@@ -30,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
