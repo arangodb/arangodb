@@ -250,7 +250,7 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
   } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
     return os << "ByExpression";
   } else {
-    return os << "[Unknown filter]";
+    return os << "[Unknown filter " << type().name() << " ]";
   }
 }
 
@@ -860,7 +860,8 @@ void assertExpressionFilter(
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
                                                            *filterNode)
                     .ok());
-    EXPECT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
+                                << to_string(actual);
     EXPECT_EQ(boost, actual.begin()->boost());
   }
 }

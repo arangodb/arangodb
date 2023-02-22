@@ -97,8 +97,8 @@ struct CollectionGroup {
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionPlanSpecification>
       planCollections;
-  struct CollectionCurrent {};
-  std::unordered_map<arangodb::CollectionID, CollectionCurrent>
+  std::unordered_map<arangodb::CollectionID,
+                     agency::CollectionCurrentSpecification>
       currentCollections;
 };
 

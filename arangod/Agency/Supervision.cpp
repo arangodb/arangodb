@@ -2796,10 +2796,19 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
 
         // parse current collection
         {
-          auto node = root.hasAsNode(basics::StringUtils::concatT(
-              "/Current/Collections/", dbName, "/", cid));
-          if (node.has_value()) {
-            spec.currentCollections[cid];
+          std::optional<CollectionCurrentSpecification> current;
+          try {
+            current = parseIfExists<CollectionCurrentSpecification>(
+                root, basics::StringUtils::concatT("/Current/Collections/",
+                                                   dbName, "/", cid));
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("48716", ERR, Logger::SUPERVISION)
+                << "failed to parse current collection " << dbName << "/" << cid
+                << ": " << ex.what();
+            throw;
+          }
+          if (current.has_value()) {
+            spec.currentCollections[cid] = std::move(*current);
           }
         }
       }

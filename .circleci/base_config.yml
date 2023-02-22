@@ -75,7 +75,7 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
       SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=info
+      SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
     steps:
       - run:
           name: Checkout
@@ -107,6 +107,8 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: build/bin/arango*
+      - store_artifacts:
+          path: /tmp/sccache.log
       - persist_to_workspace:
           root: .
           paths:

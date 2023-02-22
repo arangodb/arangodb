@@ -329,6 +329,18 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
       if (not group.currentCollections.contains(cid)) {
         return NoActionPossible{basics::StringUtils::concatT(
             "collection  ", cid, " not yet in current.")};
+      } else {
+        // check that all shards are there
+        ADB_PROD_ASSERT(group.planCollections.contains(cid));
+        auto const& planCol = group.planCollections.at(cid);
+        auto const& curCol = group.currentCollections.at(cid);
+        for (auto const& shard : planCol.shardList) {
+          if (not curCol.shards.contains(shard)) {
+            return NoActionPossible{
+                basics::StringUtils::concatT("shard ", shard, " of collection ",
+                                             cid, " not yet in current.")};
+          }
+        }
       }
     }
 
