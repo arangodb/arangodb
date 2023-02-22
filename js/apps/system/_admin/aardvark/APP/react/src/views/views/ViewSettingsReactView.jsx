@@ -6,15 +6,13 @@ import "./split-pane-styles.css";
 import "./viewsheader.css";
 import SplitPane from "react-split-pane";
 import useSWR from 'swr';
-import Textarea from '../../components/pure-css/form/Textarea';
-import { Cell, Grid } from '../../components/pure-css/grid';
+import { Cell } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { HashRouter, Route, Switch } from 'react-router-dom';
 import LinkList from './Components/LinkList';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
 import CopyFromInput from './forms/inputs/CopyFromInput';
-import JsonForm from './forms/JsonForm';
 import ToolTip from '../../components/arango/tootip';
 import Textbox from '../../components/pure-css/form/Textbox';
 import {
@@ -25,6 +23,7 @@ import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useView } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
+import { ViewRightPane } from './ViewRightPane.tsx';
 
 const ViewSettingsReactView = ({ name }) => {
 
@@ -288,13 +287,7 @@ const ViewSettingsReactView = ({ name }) => {
     }
   }
 
-  let jsonFormState = '';
-  let jsonRows = 1;
-  if (!isAdminUser) {
-    jsonFormState = JSON.stringify(formState, null, 4);
-    jsonRows = jsonFormState.split('\n').length;
-  }
-
+ 
   return <ViewContext.Provider
                   value={{
                     formState,
@@ -393,35 +386,12 @@ const ViewSettingsReactView = ({ name }) => {
               ]}
             />
           </div>
-          <div style={{ marginLeft: '15px' }}>
-            <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-                    aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
-              marginLeft: 'auto',
-              marginRight: 'auto'
-            }}>
-              <div className="modal-body" id={'view-json'}>
-                <div className={'tab-content'} style={{ display: 'unset' }}>
-                  <div className="tab-pane tab-pane-modal active" id="JSON">
-                    <Grid>
-                      <Cell size={'1'}>
-                        {
-                          isAdminUser
-                            ? <JsonForm formState={formState} dispatch={dispatch}
-                            renderKey={state.renderKey}/>
-                            : <Textarea disabled={true} value={jsonFormState}
-                                        rows={jsonRows}
-                                        style={{ cursor: 'text', marginTop: '0', marginBottom: '0', width: '100%', height: '95vh', paddingLeft: '0', paddingRight: '0', border: '0' }}/>
-                        }
-                      </Cell>
-                    </Grid>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ViewRightPane isAdminUser={isAdminUser} formState={formState} dispatch={dispatch} state={state} />
         </SplitPane>
       </section>
       </HashRouter>
       </ViewContext.Provider>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;
+
+
