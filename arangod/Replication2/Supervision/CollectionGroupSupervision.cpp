@@ -450,7 +450,16 @@ struct TransactionBuilder {
                                        database, "/", sheaf.replicatedLog));
     }
 
-    env = write.end();
+    env = write.precs()
+              .isEqual(basics::StringUtils::concatT(
+                           "/arango/Target/CollectionGroups/", database, "/",
+                           action.gid.id(), "/collections"),
+                       VPackSlice::emptyObjectSlice())
+              .isEqual(basics::StringUtils::concatT(
+                           "/arango/Plan/CollectionGroups/", database, "/",
+                           action.gid.id(), "/collections"),
+                       VPackSlice::emptyObjectSlice())
+              .end();
   }
 
   void operator()(UpdateReplicatedLogConfig const& action) {

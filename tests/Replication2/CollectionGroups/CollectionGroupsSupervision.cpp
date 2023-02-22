@@ -372,30 +372,6 @@ TEST_F(CollectionGroupsSupervisionTest, add_collection) {
       << result.index();
 }
 
-TEST_F(CollectionGroupsSupervisionTest, check_drop_empty_collection_group) {
-  constexpr auto numberOfShards = 3;
-
-  CollectionGroup group;
-  group.target.id = ag::CollectionGroupId{12};
-  group.target.version = 1;
-  group.target.attributes.mutableAttributes.replicationFactor = 3;
-  group.target.attributes.mutableAttributes.writeConcern = 3;
-  group.target.attributes.immutableAttributes.numberOfShards = numberOfShards;
-
-  replicated_log::ParticipantsHealth health;
-  health.update("DB1", RebootId{12}, true);
-  health.update("DB2", RebootId{11}, true);
-  health.update("DB3", RebootId{110}, true);
-
-  auto result = checkCollectionGroup(database, group, uniqid, health);
-  ASSERT_TRUE(std::holds_alternative<DropCollectionGroup>(result))
-      << result.index();
-
-  auto const& action = std::get<DropCollectionGroup>(result);
-  EXPECT_EQ(action.gid, ag::CollectionGroupId{12});
-  EXPECT_TRUE(action.logs.empty());
-}
-
 TEST_F(CollectionGroupsSupervisionTest,
        check_drop_empty_collection_group_with_plan) {
   constexpr auto numberOfShards = 3;

@@ -307,7 +307,6 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
   // collection is actually created
   auto const& stream = getStream();
   auto idx = stream->insert(entry);
-
   return stream->waitFor(idx).thenValue(
       [self = shared_from_this(), shard = std::move(shard),
        collectionId = std::move(collectionId)](auto&&) mutable {
@@ -315,8 +314,13 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
           if (data.didResign()) {
             return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
           }
-          return data.core->dropShard(std::move(shard),
-                                      std::move(collectionId));
+          // TODO we clear snapshot here, to release the shard lock. This is
+          //   very invasive and aborts all snapshot transfers. Maybe there is
+          //   a better solution?
+          self->_snapshotHandler.getLockedGuard().get()->clear();
+          auto result =
+              data.core->dropShard(std::move(shard), std::move(collectionId));
+          return result;
         });
       });
 }
