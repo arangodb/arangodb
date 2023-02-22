@@ -52,10 +52,9 @@ struct VertexID {
 
 template<typename Inspector>
 auto inspect(Inspector& f, VertexID& id) {
-  return f.object(id).fields(f.field("shard", id.shard), f.field("key", id.key));
+  return f.object(id).fields(f.field("shard", id.shard),
+                             f.field("key", id.key));
 }
-
-
 
 }  // namespace arangodb::pregel
 namespace std {
