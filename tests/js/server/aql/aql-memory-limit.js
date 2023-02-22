@@ -333,7 +333,6 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
         assertEqual(79800, actual.length);
       }
-
       
       try {
         // run query with same depth, but lower mem limit
