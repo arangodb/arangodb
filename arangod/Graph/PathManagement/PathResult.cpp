@@ -48,6 +48,7 @@ PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider,
                                            ProviderType& targetProvider)
     : _numVerticesFromSourceProvider(0),
       _numEdgesFromSourceProvider(0),
+      _pathWeight(0),
       _sourceProvider(sourceProvider),
       _targetProvider(targetProvider) {}
 
@@ -57,6 +58,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
+  _pathWeight = 0;
 }
 
 template<class ProviderType, class Step>
@@ -84,6 +86,11 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
   _edges.insert(_edges.begin(), std::move(e));
 }
 
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::addWeight(double weight) -> void {
+  _pathWeight += weight;
+}
+
 // NOTE:
 // Potential optimization: Instead of counting on each append
 // We can do a size call to the vector when switching the Provider.
@@ -92,7 +99,6 @@ template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder, WeightType weightType) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
-  double sumWeights = 0;
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
@@ -108,65 +114,28 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
   }
 
   {
-    auto getActualWeight = [&](size_t position) {
-      VPackBuilder tmpBuilder;
-
-      // TODO 0.) I do not like the fact that we have to put it into a
-      //  tmpBuilder to be able to read it.
-      _targetProvider.addEdgeToBuilder(_edges[position], tmpBuilder);
-
-      // TODO 1.): This is not true. It can be any value. For now ok.
-      if (tmpBuilder.slice().hasKey(StaticStrings::GraphQueryWeight)) {
-        // TRI_ASSERT() <-- TODO: Add assert / ADD PROPER mechanism to read
-        //  default weight and weight attribute here
-        // TODO !IMPORTANT!
-
-        if (tmpBuilder.slice()
-                .get(StaticStrings::GraphQueryWeight)
-                .isNumber()) {
-          double dummy = tmpBuilder.slice()
-                             .get(StaticStrings::GraphQueryWeight)
-                             .getNumber<double>();
-          return dummy;
-        }
-      }
-
-      // TODO 2.): What if value is not inside the edge, we need to use default
-      // weight.
-      return 1.0;
-    };
-
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
     // Write first part of the Path
     for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
       _sourceProvider.addEdgeToBuilder(_edges[i], builder);
-      if (weightType == WeightType::ACTUAL_WEIGHT) {
-        sumWeights += getActualWeight(i);
-      }
     }
     // Write second part of the Path
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
       _targetProvider.addEdgeToBuilder(_edges[i], builder);
-      if (weightType == WeightType::ACTUAL_WEIGHT) {
-        sumWeights += getActualWeight(i);
-      }
     }
   }
 
   if (weightType != WeightType::NONE) {
-    // TODO: Handle both cases properly. Think about better interface here.
-
     // We need to handled two different cases here. In case no weight callback
     // has been set, we need to write the amount of edges here. In case a weight
     // callback is set, we need to set the calculated weight.
-
     if (weightType == WeightType::AMOUNT_EDGES) {
       // Case 1) Amount of edges (as will be seen as weight=1 per edge)
       builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size()));
     } else if (weightType == WeightType::ACTUAL_WEIGHT) {
       // Case 2) Calculated weight (currently passed as parameter)
-      builder.add(StaticStrings::GraphQueryWeight, VPackValue(sumWeights));
+      builder.add(StaticStrings::GraphQueryWeight, VPackValue(_pathWeight));
     }
   }
 }

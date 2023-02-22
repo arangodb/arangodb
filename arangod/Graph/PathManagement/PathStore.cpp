@@ -110,6 +110,12 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResultType& path) const
     -> void {
   Step const* myStep = &vertex;
 
+  if (!myStep->isFirst()) {
+    // Append the weight, as we do accumulate the weight on all steps,
+    // this only needs to be added once.
+    path.addWeight(vertex.getWeight());
+  }
+
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
@@ -143,6 +149,10 @@ auto PathStore<Step>::reverseBuildPath(
 
   TRI_ASSERT(vertex.getEdge().isValid());
   path.appendEdge(vertex.getEdge());
+
+  // Append the weight, as we do accumulate the weight on all steps,
+  // this only needs to be added once.
+  path.addWeight(vertex.getWeight());
 
   Step const* myStep = &_schreier[vertex.getPrevious()];
 

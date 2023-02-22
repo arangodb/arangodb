@@ -382,20 +382,8 @@ auto WeightedTwoSidedEnumerator<
   // generates left and right parts of the path and combines them
   // TODO: Check if we can implement this more effectively.
   //  Right now the I'm using a quick approach here for code verification.
-
   _internalLeft.buildPath(first, resultPathCandidate);
   _internalRight.buildPath(second, resultPathCandidate);
-
-  // generates our (minimal) cached path representation
-  // TODO: Continue here.
-  // Tasks:
-  // * we need a minimal edge based representation that does not take a lot of
-  // memory
-  // * then we need to check if that path is already in our
-  // _internalResultsCache
-  // * if is is, return false
-  // * if it is now, return true and insert it to the cache datastructure.
-  // auto pathCandidate = _internalResultPathCandidate;
   for (auto const& pathToCheck : _internalResultsCache) {
     bool foundDuplicate =
         resultPathCandidate.isEqualEdgeRepresentation(pathToCheck);
