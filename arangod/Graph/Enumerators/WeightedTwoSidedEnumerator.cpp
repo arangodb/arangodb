@@ -223,17 +223,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::hasBeenVisited(Step const&
                                                                          step)
     -> bool {
-  /*if (_direction == FORWARD) {
-    LOG_DEVEL << "LEFT (visited): ";
-  } else {
-    LOG_DEVEL << "RIGHT (visited): ";
-  }
-
-  for (auto const& peter : _visitedNodes) {
-    arangodb::velocypack::HashedStringRef x = peter.first;
-    LOG_DEVEL << " -> " << x.toString() << " (" << peter.second << ")";
-  }*/
-
   if (_visitedNodes.contains(step.getVertex().getID())) {
     return true;
   }
@@ -261,24 +250,13 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   auto step = _queue.pop();
+  auto previous = _interior.append(step);
 
   if (_graphOptions.getPathType() == PathType::Type::ShortestPath) {
     if (hasBeenVisited(step)) {
       return -1.0;
     }
   }
-
-  auto previous = _interior.append(step);
-
-  auto verifyStep = [&](Step currentStep) {
-    // TRI_ASSERT(!hasBeenVisited(currentStep));
-    ValidationResult res = _validator.validatePath(currentStep);
-
-    if (!res.isFiltered() && !res.isPruned()) {
-      // Add the step to our shell
-      _queue.append(std::move(currentStep));
-    }
-  };
 
   double matchPathWeight = -1.0;
 
@@ -298,24 +276,15 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   _provider.expand(step, previous, [&](Step n) -> void {
-    // if (!hasBeenVisited(n)) { // TODO: Note - is this correct?!?!
-    verifyStep(std::move(n));
-    //}
+    ValidationResult res = _validator.validatePath(n);
+
+    if (!res.isFiltered() && !res.isPruned()) {
+      // Add the step to our shell
+      _queue.append(std::move(n));
+    }
   });
 
   return matchPathWeight;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::testDepthZero(Ball& other,
-                                        CandidatesStore& candidates) {
-  // TODO: Check - is this even required?
-  /*for (auto const& step : _shell) {
-    other.matchResultsInShell(step, candidates, _validator);
-  }*/
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -713,27 +682,14 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       if (_options.getPathType() == PathType::Type::KShortestPaths) {
         return checkKPathsCandidates();
       } else {
-        return checkShortestPathCandidates();
+        if (checkShortestPathCandidates()) {
+          return true;
+        };
       }
     }
   }
 
   TRI_ASSERT(isDone());
-
-  // TODO: logic above and logic below should be unified.
-  // TODO: begin
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    if (checkKPathsCandidates()) {
-      return true;
-    }
-  } else if (_options.getPathType() == PathType::Type::ShortestPath &&
-             !isAlgorithmFinished()) {
-    if (checkShortestPathCandidates()) {
-      return true;
-    }
-  }
-  // TODO: end
-
   return false;
 }
 
@@ -773,7 +729,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       if (_bestCandidateLength < 0 || matchPathLength < _bestCandidateLength) {
         _bestCandidateLength = matchPathLength;
       } else if (matchPathLength > _bestCandidateLength) {
-        // TODO: Double check this.
         // If a candidate has been found, we insert it into the store and only
         // return the length of that path. As soon as we insert in into the
         // store we sort that internal vector, therefore it might re-balance. If
@@ -789,20 +744,11 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // which do have lower weights as the current found (match).
 
         while (std::get<0>(_candidatesStore.peek()) < matchPathLength) {
+          bool foundShortestPath = false;
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
-          // TODO IMPORTANT: CHECK / DISCUSS THIS
-          // TRI_ASSERT(std::get<0>(potentialCandidate) ==
-          // _bestCandidateLength);
-
-          // This assert only being used for development. My guess has been that
-          // this needs to be true but currently (above assert) fails.
-          // TRI_ASSERT(std::get<0>(potentialCandidate) <=
-          // _bestCandidateLength);
-          bool foundShortestPath = false;
           if (_options.getPathType() == PathType::Type::KShortestPaths) {
             foundShortestPath = _resultsCache.addResult(potentialCandidate);
-
           } else if (_options.getPathType() == PathType::Type::ShortestPath) {
             // Performance optimization: We do not use the cache as we will
             // always calculate only one path.
@@ -823,12 +769,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             // initialize / reset. This means we need to find at least two new
             // paths to prove that we've found the next proven and valid
             // shortest path.
-
-            // TODO: CHECK THIS. Next row can be just removed I guess.
-            // ONly init value should be set to -1.0. As soon as we do have our
-            // candidates in place - and that list is sorted - we can just peek
-            // at the first one and set this as new "bestCandidate".
-            // _bestCandidateLength = -1.0;
             auto [weight, nextStepLeft, nextStepRight] =
                 _candidatesStore.peek();
             _bestCandidateLength = weight;
@@ -837,7 +777,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       }
     }
   }
-  // setAlgorithmFinished();
 
   if (_options.onlyProduceOnePath() && _bestCandidateLength >= 0) {
     fetchResult(_bestCandidateLength);
@@ -959,28 +898,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-/*
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::skipPath() {
-  while (!isDone()) {
-    searchMoreResults();
-
-    if (_bestCandidateLength >= 0 && isAlgorithmFinished()) {
-      // TODO: As soon as we enable also KShortestPaths - this must be changed.
-      //  The whole candidate structure right now is build for exactly one path
-      //  and not multiple paths.
-      //  This means we must calculate the second best path match as next.
-
-      // just drop one result for skipping
-      std::ignore = _candidatesStore.pop();
-      return true;
-    }
-  }
-  return false;
-}*/
-
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
@@ -1018,13 +935,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  LOG_DEVEL << " => SearchDone?: " << std::boolalpha
-            << (_left.noPathLeft() || _right.noPathLeft() ||
-                isAlgorithmFinished())
-            << " Candidates (" << _candidatesStore.size() << ")"
-            << " leftNoPath: " << std::boolalpha << _left.noPathLeft()
-            << " rightNoPath: " << std::boolalpha << _right.noPathLeft();
-
   return _left.noPathLeft() || _right.noPathLeft() || isAlgorithmFinished();
 }
 
@@ -1045,8 +955,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::fetchResult(double key)
     -> void {
   if (!_resultsFetched && !_candidatesStore.isEmpty()) {
-    // TODO: Double check this.
-    // TRI_ASSERT(key == weight);
     _left.fetchResult(_candidatesStore.peek());
     _right.fetchResult(_candidatesStore.peek());
   }

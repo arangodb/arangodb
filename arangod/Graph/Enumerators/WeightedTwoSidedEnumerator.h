@@ -165,8 +165,6 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
-    // Check if this can be removed
-    auto testDepthZero(Ball& other, CandidatesStore& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
@@ -182,10 +180,8 @@ class WeightedTwoSidedEnumerator {
 
     auto hasBeenVisited(Step const& step) -> bool;
 
-    // Ensure that we have fetched all vertices
-    // in the _results list.
-    // Otherwise we will not be able to
-    // generate the resulting path
+    // Ensure that we have fetched all vertices in the _results list.
+    // Otherwise, we will not be able to generate the resulting path
     auto fetchResults(CandidatesStore& candidates) -> void;
     auto fetchResult(CalculatedCandidate& candidate) -> void;
 
@@ -231,14 +227,10 @@ class WeightedTwoSidedEnumerator {
     auto clear() -> void;
 
    private:
-    auto checkIfPathExists() -> bool;
-
-   private:
     Ball& _internalLeft;
     Ball& _internalRight;
 
     // TODO: First implement simple, then add advanced range-based std::set
-    // std::set<double, std::vector<typename Step::Edge>> _resultsCache{};
     std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
   };
 
