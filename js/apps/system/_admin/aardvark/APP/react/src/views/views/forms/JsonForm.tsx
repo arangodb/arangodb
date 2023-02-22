@@ -22,9 +22,10 @@ type JsonFormProps =
   & Pick<State<FormState>, 'renderKey'>
   & {
   isEdit?: boolean;
+  mode?: 'code' | 'view'
 };
 
-const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormProps) => {
+const JsonForm = ({ formState, dispatch, renderKey, mode = 'code', isEdit = false }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const validate = useRef(ajv.compile(formSchema));
   const formStateSchema = useRef(cloneDeep(formSchema));
@@ -116,7 +117,7 @@ const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormPr
 
   return <Grid>
     <Cell size={'1'}>
-      <Editor value={formState} onChange={changeHandler} mode={'code'} history={true} key={renderKey} htmlElementProps={{style: {height: '95vh'}}}/>
+      <Editor value={formState} onChange={changeHandler} mode={mode} history={true} key={renderKey} htmlElementProps={{style: {height: '95vh'}}}/>
     </Cell>
     {
       formErrors.length
