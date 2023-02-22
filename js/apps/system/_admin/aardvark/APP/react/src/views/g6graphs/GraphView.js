@@ -706,6 +706,9 @@ export class GraphView extends React.Component {
         onSelectNode={(nodeId) => {
           this.props.onClickNode(nodeId);
         }}
+        onSelectEdge={(edgeId) => {
+          this.props.onClickEdge(edgeId);
+        }}
       />
 
       <GraphInfo>

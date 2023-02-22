@@ -677,6 +677,7 @@ const G6JsGraph = () => {
               onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
               onClickDocument={(document) => lookUpDocument(document)}
               onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
+              onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
                 setVisGraphData(newGraphData);
