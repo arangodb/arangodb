@@ -6,17 +6,17 @@ import sys
 from pathlib import Path
 from traceback import print_exc
 
-from site_config import SiteConfig
-from testing_runner import TestingRunner
-from test_config import TestConfig
-from launch_handler import launch_runner
-
 logging.basicConfig(
     filename="work/test_launcher.log",
     filemode="a",
     format="%(asctime)s [%(levelname)s] %(message)s",
     level=logging.DEBUG,
 )
+
+from site_config import SiteConfig
+from testing_runner import TestingRunner
+from test_config import TestConfig
+from launch_handler import launch_runner
 
 # check python 3
 if sys.version_info[0] != 3:

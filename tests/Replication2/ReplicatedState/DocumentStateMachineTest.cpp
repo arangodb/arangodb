@@ -1236,7 +1236,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_EQ(logIndex, LogIndex{});
 }
 
-TEST_F(DocumentStateMachineTest, leader_create_shard) {
+TEST_F(DocumentStateMachineTest, leader_create_and_drop_shard) {
   using namespace testing;
 
   DocumentFactory factory =
@@ -1267,6 +1267,26 @@ TEST_F(DocumentStateMachineTest, leader_create_shard) {
       .Times(1);
 
   leaderState->createShard(shardId, collectionId, velocypack::SharedSlice());
+
+  Mock::VerifyAndClearExpectations(stream.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  EXPECT_CALL(*stream, insert).Times(1).WillOnce([&](DocumentLogEntry entry) {
+    EXPECT_EQ(entry.operation, OperationType::kDropShard);
+    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.collectionId, collectionId);
+    return LogIndex{12};
+  });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
+
+  leaderState->dropShard(shardId, collectionId);
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {

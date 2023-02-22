@@ -1,8 +1,10 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,32 +20,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Valery Mironov
+/// @author Copyright 2023, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+const jsunity = require("jsunity");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const base = require("fs").join(require('internal').pathForTesting('server'),
+  'aql', 'aql-geo.inc');
+const geoSuite = require("internal").load(base);
+const isEnterprise = require("internal").isEnterprise();
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-#include "Cluster/ClusterTypes.h"
+function testGeo() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false, "geojson", {}),
+    suite,
+    "_vpack_arangosearch"
+  );
+  return suite;
+}
 
-struct TRI_vocbase_t;
-namespace arangodb {
-namespace maintenance {
+jsunity.run(testGeo);
 
-class DropCollection : public ActionBase, ShardDefinition {
- public:
-  DropCollection(MaintenanceFeature&, ActionDescription const&);
-
-  virtual ~DropCollection();
-
-  virtual bool first() override final;
-  void setState(ActionState state) override final;
-
- private:
-  bool dropReplication2Shard(ShardID const& shard, TRI_vocbase_t& vocbase);
-};
-
-}  // namespace maintenance
-}  // namespace arangodb
+return jsunity.done();

@@ -147,6 +147,7 @@ auto DocumentFollowerState::applyEntries(
                                               op.properties);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::DropShard>) {
+                self->_transactionHandler->abortTransactionsForShard(op.shard);
                 return data.core->dropShard(op.shard, op.collection);
               } else {
                 return Result{

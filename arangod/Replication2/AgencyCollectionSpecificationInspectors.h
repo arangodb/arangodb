@@ -94,6 +94,7 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::IsSmart, props.isSmart),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
+      f.field(StaticStrings::ShardKeys, props.shardKeys),
       f.field(StaticStrings::GraphSmartGraphAttribute,
               props.smartGraphAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
@@ -139,6 +140,20 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
          before release, which right now is occupied */
       f.field("shardsR2", x.shardList),
       f.template embedFields(x.deprecatedShardMap));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, CollectionCurrentShardSpecification& x) {
+  return f.object(x).fields(
+      f.field("errorMessage", x.errorMessage), f.field("error", x.error),
+      f.field("errorNum", x.errorNum), f.field("indexes", x.indexes),
+      f.field("failoverCandidates", x.failoverCandidates),
+      f.field("servers", x.servers));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, CollectionCurrentSpecification& x) {
+  return f.apply(x.shards);
 }
 
 }  // namespace arangodb::replication2::agency

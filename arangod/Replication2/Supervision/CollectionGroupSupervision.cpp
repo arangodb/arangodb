@@ -38,7 +38,7 @@ using namespace arangodb::replication2::document::supervision;
 namespace ag = arangodb::replication2::agency;
 namespace {
 
-auto checkReplicatedLogConverged(ag::Log const& log) -> bool {
+auto checkReplicatedLogConverged(ag::Log const& log) {
   if (not log.current or not log.current->supervision) {
     return false;
   }
@@ -229,10 +229,15 @@ auto pickBestServerToRemoveFromLog(
     std::shuffle(servers.begin(), servers.end(), g);
   }
 
-  static_assert(false < true);
-  auto const cmpTriple = [&](auto const& server) {
-    return std::make_tuple(!health.notIsFailed(server), leader == server,
-                           log.target.leader == server);
+  auto const compareTuple = [&](auto const& server) {
+    bool const isHealthy = not health.notIsFailed(server);
+    bool const isPlanLeader = leader == server;
+    bool const isTargetLeader = log.target.leader == server;
+
+    // TODO prefer servers without snapshot over those with
+    // TODO report server snapshot initially as invalid?
+
+    return std::make_tuple(isHealthy, isPlanLeader, isTargetLeader);
   };
 
   std::stable_sort(servers.begin(), servers.end(),
@@ -240,7 +245,7 @@ auto pickBestServerToRemoveFromLog(
                      // remove failed servers first
                      // then remove non-leaders
                      // then remove leaders that are not Target leaders
-                     return cmpTriple(left) < cmpTriple(right);
+                     return compareTuple(left) < compareTuple(right);
                    });
   ADB_PROD_ASSERT(not log.target.leader or
                   servers.front() != log.target.leader);
@@ -319,6 +324,26 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
       }
     }
 
+    // check collection is in current
+    for (auto const& [cid, coll] : group.target.collections) {
+      if (not group.currentCollections.contains(cid)) {
+        return NoActionPossible{basics::StringUtils::concatT(
+            "collection  ", cid, " not yet in current.")};
+      } else {
+        // check that all shards are there
+        ADB_PROD_ASSERT(group.planCollections.contains(cid));
+        auto const& planCol = group.planCollections.at(cid);
+        auto const& curCol = group.currentCollections.at(cid);
+        for (auto const& shard : planCol.shardList) {
+          if (not curCol.shards.contains(shard)) {
+            return NoActionPossible{
+                basics::StringUtils::concatT("shard ", shard, " of collection ",
+                                             cid, " not yet in current.")};
+          }
+        }
+      }
+    }
+
     return UpdateConvergedVersion{group.target.version};
   }
 
@@ -356,11 +381,12 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
 
     // TODO compare mutable properties and update if necessary
 
-    // TODO remove deprecatedShardMap comparison
-    auto expectedShardMap = computeShardList(
-        group.logs, group.plan->shardSheaves, collection.shardList);
-    if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
-      return UpdateCollectionShardMap{cid, expectedShardMap};
+    {  // TODO remove deprecatedShardMap comparison
+      auto expectedShardMap = computeShardList(
+          group.logs, group.plan->shardSheaves, collection.shardList);
+      if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
+        return UpdateCollectionShardMap{cid, expectedShardMap};
+      }
     }
   }
 
@@ -373,6 +399,12 @@ auto document::supervision::checkCollectionGroup(
     DatabaseID const& database, CollectionGroup const& group,
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
     -> Action {
+  if (group.target.collections.empty()) {
+    if (group.plan.has_value() and group.plan->collections.empty()) {
+      return DropCollectionGroup{group.target.id, group.plan->shardSheaves};
+    }
+  }
+
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
@@ -411,6 +443,36 @@ struct TransactionBuilder {
 
   // TODO do we need preconditions here?
   // TODO use agency paths
+
+  void operator()(DropCollectionGroup const& action) {
+    auto write = env.write()
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Target/CollectionGroups/", database, "/",
+                         action.gid.id()))
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Plan/CollectionGroups/", database, "/",
+                         action.gid.id()))
+                     .remove(basics::StringUtils::concatT(
+                         "/arango/Current/CollectionGroups/", database, "/",
+                         action.gid.id()));
+
+    for (auto sheaf : action.logs) {
+      write = std::move(write).remove(
+          basics::StringUtils::concatT("/arango/Target/ReplicatedLogs/",
+                                       database, "/", sheaf.replicatedLog));
+    }
+
+    env = write.precs()
+              .isEqual(basics::StringUtils::concatT(
+                           "/arango/Target/CollectionGroups/", database, "/",
+                           action.gid.id(), "/collections"),
+                       VPackSlice::emptyObjectSlice())
+              .isEqual(basics::StringUtils::concatT(
+                           "/arango/Plan/CollectionGroups/", database, "/",
+                           action.gid.id(), "/collections"),
+                       VPackSlice::emptyObjectSlice())
+              .end();
+  }
 
   void operator()(UpdateReplicatedLogConfig const& action) {
     env = env.write()
@@ -540,7 +602,7 @@ auto document::supervision::executeCheckCollectionGroup(
     // TODO remove logging later?
     LOG_TOPIC("33547", WARN, Logger::SUPERVISION)
         << "no progress possible for collection group " << database << "/"
-        << group.target.id;
+        << group.target.id << ": " << std::get<NoActionPossible>(action).reason;
     return envelope;
   }
 

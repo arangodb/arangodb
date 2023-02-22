@@ -25,6 +25,7 @@
 
 #include "Basics/debugging.h"
 #include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -77,5 +78,9 @@ auto DocumentStateTransaction::intermediateCommit() -> Result {
 auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
+
+auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
+  return nullptr != _methods->state()->collection(sid, AccessMode::Type::NONE);
+}
 
 }  // namespace arangodb::replication2::replicated_state::document

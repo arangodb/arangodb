@@ -70,6 +70,7 @@ const createCollectionTarget = function (gid, cid) {
     isSmart: false,
     isDisjoint: false,
     cacheEnabled: false,
+    shardKeys: ["_key"],
     type: 2,
     keyOptions: {
       allowUserKeys: true,
@@ -276,6 +277,27 @@ const collectionGroupsSupervisionSuite = function () {
         // leaders should be untouched
         assertEqual(leaders, newLeaders);
       }
+    },
+
+    testRemoveLastCollection: function () {
+      const {gid, cid} = createCollectionGroupTarget(database, {
+        replicationFactor: 3,
+        numberOfShards: 3,
+        numberOfCollections: 1,
+      });
+
+      dropCollectionFromGroup(database, gid, cid);
+      lh.waitFor(function() {
+        const {target, plan} = readCollectionGroup(database, gid);
+        if (target !== undefined) {
+          return Error("target still present");
+        }
+      });
+
+      const {target, plan, current} = readCollectionGroup(database, gid);
+      assertEqual(target, undefined);
+      assertEqual(plan, undefined);
+      assertEqual(current, undefined);
     },
   };
 };
