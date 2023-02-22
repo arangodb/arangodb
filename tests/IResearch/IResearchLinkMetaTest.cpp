@@ -4092,6 +4092,11 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
 
 // Circumventing fakeit inability to build a mock
 // for class with pure virtual functions in base
+class mock_field_iterator : public irs::field_iterator {
+ public:
+  void Destroy() const noexcept override {}
+};
+
 class mock_term_reader : public irs::term_reader {
  public:
   irs::seek_term_iterator::ptr iterator(irs::SeekMode mode) const override {
@@ -4149,7 +4154,8 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::Mock<mock_field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, Destroy)).AlwaysReturn();
   fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
     if (field == mockedFields.end()) {
       field = mockedFields.begin();
@@ -4308,30 +4314,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
     mockedFields.push_back(std::move(field_meta));
   }
 
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator>(
-        mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
@@ -4408,30 +4390,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
     mockedFields.push_back(std::move(field_meta));
   }
 
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator>(
-        mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
@@ -4506,31 +4464,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
     field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
     mockedFields.push_back(std::move(field_meta));
   }
-
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator>(
-        mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 3};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
@@ -4604,31 +4537,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
     field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
     mockedFields.push_back(std::move(field_meta));
   }
-
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator>(
-        mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 4};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
