@@ -228,14 +228,13 @@ futures::Future<Result>
 ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
   if (_rocksMethods->isIntermediateCommitNeeded()) {
     auto leader = leaderState();
-    auto operation = replication2::replicated_state::document::OperationType::
-        kIntermediateCommit;
+    auto operation =
+        replication2::replicated_state::document::ReplicatedOperation::
+            buildIntermediateCommitOperation(_transaction->id());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
     try {
-      return leader
-          ->replicateOperation(velocypack::SharedSlice{}, operation,
-                               _transaction->id(), collectionName(), options)
+      return leader->replicateOperation(operation, options)
           .thenValue([state = _transaction->shared_from_this(),
                       this](auto&& res) -> Result {
             return _rocksMethods->triggerIntermediateCommit();

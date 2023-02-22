@@ -64,11 +64,12 @@ auto ReplicatedOperation::buildTruncateOperation(TransactionId tid,
   return ReplicatedOperation{std::in_place, Truncate{tid, std::move(shard)}};
 }
 
-auto ReplicatedOperation::buildCreateShardOperation(CollectionID collection,
-                                                    ShardID shard) noexcept
-    -> ReplicatedOperation {
+auto ReplicatedOperation::buildCreateShardOperation(
+    CollectionID collection, ShardID shard,
+    velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place, CreateShard{std::move(collection), std::move(shard)}};
+      std::in_place, CreateShard{std::move(collection), std::move(shard),
+                                 std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildDropShardOperation(CollectionID collection,
@@ -79,7 +80,7 @@ auto ReplicatedOperation::buildDropShardOperation(CollectionID collection,
 }
 
 auto ReplicatedOperation::buildDocumentOperation(
-    TRI_voc_document_operation_e& op, TransactionId tid, ShardID shard,
+    TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
     velocypack::SharedSlice payload) noexcept -> ReplicatedOperation {
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:

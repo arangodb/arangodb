@@ -89,6 +89,7 @@ auto DocumentLeaderState::resign() && noexcept
   return core;
 }
 
+// TODO make sure we call release during recovery
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
   return _guardedData.doUnderLock([self = shared_from_this(),
@@ -104,47 +105,52 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
-      if (doc.operation == OperationType::kCreateShard) {
-        auto const& collectionId = doc.collectionId;
-        auto res = data.core->ensureShard(doc.shardId, collectionId, doc.data);
-        if (res.fail()) {
-          LOG_CTX("9e993", FATAL, self->loggerContext)
-              << "Failed to create shard " << doc.shardId << " of collection "
-              << collectionId << " with error: " << res;
-          FATAL_ERROR_EXIT();
-        }
-      } else if (doc.operation == OperationType::kDropShard) {
-        auto const& collectionId = doc.collectionId;
-        auto res = data.core->dropShard(doc.shardId, collectionId);
-        if (res.fail()) {
-          LOG_CTX("f1eb0", FATAL, self->loggerContext)
-              << "Failed to drop shard " << doc.shardId << " of collection "
-              << collectionId << " with error: " << res;
-          FATAL_ERROR_EXIT();
-        }
-      } else {
-        // Note that the shard could've been dropped before doing recovery.
-        if (!data.core->isShardAvailable(doc.shardId)) {
-          LOG_CTX("bee57", INFO, self->loggerContext)
-              << "Will not apply transaction " << doc.tid << " for shard "
-              << doc.shardId << " because it is not available";
-          continue;
-        }
 
-        auto res = transactionHandler->applyEntry(doc);
-        if (res.fail()) {
-          return res;
-        }
+      auto res = std::visit(
+          [&](auto& op) -> Result {
+            using T = std::decay_t<decltype(op)>;
+            if constexpr (ModifiesUserTransaction<T>) {
+              // Note that the shard could've been dropped before doing
+              // recovery.
+              if (!data.core->isShardAvailable(op.shard)) {
+                LOG_CTX("bee57", INFO, self->loggerContext)
+                    << "will not apply transaction " << op.tid << " for shard "
+                    << op.shard << " because it is not available";
+                return {};
+              }
+
+              return transactionHandler->applyEntry(doc);
+            } else if constexpr (
+                std::is_same_v<T, ReplicatedOperation::Commit> ||
+                std::is_same_v<T, ReplicatedOperation::Abort> ||
+                std::is_same_v<T, ReplicatedOperation::IntermediateCommit> ||
+                std::is_same_v<T, ReplicatedOperation::AbortAllOngoingTrx>) {
+              return transactionHandler->applyEntry(doc);
+            } else if constexpr (std::is_same_v<
+                                     T, ReplicatedOperation::CreateShard>) {
+              return data.core->ensureShard(op.shard, op.collection,
+                                            op.properties);
+            } else if constexpr (std::is_same_v<
+                                     T, ReplicatedOperation::DropShard>) {
+              return data.core->dropShard(op.shard, op.collection);
+            } else {
+              return Result{
+                  TRI_ERROR_INTERNAL,
+                  fmt::format("unknown operation: {}", doc.operation)};
+            }
+          },
+          doc.getInnerOperation());
+      if (res.fail()) {
+        LOG_CTX("0aa2e", FATAL, self->loggerContext)
+            << "failed to apply entry " << doc << " during recovery: " << res;
+        FATAL_ERROR_EXIT();
       }
     }
 
-    auto doc = DocumentLogEntry{{},  // this affects all shards
-                                OperationType::kAbortAllOngoingTrx,
-                                {},
-                                TransactionId{0},
-                                {}};
+    auto abortAll = DocumentLogEntry{
+        ReplicatedOperation::buildAbortAllOngoingTrxOperation()};
     auto stream = self->getStream();
-    stream->insert(doc);
+    stream->insert(abortAll);
 
     for (auto& [tid, trx] : transactionHandler->getUnfinishedTransactions()) {
       try {
@@ -164,10 +170,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   });
 }
 
-auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
-                                             OperationType operation,
-                                             TransactionId transactionId,
-                                             ShardID shard,
+// TODO make everything go through replicateOperation, including AbortAll and
+// shard operations
+auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
   if (_isResigning.load()) {
@@ -178,10 +183,43 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
-  if ((operation == OperationType::kCommit ||
-       operation == OperationType::kAbort) &&
-      !_activeTransactions.getLockedGuard()->erase(transactionId)) {
+  // No user transaction should ever try to replicate an AbortAllOngoingTrx
+  // operation.
+  TRI_ASSERT(!std::holds_alternative<ReplicatedOperation::AbortAllOngoingTrx>(
+      op.operation));
+
+  std::visit(
+      [&](auto& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, ReplicatedOperation::Commit> ||
+                      std::is_same_v<T, ReplicatedOperation::Abort> ||
+                      std::is_same_v<T,
+                                     ReplicatedOperation::IntermediateCommit> ||
+                      std::is_same_v<T, ReplicatedOperation::Truncate> ||
+                      std::is_same_v<T, ReplicatedOperation::Insert> ||
+                      std::is_same_v<T, ReplicatedOperation::Update> ||
+                      std::is_same_v<T, ReplicatedOperation::Replace> ||
+                      std::is_same_v<T, ReplicatedOperation::Remove>) {
+          arg.tid = arg.tid.asFollowerTransactionId();
+        }
+      },
+      op.operation);
+
+  auto needsReplication = std::visit(
+      [&](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, ReplicatedOperation::Commit> ||
+                      std::is_same_v<T, ReplicatedOperation::Abort>) {
+          // We don't replicate single abort/commit operations in case we have
+          // not replicated anything else for a transaction.
+          return _activeTransactions.getLockedGuard()->erase(arg.tid);
+        } else {
+          return true;
+        }
+      },
+      op.operation);
+
+  if (!needsReplication) {
     // we have not replicated anything for a transaction with this id, so
     // there is no need to replicate the abort/commit operation
     return LogIndex{};  // TODO - can we do this differently instead of
@@ -189,23 +227,32 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   auto const& stream = getStream();
-  auto entry = DocumentLogEntry{shard,
-                                operation,
-                                std::move(payload),
-                                transactionId.asFollowerTransactionId(),
-                                {}};
+  auto entry = DocumentLogEntry{op};
 
   // Insert and emplace must happen atomically
   auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     auto idx = stream->insert(entry);
-    if (operation != OperationType::kCommit &&
-        operation != OperationType::kAbort) {
-      activeTransactions.emplace(transactionId, idx);
-    } else {
-      // TODO - must not release commit entry before trx has actually been
-      // committed!
-      stream->release(activeTransactions.getReleaseIndex(idx));
-    }
+
+    std::visit(
+        [&](auto& arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, ReplicatedOperation::Truncate> ||
+                        std::is_same_v<T, ReplicatedOperation::Insert> ||
+                        std::is_same_v<T, ReplicatedOperation::Update> ||
+                        std::is_same_v<T, ReplicatedOperation::Replace> ||
+                        std::is_same_v<
+                            T, ReplicatedOperation::IntermediateCommit> ||
+                        std::is_same_v<T, ReplicatedOperation::Remove>) {
+            activeTransactions.emplace(arg.tid, idx);
+          } else if (std::is_same_v<T, ReplicatedOperation::Commit> ||
+                     std::is_same_v<T, ReplicatedOperation::Abort>) {
+            // TODO - must not release commit entry before trx has actually been
+            // committed!
+            stream->release(activeTransactions.getReleaseIndex(idx));
+          }
+        },
+        op.operation);
+
     return idx;
   });
 
@@ -217,7 +264,7 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
-auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
     -> ResultT<SnapshotConfig> {
   auto const& shardMap = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -270,11 +317,8 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
 auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
                                       velocypack::SharedSlice properties)
     -> futures::Future<Result> {
-  DocumentLogEntry entry;
-  entry.operation = OperationType::kCreateShard;
-  entry.shardId = shard;
-  entry.data = properties;
-  entry.collectionId = collectionId;
+  auto entry = DocumentLogEntry{ReplicatedOperation::buildCreateShardOperation(
+      shard, collectionId, properties)};
 
   // TODO actually we have to block this log entry from release until the
   // collection is actually created

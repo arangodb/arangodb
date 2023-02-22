@@ -62,21 +62,19 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
-    -> std::shared_ptr<IDocumentStateTransaction> {
+    TRI_vocbase_t& vocbase, TransactionId tid, ShardID const& shard,
+    AccessMode::Type accessType) -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, doc.tid,
-                                                               options);
+  auto state =
+      std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
+  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
-  auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId,
-      doc.operation == OperationType::kTruncate ? AccessMode::Type::EXCLUSIVE
-                                                : AccessMode::Type::WRITE);
+  auto methods =
+      std::make_unique<transaction::Methods>(std::move(ctx), shard, accessType);
   methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?

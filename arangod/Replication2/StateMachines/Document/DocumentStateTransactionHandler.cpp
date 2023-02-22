@@ -101,79 +101,96 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
   return it->second;
 }
 
-auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
-    -> Result {
-  if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-    _transactions.clear();
-    return Result{};
-  }
-
-  TRI_ASSERT(doc.tid.isFollowerTransactionId());
-
-  try {
-    auto trx = ensureTransaction(doc);
-    TRI_ASSERT(trx != nullptr);
-    switch (doc.operation) {
-      case OperationType::kInsert:
-      case OperationType::kUpdate:
-      case OperationType::kReplace:
-      case OperationType::kRemove:
-      case OperationType::kTruncate: {
-        auto opRes = trx->apply(doc);
-        auto res = opRes.fail() ? opRes.result
-                                : makeResultFromOperationResult(opRes, doc.tid);
-        if (res.fail() && shouldIgnoreError(opRes)) {
-          LoggerContext logContext =
-              LoggerContext(Logger::REPLICATED_STATE)
-                  .with<logContextKeyDatabaseName>(_gid.database)
-                  .with<logContextKeyLogId>(_gid.id);
-
-          LOG_CTX("0da00", INFO, logContext)
-              << "Result ignored while applying transaction " << doc.tid
-              << " with operation " << int(doc.operation) << " on shard "
-              << doc.shardId << ": " << res;
-          return Result{};
-        }
-        return res;
-      }
-      case OperationType::kCommit: {
-        auto res = trx->commit();
-        removeTransaction(doc.tid);
-        return res;
-      }
-      case OperationType::kAbort: {
-        auto res = trx->abort();
-        removeTransaction(doc.tid);
-        return res;
-      }
-      case OperationType::kAbortAllOngoingTrx:
-        TRI_ASSERT(false);  // should never happen as it should be handled above
-        FATAL_ERROR_EXIT();
-      case OperationType::kIntermediateCommit:
-        return trx->intermediateCommit();
-      default:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
-    }
-  } catch (basics::Exception& e) {
-    return Result{e.code(), e.message()};
-  } catch (std::exception& e) {
-    return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
-  }
+void DocumentStateTransactionHandler::setTrx(
+    TransactionId tid, std::shared_ptr<IDocumentStateTransaction> trx) {
+  auto [_, isInserted] = _transactions.emplace(tid, std::move(trx));
+  TRI_ASSERT(isInserted) << "Transaction " << tid << " already exists";
 }
 
-auto DocumentStateTransactionHandler::ensureTransaction(
-    DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
-  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
+auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc) -> Result
+    try {
+  return std::visit(
+      [this, &doc](auto&& op) -> Result {
+        using T = std::decay_t<decltype(op)>;
+        if constexpr (UserTransaction<T>) {
+          TRI_ASSERT(op.tid.isFollowerTransactionId());
 
-  auto tid = doc.tid;
-  auto trx = getTrx(tid);
-  if (trx != nullptr) {
-    return trx;
-  }
+          auto trx = getTrx(op.tid);
+          if constexpr (FinishesUserTransaction<T>) {
+            auto res = Result{};
+            if (trx == nullptr) {
+              // Transaction with no impact
+              return res;
+            }
+            if constexpr (std::is_same_v<T, ReplicatedOperation::Commit>) {
+              res = trx->commit();
+            } else if constexpr (std::is_same_v<T,
+                                                ReplicatedOperation::Abort>) {
+              res = trx->abort();
+            }
+            removeTransaction(op.tid);
+            return res;
+          } else if constexpr (std::is_same_v<
+                                   T,
+                                   ReplicatedOperation::IntermediateCommit>) {
+            if (trx == nullptr) {
+              // Transaction with no impact
+              return Result{};
+            }
+            return trx->intermediateCommit();
+          } else if constexpr (ModifiesUserTransaction<T>) {
+            if (trx == nullptr) {
+              auto accessType = std::is_same_v<T, ReplicatedOperation::Truncate>
+                                    ? AccessMode::Type::EXCLUSIVE
+                                    : AccessMode::Type::WRITE;
+              trx = _factory->createTransaction(*_vocbase, op.tid, op.shard,
+                                                accessType);
+              setTrx(op.tid, trx);
+            }
+            auto opRes = trx->apply(doc.operation);
+            auto res = opRes.fail()
+                           ? opRes.result
+                           : makeResultFromOperationResult(opRes, op.tid);
+            if (res.fail() && shouldIgnoreError(opRes)) {
+              LoggerContext logContext =
+                  LoggerContext(Logger::REPLICATED_STATE)
+                      .with<logContextKeyDatabaseName>(_gid.database)
+                      .with<logContextKeyLogId>(_gid.id);
 
-  trx = _factory->createTransaction(doc, *_vocbase);
-  _transactions.emplace(tid, trx);
-  return trx;
+              LOG_CTX("0da00", INFO, logContext)
+                  << "Result ignored while applying operation " << doc.operation
+                  << ": " << res;
+              res = Result{};
+            }
+            return res;
+          } else {
+            static_assert(
+                always_false_v<T>,
+                "Unhandled operation type. This should never happen.");
+          }
+        } else if constexpr (std::is_same_v<
+                                 T, ReplicatedOperation::AbortAllOngoingTrx>) {
+          _transactions.clear();
+          return Result{};
+        } else {
+          /*
+          static_assert(always_false_v<T>,
+                        "Unhandled operation type. This should never happen.");
+                        */
+          // There are the shard operations, which are not handled here.
+          TRI_ASSERT(false) << "Unhandled operation type. This should never "
+                               "happen.";
+          return Result{TRI_ERROR_INTERNAL};
+        }
+      },
+      doc.getInnerOperation());
+} catch (basics::Exception& e) {
+  return Result{e.code(), e.message()};
+} catch (std::exception& e) {
+  return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
+} catch (...) {
+  ADB_PROD_ASSERT(false) << doc;
+  return Result{TRI_ERROR_TRANSACTION_INTERNAL};
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {

@@ -31,6 +31,7 @@
 #include "Futures/Utilities.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
@@ -85,8 +86,8 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     return res;
   }
 
-  auto operation =
-      replication2::replicated_state::document::OperationType::kCommit;
+  auto operation = replication2::replicated_state::document::
+      ReplicatedOperation::buildCommitOperation(id());
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
   std::vector<futures::Future<Result>> commits;
@@ -107,13 +108,10 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         // We have to write to the log and wait for the log entry to be
         // committed (in the log sense), before we can commit locally.
         auto leader = rtc.leaderState();
-        commits.emplace_back(
-            leader
-                ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                                     tc.collectionName(), options)
-                .thenValue([&rtc](auto&& res) -> Result {
-                  return rtc.commitTransaction();
-                }));
+        commits.emplace_back(leader->replicateOperation(operation, options)
+                                 .thenValue([&rtc](auto&& res) -> Result {
+                                   return rtc.commitTransaction();
+                                 }));
       } else {
         // For read-only transactions the commit is a no-op, but we still have
         // to call it to ensure cleanup.
@@ -167,8 +165,8 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     return res;
   }
 
-  auto operation =
-      replication2::replicated_state::document::OperationType::kAbort;
+  auto operation = replication2::replicated_state::document::
+      ReplicatedOperation::buildAbortOperation(id());
   auto options = replication2::replicated_state::document::ReplicationOptions{};
 
   // The following code has been simplified based on this assertion.
@@ -178,8 +176,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     if (rtc.accessType() != AccessMode::Type::READ) {
       auto leader = rtc.leaderState();
       try {
-        leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                                   col->collectionName(), options);
+        leader->replicateOperation(operation, options);
       } catch (basics::Exception const& e) {
         return Result{e.code(), e.what()};
       } catch (std::exception const& e) {

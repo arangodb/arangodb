@@ -48,6 +48,7 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
+    explicit DocumentOperation() = default;
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 
@@ -108,11 +109,13 @@ struct ReplicatedOperation {
   struct CreateShard {
     ShardID shard;
     CollectionID collection;
+    velocypack::SharedSlice properties;
 
     template<class Inspector>
     friend auto inspect(Inspector& f, CreateShard& x) {
       return f.object(x).fields(f.field("shard", x.shard),
-                                f.field("collection", x.collection));
+                                f.field("collection", x.collection),
+                                f.field("properties", x.properties));
     }
   };
 
@@ -156,9 +159,11 @@ struct ReplicatedOperation {
   };
 
  public:
-  std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort, Truncate,
-               CreateShard, DropShard, Insert, Update, Replace, Remove>
-      operation;
+  using OperationType =
+      std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
+                   Truncate, CreateShard, DropShard, Insert, Update, Replace,
+                   Remove>;
+  OperationType operation;
 
   static auto buildAbortAllOngoingTrxOperation() noexcept
       -> ReplicatedOperation;
@@ -170,16 +175,30 @@ struct ReplicatedOperation {
       -> ReplicatedOperation;
   static auto buildTruncateOperation(TransactionId tid, ShardID shard) noexcept
       -> ReplicatedOperation;
-  static auto buildCreateShardOperation(CollectionID collection,
-                                        ShardID shard) noexcept
-      -> ReplicatedOperation;
+  static auto buildCreateShardOperation(
+      CollectionID collection, ShardID shard,
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(CollectionID collection,
                                       ShardID shard) noexcept
       -> ReplicatedOperation;
-  static auto buildDocumentOperation(TRI_voc_document_operation_e& op,
+  static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
                                      velocypack::SharedSlice payload) noexcept
       -> ReplicatedOperation;
+
+  static constexpr auto isUserTransaction(OperationType const& op) noexcept
+      -> bool {
+    return std::visit(
+        [](auto&& op) {
+          using T = std::decay_t<decltype(op)>;
+          return std::is_same_v<T, Commit> ||
+                 std::is_same_v<T, IntermediateCommit> ||
+                 std::is_same_v<T, Abort> || std::is_same_v<T, Truncate> ||
+                 std::is_same_v<T, Insert> || std::is_same_v<T, Update> ||
+                 std::is_same_v<T, Replace> || std::is_same_v<T, Remove>;
+        },
+        op);
+  }
 
   template<typename Inspector>
   friend auto inspect(Inspector& f, ReplicatedOperation& x) {
@@ -203,6 +222,30 @@ struct ReplicatedOperation {
   template<typename... Args>
   explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept;
 };
+
+template<class T>
+concept ModifiesUserTransaction =
+    std::is_same_v<T, ReplicatedOperation::Truncate> ||
+    std::is_same_v<T, ReplicatedOperation::Insert> ||
+    std::is_same_v<T, ReplicatedOperation::Update> ||
+    std::is_same_v<T, ReplicatedOperation::Replace> ||
+    std::is_same_v<T, ReplicatedOperation::Remove>;
+
+template<class T>
+concept FinishesUserTransaction =
+    std::is_same_v<T, ReplicatedOperation::Commit> ||
+    std::is_same_v<T, ReplicatedOperation::Abort>;
+
+template<class T>
+concept UserTransaction =
+    ModifiesUserTransaction<T> || FinishesUserTransaction<T> ||
+    std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
+
+template<typename T, typename... U>
+concept IsAnyOf = (std::same_as<T, U> || ...);
+
+template<class... T>
+constexpr bool always_false_v = false;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 }  // namespace arangodb::replication2::replicated_state::document

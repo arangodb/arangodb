@@ -32,7 +32,7 @@ DocumentStateTransaction::DocumentStateTransaction(
     std::unique_ptr<transaction::Methods> methods)
     : _methods(std::move(methods)) {}
 
-auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
+auto DocumentStateTransaction::apply(ReplicatedOperation const& op)
     -> OperationResult {
   // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
@@ -44,26 +44,30 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
   opOptions.waitForSync = false;
   opOptions.indexOperationMode = IndexOperationMode::internal;
 
-  switch (entry.operation) {
-    case OperationType::kInsert:
-    case OperationType::kUpdate:
-    case OperationType::kReplace:
-      opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kRemove:
-      return _methods->remove(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kTruncate:
-      // TODO Think about correctness and efficiency.
-      return _methods->truncate(entry.shardId, opOptions);
-    default:
-      TRI_ASSERT(false);
-      return OperationResult{
-          Result{TRI_ERROR_TRANSACTION_INTERNAL,
-                 fmt::format(
-                     "Transaction of type {} with ID {} could not be applied",
-                     int(entry.operation), entry.tid.id())},
-          opOptions};
-  }
+  return std::visit(
+      [this, &op, &opOptions](auto&& operation) -> OperationResult {
+        using T = std::decay_t<decltype(operation)>;
+        if constexpr (IsAnyOf<T, ReplicatedOperation::Insert,
+                              ReplicatedOperation::Update,
+                              ReplicatedOperation::Replace>) {
+          opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          return _methods->insert(operation.shard, operation.payload.slice(),
+                                  opOptions);
+        } else if constexpr (std::is_same_v<T, ReplicatedOperation::Remove>) {
+          return _methods->remove(operation.shard, operation.payload.slice(),
+                                  opOptions);
+        } else if constexpr (std::is_same_v<T, ReplicatedOperation::Truncate>) {
+          // TODO Think about correctness and efficiency.
+          return _methods->truncate(operation.shard, opOptions);
+        } else {
+          TRI_ASSERT(false) << op;
+          return OperationResult{
+              Result{TRI_ERROR_TRANSACTION_INTERNAL,
+                     fmt::format("Operation {} cannot be applied", op)},
+              opOptions};
+        }
+      },
+      op.operation);
 }
 
 auto DocumentStateTransaction::intermediateCommit() -> Result {

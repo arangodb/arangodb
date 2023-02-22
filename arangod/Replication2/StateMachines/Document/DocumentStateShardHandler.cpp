@@ -59,7 +59,7 @@ auto DocumentStateShardHandler::createLocalShard(
             fmt::format("Cannot create shard ID {}", shardId)};
   }
 
-  // TODO add dirty
+  _maintenanceFeature.addDirty(_gid.database);
 
   return {};
 }

@@ -52,9 +52,7 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  auto replicateOperation(velocypack::SharedSlice payload,
-                          OperationType operation, TransactionId transactionId,
-                          ShardID shard, ReplicationOptions opts)
+  auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
       -> futures::Future<LogIndex>;
 
   auto createShard(ShardID shard, CollectionID collectionId,

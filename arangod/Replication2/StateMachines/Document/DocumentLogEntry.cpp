@@ -28,29 +28,9 @@
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 
-auto document::fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
-    -> OperationType {
-  switch (op) {
-    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      return OperationType::kInsert;
-    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      return OperationType::kUpdate;
-    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-      return OperationType::kReplace;
-    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-      return OperationType::kRemove;
-    default:
-      ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
-  }
-  return {};  // should never be reached, but compiler complains about missing
-              // return
-}
-
-auto document::operator<<(std::ostream& os, DocumentLogEntry entry)
+auto document::operator<<(std::ostream& ostream, DocumentLogEntry const& entry)
     -> std::ostream& {
-  VPackBuilder b;
-  velocypack::serialize(b, entry);
-  return os << b.toJson();
+  return ostream << velocypack::serialize(entry).toJson();
 }
 
 auto EntryDeserializer<DocumentLogEntry>::operator()(

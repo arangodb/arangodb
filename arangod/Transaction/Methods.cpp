@@ -2647,10 +2647,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       body.add("collection", collectionName);
     }
     try {
+      auto operation =
+          replication2::replicated_state::document::ReplicatedOperation::
+              buildTruncateOperation(state()->id(), trxColl->collectionName());
       leaderState->replicateOperation(
-          body.sharedSlice(),
-          replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(), trxColl->collectionName(),
+          std::move(operation),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return OperationResult(Result{e.code(), e.what()}, options);
@@ -3142,11 +3143,12 @@ Future<Result> Methods::replicateOperations(
         transactionCollection);
     auto leaderState = rtc.leaderState();
     try {
+      auto replicatedOp = replication2::replicated_state::document::
+          ReplicatedOperation::buildDocumentOperation(
+              operation, state()->id(), rtc.collectionName(),
+              replicationData.sharedSlice());
       leaderState->replicateOperation(
-          replicationData.sharedSlice(),
-          replication2::replicated_state::document::fromDocumentOperation(
-              operation),
-          state()->id(), rtc.collectionName(),
+          std::move(replicatedOp),
           replication2::replicated_state::document::ReplicationOptions{});
     } catch (basics::Exception const& e) {
       return Result{e.code(), e.what()};

@@ -139,22 +139,23 @@ const getDocumentEntries = function (entries, type, document) {
   if (document === undefined) {
     let matchingType = [];
     for (const entry of entries) {
-      if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
+      if (entry.hasOwnProperty("payload") && entry.payload.operation.type === type) {
         matchingType.push(entry);
       }
     }
     return matchingType;
   }
   for (const entry of entries) {
-    if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
+    if (entry.hasOwnProperty("payload") && entry.payload.operation.type === type) {
+      let op = entry.payload.operation;
       // replication entries can contain an array of documents (batch op)
-      if (Array.isArray(entry.payload.data)) {
+      if (Array.isArray(op.payload)) {
         // in this case try to find the document in the batch
-        let res = entry.payload.data.filter((doc) => doc._key === document._key);
+        let res = op.payload.filter((doc) => doc._key === document._key);
         if (res.length === 1) {
           return entry;
         }
-      } else if (entry.payload.data._key === document._key) {
+      } else if (op.payload._key === document._key) {
         // single document operation was replicated
         return entry;
       }
@@ -175,7 +176,7 @@ const searchDocs = function(logs, docs, opType) {
   for (const doc of docs) {
     let entry = getDocumentEntries(allEntries, opType, doc);
     assertNotNull(entry);
-    assertEqual(entry.payload.operation, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+    assertEqual(entry.payload.operation.type, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
   }
 };
 
@@ -184,9 +185,9 @@ const searchDocs = function(logs, docs, opType) {
  */
 const getArrayElements = function(logs, opType, name) {
   let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
-      .filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation === opType
-          && Array.isArray(entry.payload.data))
-      .reduce((previous, current) => previous.concat(current.payload.data), []);
+      .filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation.type === opType
+          && Array.isArray(entry.payload.operation.payload))
+      .reduce((previous, current) => previous.concat(current.payload.operation.payload), []);
   if (name === undefined) {
     return entries;
   }
@@ -366,16 +367,16 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let found = [];
       let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1010)), []);
       for (const entry of allEntries) {
-        if (entry.hasOwnProperty("payload") && entry.payload.operation === opType) {
-          let colName = entry.payload.data.collection;
+        if (entry.hasOwnProperty("payload") && entry.payload.operation.type === opType) {
+          let colName = entry.payload.operation.shard;
           assertTrue(shards.includes(colName) && !found.includes(colName));
           found.push(colName);
         }
       }
       assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
           JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
-              entry.hasOwnProperty("payload") && entry.payload.operation !== "Insert"
-              && entry.payload.operation !== "Commit")));
+              entry.hasOwnProperty("payload") && entry.payload.operation.type !== "Insert"
+              && entry.payload.operation.type !== "Commit")));
     }
   };
 };
@@ -697,7 +698,7 @@ const replicatedStateRecoverySuite = function () {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
         }
-        return entry.payload.operation === "AbortAllOngoingTrx";
+        return entry.payload.operation.type === "AbortAllOngoingTrx";
       });
       assertTrue(abortAllEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
 

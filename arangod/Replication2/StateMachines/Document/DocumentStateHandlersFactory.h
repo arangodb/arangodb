@@ -22,9 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-
-#include "Futures/Future.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/Options.h"
@@ -38,10 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class AgencyCache;
-class DatabaseFeature;
 class MaintenanceFeature;
-class TransactionState;
 
 template<typename T>
 class ResultT;
@@ -62,7 +56,6 @@ class Builder;
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateAgencyHandler;
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateSnapshotHandler;
@@ -79,8 +72,9 @@ struct IDocumentStateHandlersFactory {
   virtual auto createTransactionHandler(TRI_vocbase_t& vocbase,
                                         GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
-  virtual auto createTransaction(DocumentLogEntry const& doc,
-                                 TRI_vocbase_t& vocbase)
+  virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+                                 ShardID const& shard,
+                                 AccessMode::Type accessType)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
@@ -99,7 +93,8 @@ class DocumentStateHandlersFactory
       -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
+  auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+                         ShardID const& shard, AccessMode::Type accessType)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
