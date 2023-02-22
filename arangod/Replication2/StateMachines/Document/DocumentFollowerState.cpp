@@ -115,7 +115,7 @@ auto DocumentFollowerState::applyEntries(
                 // snapshot, we could still see transactions referring to that
                 // shard.
                 if (!data.core->isShardAvailable(op.shard)) {
-                  LOG_CTX("bee57", INFO, self->loggerContext)
+                  LOG_CTX("e1edb", INFO, self->loggerContext)
                       << "will not apply transaction " << op.tid
                       << " for shard " << op.shard
                       << " because it is not available";

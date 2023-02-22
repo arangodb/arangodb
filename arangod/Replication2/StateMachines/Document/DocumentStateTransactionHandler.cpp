@@ -119,6 +119,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc) -> Result
           if constexpr (FinishesUserTransaction<T>) {
             auto res = Result{};
             if (trx == nullptr) {
+              // TODO find why this happens
               // Transaction with no impact
               return res;
             }

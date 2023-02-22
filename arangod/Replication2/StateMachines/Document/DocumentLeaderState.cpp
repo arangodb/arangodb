@@ -342,10 +342,9 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
 
 auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     -> futures::Future<Result> {
-  DocumentLogEntry entry;
-  entry.operation = OperationType::kDropShard;
-  entry.shardId = shard;
-  entry.collectionId = collectionId;
+  ReplicatedOperation op =
+      ReplicatedOperation::buildDropShardOperation(collectionId, shard);
+  auto entry = DocumentLogEntry{op};
 
   // TODO actually we have to block this log entry from release until the
   // collection is actually created
