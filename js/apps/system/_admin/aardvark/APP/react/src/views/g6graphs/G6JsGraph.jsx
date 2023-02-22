@@ -316,16 +316,16 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
-  const openEditNodeModal = (node) => {
-    const slashPos = node.indexOf("/");
-    setNodeToEdit(node);
-    setNodeKey(node.substring(slashPos + 1));
-    setNodeCollection(node.substring(0, slashPos));
+  const openEditNodeModal = (nodeId) => {
+    const slashPos = nodeId.indexOf("/");
+    setNodeToEdit(nodeId);
+    setNodeKey(nodeId.substring(slashPos + 1));
+    setNodeCollection(nodeId.substring(0, slashPos));
     const nodeDataObject = {
       "keys": [
-        node.substring(slashPos + 1)
+        nodeId.substring(slashPos + 1)
       ],
-      "collection": node.substring(0, slashPos)
+      "collection": nodeId.substring(0, slashPos)
     };
 
     arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
@@ -678,7 +678,7 @@ const G6JsGraph = () => {
               }}
               onRemoveSingleNode={(node) => removeNode(node)}
               onRemoveSingleEdge={(edge) => removeEdge(edge)}
-              onEditNode={(node) => openEditNodeModal(node)}
+              onEditNode={(nodeId) => openEditNodeModal(nodeId)}
               onEditEdge={(edge) => openEditEdgeModal(edge)}
               onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
               onAddNodeToDb={() => openAddNodeModal()}
