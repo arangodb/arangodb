@@ -15,6 +15,7 @@ import {
 import { postProcessor, useView, useDisableNavBar } from './helpers';
 import { ViewSection } from './ViewSection.tsx';
 import { ViewHeader } from './ViewHeader.tsx';
+import { ChakraProvider } from '@chakra-ui/react';
 
 const ViewSettingsReactView = ({ name }) => {
   useDisableNavBar();
@@ -96,27 +97,29 @@ const ViewSettingsReactView = ({ name }) => {
                   }}
                 >
       <HashRouter basename={`view/${name}`} hashType={'noslash'}>
-        <ViewHeader
-          editName={editName}
-          formState={formState}
-          handleEditName={handleEditName}
-          updateName={updateName}
-          nameEditDisabled={nameEditDisabled}
-          closeEditName={closeEditName}
-          isAdminUser={isAdminUser}
-          views={views}
-          dispatch={dispatch}
-          changed={changed}
-          name={name}
-          setChanged={setChanged}
-        />
-        <ViewSection
-          name={name}
-          formState={formState}
-          dispatch={dispatch}
-          isAdminUser={isAdminUser}
-          state={state}
-        />
+        <ChakraProvider>
+          <ViewHeader
+            editName={editName}
+            formState={formState}
+            handleEditName={handleEditName}
+            updateName={updateName}
+            nameEditDisabled={nameEditDisabled}
+            closeEditName={closeEditName}
+            isAdminUser={isAdminUser}
+            views={views}
+            dispatch={dispatch}
+            changed={changed}
+            name={name}
+            setChanged={setChanged}
+          />
+          <ViewSection
+            name={name}
+            formState={formState}
+            dispatch={dispatch}
+            isAdminUser={isAdminUser}
+            state={state}
+          />
+        </ChakraProvider>
       </HashRouter>
       </ViewContext.Provider>;
 };
