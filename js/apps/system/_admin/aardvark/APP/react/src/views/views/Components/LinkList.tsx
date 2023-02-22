@@ -63,7 +63,8 @@ const LinkList = () => {
   }}>
     <div className="modal-body" style={{
       border: 'none',
-      height: 'fit-content'
+      height: 'fit-content',
+      overflow: 'visible'
     }}>
       <Grid>
         <Cell size={"1"}>
