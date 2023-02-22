@@ -52,8 +52,7 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
         TRI_ASSERT(options != geo::coding::Options::kInvalid);
         TRI_ASSERT(encoder->avail() >= sizeof(uint8_t));
         // We store type, because parseCoordinates store it
-        // In store to column we will remove it
-        encoder->put8(geo::coding::toTag(geo::coding::Type::kPoint, options));
+        encoder->put8(0);  // In store to column we will remove it
         if (geo::coding::isOptionsS2(options)) {
           auto point = latLng.ToPoint();
           geo::encodePoint(*encoder, point);

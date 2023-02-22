@@ -74,13 +74,13 @@ S2Point encodePointImpl(S2LatLng latLng, coding::Options options,
   return latLng.ToPoint();
 }
 
-void encodePointsImpl(std::span<S2LatLng> cache, coding::Options options,
-                      Encoder* encoder) {
+void encodeImpl(std::span<S2LatLng> cache, coding::Type type,
+                coding::Options options, Encoder* encoder) {
   if (encoder != nullptr) {
     TRI_ASSERT(options != coding::Options::kInvalid);
     TRI_ASSERT(!coding::isOptionsS2(options));
     TRI_ASSERT(encoder->avail() >= sizeof(uint8_t) + Varint::kMax64);
-    encoder->put8(coding::toTag(coding::Type::kMultiPoint, options));
+    encoder->put8(coding::toTag(type, options));
     encoder->put_varint64(cache.size());
     encodeVertices(*encoder, cache, options);
   } else if (options == coding::Options::kS2LatLngInt) {
@@ -671,6 +671,9 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
       if (Validation && ADB_UNLIKELY(!r.ok())) {
         return r;
       }
+      if (Validation && !isS2) {
+        encodeImpl(cache, coding::Type::kPolyline, options, encoder);
+      }
       auto d = std::make_unique<S2Polyline>(cache, S2Debug::DISABLE);
       if (S2Error error; Validation && d->FindValidationError(&error)) {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -695,7 +698,7 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
         return r;
       }
       if (Validation && !isS2) {
-        encodePointsImpl(cache, options, encoder);
+        encodeImpl(cache, coding::Type::kMultiPoint, options, encoder);
       }
       auto d = std::make_unique<S2MultiPointRegion>();
       fillPoints(d->Impl(), cache);
