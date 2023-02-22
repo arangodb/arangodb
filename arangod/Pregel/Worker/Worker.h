@@ -100,8 +100,6 @@ class Worker : public IWorker {
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
   mutable Mutex _commandMutex;
-  // locks _workerThreadDone
-  mutable Mutex _threadMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
