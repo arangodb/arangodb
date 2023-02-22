@@ -1,8 +1,9 @@
 import React from "react";
-import Select from 'react-select';
 
-const MultiSelect = () => {
-  return <Select />
-}
+import CreatableSelect from "react-select/creatable";
+import { Props } from "react-select";
 
-export default MultiSelect;
+const CreatableMultiSelect = (props: Props) => (
+  <CreatableSelect isMulti {...props} />
+);
+export default CreatableMultiSelect;

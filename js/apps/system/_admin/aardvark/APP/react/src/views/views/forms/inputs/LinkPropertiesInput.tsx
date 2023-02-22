@@ -9,8 +9,7 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import ToolTip from "../../../../components/arango/tootip";
-import { Link, useRouteMatch } from "react-router-dom";
-import NewField from "../../Components/NewField";
+import { FieldSelect } from "./FieldSelect";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -26,7 +25,6 @@ const LinkPropertiesInput = ({
     getApiRouteForCurrentDB().get(path)
   );
   const [options, setOptions] = useState<string[]>([]);
-  const match = useRouteMatch();
   const analyzers = useMemo(() => get(formState, 'analyzers', [] as string[]), [formState]);
 
   useEffect(() => {
@@ -101,11 +99,10 @@ const LinkPropertiesInput = ({
   const fieldKeys = Object.keys(formState.fields || {});
   const fields = fieldKeys.map(key => {
     return {
-      key,
-      value: <Link to={`${match.url}/${key}`}>{key}</Link>
+      label: key,
+      value: key
     };
   });
-
   return (
     <Grid>
       <Cell size={"1-2"}>
@@ -124,28 +121,19 @@ const LinkPropertiesInput = ({
           </Cell>
 
           <Cell size={"1"}>
-            <span style={{
-              float: 'left',
-              width: '84%'
-            }}>
-              <AutoCompleteMultiSelect
-                values={fields}
-                onRemove={removeField}
-                onSelect={addField}
-                label={"Fields"}
+            <span
+              style={{
+                float: "left",
+                width: "84%"
+              }}
+            >
+              <label>Fields</label>
+              <FieldSelect
+                fields={fields}
+                removeField={removeField}
+                addField={addField}
                 disabled={disabled}
-                readOnly={true}
-                placeholder={'Click on the ⊕ button to add a field.'}
-                style={{
-                  width: '100%'
-                }}
               />
-            </span>
-            <span style={{
-              float: 'left',
-              marginTop: 26
-            }}>
-              <NewField/>
             </span>
           </Cell>
         </Grid>
