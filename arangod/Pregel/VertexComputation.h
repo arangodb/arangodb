@@ -87,9 +87,7 @@ class VertexContext {
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
-  std::vector<Edge<E>>& getEdges() const {
-    return _vertexEntry->getEdges();
-  }
+  std::vector<Edge<E>>& getEdges() const { return _vertexEntry->getEdges(); }
 
   void setVertexData(V const& val) {
     _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));

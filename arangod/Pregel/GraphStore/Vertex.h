@@ -92,7 +92,9 @@ struct Vertex {
 template<typename V, typename E, typename Inspector>
 auto inspect(Inspector& f, Vertex<V, E>& v) {
   return f.object(v).fields(f.field("key", v._key), f.field("shard", v._shard),
-                            f.field("active", v._active), f.field("edges", v._edges), f.field("data", v._data));
+                            f.field("active", v._active),
+                            f.field("edges", v._edges),
+                            f.field("data", v._data));
 }
 
 }  // namespace arangodb::pregel
