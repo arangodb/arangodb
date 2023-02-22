@@ -304,6 +304,7 @@ const ViewSettingsReactView = ({ name }) => {
                     setChanged
                   }}
                 >
+      <HashRouter basename={`view/${name}`} hashType={'noslash'}>
       <div class="viewsstickyheader">
         <EditableViewName />
         {
@@ -342,7 +343,6 @@ const ViewSettingsReactView = ({ name }) => {
                 {
                   index: 0,
                   content: <div>
-                  <HashRouter basename={`view/${name}`} hashType={'noslash'}>
                     <Switch>
                       <Route path={'/:link'}>
                         <LinkList name={name}/>
@@ -352,8 +352,7 @@ const ViewSettingsReactView = ({ name }) => {
                         <LinkList name={name}/>
                       </Route>
                     </Switch>
-                  </HashRouter>
-                </div>,
+                  </div>,
                   label: "Links",
                   testID: "accordionItem0",
                   defaultActive: true
@@ -422,6 +421,7 @@ const ViewSettingsReactView = ({ name }) => {
           </div>
         </SplitPane>
       </section>
+      </HashRouter>
       </ViewContext.Provider>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;

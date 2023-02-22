@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompleteMultiSelect";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { Link, useHistory, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 //const LinkList = ({ name }: ViewProps) => {
 const LinkList = () => {
@@ -16,15 +16,6 @@ const LinkList = () => {
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState<string[]>([]);
-  const history = useHistory();
-  const location = useLocation();
-  useEffect(() => {
-    viewContext.history = history;
-  }, [viewContext, history]);
-  useEffect(() => {
-    viewContext.location = location;
-  }, [viewContext, location]);
-
   useEffect(() => {
     if (data) {
       const linkKeys = chain(formState.links)
