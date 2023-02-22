@@ -237,33 +237,6 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   TRI_ASSERT(false);
 }
 
-template<typename V, typename E>
-RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator() {
-  if (_vertices.empty()) {
-    return RangeIterator<Vertex<V, E>>(_vertices, 0, nullptr, 0);
-  }
-
-  TypedBuffer<Vertex<V, E>>* front = _vertices.front().get();
-  return RangeIterator<Vertex<V, E>>(_vertices, 0, front->begin(),
-                                     _localVertexCount);
-}
-
-template<typename V, typename E>
-RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator(size_t i,
-                                                             size_t j) {
-  if (_vertices.size() <= i) {
-    return RangeIterator<Vertex<V, E>>(_vertices, 0, nullptr, 0);
-  }
-
-  size_t numVertices = 0;
-  for (size_t x = i; x < j && x < _vertices.size(); x++) {
-    numVertices += _vertices[x]->size();
-  }
-
-  return RangeIterator<Vertex<V, E>>(_vertices, i, _vertices[i]->begin(),
-                                     numVertices);
-}
-
 namespace {
 template<typename X>
 void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
@@ -369,9 +342,8 @@ auto GraphStore<V, E>::loadVertices(
       auto& info = *edgeCollectionInfos[i];
       loadEdges(trx, ventry, edgeShard, documentId, numVertices, info);
     }
+    _quiver.emplace(std::move(ventry));
     ++_observables.verticesLoaded;
-
-    std::cerr << inspection::json(ventry, inspection::JsonPrintFormat::kPretty);
     return true;
   };
 
@@ -428,7 +400,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
               covering.at(info.coveringPosition()).stringView();
           auto toVertexID = _config->documentIdToPregel(toValue);
 
-          vertex.addEdge(Edge<E>{._to = toVertexID, ._data = {}});
+          vertex.addEdge(Edge<E>(toVertexID, {}));
           return true;
         },
         1000)) { /* continue loading */
@@ -443,7 +415,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
               transaction::helpers::extractToFromDocument(slice).stringView();
           auto toVertexID = _config->documentIdToPregel(toValue);
 
-          auto edge = Edge<E>{._to = toVertexID};
+          auto edge = Edge<E>(toVertexID, {});
           _graphFormat->copyEdgeData(
               *trx.transactionContext()->getVPackOptions(), slice, edge.data());
           vertex.addEdge(std::move(edge));
@@ -479,8 +451,8 @@ uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 /// Should not dead-lock unless we have to wait really long for other threads
 template<typename V, typename E>
 void GraphStore<V, E>::storeVertices(
-    std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
-    size_t threadNumber, std::function<void()> const& statusUpdateCallback) {
+    std::vector<ShardID> const& globalShards,
+    std::function<void()> const& statusUpdateCallback) {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -494,7 +466,6 @@ void GraphStore<V, E>::storeVertices(
 
   VPackBuilder builder;
   uint64_t numDocs = 0;
-  double lastLogStamp = TRI_microtime();
 
   auto commitTransaction = [&]() {
     if (trx) {
@@ -531,14 +502,6 @@ void GraphStore<V, E>::storeVertices(
       }
 
       numDocs = 0;
-
-      // log only every 10 seconds
-      double now = TRI_microtime();
-      if (now - lastLogStamp >= 10.0) {
-        lastLogStamp = now;
-        LOG_PREGEL("24837", DEBUG) << "Worker thread " << threadNumber << ", "
-                                   << it.size() << " vertices left to store";
-      }
     }
 
     builder.clear();
@@ -549,11 +512,11 @@ void GraphStore<V, E>::storeVertices(
   // This loop will fill a buffer of vertices until we run into a new
   // collection
   // or there are no more vertices for to store (or the buffer is full)
-  for (; it.hasMore(); ++it) {
-    if (it->shard() != currentShard || numDocs >= 1000) {
+  for (auto& vertex : _quiver) {
+    if (vertex.shard() != currentShard || numDocs >= 1000) {
       commitTransaction();
 
-      currentShard = it->shard();
+      currentShard = vertex.shard();
       shard = globalShards[currentShard.value];
 
       auto ctx =
@@ -568,12 +531,12 @@ void GraphStore<V, E>::storeVertices(
       }
     }
 
-    std::string_view const key = it->key();
+    std::string_view const key = vertex.key();
 
     builder.openObject(true);
     builder.add(StaticStrings::KeyString,
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    V const& data = it->data();
+    V const& data = vertex.data();
     if (auto result = _graphFormat->buildVertexDocument(builder, &data);
         !result) {
       LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
@@ -602,48 +565,32 @@ void GraphStore<V, E>::storeResults(
   double now = TRI_microtime();
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
-  size_t const numSegments = _vertices.size();
+  _runningThreads.store(1);
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
 
-  uint32_t numThreads = 1;
-  if (_localVertexCount > 100000) {
-    // We expect at least parallelism to fit in a uint32_t.
-    numThreads = static_cast<uint32_t>(
-        std::min<size_t>(_config->parallelism(), numSegments));
-  }
+  LOG_PREGEL("f3fd9", DEBUG)
+      << "Storing vertex data (" << _quiver.numberOfVertices()
+      << " vertices) using " << 1 << " threads";
 
-  _runningThreads.store(numThreads, std::memory_order_relaxed);
-  _feature.metrics()->pregelNumberOfThreads->fetch_add(numThreads);
-  size_t const numT = numThreads;
-  LOG_PREGEL("f3fd9", DEBUG) << "Storing vertex data (" << numSegments
-                             << " vertices) using " << numT << " threads";
-
-  for (size_t i = 0; i < numT; ++i) {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=, this] {
-      size_t startI = i * (numSegments / numT);
-      size_t endI = (i + 1) * (numSegments / numT);
-      TRI_ASSERT(endI <= numSegments);
-
-      try {
-        RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        storeVertices(_config->globalShardIDs(), it, i, statusUpdateCallback);
-        // TODO can't just write edges with SmartGraphs
-      } catch (std::exception const& e) {
-        LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
-      } catch (...) {
-        LOG_PREGEL("51b87", ERR) << "Storing vertex data failed";
-      }
-
-      uint32_t numRunning =
-          _runningThreads.fetch_sub(1, std::memory_order_relaxed);
-      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-      TRI_ASSERT(numRunning > 0);
-      if (numRunning - 1 == 0) {
-        LOG_PREGEL("b5a21", DEBUG)
-            << "Storing data took " << (TRI_microtime() - now) << "s";
-        cb();
-      }
-    });
-  }
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=, this] {
+    try {
+      storeVertices(_config->globalShardIDs(), statusUpdateCallback);
+      // TODO can't just write edges with SmartGraphs
+    } catch (std::exception const& e) {
+      LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
+    } catch (...) {
+      LOG_PREGEL("51b87", ERR) << "Storing vertex data failed";
+    }
+    uint32_t numRunning =
+        _runningThreads.fetch_sub(1, std::memory_order_relaxed);
+    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
+    TRI_ASSERT(numRunning > 0);
+    if (numRunning - 1 == 0) {
+      LOG_PREGEL("b5a21", DEBUG)
+          << "Storing data took " << (TRI_microtime() - now) << "s";
+      cb();
+    }
+  });
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

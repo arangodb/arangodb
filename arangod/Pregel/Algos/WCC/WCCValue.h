@@ -25,6 +25,8 @@
 
 #include "Pregel/GraphStore/VertexID.h"
 
+#include <unordered_set>
+
 namespace arangodb::pregel::algos {
 struct WCCValue {
   uint64_t component;
@@ -32,7 +34,8 @@ struct WCCValue {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WCCValue& v) {
-  return f.object(v).fields(f.field("component", v.component),
-                            f.field("inboundNeighbors", v.inboundNeighbors));
+  return f.object(v).fields(f.field("component", v.component));
+  //                            f.field("inboundNeighbors",
+  //                            v.inboundNeighbors));
 }
 }  // namespace arangodb::pregel::algos

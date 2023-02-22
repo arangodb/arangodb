@@ -136,8 +136,7 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(size_t threadId,
-                        RangeIterator<Vertex<V, E>>& vertexIterator);
+  bool _processVertices();
   void _finishedProcessing();
   void _callConductor(std::string const& path, VPackBuilder const& message);
   [[nodiscard]] auto _observeStatus() -> Status const;
