@@ -4,7 +4,7 @@ import { formSchema, FormState, linksSchema } from './constants';
 import { useEffect, useMemo, useState } from 'react';
 import { DispatchArgs, State } from '../../utils/constants';
 import { getPath } from '../../utils/helpers';
-import { chain, cloneDeep, escape, get, isNull, merge, omit, set, truncate, uniqueId } from 'lodash';
+import { chain, cloneDeep, get, isNull, merge, omit, set, uniqueId } from 'lodash';
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
@@ -93,82 +93,6 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
     state.renderKey = uniqueId('force_re-render_');
   }
 };
-
-export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string, changed: boolean) => {
-  let breadCrumb = 'View: ' + escape(truncate(name, { length: 64 }));
-  if (!isAdminUser) {
-    breadCrumb += ' (read-only)';
-  } else if (changed) {
-    breadCrumb += '* (unsaved changes)';
-  }
-
-  const defaultRoute = '#view/' + encodeURIComponent(name);
-  const menus: { [key: string]: any } = {
-
-    Settings: {
-      route: defaultRoute
-    },
-    //Links: {
-    //  route: `${defaultRoute}/links`
-    //},
-    // 'Consolidation Policy': {
-    //   route: `${defaultRoute}/consolidation`
-    // },
-    // Info: {
-    //   route: `${defaultRoute}/info`
-    // },
-    //JSON: {
-    //  route: `${defaultRoute}/json`
-    //}
-  };
-
-  menus[activeKey].active = true;
-
-  const $ = window.$;
-
-  // Directly render subnav when container divs already exist.
-  // This is used during client-side navigation.
-  $('#subNavigationBar .breadcrumb').html(breadCrumb);
-  arangoHelper.buildSubNavBar(menus);
-
-  // Setup observer to watch for container divs creation, then render subnav.
-  // This is used during direct page loads or a page refresh.
-  const target = $("#subNavigationBar")[0];
-  const observer = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
-      const newNodes = mutation.addedNodes; // DOM NodeList
-      if (newNodes !== null) { // If there are new nodes added
-        const $nodes = $(newNodes); // jQuery set
-        $nodes.each(function (_idx: number, node: Element) {
-          const $node = $(node);
-          if ($node.hasClass("breadcrumb")) {
-            $node.html(breadCrumb);
-          } else if ($node.hasClass("bottom")) {
-            arangoHelper.buildSubNavBar(menus);
-          }
-        });
-      }
-    });
-  });
-
-  const config = {
-    attributes: true,
-    childList: true,
-    characterData: true
-  };
-
-  observer.observe(target, config);
-
-  return observer;
-};
-
-export function useNavbar (name: string, isAdminUser: boolean, changed: boolean, key: string) {
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, key, changed);
-
-    return () => observer.disconnect();
-  });
-}
 
 const disableSubNav = () => {
    // Setup observer to watch for container divs creation, then disable subnav.

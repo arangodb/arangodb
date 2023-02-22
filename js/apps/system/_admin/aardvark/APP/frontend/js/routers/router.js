@@ -62,10 +62,7 @@
       'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'viewSettings',
-      // 'view/:name/info': 'viewInfo',
-      // 'view/:name/consolidation': 'viewConsolidation',
       'view/:name/*link': 'viewSettings',
-      'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1344,15 +1341,6 @@
         this.userManagementView.render(true);
       });
     },
-
-    viewInfo: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
-          document.getElementById('content')));
-    },
-
     viewSettings: function (name) {
       this.checkUser();
 
@@ -1360,31 +1348,6 @@
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
           document.getElementById('content')));
     },
-
-    viewConsolidation: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewLinks: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewJSON: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
-          document.getElementById('content')));
-    },
-
     views: function () {
       this.checkUser();
 
