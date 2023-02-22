@@ -22,11 +22,12 @@ import {
 import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useView } from './helpers';
+import { postProcessor, useView, useDisableNavBar } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
 import { ViewRightPane } from './ViewRightPane.tsx';
 
 const ViewSettingsReactView = ({ name }) => {
-
+  useDisableNavBar();
   const [editName, setEditName] = useState(false);
 
   const handleEditName = () => {

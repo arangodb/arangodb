@@ -169,3 +169,40 @@ export function useNavbar (name: string, isAdminUser: boolean, changed: boolean,
     return () => observer.disconnect();
   });
 }
+
+const disableSubNav = () => {
+   // Setup observer to watch for container divs creation, then disable subnav.
+  // This is used during direct page loads or a page refresh.
+  const target = $("#subNavigationBar")[0];
+  const observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      const newNodes = mutation.addedNodes; // DOM NodeList
+      if (newNodes !== null) { // If there are new nodes added
+        const $nodes = $(newNodes); // jQuery set
+        $nodes.each(function (_idx: number, node: NodeList) {
+          const $node = $(node);
+         if ($node.hasClass("bottom")) {
+            $node.remove()
+          }
+        });
+      }
+    });
+  });
+
+  const config = {
+    attributes: true,
+    childList: true,
+    characterData: true
+  };
+
+  observer.observe(target, config);
+
+  return observer;
+}
+export function useDisableNavBar() {
+  useEffect(() => {
+    const observer = disableSubNav();
+
+    return () => observer.disconnect();
+  });
+}
