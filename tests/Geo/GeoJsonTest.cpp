@@ -35,7 +35,7 @@
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
-#include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/S2/S2MultiPolylineRegion.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 
 // -----------------------------------------------------------------------------
@@ -48,7 +48,7 @@ class InvalidGeoJSONInputTest : public ::testing::Test {
   S2LatLng point;
   S2Polyline line;
   geo::S2MultiPointRegion points;
-  geo::S2MultiPolyline polylines;
+  geo::S2MultiPolylineRegion polylines;
   S2Polygon polygon;
   S2Loop loop;
   geo::ShapeContainer shape;
@@ -1216,7 +1216,7 @@ class ValidGeoJSONInputTest : public ::testing::Test {
  protected:
   S2LatLng point;
   S2Polyline line;
-  geo::S2MultiPolyline polylines;
+  geo::S2MultiPolylineRegion polylines;
   geo::ShapeContainer shape;
 
   VPackBuilder builder;
