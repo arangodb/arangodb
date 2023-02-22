@@ -394,6 +394,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
         [&](LocalDocumentId const& /*token*/,
             IndexIteratorCoveringData& covering) {
           TRI_ASSERT(covering.isArray());
+          ++addedEdges;
           ++_observables.edgesLoaded;
 
           std::string_view toValue =
@@ -409,6 +410,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
     while (cursor->nextDocument(
         [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
           slice = slice.resolveExternal();
+          ++addedEdges;
           ++_observables.edgesLoaded;
 
           std::string_view toValue =
