@@ -207,7 +207,8 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    std::unordered_map<typename Step::VertexType, size_t> _visitedNodes;
+    std::unordered_map<typename Step::VertexType, std::vector<size_t>>
+        _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
   };
