@@ -105,8 +105,8 @@ const disableSubNav = () => {
         const $nodes = $(newNodes); // jQuery set
         $nodes.each(function (_idx: number, node: NodeList) {
           const $node = $(node);
-         if ($node.hasClass("bottom")) {
-            $node.remove()
+          if ($node.hasClass("bottom")) {
+            $node.hide();
           }
         });
       }
@@ -122,11 +122,19 @@ const disableSubNav = () => {
   observer.observe(target, config);
 
   return observer;
-}
+};
+
 export function useDisableNavBar() {
   useEffect(() => {
+    const bottomSubNav = $("#subNavigationBar .subMenuEntries.bottom")[0];
+    if (bottomSubNav) {
+      $(bottomSubNav).hide();
+    }
     const observer = disableSubNav();
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      $(bottomSubNav).show();
+    };
   });
 }
