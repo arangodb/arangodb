@@ -105,14 +105,20 @@ const ViewSettingsReactView = ({ name }) => {
     });
   };
 
-  const tempIsAdminUser = userIsAdmin(permissions);
-  if (tempIsAdminUser !== isAdminUser) { // Prevents an infinite render loop.
-    setIsAdminUser(tempIsAdminUser);
-  }
+  
+  useEffect(()=> {
+    const tempIsAdminUser = userIsAdmin(permissions);
+    if (tempIsAdminUser !== isAdminUser) {
+      setIsAdminUser(tempIsAdminUser);
+      dispatch({
+        type: 'regenRenderKey'
+      });
+    }
+  }, [isAdminUser, permissions]);
+
 
   const formState = state.formState;
   const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
-
   if (data) {
     if (!isEqual(data.body.result, views)) {
       setViews(data.body.result);
