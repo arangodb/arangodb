@@ -27,8 +27,7 @@
 
 #include "Inspection/Format.h"
 #include "Inspection/JsonPrintInspector.h"
-
-#include "InspectionTestHelper.h"
+#include "Inspection/InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;
