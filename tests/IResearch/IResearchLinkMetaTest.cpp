@@ -740,37 +740,37 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   meta._fields["c"]->_fields.clear();
   meta._fields["c"]->_fields["default"]->_analyzers.emplace_back(identity);
   // will override values below
-  auto& overrideAll = meta._fields["c"]->_fields["all"];
+  auto& overrideAll = *meta._fields["c"]->_fields["all"];
 
   // initialize with parent, override below
-  auto& overrideSome = meta._fields["c"]->_fields["some"] = meta._fields["c"];
+  auto& overrideSome = *(meta._fields["c"]->_fields["some"] = meta._fields["c"]);
   // initialize with parent
-  auto& overrideNone = meta._fields["c"]->_fields["none"] = meta._fields["c"];
+  auto& overrideNone = *(meta._fields["c"]->_fields["none"] = meta._fields["c"]);
   meta._sort.emplace_back(
       {arangodb::basics::AttributeName(std::string_view("_key"), false)}, true);
   meta._sort.emplace_back(
       {arangodb::basics::AttributeName(std::string_view("_id"), false)}, false);
 
   // do not inherit fields to match jSon inheritance
-  overrideAll->_fields.clear();
-  overrideAll->_fields["x"]->_analyzers.emplace_back(identity);
-  overrideAll->_fields["y"]->_analyzers.emplace_back(identity);
-  overrideAll->_includeAllFields = false;
-  overrideAll->_trackListPositions = false;
-  overrideAll->_storeValues = arangodb::iresearch::ValueStorage::NONE;
-  overrideAll->_analyzers.clear();
-  overrideAll->_analyzers.emplace_back(
+  overrideAll._fields.clear();
+  overrideAll._fields["x"]->_analyzers.emplace_back(identity);
+  overrideAll._fields["y"]->_analyzers.emplace_back(identity);
+  overrideAll._includeAllFields = false;
+  overrideAll._trackListPositions = false;
+  overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
+  overrideAll._analyzers.clear();
+  overrideAll._analyzers.emplace_back(
       arangodb::iresearch::IResearchLinkMeta::Analyzer(
           analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
                         arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
           "empty"));
 
   // do not inherit fields to match jSon inheritance
-  overrideSome->_fields.clear();
-  overrideSome->_trackListPositions = false;
-  overrideSome->_storeValues = arangodb::iresearch::ValueStorage::ID;
+  overrideSome._fields.clear();
+  overrideSome._trackListPositions = false;
+  overrideSome._storeValues = arangodb::iresearch::ValueStorage::ID;
   // do not inherit fields to match jSon inheritance
-  overrideNone->_fields.clear();
+  overrideNone._fields.clear();
 
   // without active vobcase (not fullAnalyzerDefinition)
   {
