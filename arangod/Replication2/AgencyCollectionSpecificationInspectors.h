@@ -142,4 +142,18 @@ auto inspect(Inspector& f, CollectionPlanSpecification& x) {
       f.template embedFields(x.deprecatedShardMap));
 }
 
+template<class Inspector>
+auto inspect(Inspector& f, CollectionCurrentShardSpecification& x) {
+  return f.object(x).fields(
+      f.field("errorMessage", x.errorMessage), f.field("error", x.error),
+      f.field("errorNum", x.errorNum), f.field("indexes", x.indexes),
+      f.field("failoverCandidates", x.failoverCandidates),
+      f.field("servers", x.servers));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, CollectionCurrentSpecification& x) {
+  return f.apply(x.shards);
+}
+
 }  // namespace arangodb::replication2::agency
