@@ -24,6 +24,8 @@ import { postProcessor, useView, useDisableNavBar } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
 import { ViewRightPane } from './ViewRightPane.tsx';
 import { GeneralContent } from './GeneralContent.tsx';
+import { StoredValuesContent } from './StoredValuesContent.tsx';
+import { PrimarySortContent, PrimarySortTitle } from './PrimarySortContent.tsx';
 
 const ViewSettingsReactView = ({ name }) => {
   useDisableNavBar();
@@ -62,58 +64,6 @@ const ViewSettingsReactView = ({ name }) => {
       )}
       </div>
     )
-  };
-
-  const PrimarySortTitle = () => {
-    const compressionInfo = formState.primarySortCompression !== 'none' ? `(compression: ${formState.primarySortCompression})` : '';
-    return (
-      `Primary Sort ${compressionInfo}`
-    )
-  };
-
-  const PrimarySortContent = () => {
-    const noPrimarySortInfo = formState.primarySort.length === 0 ? "No fields set" : null;
-    return (<table>
-      <tbody>
-      {
-        formState.primarySort.map (item =>(
-          <tr className="tableRow" id={"row_" + (item.field)}>
-            <th className="collectionTh">
-              {item.field}:
-            </th>
-            <th className="collectionTh">
-            <Textbox type={'text'} disabled={true} required={false}
-              value={item.asc ? "asc" : "desc"} />
-            </th>
-          </tr>
-        ))
-      }
-      {noPrimarySortInfo}
-      </tbody>
-      </table>)
-  };
-
-  const StoredValuesContent = () => {
-    const noStoredValuesInfo = formState.storedValues.length === 0 ? "No fields set" : null;
-    return (<table>
-      <tbody>
-      {
-        formState.storedValues.map (item =>(
-          <tr className="tableRow" id={"row_" + (item.fields)}>
-            <th className="collectionTh">
-              {item.fields.join(', ')}:
-            </th>
-            <th className="collectionTh">
-              <Textbox type={'text'} disabled={true} required={false}
-                value={item.compression} />  
-            </th>
-            <th className="collectionTh"></th>
-          </tr>
-        ))
-      }
-      {noStoredValuesInfo}
-      </tbody>
-      </table>)
   };
 
 
@@ -259,13 +209,13 @@ const ViewSettingsReactView = ({ name }) => {
                 },
                 {
                   index: 3,
-                  content: <div><PrimarySortContent /></div>,
-                  label: <PrimarySortTitle />,
+                  content: <div><PrimarySortContent  formState={formState} /></div>,
+                  label: <PrimarySortTitle formState={formState} />,
                   testID: "accordionItem3"
                 },
                 {
                   index: 4,
-                  content: <div><StoredValuesContent /></div>,
+                  content: <div><StoredValuesContent formState={formState} /></div>,
                   label: "Stored Values",
                   testID: "accordionItem4"
                 }
