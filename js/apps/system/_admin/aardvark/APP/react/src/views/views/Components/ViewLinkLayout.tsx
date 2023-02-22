@@ -40,16 +40,35 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
 
                         return <li key={`${idx}-${fragment}`} style={{
                           textShadow: 'none',
-                          textDecoration: 'underline'
+                          textDecoration: 'underline',
+                          display: 'inline-flex'
                         }}>
-                          <Link to={`/${path}`}>{fragment}</Link>
+                          <Link
+                            style={{
+                              maxWidth: "200px",
+                              whiteSpace: 'nowrap',
+                              textOverflow: 'ellipsis',
+                              overflow: 'hidden',
+                              display: 'inline-block'
+                            }} 
+                            to={`/${path}`}
+                            title={fragment}>
+                              {fragment}
+                            </Link>
                           <span className="divider">
                             <i className={'fa fa-angle-double-right'}/>
                           </span>
                         </li>;
                       })
                     }
-                    <li style={{ textShadow: 'none' }}>{fragments[fragments.length - 1]}</li>
+                    <li style={{
+                      textShadow: 'none',
+                      maxWidth: "200px",
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                      verticalAlign: 'middle'
+                    }}>{fragments[fragments.length - 1]}</li>
                   </ul>
                 </ArangoTH>
               </tr>
