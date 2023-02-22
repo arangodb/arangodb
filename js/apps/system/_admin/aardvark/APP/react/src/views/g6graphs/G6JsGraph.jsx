@@ -530,11 +530,11 @@ const G6JsGraph = () => {
     });
   }
 
-  const onDeleteEdge = (removedEdge) => {
+  const onDeleteEdge = (edgeId) => {
     setShowDeleteEdgeModal(false);
-    const edgesWithoutRemovedEdge = graphData.edges.filter(edges => edges.id !== removedEdge);
-    const currentNodes = graphData.nodes;
-    const currentSettings = graphData.settings;
+    const edgesWithoutRemovedEdge = visGraphData.edges.filter(edges => edges.id !== edgeId);
+    const currentNodes = visGraphData.nodes;
+    const currentSettings = visGraphData.settings;
 
     const newGraphData = {
       nodes: [
@@ -543,12 +543,10 @@ const G6JsGraph = () => {
       edges: [
         ...edgesWithoutRemovedEdge
       ],
-      settings: [
-        currentSettings
-      ]
+      settings: currentSettings
     };
 
-    setGraphData(newGraphData);
+    setVisGraphData(newGraphData);
   }
 
   return (
@@ -682,7 +680,7 @@ const G6JsGraph = () => {
               onRemoveSingleEdge={(edge) => removeEdge(edge)}
               onEditNode={(node) => openEditNodeModal(node)}
               onEditEdge={(edge) => openEditEdgeModal(edge)}
-              onDeleteEdge={(edge) => openDeleteEdgeModal(edge)}
+              onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
               onAddNodeToDb={() => openAddNodeModal()}
               onExpandNode={(node) => expandNode(node)}
               onSetStartnode={(node) => setStartnode(node)}

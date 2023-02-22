@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
 
-const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode}) => {
+const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge}) => {
 const [layoutOptions, setLayoutOptions] = useState(options);
+const [showNodeContextMenu, toggleNodeContextMenu] = useState(false);
+const [showEdgeContextMenu, toggleEdgeContextMenu] = useState(false);
 const [showContextMenu, toggleContextMenu] = useState(false);
 const [position, setPosition] = useState({ x: 10, y:10 });
-const [contextMenuNodeID, setContextMenuNodeID] = useState("germanCity/Berlin");
+const [contextMenuNodeID, setContextMenuNodeID] = useState();
+const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
 
 const nodes = [
 ...graphData.nodes
@@ -97,15 +100,14 @@ network.on("oncontext", (args) => {
     console.log(`network.getEdgeAt: - ${network.getEdgeAt(args.pointer.DOM)}`);
     console.log(`network.getNodeAt: - ${network.getNodeAt(args.pointer.DOM)}`);
     if (network.getNodeAt(args.pointer.DOM)) {
-        toggleContextMenu(true);
+        toggleNodeContextMenu(true);
         network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 		setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
         setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
     } else if (network.getEdgeAt(args.pointer.DOM)) {
-        toggleContextMenu(true);
-        console.log("edge");
+        toggleEdgeContextMenu(true);
         network.selectEdges([network.getEdgeAt(args.pointer.DOM)]);
-        //setPosition({ left: `${args.event.offsetX}px`, top: `${args.event.offsetY}px` });
+		setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
         setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
     } else {
         toggleContextMenu(false);
@@ -117,20 +119,38 @@ return () => {
 }, [visJsRef, nodes, edges, selectedNode, layoutOptions]);
 
 return <>
-{showContextMenu &&
-<StyledContextComponent {...position}>
-	<ul id='graphViewerMenu'>
-		<li title='deleteNode'
-			onClick={() => {
-				onDeleteNode(contextMenuNodeID);
-			}}>
-			Delete node
-		</li>
-		<li title='editNode'>Edit node</li>
-		<li title='expandNode'>Expand node</li>
-		<li title='setAsStartnode'>Set as startnode</li>
-	</ul>
-{
+	{
+	showNodeContextMenu &&
+	<StyledContextComponent {...position}>
+		<ul id='graphViewerMenu'>
+			<li title='deleteNode'
+				onClick={() => {
+					onDeleteNode(contextMenuNodeID);
+				}}>
+				Delete node
+			</li>
+			<li title='editNode'>Edit node</li>
+			<li title='expandNode'>Expand node</li>
+			<li title='setAsStartnode'>Set as startnode</li>
+		</ul>
+    </StyledContextComponent>
+	}
+	{
+	showEdgeContextMenu &&
+	<StyledContextComponent {...position}>
+		<ul id='graphViewerMenu'>
+			<li title='deleteNode'
+				onClick={() => {
+					console.log("Edge to delete: ", contextMenuEdgeID);
+					onDeleteEdge(contextMenuEdgeID);
+				}}>
+				Delete edge
+			</li>
+			<li title='editEdge'>Edit edge</li>
+		</ul>
+    </StyledContextComponent>
+	}
+	{
 /*
 <Menu vertical>
 <Menu.Item
@@ -166,8 +186,6 @@ Spam
         </Menu>
         */
     }
-    </StyledContextComponent>
-}
 <div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '100%', background: '#fff' }} />
 </>;
 };
