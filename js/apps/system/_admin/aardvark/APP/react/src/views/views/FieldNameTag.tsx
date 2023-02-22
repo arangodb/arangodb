@@ -1,6 +1,4 @@
 import React, { ReactNode } from "react";
-import Textbox from "../../components/pure-css/form/Textbox";
-import { FormState } from "./constants";
 
 export const FieldNameTag = ({
   children
