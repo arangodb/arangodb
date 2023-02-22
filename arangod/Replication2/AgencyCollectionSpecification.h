@@ -140,6 +140,18 @@ struct CollectionPlanSpecification : public Collection {
   PlanShardToServerMapping deprecatedShardMap;
 };
 
+struct CollectionCurrentShardSpecification {
+  bool error;
+  std::string errorMessage;
+  std::uint64_t errorNum;
+  std::vector<velocypack::SharedSlice> indexes;
+  std::vector<ServerID> servers;
+  std::vector<ServerID> failoverCandidates;
+};
+struct CollectionCurrentSpecification {
+  std::unordered_map<ShardID, CollectionCurrentShardSpecification> shards;
+};
+
 }  // namespace arangodb::replication2::agency
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::replication2::agency::CollectionGroupId)
