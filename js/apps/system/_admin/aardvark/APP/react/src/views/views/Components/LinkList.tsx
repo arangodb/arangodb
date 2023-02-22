@@ -71,7 +71,6 @@ const LinkList = () => {
     marginRight: 'auto'
   }}>
     <div className="modal-body" style={{
-      minHeight: 150,
       border: 'none',
       height: 'fit-content'
     }}>
