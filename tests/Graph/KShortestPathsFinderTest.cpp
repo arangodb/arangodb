@@ -430,6 +430,16 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
     mockGraph.addEdge(7, 3, 10);
     mockGraph.addEdge(8, 3, 10);
     mockGraph.addEdge(9, 3, 10);
+
+    // Circular graph
+    mockGraph.addEdge(100, 101, 1);
+    mockGraph.addEdge(101, 102, 2);
+    mockGraph.addEdge(102, 103, 3);
+    mockGraph.addEdge(103, 100, 4);
+    mockGraph.addEdge(100, 104, 1);
+    mockGraph.addEdge(104, 105, 1);
+    mockGraph.addEdge(105, 106, 1);
+    mockGraph.addEdge(106, 100, 1);
   }
 
   auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
@@ -500,6 +510,26 @@ TEST_F(WeightedKShortestPathsFinderTest, diamond_path) {
     pathEquals(result.slice(), {1, 2, 4});
     pathWeightDouble(result.slice(), 20);
     EXPECT_FALSE(finder.isDone());
+  }
+}
+
+TEST_F(WeightedKShortestPathsFinderTest,
+       path_where_source_and_target_are_equal) {
+  VPackBuilder result;
+  auto source = vId(100);
+  auto target = vId(100);
+  auto finder = pathFinder();
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  EXPECT_FALSE(finder.isDone());
+
+  {
+    result.clear();
+    ASSERT_TRUE(finder.getNextPath(result));
+    LOG_DEVEL << result.toJson();
+    pathStructureValid(result.slice(), 0);
+    pathEquals(result.slice(), {100});
+    pathWeightDouble(result.slice(), 0);
+    EXPECT_TRUE(finder.isDone());
   }
 }
 
