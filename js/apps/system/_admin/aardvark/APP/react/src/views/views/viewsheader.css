@@ -7,7 +7,7 @@ div.viewsstickyheader {
     width: 100%;
     background: rgb(240 240 241);
     padding-bottom: 14px;
-    border-bottom: 2px solid rgb(122, 122, 122);
+    border-bottom: 2px solid #d0d0d0;
     position: sticky;
     top: 0;
     z-index: 1000;

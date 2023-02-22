@@ -1,9 +1,5 @@
 .Resizer {
-background: rgb(122, 122, 122);
-/*
-background: rgb(202, 66, 25);
-opacity: 0.2;
-*/
+background: #d0d0d0;
 z-index: 1;
 -moz-box-sizing: border-box;
 -webkit-box-sizing: border-box;
