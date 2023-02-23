@@ -25,22 +25,20 @@
 
 #include "Cluster/ClusterTypes.h"
 
-#include <unordered_map>
-
 namespace arangodb::replication2::replicated_state::document {
-inline constexpr auto kStringCollectionID = std::string_view{"collectionId"};
+inline constexpr auto kStringCollectionID = std::string_view{"collection"};
 inline constexpr auto kStringProperties = std::string_view{"properties"};
 
 struct ShardProperties {
-  CollectionID collectionId;
+  CollectionID collection;
   std::shared_ptr<VPackBuilder> properties;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, ShardProperties& s) {
-    return f.object(s).fields(f.field(kStringCollectionID, s.collectionId),
+    return f.object(s).fields(f.field(kStringCollectionID, s.collection),
                               f.field(kStringProperties, s.properties));
   }
 };
 
-using ShardMap = std::unordered_map<ShardID, ShardProperties>;
+using ShardMap = containers::FlatHashMap<ShardID, ShardProperties>;
 }  // namespace arangodb::replication2::replicated_state::document

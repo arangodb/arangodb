@@ -44,8 +44,8 @@ struct IDocumentStateShardHandler {
   virtual auto ensureShard(ShardID shard, CollectionID collection,
                            std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> = 0;
-  virtual auto dropShard(ShardID const& shard, CollectionID collection)
-      -> ResultT<bool> = 0;
+  virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
+  virtual auto dropAllShards() -> Result = 0;
   virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
 };
 
@@ -59,9 +59,16 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto ensureShard(ShardID shard, CollectionID collection,
                    std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> override;
-  auto dropShard(ShardID const& shard, CollectionID collection)
-      -> ResultT<bool> override;
+  auto dropShard(ShardID const& shard) -> ResultT<bool> override;
+  auto dropAllShards() -> Result override;
   auto isShardAvailable(ShardID const& shardId) -> bool override;
+
+ private:
+  auto executeCreateCollectionAction(ShardID shard, CollectionID collection,
+                                     std::shared_ptr<VPackBuilder> properties)
+      -> Result;
+  auto executeDropCollectionAction(ShardID shard, CollectionID collection)
+      -> Result;
 
  private:
   GlobalLogIdentifier _gid;

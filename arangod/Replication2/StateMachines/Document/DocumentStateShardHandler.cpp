@@ -45,24 +45,11 @@ auto DocumentStateShardHandler::ensureShard(
     return false;
   }
 
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::CREATE_COLLECTION},
-          {maintenance::COLLECTION, collection},
-          {maintenance::SHARD, shard},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, _server},
-          {maintenance::THE_LEADER, "replication2"},
-          {maintenance::REPLICATED_LOG_ID, to_string(_gid.id)}},
-      maintenance::HIGHER_PRIORITY, false, properties);
-
-  maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
-                                                       actionDescription);
-
-  bool work = createCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
+  if (auto res = executeCreateCollectionAction(shard, collection, properties);
+      res.fail()) {
+    return res;
   }
+
   _shardMap.shards.emplace(
       std::move(shard),
       ShardProperties{std::move(collection), std::move(properties)});
@@ -83,30 +70,17 @@ auto DocumentStateShardHandler::ensureShard(ShardID shard,
                      std::move(propertiesCopy));
 }
 
-auto DocumentStateShardHandler::dropShard(ShardID const& shard,
-                                          CollectionID collection)
+auto DocumentStateShardHandler::dropShard(ShardID const& shard)
     -> ResultT<bool> {
   std::unique_lock lock(_shardMap.mutex);
-  if (!_shardMap.shards.contains(shard)) {
+  auto it = _shardMap.shards.find(shard);
+  if (it == std::end(_shardMap.shards)) {
     return false;
   }
 
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::DROP_COLLECTION},
-          {maintenance::COLLECTION, std::move(collection)},
-          {maintenance::SHARD, shard},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, _server},
-          {maintenance::THE_LEADER, "replication2"},
-      },
-      maintenance::HIGHER_PRIORITY, false);
-
-  maintenance::DropCollection collectionDropper(_maintenanceFeature,
-                                                actionDescription);
-  bool work = collectionDropper.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
+  if (auto res = executeDropCollectionAction(shard, it->second.collection);
+      res.fail()) {
+    return res;
   }
   _shardMap.shards.erase(shard);
   lock.release();
@@ -115,9 +89,65 @@ auto DocumentStateShardHandler::dropShard(ShardID const& shard,
   return true;
 }
 
+auto DocumentStateShardHandler::dropAllShards() -> Result {
+  std::unique_lock lock(_shardMap.mutex);
+  for (auto const& [shard, properties] : _shardMap.shards) {
+    if (auto res = executeDropCollectionAction(shard, properties.collection);
+        res.fail()) {
+      return Result{res.errorNumber(),
+                    fmt::format("Failed to drop shard {}: {}", shard,
+                                res.errorMessage())};
+    }
+  }
+  return {};
+}
+
 auto DocumentStateShardHandler::isShardAvailable(const ShardID& shard) -> bool {
   std::shared_lock lock(_shardMap.mutex);
   return _shardMap.shards.contains(shard);
+}
+
+auto DocumentStateShardHandler::executeCreateCollectionAction(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties) -> Result {
+  maintenance::ActionDescription actionDescription(
+      std::map<std::string, std::string>{
+          {maintenance::NAME, maintenance::CREATE_COLLECTION},
+          {maintenance::COLLECTION, std::move(collection)},
+          {maintenance::SHARD, std::move(shard)},
+          {maintenance::DATABASE, _gid.database},
+          {maintenance::SERVER_ID, _server},
+          {maintenance::THE_LEADER, "replication2"},
+          {maintenance::REPLICATED_LOG_ID, to_string(_gid.id)}},
+      maintenance::HIGHER_PRIORITY, false, std::move(properties));
+  maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
+                                                       actionDescription);
+  bool work = createCollectionAction.first();
+  if (work) {
+    return {TRI_ERROR_INTERNAL};
+  }
+  return {};
+}
+
+auto DocumentStateShardHandler::executeDropCollectionAction(
+    ShardID shard, CollectionID collection) -> Result {
+  maintenance::ActionDescription actionDescription(
+      std::map<std::string, std::string>{
+          {maintenance::NAME, maintenance::DROP_COLLECTION},
+          {maintenance::COLLECTION, std::move(collection)},
+          {maintenance::SHARD, std::move(shard)},
+          {maintenance::DATABASE, _gid.database},
+          {maintenance::SERVER_ID, _server},
+          {maintenance::THE_LEADER, "replication2"},
+      },
+      maintenance::HIGHER_PRIORITY, false);
+  maintenance::DropCollection collectionDropper(_maintenanceFeature,
+                                                actionDescription);
+  bool work = collectionDropper.first();
+  if (work) {
+    return {TRI_ERROR_INTERNAL};
+  }
+  return {};
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
