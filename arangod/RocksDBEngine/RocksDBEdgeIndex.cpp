@@ -85,9 +85,9 @@ class StringFromParts final : public velocypack::IStringFromParts {
     static_assert(sizeof...(Args) == N);
   }
 
-  std::size_t size() const final { return N; }
+  std::size_t numberOfParts() const final { return N; }
 
-  std::size_t length() const final {
+  std::size_t totalLength() const final {
     size_t length = 0;
     for (size_t index = 0; index != N; ++index) {
       length += _parts[index].length();
@@ -96,7 +96,7 @@ class StringFromParts final : public velocypack::IStringFromParts {
   }
 
   std::string_view operator()(size_t index) const final {
-    TRI_ASSERT(index < size());
+    TRI_ASSERT(index < numberOfParts());
     return _parts[index];
   }
 
