@@ -425,7 +425,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     rocksutils::checkIteratorStatus(*iterator);
 
     if (_cache != nullptr) {
-      // key to store value under in the cache. we will use cacheKey is set, and
+      // key to store value under in the cache. we will use cacheKey if set, and
       // fromTo otherwise.
       std::string_view key = cacheKey.empty() ? fromTo : cacheKey;
       // the value we store in the cache may be an empty array or a non-empty
