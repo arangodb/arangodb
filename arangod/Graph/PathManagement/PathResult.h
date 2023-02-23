@@ -59,6 +59,7 @@ class PathResult {
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
   auto isEmpty() const -> bool;
+  auto getWeight() const -> double { return _pathWeight; }
 
  private:
   std::vector<typename Step::Vertex> _vertices;
