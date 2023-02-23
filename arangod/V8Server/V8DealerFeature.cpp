@@ -550,12 +550,15 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
+    // use 7/8 of the available scheduler threads as the default number
+    // of available V8 contexts. only 7/8 are used to leave some headroom
+    // for important maintenance tasks.
     // automatic maximum number of contexts should not be below 8
     // this is because the number of cores may be too few for the cluster
     // startup to properly run through with all its parallel requests
-    // and the potential need for multiple V8 contexts
+    // and the potential need for multiple V8 contexts.
     auto& sf = server().getFeature<SchedulerFeature>();
-    _nrMaxContexts = std::max(sf.maximalThreads(), uint64_t(8));
+    _nrMaxContexts = std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
   }
 
   if (_nrMinContexts > _nrMaxContexts) {

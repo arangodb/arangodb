@@ -5,13 +5,45 @@ devel
   of server threads, if `--javascript.v8-contexts` is not set explicitly. 
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
   option `--javascript.v8-contexts` option was not set explicitly.
-  Now the maximum number defaults to the value of `--server.maximal-threads`,
-  regardless of if this was is explicitly configured or the default value is
-  used.
+  Now the maximum number defaults to 7/8 of the value of the startup option
+  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  the default value is used. Only 7/8 are used to leave some headroom for other
+  important maintenance tasks.
   A server with default configuration should now not block waiting for V8 
   contexts to become available, but it may use more memory for the additional V8 
-  contexts if there are many concurrent that invoke JavaScript actions (e.g.
-  using the web UI or Foxx).
+  contexts if there are many concurrent requests that invoke JavaScript actions 
+  (e.g. requests using the web UI or Foxx).
+
+* Improve memory usage of in-memory edge index cache if most of the edges in an
+  index refer to a single or mostly the same collection.
+  Previously the full edge ids, consisting of the the referred-to collection
+  name and the referred-to key of the edge were stored in full. Now, the first
+  edge inserted into an edge index' in-memory cache will determine the
+  collection name for which all corresponding edges can be prefix-compressed.
+  For example, when inserting an edge pointing to `the-collection/abc` into the
+  empty cache, the collection name `the-collection` will be noted for that
+  cache as a prefix. The edge will be stored in memory as only `/abc`. Further
+  edges that are inserted into the cache and that point to the same collection
+  will also be stored prefix-compressed.
+  The prefix compression is transparent and does not require configuration or
+  setup. Compression is done separately for each cache, i.e. a separate prefix
+  can be used for each individual edge index, and separately for the `_from`
+  and `_to` parts. Lookups from the in-memory edge cache will not return
+  compressed values but the full-length edge ids. The compressed values will
+  also be used in memory only and will not be persisted on disk.
+
+* Updated ArangoDB Starter to 0.15.7.
+
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
+* Made all transactions used by the gharial API on coordinators and a few
+  others marked "globally managed". This fixes an issue where
+  transaction conflicts could lead to a silent out of sync situation
+  between a leader shard and its followers.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
 
 * Updated ArangoDB Starter to 0.15.7-preview-1.
 
@@ -33,6 +65,13 @@ devel
   disabled.
 
 * FE-133: Alphabetical sorting for collections on user permissions page.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
