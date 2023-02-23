@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
 
-const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode}) => {
+const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb}) => {
 const [layoutOptions, setLayoutOptions] = useState(options);
 const [showNodeContextMenu, toggleNodeContextMenu] = useState(false);
 const [showEdgeContextMenu, toggleEdgeContextMenu] = useState(false);
-const [showContextMenu, toggleContextMenu] = useState(false);
+const [showCanvasContextMenu, toggleCanvasContextMenu] = useState(false);
 const [position, setPosition] = useState({ x: 10, y:10 });
 const [contextMenuNodeID, setContextMenuNodeID] = useState();
 const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
@@ -110,9 +110,7 @@ network.on("oncontext", (args) => {
 		setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
         setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
     } else {
-        //toggleContextMenu(false);
-		toggleNodeContextMenu(true);
-		toggleEdgeContextMenu(true);
+        toggleCanvasContextMenu(true);
     }
 });
 return () => {
@@ -168,6 +166,19 @@ return <>
 					onEditEdge(contextMenuEdgeID);
 				}}>
 				Edit edge
+			</li>
+		</ul>
+    </StyledContextComponent>
+	}
+	{
+	showCanvasContextMenu &&
+	<StyledContextComponent {...position}>
+		<ul id='graphViewerMenu'>
+			<li title='addNodeToDb'
+				onClick={() => {
+					onAddNodeToDb();
+				}}>
+				Add node to database
 			</li>
 		</ul>
     </StyledContextComponent>

@@ -727,6 +727,9 @@ export class GraphView extends React.Component {
         onExpandNode={(nodeId) => {
           this.props.onExpandNode(nodeId);
         }}
+        onAddNodeToDb={() => {
+          this.props.onAddNodeToDb();
+        }}
       />
 
       <GraphInfo>

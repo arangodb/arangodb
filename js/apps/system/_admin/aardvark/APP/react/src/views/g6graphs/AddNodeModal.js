@@ -58,6 +58,7 @@ const StyledButton = styled.button`
         const nodeModel = {
           id: response.vertex._id,
           label: response.vertex._key,
+          shape: "dot"
         };
         openNotificationWithIcon(response.vertex._id);
         onNodeCreation(nodeModel);

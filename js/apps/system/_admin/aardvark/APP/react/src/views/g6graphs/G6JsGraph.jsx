@@ -213,17 +213,17 @@ const G6JsGraph = () => {
   }, [fetchEdgeCollections]);
 
   const updateGraphDataWithNode = (newNode) => {
-    const currentEdges = graphData.edges;
+    const currentEdges = visGraphData.edges;
     const newGraphData = {
       nodes: [
-        ...graphData.nodes,
+        ...visGraphData.nodes,
         newNode
       ],
       edges: [
         ...currentEdges
       ]
     };
-    setGraphData(newGraphData);
+    setVisGraphData(newGraphData);
   }
 
   const updateGraphDataWithEdge = (newEdge) => {
@@ -662,7 +662,7 @@ const G6JsGraph = () => {
             updateGraphDataWithNode(newNode)
           }}
           graphName={graphName}
-          graphData={graphData}
+          graphData={visGraphData}
         >
           <strong>Add node</strong>
         </AddNodeModal>
