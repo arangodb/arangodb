@@ -163,7 +163,7 @@ const ViewSettingsReactView = ({ name }) => {
       <section>
         <SplitPane
           paneStyle={{ overflow: 'scroll' }}
-          maxSize={600}
+          maxSize={800}
           defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
           onChange={(size) => localStorage.setItem('splitPos', size)}
           style={{ paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
