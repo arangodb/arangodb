@@ -102,8 +102,6 @@ class EnumeratePathsExecutorInfos {
    */
   [[nodiscard]] auto getOutputRegister() const -> RegisterId;
 
-  [[nodiscard]] auto cache() const -> graph::TraverserCache*;
-
   [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 

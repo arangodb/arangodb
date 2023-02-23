@@ -136,14 +136,6 @@ auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 }
 
 template<class FinderType>
-auto EnumeratePathsExecutorInfos<FinderType>::cache() const
-    -> graph::TraverserCache* {
-  // TODO: can be removed in total later
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
-template<class FinderType>
 EnumeratePathsExecutor<FinderType>::EnumeratePathsExecutor(Fetcher& fetcher,
                                                            Infos& infos)
     : _infos(infos),
