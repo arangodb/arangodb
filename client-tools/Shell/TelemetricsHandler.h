@@ -33,29 +33,17 @@ namespace arangodb {
 
 class TelemetricsHandler {
  public:
-  TelemetricsHandler(bool printTelemetrics)
+  TelemetricsHandler()
       : _printTelemetrics(false), _runCondition(true), _httpClient(nullptr) {}
-  ~TelemetricsHandler() { _telemetricsThread.join(); }
-
-  /*
-  [[nodiscard]] Result getTelemetricsResponse() const noexcept {
-    return _telemetricsResponse;
+  ~TelemetricsHandler() {
+    if (_telemetricsThread.joinable()) {
+      _telemetricsThread.join();
+    }
   }
-  [[nodiscard]] Result getEndpointResponse() const noexcept {
-    return _response;
-  }
-  [[nodiscard]] httpclient::SimpleHttpResult getTelemetricsResult()
-      const noexcept {
-    return _telemetricsResult;
-  }
-  */
 
   void runTelemetrics();
 
-  void disableRunCondition() {
-    _runCondition = false;
-    LOG_DEVEL << "set to false";
-  }
+  void disableRunCondition() { _runCondition = false; }
   void setHttpClient(
       std::unique_ptr<httpclient::SimpleHttpClient>& httpClient) {
     _httpClient = std::move(httpClient);
@@ -71,6 +59,7 @@ class TelemetricsHandler {
   void sendTelemetricsRequest();
   void SendTelemetricsToEndpoint();
   void arrangeTelemetrics();
+  void printTelemetrics();
 
   bool _printTelemetrics;
   std::atomic<bool> _runCondition;
@@ -78,7 +67,7 @@ class TelemetricsHandler {
   std::thread _telemetricsThread;
   Result _telemetricsResponse;
   Result _response;
-  httpclient::SimpleHttpResult _telemetricsResult;
+  VPackBuilder _telemetricsResult;
 };
 
 }  // namespace arangodb

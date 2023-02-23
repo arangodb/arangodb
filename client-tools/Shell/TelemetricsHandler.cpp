@@ -58,6 +58,15 @@ Result TelemetricsHandler::checkHttpResponse(
             concatT("got invalid response from server: HTTP ",
                     itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
+  /*
+
+  if (_printTelemetrics) {
+    _telemetricsResult.clear();
+    _telemetricsResult.openObject();
+    _telemetricsResult.add(response->getBodyVelocyPack()->slice());
+    _telemetricsResult.close();
+  }
+   */
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -75,13 +84,15 @@ void TelemetricsHandler::sendTelemetricsRequest() {
 }
 
 void TelemetricsHandler::printTelemetrics() {
-  LOG_TOPIC("dcd06", WARN, Logger::STATISTICS) << _telemetricsResponse.toJson();
+  LOG_TOPIC("dcd06", WARN, Logger::STATISTICS)
+      << _telemetricsResponse.errorNumber() << " "
+      << _telemetricsResponse.errorMessage();
 }
 
 void TelemetricsHandler::arrangeTelemetrics() {
   this->sendTelemetricsRequest();
   if (_printTelemetrics) {
-    this->_printTelemetrics();
+    this->printTelemetrics();
   }
 }
 

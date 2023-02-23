@@ -68,7 +68,7 @@ class ShellFeature final : public ArangoshFeature {
   std::string _unitTestFilter;
   std::vector<std::string> _scriptParameters;
   TelemetricsHandler _telemetricsHandler;
-  bool _printTelemetrics{false};
+  // bool _printTelemetrics{false};
   bool _runMain{false};
 };
 
