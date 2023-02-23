@@ -25,6 +25,8 @@
 #include "Agency/AgencyPaths.h"
 #include "Agency/TransactionBuilder.h"
 #include "Basics/Guarded.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/Utils/CurrentWatcher.h"
 #include "Cluster/Utils/CurrentCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
@@ -80,18 +82,15 @@ TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
 
 std::shared_ptr<CurrentWatcher>
 TargetCollectionAgencyWriter::prepareCurrentWatcher(
-    std::string_view databaseName, bool waitForSyncReplication) const {
+    std::string_view databaseName, bool waitForSyncReplication, AgencyCache& agencyCache) const {
   auto report = std::make_shared<CurrentWatcher>();
 
   auto const baseStatePath = pathCollectionGroupInCurrent(databaseName);
+  auto modGroups = _collectionGroups.getAllModifiedGroups();
 
-  // One callback per New and one per Existing Group
-  report->reserve(_collectionGroups.newGroups.size() +
-                  _collectionGroups.additionsToGroup.size());
-  for (auto const& group : _collectionGroups.newGroups) {
-    auto gid = std::to_string(group.id.id());
+  auto registerWaitForSupervisionVersion = [&](std::string gid, uint64_t version) {
     auto const groupPath = baseStatePath->group(gid)->supervision();
-    auto callback = [report, gid, version = group.version.value()](
+    auto callback = [report, gid, version](
                         velocypack::Slice slice) -> bool {
       if (report->hasReported(gid)) {
         // This replicatedLog has already reported
@@ -115,8 +114,42 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
     report->addWatchPath(
         groupPath->str(arangodb::cluster::paths::SkipComponents(1)),
         std::move(gid), callback);
+  };
+  // One callback per New and one per Existing Group
+  report->reserve(_collectionGroups.newGroups.size() + modGroups.size());
+  for (auto const& group : _collectionGroups.newGroups) {
+    registerWaitForSupervisionVersion(std::to_string(group.id.id()),
+                                      group.version.value());
   }
 
+  /*
+   * So far our API do not have a code path updating two CollectionGroups in one
+   * call. However doing this with the following code-path is possible it is
+   * just not optimal yet. If we want to support this in an optimized way the
+   * below logic should be changed to: 1) One Preflight request reading all
+   * CollectionGroupVersions in one go. 2) Add Watchers on increments of above
+   * Groups.
+   */
+  TRI_ASSERT(modGroups.size() < 2)
+      << "Add collections to different groups in one request. Triggering "
+         "non-optimal codepath";
+  for (auto const& group : modGroups) {
+    auto gid = std::to_string(group.id());
+    auto const targetPath = pathCollectionGroupInTarget(databaseName);
+    auto const targetGroupPath = targetPath->group(gid)->version();
+    // First read set version (sorry we have to do this as the increment call to
+    // version does not give us the new value back)
+    VPackBuilder response;
+    agencyCache.get(response, targetGroupPath);
+    uint64_t versionToWaitFor =
+        basics::VelocyPackHelper::getNumericValue(response.slice(), 0ull);
+    // Then register a waits for Callback where the above version is increased
+    // by one. This is best effort and not race-free, if someone updates the
+    // same group in parallel one of the parallel requests would not wait
+    // properly. This is however a very rare production case, and only a minor
+    // inconvenience to users, if it really happens.
+    registerWaitForSupervisionVersion(std::move(gid), versionToWaitFor + 1);
+  }
   return report;
 }
 
@@ -152,6 +185,13 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
           replication2::agency::CollectionGroup::Collection c;
           velocypack::serialize(builder, c);
         });
+  }
+
+  auto modGroups = _collectionGroups.getAllModifiedGroups();
+  // Increase group versions
+  for (auto const& g : modGroups) {
+    writes = std::move(writes).inc(
+        baseGroupPath->group(std::to_string(g.id()))->version()->str());
   }
 
   // Write all requested Collection entries

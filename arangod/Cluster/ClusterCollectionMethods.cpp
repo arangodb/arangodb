@@ -405,8 +405,9 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
-  auto callbackInfos =
-      writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
+  auto callbackInfos = writer.prepareCurrentWatcher(
+      databaseName, waitForSyncReplication,
+      server.getFeature<ClusterFeature>().agencyCache());
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
