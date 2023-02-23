@@ -60,20 +60,6 @@ bool TwoSidedEnumeratorOptions::onlyProduceOnePath() const {
   return _onlyProduceOnePath;
 }
 
-// TODO: Check if required - INTENTION: We need this in PathResult.cpp
-// TODO: Also we need to check which defaultWeight and defaultWeightAttribute
-// are being set.
-bool TwoSidedEnumeratorOptions::hasWeightCallback() const {
-  return _weightCallback;
-}
-
-// TODO: Check if required.
-// TODO: Also we need to check which defaultWeight and defaultWeightAttribute
-// are being set.
-void TwoSidedEnumeratorOptions::setHasWeightCallback(bool hasWeight) {
-  _weightCallback = hasWeight;
-}
-
 PathType::Type TwoSidedEnumeratorOptions::getPathType() const {
   return _pathType;
 }

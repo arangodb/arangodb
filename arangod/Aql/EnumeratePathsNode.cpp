@@ -481,7 +481,6 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
                   return previousWeight + weight;
                 });
-            enumeratorOptions.setHasWeightCallback(true);
 
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
@@ -560,7 +559,6 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
                   return previousWeight + weight;
                 });
-            enumeratorOptions.setHasWeightCallback(true);
 
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
@@ -645,7 +643,6 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
                 return previousWeight + weight;
               });
-          enumeratorOptions.setHasWeightCallback(true);
 
           return _makeExecutionBlockImpl<
               WeightedKShortestPathsEnumerator<ClusterProvider>,

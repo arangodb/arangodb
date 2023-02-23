@@ -285,8 +285,6 @@ class WeightedTwoSidedEnumerator {
    * @return false No path found, result has not been changed.
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
-  // TODO: This might not be needed. Check CPP file for details
-  typename PathResult<ProviderType, Step>::WeightType identifyWeightType();
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.

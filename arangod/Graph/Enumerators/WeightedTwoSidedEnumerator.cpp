@@ -492,33 +492,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _left.reset(source, 0);
   _right.reset(target, 0);
   _resultPath.clear();
-
-  // Special depth == 0 case
-  // TODO: Check - is this even required?
-  // TODO: Check if we do have source == target test !!
-  /*if (_options.getMinDepth() == 0 && source == target) {
-    _left.testDepthZero(_right, _candidates);
-  }*/
-}
-
-// TODO: I think this can be removed and is probably not needed.
-// Hint: check toVelocypack (Velocypack) vs. calculation via steps.
-// Not 100% sure yet which way to go.
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-typename PathResult<ProviderType, typename ProviderType::Step>::WeightType
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::identifyWeightType() {
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    bool hasWeightMethod = _options.hasWeightCallback();
-    if (hasWeightMethod) {
-      return PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT;
-    } else {
-      return PathResult<ProviderType, Step>::WeightType::AMOUNT_EDGES;
-    }
-  }
-
-  return PathResult<ProviderType, Step>::WeightType::NONE;
 }
 
 /**

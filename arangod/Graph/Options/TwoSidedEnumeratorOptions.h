@@ -46,19 +46,13 @@ struct TwoSidedEnumeratorOptions {
   [[nodiscard]] PathType::Type getPathType() const;
   [[nodiscard]] bool getStopAtFirstDepth() const;
   [[nodiscard]] bool onlyProduceOnePath() const;
-  // TODO: Check if required.
-  [[nodiscard]] bool hasWeightCallback() const;
 
-  // TODO: Check if required.
-  void setHasWeightCallback(bool hasWeight);
   void setStopAtFirstDepth(bool stopAtFirstDepth);
   void setOnlyProduceOnePath(bool onlyProduceOnePath);
 
  private:
   size_t _minDepth;
   size_t _maxDepth;
-  // TODO: Check if required.
-  bool _weightCallback{false};
   bool _stopAtFirstDepth{false};
   bool _onlyProduceOnePath{false};
   PathType::Type _pathType;
