@@ -922,6 +922,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
       engine->collectExecutionStats(_execStats);
     }
 
+    // execution statistics
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
 
@@ -1067,10 +1068,19 @@ QueryResult Query::explain() {
 
     result.extra = std::make_shared<VPackBuilder>();
     {
-      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
-      _warnings.toVelocyPack(*result.extra);
-      result.extra->add(VPackValue("stats"));
-      opt._stats.toVelocyPack(*result.extra);
+      VPackBuilder& b = *result.extra;
+      VPackObjectBuilder guard(&b, /*unindexed*/ true);
+      // warnings
+      _warnings.toVelocyPack(b);
+      b.add(VPackValue("stats"));
+      {
+        // optimizer statistics
+        ensureExecutionTime();
+        VPackObjectBuilder guard(&b, /*unindexed*/ true);
+        opt._stats.toVelocyPack(b);
+        b.add("peakMemoryUsage", VPackValue(_resourceMonitor.peak()));
+        b.add("executionTime", VPackValue(executionTime()));
+      }
     }
 
   } catch (Exception const& ex) {

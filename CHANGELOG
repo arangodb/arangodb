@@ -19,6 +19,29 @@ v3.10.4 (XXXX-XX-XX)
   compressed values but the full-length edge ids. The compressed values will
   also be used in memory only and will not be persisted on disk.
 
+* Updated ArangoDB Starter to 0.15.7.
+
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used on
+  query when geo index was present, because it would override the choice of the
+  index hint with optimizations related to it.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the smart edge caching
+  out-of-sync, which would yield different results for OUTBOUND/INBOUND search
+  over edges. This is now fixed, however there is now a slightly higher chance
+  to get a CONFLICT response back on those queries.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Made all transactions used by the gharial API on coordinators and a few others
+  marked "globally managed". This fixes an issue where transaction conflicts
+  could lead to a silent out of sync situation between a leader shard and its
+  followers.
+
 * BTS-1219: Fix cost estimation for geo index usage and for collection
   enumeration with included filtering. This fixes a regression from 3.9 where a
   geo index was no longer used because of an optimizer rule, which gained new
