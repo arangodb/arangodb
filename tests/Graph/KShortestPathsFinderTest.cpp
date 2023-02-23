@@ -422,11 +422,11 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
 
     // Diamond Graph with weights
     mockGraph.addEdge(0, 0);
-    mockGraph.addEdge(1, 2, 9.9);
-    mockGraph.addEdge(1, 3, 9.99);
+    mockGraph.addEdge(1, 2, 10);
+    mockGraph.addEdge(1, 3, 10);
     mockGraph.addEdge(1, 10, 100);
-    mockGraph.addEdge(2, 4, 10.1);
-    mockGraph.addEdge(3, 4, 20.01);
+    mockGraph.addEdge(2, 4, 10);
+    mockGraph.addEdge(3, 4, 20);
     mockGraph.addEdge(7, 3, 10);
     mockGraph.addEdge(8, 3, 10);
     mockGraph.addEdge(9, 3, 10);
