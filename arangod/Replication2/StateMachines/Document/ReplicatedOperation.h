@@ -186,20 +186,6 @@ struct ReplicatedOperation {
                                      velocypack::SharedSlice payload) noexcept
       -> ReplicatedOperation;
 
-  static constexpr auto isUserTransaction(OperationType const& op) noexcept
-      -> bool {
-    return std::visit(
-        [](auto&& op) {
-          using T = std::decay_t<decltype(op)>;
-          return std::is_same_v<T, Commit> ||
-                 std::is_same_v<T, IntermediateCommit> ||
-                 std::is_same_v<T, Abort> || std::is_same_v<T, Truncate> ||
-                 std::is_same_v<T, Insert> || std::is_same_v<T, Update> ||
-                 std::is_same_v<T, Replace> || std::is_same_v<T, Remove>;
-        },
-        op);
-  }
-
   template<typename Inspector>
   friend auto inspect(Inspector& f, ReplicatedOperation& x) {
     return f.variant(x.operation)
