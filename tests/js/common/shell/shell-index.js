@@ -1595,7 +1595,7 @@ function ParallelIndexSuite() {
       // maximum concurrency for index creation. we need to limit the number
       // here because otherwise the server may be overwhelmed by too many
       // concurrent index creations being in progress.
-      const maxThreads = 15;
+      const maxThreads = 7;
       // Relax condition for windows - TODO: fix this.
       const noIndexes = (platform.substr(0, 3) === 'win') ? 40 : 80;
 
@@ -1627,7 +1627,7 @@ function ParallelIndexSuite() {
       // maximum concurrency for index creation. we need to limit the number
       // here because otherwise the server may be overwhelmed by too many
       // concurrent index creations being in progress.
-      const maxThreads = 15;
+      const maxThreads = 7;
       const noIndexes = 100;
 
       let time = require("internal").time;
