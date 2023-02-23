@@ -54,7 +54,7 @@ jobs:
       - run:
           name: Run clang-format
           command: |
-            utils/clang-format.sh
+            scripts/clang-format-circleci.sh
       - run:
           name: Store diff
           command: |
