@@ -457,17 +457,17 @@ const G6JsGraph = () => {
     });
   }
 
-  const setStartnode = (node) => {
+  const setStartnode = (nodeId) => {
     const newUrlParameters = urlParameters;
-    newUrlParameters.nodeStart = node;
+    newUrlParameters.nodeStart = nodeId;
     setUrlParameters(newUrlParameters);
-    const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}`;
+    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
     .then(response => response.json())
     .then(data => {
-      setGraphData(data);
+      setVisGraphData(data);
     })
     .catch((err) => {
       arangoHelper.arangoError('Graph', 'Could not load graph starting with this startnode.');
@@ -683,7 +683,7 @@ const G6JsGraph = () => {
               onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
               onAddNodeToDb={() => openAddNodeModal()}
               onExpandNode={(node) => expandNode(node)}
-              onSetStartnode={(node) => setStartnode(node)}
+              onSetStartnode={(nodeId) => setStartnode(nodeId)}
               onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
               graphName={graphName}
               responseDuration={responseTimes.fetchDuration}
