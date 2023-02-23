@@ -47,6 +47,7 @@ struct DropCollectionPlan {
 };
 struct DropCollectionGroup {
   agency::CollectionGroupId gid;
+  std::vector<agency::CollectionGroupPlanSpecification::ShardSheaf> logs;
 };
 struct AddCollectionToPlan {
   CollectionID cid;
@@ -96,8 +97,8 @@ struct CollectionGroup {
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionPlanSpecification>
       planCollections;
-  struct CollectionCurrent {};
-  std::unordered_map<arangodb::CollectionID, CollectionCurrent>
+  std::unordered_map<arangodb::CollectionID,
+                     agency::CollectionCurrentSpecification>
       currentCollections;
 };
 

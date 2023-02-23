@@ -69,8 +69,12 @@ bool DropCollection::dropReplication2Shard(ShardID const& shard,
   std::shared_ptr<LogicalCollection> coll;
   Result found = methods::Collections::lookup(vocbase, shard, coll);
   if (found.ok()) {
-    coll->getDocumentStateLeader()->dropShard(
-        shard, std::to_string(coll->planId().id()));
+    auto result = coll->getDocumentStateLeader()
+                      ->dropShard(shard, std::to_string(coll->planId().id()))
+                      .get();
+    if (result.fail()) {
+      LOG_DEVEL << "failed to drop shard: " << result.errorMessage();
+    }
   }
 
   return false;
