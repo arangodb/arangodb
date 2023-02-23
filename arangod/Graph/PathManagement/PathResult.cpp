@@ -36,8 +36,6 @@
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
