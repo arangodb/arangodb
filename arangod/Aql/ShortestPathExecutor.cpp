@@ -23,24 +23,14 @@
 
 #include "ShortestPathExecutor.h"
 
-#include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "Basics/system-compiler.h"
-#include "Graph/ShortestPathOptions.h"
-
+#include "Graph/algorithm-aliases.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/ClusterProviderStep.h"
-
-#include "Transaction/Helpers.h"
-
-#include <velocypack/Builder.h>
-#include <utility>
-#include "Graph/algorithm-aliases.h"
 
 #include "ShortestPathExecutor.tpp"
 
