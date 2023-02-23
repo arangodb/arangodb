@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ResultT.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
-#include <velocypack/Builder.h>
-
-#include <string>
-#include <memory>
+#include <shared_mutex>
 
 namespace arangodb {
 class MaintenanceFeature;
@@ -39,26 +38,39 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
-  virtual auto createLocalShard(
-      ShardID const& shardId, std::string const& collectionId,
-      std::shared_ptr<velocypack::Builder> const& properties) -> Result = 0;
-  virtual auto dropLocalShard(ShardID const& shardId,
-                              std::string const& collectionId) -> Result = 0;
+  virtual auto ensureShard(ShardID shard, CollectionID collection,
+                           velocypack::SharedSlice properties)
+      -> ResultT<bool> = 0;
+  virtual auto ensureShard(ShardID shard, CollectionID collection,
+                           std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> = 0;
+  virtual auto dropShard(ShardID const& shard, CollectionID collection)
+      -> ResultT<bool> = 0;
+  virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
   explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
                                      MaintenanceFeature& maintenanceFeature);
-  auto createLocalShard(ShardID const& shardId, std::string const& collectionId,
-                        std::shared_ptr<velocypack::Builder> const& properties)
-      -> Result override;
-  auto dropLocalShard(ShardID const& shardId, const std::string& collectionId)
-      -> Result override;
+  auto ensureShard(ShardID shard, CollectionID collection,
+                   velocypack::SharedSlice properties)
+      -> ResultT<bool> override;
+  auto ensureShard(ShardID shard, CollectionID collection,
+                   std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> override;
+  auto dropShard(ShardID const& shard, CollectionID collection)
+      -> ResultT<bool> override;
+  auto isShardAvailable(ShardID const& shardId) -> bool override;
 
  private:
   GlobalLogIdentifier _gid;
   MaintenanceFeature& _maintenanceFeature;
+  ServerID _server;
+  struct {
+    ShardMap shards;
+    std::shared_mutex mutex;
+  } _shardMap;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

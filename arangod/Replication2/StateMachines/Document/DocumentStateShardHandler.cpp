@@ -33,48 +33,71 @@ namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
     GlobalLogIdentifier gid, MaintenanceFeature& maintenanceFeature)
-    : _gid(std::move(gid)), _maintenanceFeature(maintenanceFeature) {}
+    : _gid(std::move(gid)),
+      _maintenanceFeature(maintenanceFeature),
+      _server(ServerState::instance()->getId()) {}
 
-auto DocumentStateShardHandler::createLocalShard(
-    ShardID const& shardId, std::string const& collectionId,
-    std::shared_ptr<velocypack::Builder> const& properties) -> Result {
-  auto serverId = ServerState::instance()->getId();
+auto DocumentStateShardHandler::ensureShard(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties) -> ResultT<bool> {
+  std::unique_lock lock(_shardMap.mutex);
+  if (_shardMap.shards.contains(shard)) {
+    return false;
+  }
 
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
           {maintenance::NAME, maintenance::CREATE_COLLECTION},
-          {maintenance::COLLECTION, collectionId},
-          {maintenance::SHARD, shardId},
+          {maintenance::COLLECTION, collection},
+          {maintenance::SHARD, shard},
           {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, std::move(serverId)},
+          {maintenance::SERVER_ID, _server},
           {maintenance::THE_LEADER, "replication2"},
           {maintenance::REPLICATED_LOG_ID, to_string(_gid.id)}},
       maintenance::HIGHER_PRIORITY, false, properties);
 
-  maintenance::CreateCollection collectionCreator(_maintenanceFeature,
-                                                  actionDescription);
-  bool work = collectionCreator.first();
+  maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
+                                                       actionDescription);
+
+  bool work = createCollectionAction.first();
   if (work) {
-    return {TRI_ERROR_INTERNAL,
-            fmt::format("Cannot create shard ID {}", shardId)};
+    return {TRI_ERROR_INTERNAL};
   }
+  _shardMap.shards.emplace(
+      std::move(shard),
+      ShardProperties{std::move(collection), std::move(properties)});
+  lock.release();
 
   _maintenanceFeature.addDirty(_gid.database);
-
-  return {};
+  return true;
 }
 
-Result DocumentStateShardHandler::dropLocalShard(
-    ShardID const& shardId, const std::string& collectionId) {
-  auto serverId = ServerState::instance()->getId();
+auto DocumentStateShardHandler::ensureShard(ShardID shard,
+                                            CollectionID collection,
+                                            velocypack::SharedSlice properties)
+    -> ResultT<bool> {
+  // TODO remove this unnecessary copy when api is better
+  auto propertiesCopy = std::make_shared<VPackBuilder>();
+  propertiesCopy->add(properties.slice());
+  return ensureShard(std::move(shard), std::move(collection),
+                     std::move(propertiesCopy));
+}
+
+auto DocumentStateShardHandler::dropShard(ShardID const& shard,
+                                          CollectionID collection)
+    -> ResultT<bool> {
+  std::unique_lock lock(_shardMap.mutex);
+  if (!_shardMap.shards.contains(shard)) {
+    return false;
+  }
 
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
           {maintenance::NAME, maintenance::DROP_COLLECTION},
-          {maintenance::COLLECTION, collectionId},
-          {maintenance::SHARD, shardId},
+          {maintenance::COLLECTION, std::move(collection)},
+          {maintenance::SHARD, shard},
           {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, std::move(serverId)},
+          {maintenance::SERVER_ID, _server},
           {maintenance::THE_LEADER, "replication2"},
       },
       maintenance::HIGHER_PRIORITY, false);
@@ -83,12 +106,18 @@ Result DocumentStateShardHandler::dropLocalShard(
                                                 actionDescription);
   bool work = collectionDropper.first();
   if (work) {
-    return {TRI_ERROR_INTERNAL,
-            fmt::format("Cannot drop shard ID {}", shardId)};
+    return {TRI_ERROR_INTERNAL};
   }
+  _shardMap.shards.erase(shard);
+  lock.release();
 
   _maintenanceFeature.addDirty(_gid.database);
-  return {};
+  return true;
+}
+
+auto DocumentStateShardHandler::isShardAvailable(const ShardID& shard) -> bool {
+  std::shared_lock lock(_shardMap.mutex);
+  return _shardMap.shards.contains(shard);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
