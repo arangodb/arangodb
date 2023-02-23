@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -422,7 +422,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
   };
 
   template<const char ErrorMsg[], class Func, class... Args>
-  static Status checkInvariant(Func&& func, Args&&... args) {
+  static Status doCheckInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
       if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {

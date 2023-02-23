@@ -39,7 +39,6 @@ const helper = require('@arangodb/test-helper');
 const internal = require('internal');
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
-const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
@@ -79,7 +78,8 @@ function transactionReplication2ReplicateOperationSuite() {
       trx.abort();
 
       let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
       let allEntries = {};
       let abortCount = 0;
@@ -123,13 +123,15 @@ function transactionReplication2ReplicateOperationSuite() {
       let shards = c.shards();
       let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
         (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
-      for (const log of logs) {
+      for (let idx = 0; idx < logs.size; ++idx) {
+        let log = logs[idx];
+        let shardId = shards[idx];
         let entries = log.head(1000);
         let commitFound = false;
         let keysFound = [];
-        const shardId = `s${log.id()}`;
 
         // Gather all log entries and see if we have any inserts on this shard.
         for (const entry of entries) {
@@ -213,7 +215,8 @@ function transactionReplication2ReplicateOperationSuite() {
       assertFalse(committed, "Transaction should not have been committed!");
 
       const shards = c.shards();
-      const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
       const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload.operation === 'Commit'));
       if (logsWithCommit.length > 0) {
@@ -272,7 +275,8 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        let log = db._replicatedLog(shards[0].slice(1));
+        const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+        let log = db._replicatedLog(shardsToLogs[shards[0]]);
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }
@@ -314,7 +318,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
           // Make sure nothing is committed just yet
           let replication2Log = '';
           if (isReplication2) {
-            let log = db._replicatedLog(shards[0].slice(1));
+            const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+            const logId = shardsToLogs[shards[0]];
+            let log = db._replicatedLog(logId);
             let entries = log.head(1000);
             replication2Log = `Log entries: ${JSON.stringify(entries)}`;
           }
@@ -339,7 +345,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        let log = db._replicatedLog(shards[0].slice(1));
+        const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+        const logId = shardsToLogs[shards[0]];
+        let log = db._replicatedLog(logId);
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }

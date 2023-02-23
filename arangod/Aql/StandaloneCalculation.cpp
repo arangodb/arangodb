@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -279,7 +279,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
 
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
-    if (ast->willUseV8()) {
+    if (astRoot->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("V8 usage is forbidden", errorContext)};
     }

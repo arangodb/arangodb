@@ -42,7 +42,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Metrics/MetricsFeature.h"

@@ -155,6 +155,9 @@ struct FakeLogLeader : replicated_log::ILogLeader {
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  auto waitForLeadership() -> WaitForFuture override {
+    return {replicated_log::WaitForResult{}};
+  }
   auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -182,7 +185,7 @@ struct FakeLogLeader : replicated_log::ILogLeader {
 };
 
 struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
-  auto constructFollower(std::unique_ptr<replicated_log::LogCore> logCore,
+  auto constructFollower(std::unique_ptr<replicated_log::LogCore>&& logCore,
                          replicated_log::FollowerTermInfo info,
                          replicated_log::ParticipantContext context)
       -> std::shared_ptr<replicated_log::ILogFollower> override {
@@ -190,7 +193,7 @@ struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
     participants[info.term] = follower;
     return follower;
   }
-  auto constructLeader(std::unique_ptr<replicated_log::LogCore> logCore,
+  auto constructLeader(std::unique_ptr<replicated_log::LogCore>&& logCore,
                        replicated_log::LeaderTermInfo info,
                        replicated_log::ParticipantContext context)
       -> std::shared_ptr<replicated_log::ILogLeader> override {

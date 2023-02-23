@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -599,8 +599,7 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ VPackBuilder IResearchLinkHelper::emptyIndexSlice(
-    uint64_t objectId) {
+VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
   VPackBuilder builder;
   VPackBuilder fieldsBuilder;
 
@@ -619,10 +618,9 @@ namespace iresearch {
   return builder;
 }
 
-/*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
-                                           velocypack::Slice lhs,
-                                           velocypack::Slice rhs,
-                                           std::string_view dbname) {
+bool IResearchLinkHelper::equal(ArangodServer& server, velocypack::Slice lhs,
+                                velocypack::Slice rhs,
+                                std::string_view dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -658,7 +656,7 @@ namespace iresearch {
          rhsMeta.init(server, rhs, errorField, dbname) && lhsMeta == rhsMeta;
 }
 
-/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
+std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
     LogicalCollection const& collection, IndexId id) {
   auto index = collection.lookupIndex(id);
 
@@ -672,7 +670,7 @@ namespace iresearch {
   return std::dynamic_pointer_cast<IResearchLink>(index);
 }
 
-/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
+std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
     LogicalCollection const& collection, LogicalView const& view) {
   for (auto& index : collection.getIndexes()) {
     if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
@@ -691,7 +689,7 @@ namespace iresearch {
   return nullptr;
 }
 
-/*static*/ Result IResearchLinkHelper::normalize(
+Result IResearchLinkHelper::normalize(
     velocypack::Builder& normalized, velocypack::Slice definition,
     bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
     IResearchViewSort const* primarySort, /* = nullptr */
@@ -794,8 +792,8 @@ namespace iresearch {
   return {};
 }
 
-/*static*/ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
-                                                     velocypack::Slice links) {
+Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice links) {
   if (!links.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "while validating arangosearch link definition, error: definition "
@@ -895,7 +893,7 @@ namespace iresearch {
   return {};
 }
 
-/*static*/ bool IResearchLinkHelper::visit(
+bool IResearchLinkHelper::visit(
     LogicalCollection const& collection,
     std::function<bool(IResearchLink& link)> const& visitor) {
   for (auto& index : collection.getIndexes()) {
@@ -915,7 +913,7 @@ namespace iresearch {
   return true;
 }
 
-/*static*/ Result IResearchLinkHelper::updateLinks(
+Result IResearchLinkHelper::updateLinks(
     containers::FlatHashSet<DataSourceId>& modified, LogicalView& view,
     velocypack::Slice links, LinkVersion defaultVersion,
     containers::FlatHashSet<DataSourceId> const& stale /*= {}*/) {

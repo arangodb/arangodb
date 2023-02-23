@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,8 @@
 #include "Basics/Guarded.h"
 
 #include <map>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class Result;
@@ -102,6 +104,7 @@ struct ReplicatedStateBase {
   }
 
   [[nodiscard]] virtual auto createStateHandle(
+      TRI_vocbase_t& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameters)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
 
@@ -192,6 +195,8 @@ struct LeaderStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedLeaderState<S>>;
@@ -209,6 +214,7 @@ struct LeaderStateManager
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
     std::shared_ptr<StreamImpl> _stream;
+    bool _recoveryCompleted{false};
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -233,6 +239,8 @@ struct FollowerStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedFollowerState<S>>;
@@ -280,6 +288,8 @@ struct UnconfiguredStateManager
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
   [[nodiscard]] auto getStatus() const -> StateStatus;
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus;
 
  private:
   LoggerContext const _loggerContext;
@@ -324,6 +334,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   auto resign() && -> std::unique_ptr<CoreType>;
 
+  [[nodiscard]] auto getQuickStatus() const
+      -> replicated_log::LocalStateMachineStatus override;
   [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
@@ -384,11 +396,13 @@ struct ReplicatedState final
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   auto createStateHandle(
+      TRI_vocbase_t& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
  private:
-  auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
+  auto buildCore(TRI_vocbase_t& vocbase,
+                 std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }

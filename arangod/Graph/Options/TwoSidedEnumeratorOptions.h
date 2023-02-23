@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "Graph/PathType.h"
+
 #include <numeric>
 #include <cstddef>
 
@@ -32,20 +34,26 @@ namespace graph {
 
 struct TwoSidedEnumeratorOptions {
  public:
-  TwoSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
+  TwoSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
+                            PathType::Type pathType);
 
   ~TwoSidedEnumeratorOptions();
 
   [[nodiscard]] size_t getMinDepth() const;
   [[nodiscard]] size_t getMaxDepth() const;
+  [[nodiscard]] PathType::Type getPathType() const;
   [[nodiscard]] bool getStopAtFirstDepth() const;
+  [[nodiscard]] bool onlyProduceOnePath() const;
 
   void setStopAtFirstDepth(bool stopAtFirstDepth);
+  void setOnlyProduceOnePath(bool onlyProduceOnePath);
 
  private:
   size_t _minDepth;
   size_t _maxDepth;
-  bool _stopAtFirstDepth;
+  bool _stopAtFirstDepth{false};
+  bool _onlyProduceOnePath{false};
+  PathType::Type _pathType;
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,6 +108,7 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_primary_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
       metrics.get<std::uint64_t>("arangodb_search_index_size", labels),

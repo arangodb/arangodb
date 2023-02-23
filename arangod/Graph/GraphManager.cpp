@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -594,8 +594,7 @@ Result GraphManager::ensureCollections(
                                                   createdInitialName, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        Result dropResult =
-            arangodb::methods::Collections::drop(*coll, false, -1.0);
+        Result dropResult = arangodb::methods::Collections::drop(*coll, false);
         if (dropResult.fail()) {
           LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
               << "While cleaning up graph `" << graph.name() << "`: "
@@ -969,7 +968,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
           methods::Collections::lookup(ctx()->vocbase(), cname, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
+        dropResult = arangodb::methods::Collections::drop(*coll, false);
       }
 
       if (dropResult.fail()) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,6 +95,7 @@ struct QueryOptions {
   // add even more detail (internals) to query execution plans
   bool explainInternals;
   bool stream;
+  bool retriable;
   // do not return query results
   bool silent;
   // make the query fail if a warning is produced

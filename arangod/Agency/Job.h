@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,6 @@ class Slice;
 }
 namespace replication2 {
 class LogId;
-namespace replicated_state::agency {
-struct Target;
-struct Plan;
-}  // namespace replicated_state::agency
 namespace agency {
 struct LogPlanSpecification;
 struct LogTarget;
@@ -170,6 +166,9 @@ struct Job {
                   replication2::LogId stateId);
   static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
       Node const& snap, std::string const& db, replication2::LogId logId);
+  static std::optional<replication2::LogId> getReplicatedStateId(
+      Node const& snap, std::string const& db, std::string const& collection,
+      std::string const& shard);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
@@ -256,9 +255,6 @@ struct Job {
   static void addPreconditionServerReadLocked(velocypack::Builder& pre,
                                               std::string const& server,
                                               std::string const& jobId);
-  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
-                                                 std::string const& server,
-                                                 std::string const& jobId);
   static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
                                                std::string const& server,
                                                std::string const& jobId);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -192,8 +192,9 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     network::RequestOptions const& options) const {
   TRI_ASSERT(!server.starts_with("server:"));
 
-  VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
-  buffer.append(infoSlice.begin(), infoSlice.byteSize());
+  auto byteSize = infoSlice.byteSize();
+  VPackBuffer<uint8_t> buffer(byteSize);
+  buffer.append(infoSlice.begin(), byteSize);
 
   // add the transaction ID header
   network::Headers headers;

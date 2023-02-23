@@ -103,7 +103,63 @@
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #switchTypes': 'toggleBindParams',
-      'click #arangoMyQueriesTable #runQuery': 'selectAndRunQueryFromTable'
+      'click #arangoMyQueriesTable #runQuery': 'selectAndRunQueryFromTable',
+      'change #querySearchInput': 'restrictToSearchPhrase',
+      'keydown #querySearchInput': 'restrictToSearchPhraseKey',
+    },
+    restrictToSearchPhraseKey: function (event) {
+      if (
+        event && event.originalEvent && (
+          (
+            event.originalEvent.key &&
+            (
+              event.originalEvent.key === 'Control' || 
+              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Shift'
+            )
+          ) || 
+          event.originalEvent.ctrlKey || 
+          event.originalEvent.altKey
+        )
+      ) {
+        return;
+      }
+      // key pressed in search box
+      var self = this;
+
+      // force a new a search
+      this.resetQuerySearch();
+
+      self.searchTimeout = setTimeout(function () {
+        self.querySearch();
+      }, 200);
+    },
+    restrictToSearchPhrase: function () {
+      // force a new a search
+      this.resetQuerySearch();
+
+      // search executed
+      this.querySearch();
+    },
+    querySearch: function () {
+      var searchOptions = this.collection.searchOptions;
+      var searchPhrase = $('#querySearchInput').val();
+      if (searchPhrase === searchOptions.searchPhrase) {
+        return;
+      }
+      searchOptions.searchPhrase = searchPhrase;
+      this.updateQueryTable();
+      this.resize();
+    },
+
+    resetQuerySearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
+
+      var searchOptions = this.collection.searchOptions;
+      searchOptions.searchPhrase = null;
     },
 
     clearQuery: function () {
@@ -310,7 +366,8 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer',
+        'searchQueryByNameContainer'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -1509,10 +1566,22 @@
 
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
 
+    filterRows: function(rows) {
+      var searchPhrase = this.collection.searchOptions.searchPhrase;
+      if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {
+        return rows.filter(row => {
+          return row.name.toLowerCase().includes(
+            this.collection.searchOptions.searchPhrase.toLowerCase()
+          );
+        });
+      }
+      return rows;
+    },
     listenKey: function (e) {
       if (e.keyCode === 13) {
         if ($('#modalButton1').html() === 'Update') {
@@ -2393,7 +2462,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'
           ];
 
           var colors = [
@@ -2403,6 +2472,7 @@
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(64, 74, 83)',
+            'rgb(110, 112, 57)',
             'rgb(96, 189, 104)',
             'rgb(221, 224, 114)'
           ];
@@ -2412,8 +2482,9 @@
             'query parsing',
             'abstract syntax tree optimizations',
             'loading collections',
-            'instanciation of initial execution plan',
+            'instantiation of initial execution plan',
             'execution plan optimization and permutation',
+            'instantiation of query executors (incl. distribution)',
             'query execution',
             'query finalization'
           ];

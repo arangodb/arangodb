@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -342,7 +342,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   if (!isExpanded && !other.isExpanded &&
       other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
       other.valueNode->isConstant() && isReversed) {
-    if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
+    if (compareAstNodes(other.valueNode, valueNode, false) == 0) {
       return true;
     }
   }
@@ -376,7 +376,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
             auto w = other.valueNode->getMemberUnchecked(j);
 
             ConditionPartCompareResult res =
-                ResultsTable[CompareAstNodes(v, w, true) + 1][0][0];
+                ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
 
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
                 res != CompareResult::CONVERT_EQUAL &&
@@ -412,7 +412,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
       operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
       other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
       other.valueNode->isConstant()) {
-    return CompareAstNodes(other.valueNode, valueNode, false) == 0;
+    return compareAstNodes(other.valueNode, valueNode, false) == 0;
   }
 
   bool a = operatorNode->isArrayComparisonOperator();
@@ -437,13 +437,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
         operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.valueNode->isConstant()) {
-      return CompareAstNodes(other.valueNode, valueNode, false) == 0;
+      return compareAstNodes(other.valueNode, valueNode, false) == 0;
     }
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res =
-      ResultsTable[CompareAstNodes(other.valueNode, valueNode, true) + 1]
+      ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
                   [other.whichCompareOperation()][whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
@@ -1152,7 +1152,7 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
             }
             if (current.whichCompareOperation() ==
                     other.whichCompareOperation() &&
-                CompareAstNodes(current.valueNode, other.valueNode, true) ==
+                compareAstNodes(current.valueNode, other.valueNode, true) ==
                     0) {  // duplicate comparison detected - remove it
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
@@ -1396,7 +1396,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
                   ConditionPartCompareResult res =
-                      ResultsTable[CompareAstNodes(value, other.valueNode,
+                      ResultsTable[compareAstNodes(value, other.valueNode,
                                                    true) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
@@ -1429,7 +1429,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
             ConditionPartCompareResult res =
-                resultsTable[CompareAstNodes(current.valueNode, other.valueNode,
+                resultsTable[compareAstNodes(current.valueNode, other.valueNode,
                                              true) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];

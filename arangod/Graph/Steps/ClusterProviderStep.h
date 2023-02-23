@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,7 @@ class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
+  using VertexType = arangodb::velocypack::HashedStringRef;
 
   class Vertex {
    public:

@@ -210,6 +210,17 @@ auto ReplicatedStateManager<S>::getStatus() const
 }
 
 template<typename S>
+auto ReplicatedStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateMachineStatus {
+  auto manager = _guarded.getLockedGuard()->_currentManager;
+  auto status = std::visit(
+      overload{[](auto const& manager) { return manager->getQuickStatus(); }},
+      manager);
+
+  return status;
+}
+
+template<typename S>
 auto ReplicatedStateManager<S>::getFollower() const
     -> std::shared_ptr<IReplicatedFollowerStateBase> {
   auto guard = _guarded.getLockedGuard();
@@ -375,6 +386,7 @@ auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
 
 template<typename S>
 void LeaderStateManager<S>::recoverEntries() {
+  LOG_CTX("1b3d0", DEBUG, _loggerContext) << "starting recovery";
   auto future = _guardedData.getLockedGuard()->recoverEntries();
   std::move(future).thenFinal(
       [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
@@ -384,6 +396,8 @@ void LeaderStateManager<S>::recoverEntries() {
         if (auto self = weak.lock(); self != nullptr) {
           auto guard = self->_guardedData.getLockedGuard();
           guard->_leaderState->onRecoveryCompleted();
+          guard->_recoveryCompleted = true;
+          LOG_CTX("1b3de", INFO, self->_loggerContext) << "recovery completed";
         }
       });
 }
@@ -425,8 +439,23 @@ auto LeaderStateManager<S>::resign() && noexcept
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
+
   // TODO remove
   return StateStatus{.variant = std::move(status)};
+}
+
+template<typename S>
+auto LeaderStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateMachineStatus {
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_leaderState == NULL) {
+    // we have already resigned
+    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  }
+  if (guard->_recoveryCompleted) {
+    return replicated_log::LocalStateMachineStatus::kOperational;
+  }
+  return replicated_log::LocalStateMachineStatus::kRecovery;
 }
 
 template<typename S>
@@ -443,6 +472,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
+  _leaderState = NULL;
   return {std::move(core), std::move(methods)};
 }
 
@@ -499,10 +529,6 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
             TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED): {
           // Log follower has resigned, we'll be resigned as well. We just stop
           // working.
-          return std::nullopt;
-        }
-        case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND): {
-          // TODO this is a temporary fix, see CINFRA-588
           return std::nullopt;
         }
       }
@@ -751,6 +777,7 @@ auto FollowerStateManager<S>::resign() && noexcept
   auto guard = _guardedData.getLockedGuard();
   auto core = std::move(*guard->_followerState).resign();
   auto methods = std::move(*guard->_stream).resign();
+  guard->_followerState = NULL;
   guard->_stream.reset();
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
@@ -774,6 +801,17 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   auto followerStatus = FollowerStatus();
   // TODO remove
   return StateStatus{.variant = std::move(followerStatus)};
+}
+
+template<typename S>
+auto FollowerStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateMachineStatus {
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_followerState == NULL) {
+    // already resigned
+    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  }
+  return replicated_log::LocalStateMachineStatus::kOperational;
 }
 
 template<typename S>
@@ -807,6 +845,12 @@ auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
   auto unconfiguredStatus = UnconfiguredStatus();
   // TODO remove
   return StateStatus{.variant = std::move(unconfiguredStatus)};
+}
+
+template<typename S>
+auto UnconfiguredStateManager<S>::getQuickStatus() const
+    -> replicated_log::LocalStateMachineStatus {
+  return replicated_log::LocalStateMachineStatus::kUnconfigured;
 }
 
 template<typename S>
@@ -892,9 +936,11 @@ ReplicatedState<S>::~ReplicatedState() {
 
 template<typename S>
 auto ReplicatedState<S>::buildCore(
+    TRI_vocbase_t& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
-  if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-    return factory->constructCore(gid);
+  using CoreParameterType = typename S::CoreParameterType;
+  if constexpr (std::is_void_v<CoreParameterType>) {
+    return factory->constructCore(vocbase, gid);
   } else {
     if (!coreParameter.has_value()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -903,9 +949,17 @@ auto ReplicatedState<S>::buildCore(
                       "ID {}, created in database {}, for {} state",
                       gid.id, gid.database, S::NAME));
     }
-    auto params = velocypack::deserialize<typename S::CoreParameterType>(
-        coreParameter->slice());
-    return factory->constructCore(gid, std::move(params));
+    auto params = CoreParameterType{};
+    try {
+      params =
+          velocypack::deserialize<CoreParameterType>(coreParameter->slice());
+    } catch (std::exception const& ex) {
+      LOG_CTX("63857", ERR, loggerContext)
+          << "failed to deserialize core parameters for replicated state "
+          << gid << ". " << ex.what() << " json = " << coreParameter->toJson();
+      throw;
+    }
+    return factory->constructCore(vocbase, gid, std::move(params));
   }
 }
 
@@ -933,10 +987,11 @@ void ReplicatedState<S>::drop(
 
 template<typename S>
 auto ReplicatedState<S>::createStateHandle(
+    TRI_vocbase_t& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter)
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
-  auto core = buildCore(coreParameter);
+  auto core = buildCore(vocbase, coreParameter);
   auto handle = std::make_unique<ReplicatedStateManager<S>>(
       loggerContext, metrics, std::move(core), factory);
 

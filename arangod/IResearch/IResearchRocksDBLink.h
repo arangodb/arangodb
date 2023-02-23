@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,9 +109,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const final;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type_t<Index::Serialize> flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);

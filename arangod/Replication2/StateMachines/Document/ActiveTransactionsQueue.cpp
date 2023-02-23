@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 /**
- * Returns the first index which can be released without affecting discarding
+ * Returns the first index which can be released without discarding
  * any active transactions.
  */
 LogIndex ActiveTransactionsQueue::getReleaseIndex(LogIndex current) const {
@@ -53,6 +53,9 @@ bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
     return false;
   }
 
+  // Locate the transaction with that specific log index, corresponding to when
+  // tid was first created. Then, mark it as inactive.
+  // This assumes that the log indices are always given in increasing order.
   auto deactivateIdx =
       std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
                        std::make_pair(it->second, Status::kActive));

@@ -88,6 +88,25 @@ const getSnapshot = function (url, stateId, waitForIndex) {
   return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot?waitForIndex=${waitForIndex}`});
 };
 
+const getStatus = function(url, stateId) {
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
+};
+
+const prototypeStateIsReady = function (url, stateId) {
+  return function () {
+    let result = getStatus(url, stateId);
+    try {
+      const res = lh.checkRequestResult(result);
+      if (res.json.code !== 200) {
+        return Error(`expected status call to return 200, found ${res.json.code}`);
+      }
+      return true;
+    } catch(e) {
+      return Error("status call threw exception: " + e);
+    }
+  };
+};
+
 const replicatedStateSuite = function () {
   const {setUpAll, tearDownAll} = (function () {
     let previousDatabase, databaseExisted = true;
@@ -147,6 +166,9 @@ const replicatedStateSuite = function () {
         }
       }
       let followerUrl = lh.getServerUrl(follower);
+
+      // wait for prototype state to be ready
+      lh.waitFor(prototypeStateIsReady(leaderUrl, stateId));
 
       let result = insertEntries(leaderUrl, stateId, {foo0 : "bar0", foo1: "bar1", foo2: "bar2"});
       lh.checkRequestResult(result);
@@ -253,7 +275,6 @@ const replicatedStateSuite = function () {
 
       result = dropState(coordUrl, stateId);
       lh.checkRequestResult(result);
-      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };

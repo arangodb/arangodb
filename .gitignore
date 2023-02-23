@@ -1,5 +1,6 @@
 tags
-build
+./build
+build-presets
 /core.*
 *.vim
 .deps
@@ -59,6 +60,7 @@ p/
 !core.h
 TAGS
 
+CMakeUserPresets.json
 CPackConfig.cmake
 CPackSourceConfig.cmake
 CTestTestfile.cmake

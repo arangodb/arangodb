@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,4 +280,21 @@ auto AppendEntriesErrorReasonTypeStringTransformer::fromSerialized(
     return inspection::Status{"unknown error type " + source};
   }
   return {};
+}
+
+auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
+    -> std::string_view {
+  switch (status) {
+    case LocalStateMachineStatus::kUnconfigured:
+      return kStringUnconfigured;
+    case LocalStateMachineStatus::kRecovery:
+      return kStringRecovery;
+    case LocalStateMachineStatus::kOperational:
+      return kStringOperational;
+  }
+  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+      << "Unhandled replicated state status: "
+      << static_cast<std::underlying_type_t<decltype(status)>>(status);
+  TRI_ASSERT(false);
+  return "(unknown status code)";
 }

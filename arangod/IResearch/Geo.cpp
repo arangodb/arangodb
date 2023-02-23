@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,20 +36,41 @@ namespace arangodb::iresearch {
 
 template<Parsing p>
 bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
-                std::vector<S2Point>& cache) {
+                std::vector<S2LatLng>& cache, bool legacy,
+                geo::coding::Options options, Encoder* encoder) {
+  TRI_ASSERT(encoder == nullptr || encoder->length() == 0);
   Result r;
   if (vpack.isArray()) {
     r = geo::json::parseCoordinates<p != Parsing::FromIndex>(vpack, region,
-                                                             /*geoJson=*/true);
+                                                             /*geoJson=*/true,
+                                                             options, encoder);
   } else if constexpr (p == Parsing::OnlyPoint) {
-    S2LatLng latLng;
-    r = geo::json::parsePoint(vpack, latLng);
-    if (ADB_LIKELY(r.ok())) {
-      region.reset(latLng.ToPoint());
+    auto parsePoint = [&] {
+      S2LatLng latLng;
+      r = geo::json::parsePoint(vpack, latLng);
+      if (r.ok() && encoder != nullptr) {
+        TRI_ASSERT(options != geo::coding::Options::kInvalid);
+        TRI_ASSERT(encoder->avail() >= sizeof(uint8_t));
+        // We store type, because parseCoordinates store it
+        encoder->put8(0);  // In store to column we will remove it
+        if (geo::coding::isOptionsS2(options)) {
+          auto point = latLng.ToPoint();
+          geo::encodePoint(*encoder, point);
+          return point;
+        } else {
+          geo::encodeLatLng(*encoder, latLng, options);
+        }
+      } else if (r.ok() && options == geo::coding::Options::kS2LatLngInt) {
+        geo::toLatLngInt(latLng);
+      }
+      return latLng.ToPoint();
+    };
+    if (r.ok()) {
+      region.reset(parsePoint(), options);
     }
   } else {
-    r = geo::json::parseRegion<p != Parsing::FromIndex>(vpack, region, cache,
-                                                        /*legacy=*/false);
+    r = geo::json::parseRegion<p != Parsing::FromIndex>(
+        vpack, region, cache, legacy, options, encoder);
   }
   if (p != Parsing::FromIndex && r.fail()) {
     LOG_TOPIC("4549c", DEBUG, TOPIC)
@@ -62,19 +83,34 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
 
 template bool parseShape<Parsing::FromIndex>(velocypack::Slice slice,
                                              geo::ShapeContainer& shape,
-                                             std::vector<S2Point>& cache);
+                                             std::vector<S2LatLng>& cache,
+                                             bool legacy,
+                                             geo::coding::Options options,
+                                             Encoder* encoder);
 template bool parseShape<Parsing::OnlyPoint>(velocypack::Slice slice,
                                              geo::ShapeContainer& shape,
-                                             std::vector<S2Point>& cache);
+                                             std::vector<S2LatLng>& cache,
+                                             bool legacy,
+                                             geo::coding::Options options,
+                                             Encoder* encoder);
 template bool parseShape<Parsing::GeoJson>(velocypack::Slice slice,
                                            geo::ShapeContainer& shape,
-                                           std::vector<S2Point>& cache);
+                                           std::vector<S2LatLng>& cache,
+                                           bool legacy,
+                                           geo::coding::Options options,
+                                           Encoder* encoder);
 
-void toVelocyPack(velocypack::Builder& builder, S2LatLng const& latLng) {
-  builder.openArray();
-  builder.add(velocypack::Value(latLng.lng().degrees()));
-  builder.add(velocypack::Value(latLng.lat().degrees()));
+void toVelocyPack(velocypack::Builder& builder, S2LatLng point) {
+  TRI_ASSERT(point.is_valid());
+  // false because with false it's smaller
+  // in general we want only doubles, but format requires it should be array
+  // so we generate most smaller vpack array
+  builder.openArray(false);
+  builder.add(velocypack::Value{point.lng().degrees()});
+  builder.add(velocypack::Value{point.lat().degrees()});
   builder.close();
+  TRI_ASSERT(builder.slice().isArray());
+  TRI_ASSERT(builder.slice().head() == 0x02);
 }
 
 }  // namespace arangodb::iresearch

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -234,13 +235,10 @@ inline Result failedToGenerateName(char const* funcName, size_t i) {
                        i, "'")};
 }
 
-inline Result malformedNode(aql::AstNodeType type) {
-  auto const* typeName = getNodeTypeName(type);
-  return {
-      TRI_ERROR_BAD_PARAMETER,
-      absl::StrCat(
-          "Can't process malformed AstNode of type '",
-          (typeName ? absl::AlphaNum{*typeName} : absl::AlphaNum{type}), "'")};
+inline Result malformedNode(aql::AstNode const& node) {
+  return {TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("Can't process malformed AstNode of type '",
+                       node.getTypeString(), "'")};
 }
 
 }  // namespace error
@@ -249,10 +247,9 @@ template<typename T, bool CheckDeterminism = false>
 Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
                    aql::AstNode const& args, size_t i, bool isFilter,
                    QueryContext const& ctx) {
-  static_assert(std::is_same<T, std::string_view>::value ||
-                std::is_same<T, int64_t>::value ||
-                std::is_same<T, double_t>::value ||
-                std::is_same<T, bool>::value);
+  static_assert(std::is_same_v<T, std::string_view> ||
+                std::is_same_v<T, int64_t> || std::is_same_v<T, double> ||
+                std::is_same_v<T, bool>);
 
   auto const* arg = args.getMemberUnchecked(i);
 
@@ -274,12 +271,12 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
     }
 
     ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
-    if constexpr (std::is_same<T, std::string_view>::value) {
+    if constexpr (std::is_same_v<T, std::string_view>) {
       expectedType = SCOPED_VALUE_TYPE_STRING;
-    } else if constexpr (std::is_same<T, int64_t>::value ||
-                         std::is_same<T, double_t>::value) {
+    } else if constexpr (std::is_same_v<T, int64_t> ||
+                         std::is_same_v<T, double>) {
       expectedType = SCOPED_VALUE_TYPE_DOUBLE;
-    } else if constexpr (std::is_same<T, bool>::value) {
+    } else if constexpr (std::is_same_v<T, bool>) {
       expectedType = SCOPED_VALUE_TYPE_BOOL;
     }
 
@@ -287,17 +284,17 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
       return error::typeMismatch(funcName, i + 1, expectedType, value.type());
     }
 
-    if constexpr (std::is_same<T, std::string_view>::value) {
+    if constexpr (std::is_same_v<T, std::string_view>) {
       if (!value.getString(out)) {
         return error::failedToParse(funcName, i + 1, expectedType);
       }
-    } else if constexpr (std::is_same<T, int64_t>::value) {
+    } else if constexpr (std::is_same_v<T, int64_t>) {
       out = value.getInt64();
-    } else if constexpr (std::is_same<T, double>::value) {
+    } else if constexpr (std::is_same_v<T, double>) {
       if (!value.getDouble(out)) {
         return error::failedToParse(funcName, i + 1, expectedType);
       }
-    } else if constexpr (std::is_same<T, bool>::value) {
+    } else if constexpr (std::is_same_v<T, bool>) {
       out = value.getBoolean();
     }
   }

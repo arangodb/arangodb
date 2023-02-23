@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 
 #include "Basics/debugging.h"
 #include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -72,5 +74,9 @@ auto DocumentStateTransaction::intermediateCommit() -> Result {
 auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
+
+auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
+  return nullptr != _methods->state()->collection(sid, AccessMode::Type::NONE);
+}
 
 }  // namespace arangodb::replication2::replicated_state::document

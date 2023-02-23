@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -386,8 +386,7 @@ class Methods {
                                 AccessMode::Type) const;
 
   /// @brief fetch the LogicalCollection by name
-  arangodb::LogicalCollection* documentCollection(
-      std::string const& name) const;
+  arangodb::LogicalCollection* documentCollection(std::string_view name) const;
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
@@ -534,7 +533,7 @@ class Methods {
       -> futures::Future<OperationResult>;
 
   TransactionCollection* trxCollection(
-      std::string const& name,
+      std::string_view name,
       AccessMode::Type type = AccessMode::Type::READ) const;
 
   futures::Future<OperationResult> countCoordinator(

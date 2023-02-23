@@ -277,7 +277,15 @@ function printRules(rules, stats) {
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
@@ -919,6 +927,37 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
+  var buildRaw = function (node) {
+    if (Array.isArray(node)) {
+      // array
+      if (node.length > maxMembersToPrint) {
+        // print only the first few values from the array
+        return '[ ' + node.slice(0, maxMembersToPrint).map(buildRaw).join(', ') + ', ... ]';
+      }
+      return '[ ' + node.map(buildRaw).join(', ') + ' ]';
+    } else if (typeof node === 'object' && node !== null) {
+      // object
+      let keys = Object.keys(node);
+      let r = '{';
+      keys.slice(0, maxMembersToPrint).forEach((k, i) => {
+        if (i === 0) {
+          r += ' ';
+        } else {
+          r += ', ';
+        }
+        r += value(JSON.stringify(k)) + ' : ' + buildRaw(node[k]);
+      });
+      if (keys.length > maxMembersToPrint) {
+        r += ', ...';
+      }
+      r += ' }';
+      return r;
+    }
+
+    // anything else
+    return value(JSON.stringify(node));
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
@@ -970,6 +1009,9 @@ function processQuery(query, explain, planIndex) {
       case 'value':
         return value(JSON.stringify(node.value));
       case 'object':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the object
@@ -983,6 +1025,9 @@ function processQuery(query, explain, planIndex) {
       case 'calculated object element':
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the array
@@ -1324,7 +1369,7 @@ function processQuery(query, explain, planIndex) {
            
         }
         let viewAnnotation = '/* view query';
-        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+        if (node.hasOwnProperty('outNmDocId')) {
           viewAnnotation += ' with late materialization';
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
@@ -2321,11 +2366,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},
@@ -2625,8 +2674,8 @@ function explainQuerysRegisters(plan) {
    *     type: string,
    *     unusedRegsStack: Array<number[]>,
    *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
-   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
-   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsSetHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
    *   }
    * }
    */

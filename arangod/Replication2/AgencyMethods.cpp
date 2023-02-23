@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -288,6 +289,10 @@ auto methods::replaceReplicatedStateParticipant(
               [&](auto&& precs) {
                 return std::move(precs).isEqual(*path->leader(),
                                                 *currentLeader);
+              })
+        .cond(not currentLeader.has_value(),
+              [&](auto&& precs) {
+                return std::move(precs).isEmpty(*path->leader());
               })
         .end()
         .done();

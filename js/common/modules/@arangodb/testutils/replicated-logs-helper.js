@@ -35,6 +35,8 @@ const helper = require('@arangodb/test-helper-common');
 const serverHelper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
+  const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
+  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length-1, count)];
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -49,7 +51,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
     if (count % 10 === 0) {
       console.log(result);
     }
-    wait(0.5); // 240 * .5s = 2 minutes
+    wait(getWaitTime(count));
   }
   if (onErrorCallback !== undefined) {
     onErrorCallback(result);
@@ -60,7 +62,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const readAgencyValueAt = function (key) {
   const response = serverHelper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
@@ -465,8 +467,12 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const stopServerWait = function (serverId) {
-    stopServer(serverId);
-    waitFor(lpreds.serverFailed(serverId));
+    stopServersWait([serverId]);
+  };
+
+  const stopServersWait = function (serverIds) {
+    serverIds.forEach(stopServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverFailed(serverId)));
   };
 
   const continueServer = function (serverId) {
@@ -478,14 +484,16 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const continueServerWait = function (serverId) {
-    continueServer(serverId);
-    waitFor(lpreds.serverHealthy(serverId));
+    continueServersWait([serverId]);
+  };
+
+  const continueServersWait = function (serverIds) {
+    serverIds.forEach(continueServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverHealthy(serverId)));
   };
 
   const resumeAll = function () {
-    Object.keys(stoppedServers).forEach(function (key) {
-      continueServerWait(key);
-    });
+    continueServersWait(Object.keys(stoppedServers));
     stoppedServers = {};
   };
 
@@ -534,8 +542,10 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   return {
     stopServer,
     stopServerWait,
+    stopServersWait,
     continueServer,
     continueServerWait,
+    continueServersWait,
     resumeAll,
     setUpAll,
     tearDownAll,
@@ -586,9 +596,30 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpShardLog = function (shardId, limit=1000) {
-  let log = db._replicatedLog(shardIdToLogId(shardId));
+const dumpLogHead = function (logId, limit=1000) {
+  let log = db._replicatedLog(logId);
   return log.head(limit);
+};
+
+const getShardsToLogsMapping = function (dbName, colId) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`);
+  let mapping = {};
+  if (colPlan.hasOwnProperty("groupId")) {
+    const groupId = colPlan.groupId;
+    const shards = colPlan.shardsR2;
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const shardSheaves = colGroup.shardSheaves;
+    for (let idx = 0; idx < shards.length; ++idx) {
+      mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+    }
+  } else {
+    // Legacy code, supporting system collections
+    const shards = colPlan.shards;
+    for (const [shardId, _] of Object.entries(shards)) {
+      mapping[shardId] = shardIdToLogId(shardId);
+    }
+  }
+  return mapping;
 };
 
 const setLeader = (database, logId, newLeader) => {
@@ -612,7 +643,8 @@ const unsetLeader = (database, logId) => {
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const shards = col.shards();
-  const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
+  const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
+  const stateMachineIds = shards.map(s => shardsToLogs[s]);
 
   const terms = Object.fromEntries(
     stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
@@ -668,8 +700,9 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpShardLog = dumpShardLog;
+exports.dumpLogHead = dumpLogHead;
 exports.setLeader = setLeader;
 exports.unsetLeader = unsetLeader;
 exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
+exports.getShardsToLogsMapping = getShardsToLogsMapping;

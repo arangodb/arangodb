@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,9 +32,9 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::doc_id_t getRemovalBoundary(irs::sub_reader const&, irs::doc_id_t, bool);
+irs::doc_id_t getRemovalBoundary(irs::SubReader const&, irs::doc_id_t, bool);
 #ifndef USE_ENTERPRISE
-IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::sub_reader const&,
+IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
                                                   irs::doc_id_t doc, bool) {
   return doc;
 }
@@ -87,7 +87,7 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& /*index*/, irs::Order const& /*ord*/,
+    irs::IndexReader const& /*index*/, irs::Order const& /*ord*/,
     irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during regular runtime should have at most 1 identical
   // primary key in the entire datastore
@@ -105,7 +105,7 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
+    irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
     irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }

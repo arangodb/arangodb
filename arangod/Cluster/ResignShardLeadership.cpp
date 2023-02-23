@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,7 +101,7 @@ bool ResignShardLeadership::first() {
     if (col == nullptr) {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
-            << " in database " + database;
+            << " in database " << database;
       LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
           << "ResignLeadership: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());

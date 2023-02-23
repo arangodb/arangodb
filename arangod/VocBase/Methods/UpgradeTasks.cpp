@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -508,8 +508,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
   auto res = arangodb::methods::Collections::lookup(
       vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
-    res = arangodb::methods::Collections::drop(
-        *col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+    res = arangodb::methods::Collections::drop(*col, true);
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

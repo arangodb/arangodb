@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
+#include "AgencyCommon.h"
 
 namespace arangodb {
 
@@ -200,6 +201,9 @@ class AsyncAgencyComm final {
       std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureResult poll(network::Timeout timeout,
                                   uint64_t index) const;
+
+  [[nodiscard]] futures::Future<consensus::index_t> getCurrentCommitIndex()
+      const;
 
   template<typename T>
   [[nodiscard]] FutureResult setValue(

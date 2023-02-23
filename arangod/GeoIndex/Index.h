@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,7 +76,7 @@ struct Index {
   Result shape(velocypack::Slice doc, geo::ShapeContainer& shape) const;
 
   /// @brief Parse AQL condition into query parameters
-  /// Public to allow usage by legacy geo indexes
+  /// Public to allow usage by legacy geo indexes.
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params, bool legacy);

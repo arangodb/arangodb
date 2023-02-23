@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -78,6 +77,8 @@
 #include "VocBase/Methods/Collections.h"
 
 #include <tuple>
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -1164,7 +1165,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     }
 
     if (rhs->type == NODE_TYPE_ARRAY) {
-      if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
+      if (rhs->numMembers() < AstNode::kSortNumberThreshold ||
+          rhs->isSorted()) {
         // number of values is below threshold or array is already sorted
         continue;
       }
@@ -1223,7 +1225,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < AstNode::SortNumberThreshold) {
+          testNode->numMembers() < AstNode::kSortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -1259,7 +1261,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       // estimate items in subquery
       CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::kSortNumberThreshold) {
         continue;
       }
 
@@ -1756,7 +1758,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + attribute->getString() + name;
+      name = absl::StrCat(".", attribute->getStringView(), name);
       attribute = attribute->getMember(0);
     }
 
@@ -1848,7 +1850,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() ==
-                        nameAttribute->getString()) {
+                        nameAttribute->getStringView()) {
                   // don't remove a SmartJoin attribute access!
                   return;
                 } else {
@@ -6025,7 +6027,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value
   // is better
   bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) {
-    int cmp = CompareAstNodes(bestValue, value, true);
+    int cmp = compareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);
@@ -7025,7 +7027,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return static_cast<Variable const*>(lhs->getData())->id ==
            static_cast<Variable const*>(rhs->getData())->id;
   }
-  // CompareAstNodes does not handle non const attribute access
+  // compareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
       res2;
   bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
@@ -7033,7 +7035,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   if (acc1 || acc2) {
     return acc1 && acc2 && res1 == res2;  // same variable same path
   }
-  return aql::CompareAstNodes(lhs, rhs, false) == 0;
+  return aql::compareAstNodes(lhs, rhs, false) == 0;
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
@@ -7467,6 +7469,30 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
+    bool mustRespectIdxHint = false;
+    auto enumerateColNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto const& colNodeHints = enumerateColNode->hint();
+    if (colNodeHints.isForced() &&
+        colNodeHints.type() == IndexHint::HintType::Simple) {
+      auto indexes = enumerateColNode->collection()->indexes();
+      auto& idxNames = colNodeHints.hint();
+      for (auto const& idxName : idxNames) {
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == idxName) {
+            auto idxType = idx->type();
+            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+              mustRespectIdxHint = true;
+            } else {
+              info.index = idx;
+            }
+            break;
+          }
+        }
+      }
+    }
 
     while (current) {
       if (current->getType() == EN::FILTER) {
@@ -7508,7 +7534,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      if (applyGeoOptimization(plan.get(), limit, info)) {
+      if (!mustRespectIdxHint &&
+          applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
     }

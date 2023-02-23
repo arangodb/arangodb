@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,11 @@
 #include <algorithm>
 #include <cstddef>
 #include "Basics/Common.h"
-#include "Pregel/Graph.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/GraphStore/Graph.h"
+#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -114,14 +113,13 @@ class VertexContext {
 
   PregelShard shard() const { return _vertexEntry->shard(); }
   std::string_view key() const { return _vertexEntry->key(); }
-  PregelID pregelId() const { return _vertexEntry->pregelId(); }
+  VertexID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
 template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
-  ReportManager _reports;
 
  public:
   virtual ~VertexComputation() = default;
@@ -130,7 +128,7 @@ class VertexComputation : public VertexContext<V, E, M> {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
 
-  void sendMessage(PregelID const& pid, M const& data) {
+  void sendMessage(VertexID const& pid, M const& data) {
     _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
@@ -145,8 +143,6 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;
-
-  ReportManager& getReportManager() { return _reports; }
 };
 
 template<typename V, typename E, typename M>

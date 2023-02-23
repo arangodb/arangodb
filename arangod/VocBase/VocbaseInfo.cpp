@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,11 +68,9 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
 
 Result CreateDatabaseInfo::load(VPackSlice options, VPackSlice users) {
   Result res = extractOptions(options, true /*getId*/, true /*getUser*/);
-  if (!res.ok()) {
-    return res;
+  if (res.ok()) {
+    res = extractUsers(users);
   }
-
-  res = extractUsers(users);
   if (!res.ok()) {
     return res;
   }
@@ -89,11 +87,9 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice options,
   _name = methods::Databases::normalizeName(name);
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
-  if (!res.ok()) {
-    return res;
+  if (res.ok()) {
+    res = extractUsers(users);
   }
-
-  res = extractUsers(users);
   if (!res.ok()) {
     return res;
   }
@@ -111,11 +107,9 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
-  if (!res.ok()) {
-    return res;
+  if (res.ok()) {
+    res = extractUsers(users);
   }
-
-  res = extractUsers(users);
   if (!res.ok()) {
     return res;
   }
@@ -239,38 +233,46 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
 
-  auto vocopts = getVocbaseOptions(_server, options);
-  _replicationFactor = vocopts.replicationFactor;
-  _writeConcern = vocopts.writeConcern;
-  _sharding = vocopts.sharding;
-  _replicationVersion = vocopts.replicationVersion;
+  try {
+    auto vocopts = getVocbaseOptions(_server, options, _strictValidation);
+    _replicationFactor = vocopts.replicationFactor;
+    _writeConcern = vocopts.writeConcern;
+    _sharding = vocopts.sharding;
+    _replicationVersion = vocopts.replicationVersion;
 
-  if (extractName) {
-    auto nameSlice = options.get(StaticStrings::DatabaseName);
-    if (!nameSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+    if (extractName) {
+      auto nameSlice = options.get(StaticStrings::DatabaseName);
+      if (!nameSlice.isString()) {
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+      }
+      _name = methods::Databases::normalizeName(nameSlice.copyString());
     }
-    _name = methods::Databases::normalizeName(nameSlice.copyString());
-  }
-  if (extractId) {
-    auto idSlice = options.get(StaticStrings::DatabaseId);
-    if (idSlice.isString()) {
-      // improve once it works
-      // look for some nice internal helper this has proably been done before
-      auto idStr = idSlice.copyString();
-      _id = basics::StringUtils::uint64(idSlice.stringView().data(),
-                                        idSlice.stringView().size());
+    if (extractId) {
+      auto idSlice = options.get(StaticStrings::DatabaseId);
+      if (idSlice.isString()) {
+        // improve once it works
+        // look for some nice internal helper this has proably been done before
+        auto idStr = idSlice.copyString();
+        _id = basics::StringUtils::uint64(idSlice.stringView().data(),
+                                          idSlice.stringView().size());
 
-    } else if (idSlice.isUInt()) {
-      _id = idSlice.getUInt();
-    } else if (idSlice.isNone()) {
-      // do nothing - can be set later - this sucks
-    } else {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+      } else if (idSlice.isUInt()) {
+        _id = idSlice.getUInt();
+      } else if (idSlice.isNone()) {
+        // do nothing - can be set later - this sucks
+      } else {
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+      }
     }
-  }
 
-  return checkOptions();
+    return checkOptions();
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "an unknown error occurred");
+  }
 }
 
 Result CreateDatabaseInfo::checkOptions() {
@@ -302,7 +304,21 @@ Result CreateDatabaseInfo::checkOptions() {
   return res;
 }
 
-VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
+                                       ArangodServer& server,
+                                       ExecContext const& execContext,
+                                       std::string const& name,
+                                       std::uint64_t id)
+    : _server(server),
+      _context(execContext),
+      _id(id),
+      _name(name),
+      _valid(true) {}
+#endif
+
+VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
+                                 bool strictValidation) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -352,7 +368,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
       vocbaseOptions.replicationFactor =
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
-      if (haveCluster) {
+      if (haveCluster && strictValidation) {
         auto const minReplicationFactor =
             server.getFeature<ClusterFeature>().minReplicationFactor();
         auto const maxReplicationFactor =

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -403,6 +403,10 @@ query_t config_t::poolToBuilder() const {
 
 bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   WRITE_LOCKER(readLocker, _lock);
+  auto it = _pool.find(id);
+  if (it == _pool.end() && _pool.size() == _agencySize) {
+    return false;
+  }
   if (_pool[id] != ep) {
     _pool[id] = ep;
     ++_version;

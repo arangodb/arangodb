@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +29,6 @@
 #include <iostream>
 
 namespace arangodb {
-
-std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
-  return r.print(o);
-}
 
 std::ostream& operator<<(std::ostream& o,
                          arangodb::QueryAnalyzerRevisions const& r) {
@@ -118,11 +114,6 @@ std::ostream& QueryAnalyzerRevisions::print(std::ostream& o) const {
 
 QueryAnalyzerRevisions QueryAnalyzerRevisions::QUERY_LATEST(
     AnalyzersRevision::LATEST, AnalyzersRevision::LATEST);
-
-std::ostream& RebootId::print(std::ostream& o) const {
-  o << _value;
-  return o;
-}
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
   static auto ptr = std::shared_ptr<AnalyzersRevision::Ptr::element_type>(

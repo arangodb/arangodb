@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,6 @@
 #ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>
-#include <unicode/unistr.h>
 #include "Basics/socket-utils.h"
 #include "Basics/win-utils.h"
 #endif
@@ -496,18 +495,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  icu::UnicodeString uwargs(external->_executable.c_str());
+  auto uwargs = arangodb::basics::toWString(external->_executable);
 
-  err = wAppendQuotedArg(
-      res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+  err = wAppendQuotedArg(res, uwargs.data());
   if (err != TRI_ERROR_NO_ERROR) {
     return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
-    uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(
-        res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+    uwargs = arangodb::basics::toWString(external->_arguments[i]);
+    err = wAppendQuotedArg(res, uwargs.data());
     if (err != TRI_ERROR_NO_ERROR) {
       return L"";
     }

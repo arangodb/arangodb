@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,9 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 
+#include "velocypack/Buffer.h"
 #include <velocypack/Iterator.h>
+#include <velocypack/Builder.h>
 #include <atomic>
 
 namespace arangodb {
@@ -52,13 +54,16 @@ class Cursor {
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
+  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount,
+         bool isRetriable)
       : _id(id),
         _batchSize(batchSize == 0 ? 1 : batchSize),
+        _currentBatchId(0),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
         _isDeleted(false),
+        _isRetriable(isRetriable),
         _isUsed(false) {}
 
   virtual ~Cursor() = default;
@@ -68,11 +73,13 @@ class Cursor {
 
   inline size_t batchSize() const { return _batchSize; }
 
-  inline bool hasCount() const { return _hasCount; }
+  bool hasCount() const noexcept { return _hasCount; }
 
-  inline double ttl() const { return _ttl; }
+  bool isRetriable() const noexcept { return _isRetriable; }
 
-  inline double expires() const {
+  double ttl() const noexcept { return _ttl; }
+
+  double expires() const noexcept {
     return _expires.load(std::memory_order_relaxed);
   }
 
@@ -84,6 +91,28 @@ class Cursor {
   inline bool isDeleted() const { return _isDeleted; }
 
   void setDeleted() { _isDeleted = true; }
+
+  void setLastQueryBatchObject(
+      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
+    _currentBatchResult.second = std::move(buffer);
+  }
+
+  std::pair<std::shared_ptr<VPackBufferUInt8>, Result> getLastBatchResult(
+      std::string const& batchId) {
+    if (_currentBatchResult.first != batchId) {
+      return {nullptr, Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found")};
+    }
+    return {_currentBatchResult.second, TRI_ERROR_NO_ERROR};
+  }
+
+  void handleNextBatchIdValue(VPackBuilder& builder, bool hasMore) {
+    if (isRetriable()) {
+      _currentBatchResult.first = std::to_string(++_currentBatchId);
+      if (hasMore) {
+        builder.add("nextBatchId", std::to_string(_currentBatchId + 1));
+      }
+    }
+  }
 
   void use() {
     TRI_ASSERT(!_isDeleted);
@@ -145,10 +174,14 @@ class Cursor {
  protected:
   CursorId const _id;
   size_t const _batchSize;
+  size_t _currentBatchId;
   double _ttl;
   std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
+  bool _isRetriable;
   std::atomic<bool> _isUsed;
+  std::pair<std::string, std::shared_ptr<velocypack::Buffer<uint8_t>>>
+      _currentBatchResult;
 };
 }  // namespace arangodb

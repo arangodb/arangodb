@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -153,7 +153,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
-  irs::index_reader_options readerOptions;
+  irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions,
                               index().collection().vocbase().server(), _meta);
@@ -395,8 +395,7 @@ Result IResearchLink::unload() noexcept {
   // with the removal of the link: when we decided whether to drop the link,
   // the collection was still there. But when we did an unload link,
   // the collection was already lazily deleted.
-  if (index().collection().deleted()  // collection deleted
-      || index().collection().status() == TRI_VOC_COL_STATUS_DELETED) {
+  if (index().collection().deleted()) {
     return basics::catchToResult([&] { return drop(); });
   }
   shutdownDataStore();

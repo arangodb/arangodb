@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -210,28 +210,6 @@ class Logger {
         : _value(value), _precision(precision) {}
     double _value;
     int _precision;
-  };
-
-  struct CHARS {
-    CHARS(char const* data, size_t size) noexcept : data(data), size(size) {}
-    char const* data;
-    size_t size;
-  };
-
-  struct BINARY {
-    BINARY(void const* baseAddress, size_t size)
-    noexcept : baseAddress(baseAddress), size(size) {}
-    explicit BINARY(std::string const& data) noexcept
-        : BINARY(data.data(), data.size()) {}
-    void const* baseAddress;
-    size_t size;
-  };
-
-  struct RANGE {
-    RANGE(void const* baseAddress, size_t size)
-    noexcept : baseAddress(baseAddress), size(size) {}
-    void const* baseAddress;
-    size_t size;
   };
 
   struct LINE {

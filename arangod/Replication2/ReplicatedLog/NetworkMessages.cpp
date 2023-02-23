@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -298,11 +298,10 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = EntryContainer::transient_type{};
-    std::transform(
-        entriesVp.begin(), entriesVp.end(),
-        std::back_inserter(transientEntries), [](auto const& it) {
-          return InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it));
-        });
+    for (auto it : entriesVp) {
+      transientEntries.push_back(
+          InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it)));
+    }
     return std::move(transientEntries).persistent();
   });
 

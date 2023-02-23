@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,26 @@ void serialize(Builder& builder, T& value) {
 template<class T>
 [[nodiscard]] auto serialize(T& value) -> SharedSlice {
   auto builder = Builder();
-  serialize(builder, value);
+  serialize<T>(builder, value);
+  return std::move(builder).sharedSlice();
+}
+
+template<class T, class Context>
+void serializeWithContext(Builder& builder, T& value, Context const& context) {
+  inspection::VPackSaveInspector<Context> inspector(builder, context);
+  if (auto res = inspector.apply(value); !res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while serializing to VelocyPack: "} + res.error() +
+            "\nPath: " + res.path());
+  }
+}
+
+template<class T, class Context>
+[[nodiscard]] auto serializeWithContext(T& value, Context const& context)
+    -> SharedSlice {
+  auto builder = Builder();
+  serializeWithContext(builder, value, context);
   return std::move(builder).sharedSlice();
 }
 

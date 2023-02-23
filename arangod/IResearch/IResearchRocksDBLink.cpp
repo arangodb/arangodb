@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
 
 void IResearchRocksDBLink::toVelocyPack(
     VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+    std::underlying_type_t<Index::Serialize> flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,

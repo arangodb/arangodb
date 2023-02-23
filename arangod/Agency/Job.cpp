@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,6 +46,8 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Helpers.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
@@ -404,7 +406,7 @@ std::string Job::randomIdleAvailableServer(
       }
 
       std::string const status = (*srv.second).hasAsString("Status").value();
-      if (status == "GOOD") {
+      if (status == Supervision::HEALTH_STATUS_GOOD) {
         good.push_back(srv.first);
       }
     }
@@ -445,8 +447,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
         // Ignore a potential _ prefix, which can occur on leader resign:
-        if (serverStr.size() > 0 && serverStr[0] == '_') {
-          serverStr.erase(0, 1);  // remove trailing _
+        if (serverStr.starts_with('_')) {
+          serverStr.erase(0, 1);  // remove leading _
         }
         // Now look up this server:
         auto it = healthData.find(serverStr);
@@ -456,7 +458,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
-              status && (status.value() == "GOOD" || status.value() == "BAD")) {
+              status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                         status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
           } else if (maintenanceSet.has_value() &&
@@ -487,7 +490,8 @@ size_t Job::countGoodOrBadServersInList(
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
-            status && (status.value() == "GOOD" || status.value() == "BAD")) {
+            status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
+                       status.value() == Supervision::HEALTH_STATUS_BAD)) {
           ++count;
         }
       }
@@ -661,7 +665,8 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
   std::unordered_map<std::string, bool> good;
 
   for (auto const& i : snap.hasAsChildren(healthPrefix).value().get()) {
-    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
   }
 
   std::unordered_map<std::string, size_t> currentServers;
@@ -861,13 +866,10 @@ void Job::doForAllShards(
                        std::string& curPath)>
         worker) {
   for (auto const& collShard : shards) {
-    std::string shard = collShard.shard;
-    std::string collection = collShard.collection;
-
-    std::string planPath =
-        planColPrefix + database + "/" + collection + "/shards/" + shard;
-    std::string curPath =
-        curColPrefix + database + "/" + collection + "/" + shard + "/servers";
+    std::string planPath = planColPrefix + database + "/" +
+                           collShard.collection + "/shards/" + collShard.shard;
+    std::string curPath = curColPrefix + database + "/" + collShard.collection +
+                          "/" + collShard.shard + "/servers";
 
     Slice plan = snapshot.hasAsSlice(planPath).value();
     Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
@@ -1035,7 +1037,7 @@ std::string Job::checkServerHealth(Node const& snapshot,
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
   if (!status) {
-    return "UNCLEAR";
+    return std::string{Supervision::HEALTH_STATUS_UNCLEAR};
   }
   return status.value();
 }
@@ -1096,16 +1098,6 @@ void Job::addPreconditionServerReadLocked(Builder& pre,
   {
     VPackObjectBuilder shardLockEmpty(&pre);
     pre.add(PREC_IS_READ_LOCKED, VPackValue(jobId));
-  }
-}
-
-void Job::addPreconditionServerWriteLockable(Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId) {
-  pre.add(VPackValue(blockedServersPrefix + server));
-  {
-    VPackObjectBuilder shardLockEmpty(&pre);
-    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
   }
 }
 
@@ -1184,6 +1176,46 @@ Job::readLogPlan(Node const& snap, std::string const& db,
   return plan;
 }
 
+std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
+    const Node& snap, const std::string& db, const std::string& collection,
+    const std::string& shard) {
+  // Lookup collection group ID
+  auto collectionPath = "Plan/Collections/" + db + "/" + collection;
+  auto collectionNode = snap.get(collectionPath);
+  TRI_ASSERT(collectionNode.has_value());
+  auto collectionSlice = collectionNode->get().toBuilder().sharedSlice();
+  auto groupId = collectionSlice.get("groupId");
+  if (groupId.isNone()) {
+    return std::nullopt;
+  }
+
+  // Get the index of the shard in shardsR2
+  auto shardsR2 = collectionSlice.get("shardsR2");
+  TRI_ASSERT(shardsR2.isArray());
+  std::size_t shardIndex = 0;
+  for (auto const& shardR2 : VPackArrayIterator(shardsR2.slice())) {
+    if (shardR2.copyString() == shard) {
+      break;
+    }
+    ++shardIndex;
+  }
+  TRI_ASSERT(shardIndex < shardsR2.length());
+
+  // Get the collection group
+  auto groupPath =
+      "Plan/CollectionGroups/" + db + "/" + std::to_string(groupId.getUInt());
+  auto groupNode = snap.get(groupPath);
+  if (not groupNode.has_value()) {
+    return std::nullopt;
+  }
+  auto group = velocypack::deserialize<
+      replication2::agency::CollectionGroupPlanSpecification>(
+      groupNode->get().toBuilder().slice());
+  TRI_ASSERT(shardIndex < group.shardSheaves.size());
+  auto logId = group.shardSheaves.at(shardIndex).replicatedLog;
+  return logId;
+}
+
 std::string Job::findOtherHealthyParticipant(Node const& snap,
                                              std::string const& db,
                                              replication2::LogId stateId,
@@ -1194,7 +1226,8 @@ std::string Job::findOtherHealthyParticipant(Node const& snap,
   }
   std::unordered_map<std::string, bool> good;
   for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
-    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+    good[i.first] = ((*i.second).hasAsString("Status").value() ==
+                     Supervision::HEALTH_STATUS_GOOD);
   }
 
   for (const auto& [id, participantData] : target->participants) {

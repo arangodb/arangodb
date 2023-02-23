@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -48,6 +49,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
@@ -67,7 +69,6 @@ namespace replication {
 enum class Version;
 }
 namespace replication2 {
-class LogId;
 namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
@@ -77,6 +78,9 @@ struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
 }  // namespace replicated_state
+namespace agency {
+struct CollectionGroupId;
+}
 }  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
@@ -116,7 +120,7 @@ class LogicalCollection : public LogicalDataSource {
    * add a new value make sure it is the next free 2^n value.
    * For Backwards Compatibility a value can never be reused.
    */
-  enum InternalValidatorType {
+  enum InternalValidatorType : std::uint64_t {
     None = 0,
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
@@ -135,13 +139,13 @@ class LogicalCollection : public LogicalDataSource {
       std::string_view shardId);
 
   // SECTION: Meta Information
-  Version version() const { return _version; }
+  Version version() const noexcept { return _version; }
 
-  void setVersion(Version version) { _version = version; }
+  void setVersion(Version version) noexcept { _version = version; }
 
-  uint32_t v8CacheVersion() const;
+  uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const;
+  TRI_col_type_e type() const noexcept { return _type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -156,16 +160,7 @@ class LogicalCollection : public LogicalDataSource {
 
   RevisionId newRevisionId() const;
 
-  TRI_vocbase_col_status_e status() const;
-  TRI_vocbase_col_status_e getStatusLocked();
-
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-
-  /// @brief try to fetch the collection status under a lock
-  /// the boolean value will be set to true if the lock could be acquired
-  /// if the boolean is false, the return value is always
-  /// TRI_VOC_COL_STATUS_CORRUPTED
-  TRI_vocbase_col_status_e tryFetchStatus(bool&);
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -223,6 +218,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
@@ -249,6 +245,7 @@ class LogicalCollection : public LogicalDataSource {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
 
+  void setDocumentStateId(replication2::LogId id);
   auto getDocumentState()
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
@@ -280,7 +277,6 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -393,13 +389,14 @@ class LogicalCollection : public LogicalDataSource {
                                             VPackSlice collectionProperties);
 #endif
 
+  auto groupID() const noexcept
+      -> arangodb::replication2::agency::CollectionGroupId;
+
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
-
-  void increaseV8Version();
 
   bool determineSyncByRevision() const;
 
@@ -432,9 +429,6 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Collection type
   TRI_col_type_e const _type;
 
-  // @brief Current state of this colletion
-  std::atomic<TRI_vocbase_col_status_e> _status;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
@@ -451,10 +445,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  bool _usesRevisionsAsDocumentIds;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 
@@ -495,6 +489,12 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+
+  // Temporarily here, used for shards, only on DBServers
+  std::optional<arangodb::replication2::LogId> _replicatedStateId;
+
+  // TODO: Only quickly added
+  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb

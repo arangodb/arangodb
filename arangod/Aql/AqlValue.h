@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -394,7 +394,7 @@ struct AqlValue final {
   bool isArray() const noexcept;
 
   // @brief return a string describing the content of this AqlValue
-  char const* getTypeString() const noexcept;
+  std::string_view getTypeString() const noexcept;
 
   /// @brief get the (array) length (note: this treats ranges as arrays, too!)
   size_t length() const;

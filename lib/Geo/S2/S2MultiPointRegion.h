@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,11 @@
 
 #pragma once
 
+#include "Geo/Coding.h"
+
 #include <s2/s2region.h>
 #include <s2/s2point.h>
+#include <s2/s2shape.h>
 
 #include <exception>
 #include <vector>
@@ -54,6 +57,9 @@ class S2MultiPointRegion final : public S2Region {
   bool Contains(S2Cell const& cell) const final;
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
+
+  void Encode(Encoder& encoder, coding::Options options) const;
+  bool Decode(Decoder& decoder, uint8_t tag);
 
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }

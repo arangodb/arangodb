@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,9 +73,8 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const final;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type_t<Index::Serialize> flags) const final;
 
   size_t memory() const final { return stats().indexSize; }
 
@@ -99,6 +98,11 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
     return IResearchInvertedIndex::covers(projections);
   }
 
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const final {
+    return IResearchInvertedIndex::coveredFields();
+  }
+
   Result drop() final /*noexcept*/ { return deleteDataStore(); }
 
   void load() final {}
@@ -117,6 +121,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
       int mutableConditionIdx) final {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
+
     return IResearchInvertedIndex::iteratorForCondition(
         monitor, &collection(), trx, node, reference, opts,
         mutableConditionIdx);

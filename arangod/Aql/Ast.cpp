@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,6 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -58,10 +57,12 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "V8Server/V8DealerFeature.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
@@ -70,7 +71,7 @@ struct RecursiveAttributeFinderContext {
   bool couldExtractAttributePath;
   std::string_view expectedAttribute;
   containers::SmallVector<AstNode const*, 128> seen;
-  containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes;
+  containers::FlatHashSet<aql::AttributeNamePath>& attributes;
 };
 
 struct ValidateAndOptimizeContext {
@@ -90,8 +91,7 @@ struct ValidateAndOptimizeContext {
 
 auto doNothingVisitor = [](AstNode const*) {};
 
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
-                                      ErrorCode code,
+[[noreturn]] void throwFormattedError(aql::QueryContext& query, ErrorCode code,
                                       std::string_view details) {
   // ensure that details is null-terminated
   // TODO: if we get rid of vsprintf in FillExceptionString, we don't
@@ -209,7 +209,7 @@ bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
  * to the translated name (cid => name if required).
  */
 LogicalDataSource::Category injectDataSourceInQuery(
-    Ast& ast, arangodb::CollectionNameResolver const& resolver,
+    Ast& ast, CollectionNameResolver const& resolver,
     AccessMode::Type accessType, bool failIfDoesNotExist,
     std::string_view& nameRef) {
   std::string const name = std::string(nameRef);
@@ -382,10 +382,8 @@ void Ast::clearMost() noexcept { _resources.clearMost(); }
 
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  {
-    VPackArrayBuilder guard(&builder);
-    _root->toVelocyPack(builder, verbose);
-  }
+  VPackArrayBuilder guard(&builder);
+  _root->toVelocyPack(builder, verbose);
 }
 
 /// @brief add an operation to the AST
@@ -408,7 +406,7 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
 }
 
 /// @brief create a node from the velocypack slice
-AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+AstNode* Ast::createNode(velocypack::Slice slice) {
   return _resources.registerNode(this, slice);
 }
 
@@ -879,9 +877,10 @@ AstNode* Ast::createNodeVariable(std::string_view name, bool isUserDefined) {
 
 /// @brief create an AST datasource
 /// this function will return either an AST collection or an AST view node
-AstNode* Ast::createNodeDataSource(
-    arangodb::CollectionNameResolver const& resolver, std::string_view name,
-    AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist) {
+AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
+                                   std::string_view name,
+                                   AccessMode::Type accessType,
+                                   bool validateName, bool failIfDoesNotExist) {
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
@@ -904,9 +903,9 @@ AstNode* Ast::createNodeDataSource(
 }
 
 /// @brief create an AST collection node
-AstNode* Ast::createNodeCollection(
-    arangodb::CollectionNameResolver const& resolver, std::string_view name,
-    AccessMode::Type accessType) {
+AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
+                                   std::string_view name,
+                                   AccessMode::Type accessType) {
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
@@ -923,7 +922,7 @@ AstNode* Ast::createNodeCollection(
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-      std::string(name) + " is required to be a collection.");
+      absl::StrCat(name, " is required to be a collection"));
 }
 
 /// @brief create an AST reference node
@@ -1346,10 +1345,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1367,10 +1363,7 @@ AstNode* Ast::createNodeValueDouble(double value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1403,10 +1396,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1443,10 +1433,10 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   }
 
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(nl, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   VPackBuilder temp;
 
@@ -1488,10 +1478,10 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   auto node = createNodeArray(nl + nr);
 
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   VPackBuilder temp;
 
@@ -1541,8 +1531,7 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 
 /// @brief create an AST with collections node
 AstNode* Ast::createNodeWithCollections(
-    AstNode const* collections,
-    arangodb::CollectionNameResolver const& resolver) {
+    AstNode const* collections, CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
@@ -1632,7 +1621,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-          std::string(nameRef) + " is required to be a collection.");
+          absl::StrCat(nameRef, " is required to be a collection"));
     }
   };
 
@@ -1756,7 +1745,7 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
 }
 
 /// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
-AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+AstNode* Ast::createNodeEnumeratePaths(graph::PathType::Type type,
                                        AstNode const* outVars,
                                        AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
@@ -1767,9 +1756,9 @@ AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths ||
-             type == arangodb::graph::PathType::Type::AllShortestPaths);
+  TRI_ASSERT(type == graph::PathType::Type::KShortestPaths ||
+             type == graph::PathType::Type::KPaths ||
+             type == graph::PathType::Type::AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -1896,12 +1885,26 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
       _functionsMayAccessDocuments = true;
     }
   } else {
-    // user-defined function
+    // user-defined function (UDF)
+    if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
+        !_query.vocbase()
+             .server()
+             .getFeature<V8DealerFeature>()
+             .allowJavaScriptUdfs()) {
+      // usage of user-defined functions is disallowed
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "usage of AQL user-defined functions "
+                                     "(UDFs) is disallowed via configuration");
+    }
+
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name
     char* fname = _resources.registerString(normalized);
     node->setStringValue(fname, normalized.size());
 
+    // a JavaScript user-defined function can potentially read documents
+    // via JavaScript document or AQL APIs. we don't know for sure, so we
+    // need to assume the worst case here.
     _functionsMayAccessDocuments = true;
   }
 
@@ -1942,9 +1945,8 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(
-    BindParameters& parameters,
-    arangodb::CollectionNameResolver const& resolver) {
+void Ast::injectBindParameters(BindParameters& parameters,
+                               CollectionNameResolver const& resolver) {
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -2392,11 +2394,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         ++ctx->stopOptimizationRequests;
       }
       if (node->willUseV8()) {
-        setWillUseV8();
+        _willUseV8 = true;
       }
     } else if (node->type == NODE_TYPE_FCALL_USER) {
       // user-defined function. will always use V8
-      setWillUseV8();
+      _willUseV8 = true;
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
@@ -2770,7 +2772,7 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
-    containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes) {
+    containers::FlatHashSet<aql::AttributeNamePath>& attributes) {
   RecursiveAttributeFinderContext state{variable,
                                         /*couldExtractAttributePath*/ true,
                                         expectedAttribute,
@@ -3431,7 +3433,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
-    if (rhs->numMembers() >= AstNode::SortNumberThreshold &&
+    if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
         rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -3912,11 +3914,11 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        StringUtils::concatT("collection or ",
-                             TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
-                             " as operand to FOR loop; you specified type '",
-                             expression->getValueTypeString(),
-                             "' with content '", expression->toString(), "'"));
+        absl::StrCat("collection or ",
+                     TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                     " as operand to FOR loop; you specified type '",
+                     expression->getValueTypeString(), "' with content '",
+                     expression->toString(), "'"));
   }
 
   // no real optimizations will be done here
@@ -3966,7 +3968,7 @@ AstNode* Ast::optimizeObject(AstNode* node) {
 /// sure then that string values are valid through the query lifetime.
 AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
   if (slice.isBoolean()) {
-    return createNodeValueBool(slice.getBoolean());
+    return createNodeValueBool(slice.isTrue());
   }
 
   if (slice.isNumber()) {
@@ -4008,16 +4010,12 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
   if (slice.isObject()) {
     VPackObjectIterator it(slice, true);
-
     auto node = createNodeObject();
     node->members.reserve(static_cast<size_t>(it.size()));
 
@@ -4037,10 +4035,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
@@ -4369,6 +4364,7 @@ AstNode* Ast::endSubQuery() {
 }
 
 bool Ast::isInSubQuery() const { return (_queries.size() > 1); }
+
 std::unordered_set<std::string> Ast::bindParameters() const {
   return std::unordered_set<std::string>(_bindParameters);
 }
@@ -4404,7 +4400,3 @@ void Ast::setContainsParallelNode() noexcept {
   _containsParallelNode = true;
 #endif
 }
-
-bool Ast::willUseV8() const noexcept { return _willUseV8; }
-
-void Ast::setWillUseV8() noexcept { _willUseV8 = true; }

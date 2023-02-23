@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -964,14 +964,11 @@ void lateDocumentMaterializationArangoSearchRule(
         TRI_ASSERT(ast);
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         TRI_ASSERT(localDocIdTmp);
-        auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        TRI_ASSERT(localColPtrTmp);
-        viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
+        viewNode.setLateMaterialized(*localDocIdTmp);
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeMultiNode>(
-                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp,
-                var));
+                plan.get(), plan->nextId(), *localDocIdTmp, var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;

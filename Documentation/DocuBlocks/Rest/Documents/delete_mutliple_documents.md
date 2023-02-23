@@ -108,7 +108,7 @@ Using document keys:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(JSON.parse(response.body), documents);
+    assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -133,7 +133,7 @@ Using document identifiers:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(JSON.parse(response.body), documents);
+    assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -158,7 +158,7 @@ Using objects with document keys:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(JSON.parse(response.body), documents);
+    assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -218,7 +218,7 @@ Check revisions:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(JSON.parse(response.body), documents);
+    assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);

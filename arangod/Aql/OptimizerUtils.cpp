@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -249,7 +249,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
 
         if (ll != nullptr && lr != nullptr) {
           // both lower bounds are set
-          res = CompareAstNodes(ll, lr, true);
+          res = compareAstNodes(ll, lr, true);
 
           if (res != 0) {
             return res < 0;
@@ -1042,6 +1042,15 @@ bool findProjections(ExecutionNode* n, Variable const* v,
                 /*expectedAttribute*/ expectedAttribute, attributes)) {
           return false;
         }
+      }
+    } else if (current->getType() == EN::SUBQUERY) {
+      auto sub = ExecutionNode::castTo<SubqueryNode*>(current);
+      ExecutionNode* top = sub->getSubquery();
+      while (top->hasDependency()) {
+        top = top->getFirstDependency();
+      }
+      if (!findProjections(top, v, expectedAttribute, false, attributes)) {
+        return false;
       }
     } else {
       // all other node types mandate a check

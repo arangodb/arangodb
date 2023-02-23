@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,17 +59,17 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
       std::move(core), _handlersFactory, _transactionManager);
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
+auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
+                                    GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
   LoggerContext logContext =
       LoggerContext(Logger::REPLICATED_STATE)
           .with<logContextKeyStateImpl>(DocumentState::NAME)
           .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), _handlersFactory,
+      vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));
 }
 

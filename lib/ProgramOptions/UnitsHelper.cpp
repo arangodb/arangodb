@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,9 @@ std::pair<std::string_view, uint64_t> extractSuffix(std::string_view value) {
   constexpr uint64_t oneKiB = 1'024;
   constexpr uint64_t oneKB = 1'000;
 
-  constexpr std::array<std::pair<std::string_view, uint64_t>, 28> units = {{
+  // note: longer strings must come first in this array!
+  constexpr std::array<std::pair<std::string_view, uint64_t>, 30> units = {{
+      // three letter units
       {std::string_view{"kib"}, oneKiB},
       {std::string_view{"KiB"}, oneKiB},
       {std::string_view{"KIB"}, oneKiB},
@@ -47,6 +49,7 @@ std::pair<std::string_view, uint64_t> extractSuffix(std::string_view value) {
       {std::string_view{"tib"}, oneKiB * oneKiB * oneKiB * oneKiB},
       {std::string_view{"TiB"}, oneKiB * oneKiB * oneKiB * oneKiB},
       {std::string_view{"TIB"}, oneKiB * oneKiB * oneKiB * oneKiB},
+      // two letter units
       {std::string_view{"kb"}, oneKB},
       {std::string_view{"KB"}, oneKB},
       {std::string_view{"mb"}, oneKB * oneKB},
@@ -55,6 +58,7 @@ std::pair<std::string_view, uint64_t> extractSuffix(std::string_view value) {
       {std::string_view{"GB"}, oneKB * oneKB * oneKB},
       {std::string_view{"tb"}, oneKB * oneKB * oneKB * oneKB},
       {std::string_view{"TB"}, oneKB * oneKB * oneKB * oneKB},
+      // single letter units
       {std::string_view{"k"}, oneKB},
       {std::string_view{"K"}, oneKB},
       {std::string_view{"m"}, oneKB * oneKB},
@@ -63,6 +67,8 @@ std::pair<std::string_view, uint64_t> extractSuffix(std::string_view value) {
       {std::string_view{"G"}, oneKB * oneKB * oneKB},
       {std::string_view{"t"}, oneKB * oneKB * oneKB * oneKB},
       {std::string_view{"T"}, oneKB * oneKB * oneKB * oneKB},
+      {std::string_view{"b"}, 1},
+      {std::string_view{"B"}, 1},
   }};
 
   // handle unit suffixes

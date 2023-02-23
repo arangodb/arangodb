@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -113,14 +115,22 @@ auto isLeaderFailed(ServerInstanceReference const& leader,
 //       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
   for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and flags.allowedAsLeader) {
-      acceptableLeaderSet.emplace_back(participant);
+    if (participant == currentLeader or not flags.allowedAsLeader) {
+      continue;
     }
+    // check has snapshot
+    auto iter = localStates.find(participant);
+    if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+      continue;
+    }
+    acceptableLeaderSet.emplace_back(participant);
   }
 
   return acceptableLeaderSet;
@@ -157,9 +167,9 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     auto const healthy = health.notIsFailed(participant);
 
     auto maybeStatus = std::invoke(
-        [&states](ParticipantId const& participant)
-            -> std::optional<LogCurrentLocalState> {
-          auto status = states.find(participant);
+        [&states](
+            ParticipantId const& p) -> std::optional<LogCurrentLocalState> {
+          auto status = states.find(p);
           if (status != states.end()) {
             return status->second;
           } else {
@@ -376,7 +386,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
         current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants);
+        current.leader->committedParticipantsConfig->participants,
+        log.current->localState);
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
@@ -428,7 +439,11 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   if (!log.plan.has_value()) {
     return;
   }
+  if (!log.current.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
+  TRI_ASSERT(log.current.has_value());
   auto const& plan = *log.plan;
 
   if (target.leader.has_value()) {
@@ -443,13 +458,23 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
     if (!health.notIsFailed(*target.leader)) {
       ctx.reportStatus<LogCurrentSupervision::TargetLeaderFailed>();
       return;
-    };
+    }
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
       TRI_ASSERT(plan.participantsConfig.participants.contains(*target.leader));
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
+
+      {
+        auto const& localStates = log.current->localState;
+        auto iter = localStates.find(*target.leader);
+        if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+          ctx.reportStatus<
+              LogCurrentSupervision::TargetLeaderSnapshotMissing>();
+          return;
+        }
+      }
 
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;
@@ -736,6 +761,16 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   }
 
   if (!current.leader->leadershipEstablished) {
+    return;
+  }
+
+  auto allStatesReady = std::all_of(
+      log.current->localState.begin(), log.current->localState.end(),
+      [](auto const& pair) -> bool {
+        return pair.second.state ==
+               replicated_log::LocalStateMachineStatus::kOperational;
+      });
+  if (!allStatesReady) {
     return;
   }
 

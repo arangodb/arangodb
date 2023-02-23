@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,5 +67,8 @@ std::string_view demangleType(std::string_view name) noexcept;
 
 std::string_view extractAnalyzerName(std::string_view fieldName);
 #endif
+
+bool isPrimitiveAnalyzer(std::string_view type) noexcept;
+bool isGeoAnalyzer(std::string_view type) noexcept;
 
 }  // namespace arangodb::iresearch::kludge

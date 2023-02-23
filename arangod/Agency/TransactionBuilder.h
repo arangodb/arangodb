@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,6 +109,20 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("oldEmpty", VPackValue(true));
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename V>
+    precs_trx isIntersectionEmpty(K&& k, V const& values) && {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      detail::add_to_builder(*_builder.get(), "intersectionEmpty");
+      _builder->openArray();
+      for (auto const& v : values) {
+        detail::add_to_builder(*_builder.get(), v);
+      }
+      _builder->close();
       _builder->close();
       return std::move(*this);
     }

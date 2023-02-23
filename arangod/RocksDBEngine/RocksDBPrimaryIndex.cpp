@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,6 +63,8 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
+
+#include <absl/strings/str_cat.h>
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
@@ -988,8 +990,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // keep lower bound
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") +
-                                  aap.value->getTypeString());
+          TRI_ERROR_INTERNAL, absl::StrCat("unhandled type for valNode: ",
+                                           aap.value->getTypeString()));
     }
 
     // strip collection name prefix from comparison value

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 #pragma once
 
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <velocypack/Builder.h>
@@ -38,21 +40,21 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
   virtual auto createLocalShard(
-      std::string const& collectionId,
-      std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> = 0;
-  virtual auto dropLocalShard(std::string const& collectionId) -> Result = 0;
+      ShardID const& shardId, std::string const& collectionId,
+      std::shared_ptr<velocypack::Builder> const& properties) -> Result = 0;
+  virtual auto dropLocalShard(ShardID const& shardId,
+                              std::string const& collectionId) -> Result = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
   explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
                                      MaintenanceFeature& maintenanceFeature);
-  static auto stateIdToShardId(LogId logId) -> std::string;
-  auto createLocalShard(std::string const& collectionId,
+  auto createLocalShard(ShardID const& shardId, std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> override;
-  auto dropLocalShard(const std::string& collectionId) -> Result override;
+      -> Result override;
+  auto dropLocalShard(ShardID const& shardId, const std::string& collectionId)
+      -> Result override;
 
  private:
   GlobalLogIdentifier _gid;

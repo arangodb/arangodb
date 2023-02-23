@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,6 +89,23 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
   }
 
   return vocbase.lookupCollection(TRI_ObjectToString(isolate, val));
+}
+
+void addTransactionHints(arangodb::LogicalCollection& col,
+                         arangodb::SingleCollectionTransaction& trx,
+                         bool isMultiple, bool isOverwritingInsert) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    if (col.isSmartEdgeCollection()) {
+      // Smart Edge Collections hit multiple shards with dependent requests,
+      // they have to be globally managed.
+      trx.addHint(arangodb::transaction::Hints::Hint::GLOBAL_MANAGED);
+      return;
+    }
+  }
+  // For non multiple operations we can optimize to use SingleOperations.
+  if (!isMultiple && !isOverwritingInsert) {
+    trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
+  }
 }
 
 }  // namespace
@@ -728,9 +745,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
           std::shared_ptr<transaction::Context>(), &transactionContext),
       collectionName, AccessMode::Type::WRITE, trxOpts);
 
-  if (!payloadIsArray) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  ::addTransactionHints(*col, trx, payloadIsArray, false);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -825,7 +840,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
       collectionName, AccessMode::Type::WRITE, trxOpts);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  ::addTransactionHints(*collection, trx, false, false);
 
   Result res = trx.begin();
 
@@ -1003,7 +1018,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   PREVENT_EMBEDDED_TRANSACTION();
 
   bool allowDropSystem = false;
-  double timeout = -1.0;  // forever, unless specified otherwise
 
   if (args.Length() > 0) {
     // options
@@ -1016,20 +1030,13 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
             isolate, optionsObject->Get(context, IsSystemKey)
                          .FromMaybe(v8::Local<v8::Value>()));
       }
-      TRI_GET_GLOBAL_STRING(TimeoutKey);
-      if (TRI_HasProperty(context, isolate, optionsObject, TimeoutKey)) {
-        timeout =
-            TRI_ObjectToDouble(isolate, optionsObject->Get(context, TimeoutKey)
-                                            .FromMaybe(v8::Local<v8::Value>()));
-      }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(isolate, args[0]);
     }
   }
 
   try {
-    auto res =
-        methods::Collections::drop(*collection, allowDropSystem, timeout);
+    auto res = methods::Collections::drop(*collection, allowDropSystem);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1548,9 +1555,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
           std::shared_ptr<transaction::Context>(), &transactionContext),
       collectionName, AccessMode::Type::WRITE, trxOpts);
 
-  if (!payloadIsArray) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(*col, trx, payloadIsArray, false);
 
   Result res = trx.begin();
 
@@ -1674,7 +1679,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
       collectionName, AccessMode::Type::WRITE, trxOpts);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  addTransactionHints(*collection, trx, false, false);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -1982,9 +1987,8 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           std::shared_ptr<transaction::Context>(), &transactionContext),
       *collection, AccessMode::Type::WRITE, trxOpts);
 
-  if (!payloadIsArray && !options.isOverwriteModeUpdateReplace()) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(*collection, trx, payloadIsArray,
+                      options.isOverwriteModeUpdateReplace());
 
   Result res = trx.begin();
 
@@ -2083,6 +2087,7 @@ static void JS_StatusVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  bool ok = false;
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
@@ -2092,17 +2097,19 @@ static void JS_StatusVocbaseCol(
                   .clusterInfo()
                   .getCollectionNT(databaseName,
                                    std::to_string(collection->id().id()));
-    if (ci != nullptr) {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
-    } else {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
+    if (ci != nullptr && !ci->deleted()) {
+      ok = true;
     }
+  } else if (!collection->deleted()) {
+    ok = true;
   }
-  // intentionally falls through
 
-  auto status = collection->status();
+  if (ok) {
+    TRI_V8_RETURN(v8::Number::New(isolate, /*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  } else {
+    TRI_V8_RETURN(v8::Number::New(isolate, /*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
   TRI_V8_TRY_CATCH_END
 }
 

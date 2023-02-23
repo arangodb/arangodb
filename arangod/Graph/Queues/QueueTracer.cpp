@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,6 +164,16 @@ auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
   auto sg = arangodb::scopeGuard(
       [&]() noexcept { _stats["pop"].addTiming(TRI_microtime() - start); });
   return _impl.pop();
+}
+
+template<class QueueImpl>
+auto QueueTracer<QueueImpl>::peek() const -> typename QueueImpl::Step const& {
+  double start = TRI_microtime();
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["peek"].addTiming(TRI_microtime() - start); });
+  return _impl.peek();
 }
 
 /* SingleServerProvider Section */

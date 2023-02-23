@@ -1,8 +1,7 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,19 +35,17 @@
 #include <velocypack/Value.h>
 
 #include "Basics/overload.h"
-#include "Inspection/InspectorBase.h"
+#include "Inspection/SaveInspectorBase.h"
 
 namespace arangodb::inspection {
 
 template<class Context = NoContext>
 struct VPackSaveInspector
-    : InspectorBase<VPackSaveInspector<Context>, Context> {
- protected:
-  using Base = InspectorBase<VPackSaveInspector, Context>;
+    : SaveInspectorBase<VPackSaveInspector<Context>, Context> {
+ public:
+  using Base = SaveInspectorBase<VPackSaveInspector, Context>;
 
  public:
-  static constexpr bool isLoading = false;
-
   explicit VPackSaveInspector(velocypack::Builder& builder) requires(
       !Base::hasContext)
       : _builder(builder) {}
@@ -57,11 +54,6 @@ struct VPackSaveInspector
                               Context const& context)
       : Base(context), _builder(builder) {}
 
-  template<class T>
-  [[nodiscard]] Status apply(T const& x) {
-    return process(*this, x);
-  }
-
   [[nodiscard]] Status::Success beginObject() {
     _builder.openObject();
     return {};
@@ -69,6 +61,18 @@ struct VPackSaveInspector
 
   [[nodiscard]] Status::Success endObject() {
     _builder.close();
+    return {};
+  }
+
+  [[nodiscard]] Status::Success beginField(std::string_view name) {
+    _builder.add(VPackValue(name));
+    return {};
+  }
+
+  [[nodiscard]] Status::Success endField() { return {}; }
+
+  [[nodiscard]] Status::Success value(Null v) {
+    _builder.add(VPackValue(velocypack::ValueType::Null));
     return {};
   }
 
@@ -104,104 +108,6 @@ struct VPackSaveInspector
     return {};
   }
 
-  template<class T>
-  [[nodiscard]] auto tuple(T const& data) {
-    return beginArray()                                                     //
-           | [&]() { return processTuple<0, std::tuple_size_v<T>>(data); }  //
-           | [&]() { return endArray(); };                                  //
-  }
-
-  template<class T, size_t N>
-  [[nodiscard]] auto tuple(T (&data)[N]) {
-    return beginArray()                                                       //
-           | [&]() { return processList(std::begin(data), std::end(data)); }  //
-           | [&]() { return endArray(); };                                    //
-  }
-
-  template<class T>
-  [[nodiscard]] auto list(T const& list) {
-    return beginArray()                                                       //
-           | [&]() { return processList(std::begin(list), std::end(list)); }  //
-           | [&]() { return endArray(); };                                    //
-  }
-
-  template<class T>
-  [[nodiscard]] auto map(T const& map) {
-    return beginObject()                        //
-           | [&]() { return processMap(map); }  //
-           | [&]() { return endObject(); };     //
-  }
-
-  auto applyFields() { return Status::Success{}; }
-
-  template<class Arg, class... Args>
-  auto applyFields(Arg&& arg, Args&&... args) {
-    auto res = applyField(std::forward<Arg>(arg));
-    if constexpr (sizeof...(args) == 0) {
-      return res;
-    } else {
-      return std::move(res)                                                 //
-             | [&]() { return applyFields(std::forward<Args>(args)...); };  //
-    }
-  }
-
-  template<class... Ts, class... Args>
-  auto processVariant(
-      typename Base::template UnqualifiedVariant<Ts...>& variant,
-      Args&&... args) {
-    return std::visit(
-        overload{[&](typename Args::Type& v) {
-          if constexpr (Args::isInlineType) {
-            return this->apply(v);
-          } else {
-            return beginObject()                                             //
-                   | [&]() { return applyField(this->field(args.tag, v)); }  //
-                   | [&]() { return endObject(); };
-          }
-        }...},
-        variant.value);
-  }
-
-  template<class... Ts, class... Args>
-  auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
-                      Args&&... args) {
-    return std::visit(overload{[&](typename Args::Type& v) {
-                        if constexpr (Args::isInlineType) {
-                          return this->apply(v);
-                        } else {
-                          auto storeFields = [&]() {
-                            return applyFields(
-                                this->field(variant.typeField, args.tag),
-                                this->field(variant.valueField, v));
-                          };
-                          return beginObject()  //
-                                 | storeFields  //
-                                 | [&]() { return endObject(); };
-                        }
-                      }...},
-                      variant.value);
-  }
-
-  template<class... Ts, class... Args>
-  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
-                      Args&&... args) {
-    return std::visit(overload{[&](typename Args::Type& v) {
-                        if constexpr (Args::isInlineType) {
-                          return this->apply(v);
-                        } else {
-                          auto storeFields = [&]() {
-                            return applyFields(
-                                this->field(variant.typeField, args.tag),
-                                this->embedFields(v));
-                          };
-                          return beginObject()  //
-                                 | storeFields  //
-                                 | [&]() { return endObject(); };
-                        }
-                      }...},
-                      variant.value);
-  }
-
   velocypack::Builder& builder() noexcept { return _builder; }
 
   template<class U>
@@ -217,60 +123,9 @@ struct VPackSaveInspector
     explicit InvariantContainer(Fn&&) {}
   };
 
-  template<class Fn, class T>
-  Status objectInvariant(T& object, Fn&&, Status result) {
-    return result;
-  }
-
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
   template<class, class>
-  friend struct detail::EmbeddedFieldInspector;
-
-  using EmbeddedParam = std::monostate;
-
-  template<class... Args>
-  auto processEmbeddedFields(EmbeddedParam&, Args&&... args) {
-    return applyFields(std::forward<Args>(args)...);
-  }
-
-  [[nodiscard]] auto applyField(
-      std::unique_ptr<detail::EmbeddedFields<VPackSaveInspector>> const&
-          fields) {
-    EmbeddedParam param;
-    return fields->apply(*this, param);
-  }
-
-  template<class T>
-  [[nodiscard]] auto applyField(T const& field) {
-    if constexpr (std::is_same_v<typename Base::IgnoreField, T>) {
-      return Status::Success{};
-    } else {
-      auto name = Base::getFieldName(field);
-      auto& value = Base::getFieldValue(field);
-      constexpr bool hasFallback =
-          !std::is_void_v<decltype(Base::getFallbackField(field))>;
-      auto res = [&]() {
-        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
-          return saveTransformedField(*this, name, hasFallback, value,
-                                      Base::getTransformer(field));
-        } else {
-          return saveField(*this, name, hasFallback, value);
-        }
-      }();
-      if constexpr (!isSuccess(res)) {
-        if (!res.ok()) {
-          return Status{std::move(res), name, Status::AttributeTag{}};
-        }
-      }
-      return res;
-    }
-  }
+  friend struct SaveInspectorBase;
 
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] auto processTuple(T const& data) {

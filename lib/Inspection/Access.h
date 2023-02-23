@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,8 +122,9 @@ struct AccessBase {
   template<class Inspector>
   [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
                                       bool hasFallback, Value& val) {
-    f.builder().add(VPackValue(name));
-    return f.apply(val);
+    return f.beginField(name)                //
+           | [&]() { return f.apply(val); }  //
+           | [&]() { return f.endField(); };
   }
 
   template<class Inspector, class Transformer>
@@ -187,7 +188,7 @@ struct OptionalAccess {
   template<class Inspector>
   [[nodiscard]] static Status apply(Inspector& f, T& val) {
     if constexpr (Inspector::isLoading) {
-      if (f.slice().isNull()) {
+      if (f.isNull()) {
         val.reset();
         return {};
       } else {
@@ -198,8 +199,7 @@ struct OptionalAccess {
       if (val) {
         return f.apply(*val);
       }
-      f.builder().add(VPackValue(velocypack::ValueType::Null));
-      return {};
+      return f.apply(Null{});
     }
   }
 
@@ -211,8 +211,9 @@ struct OptionalAccess {
       return inspection::saveField(f, name, hasFallback, *val);
     } else if (hasFallback) {
       // if we have a fallback we must explicitly serialize this field as null
-      f.builder().add(VPackValue(name));
-      f.builder().add(VPackValue(velocypack::ValueType::Null));
+      return f.beginField(name)                   //
+             | [&]() { return f.apply(Null{}); }  //
+             | [&]() { return f.endField(); };
     }
     return {};
   }
@@ -300,13 +301,12 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
   template<class Inspector>
   static auto apply(Inspector& f, std::monostate&) {
     if constexpr (Inspector::isLoading) {
-      if (!f.slice().isEmptyObject()) {
-        return Status{"Expected empty object"};
-      }
-      return Status{};
+      return f.beginObject()                      //
+             | [&]() { return f.applyFields(); }  //
+             | [&]() { return f.endObject(); };
     } else {
-      f.builder().add(VPackSlice::emptyObjectSlice());
-      return Status::Success{};
+      return f.beginObject()  //
+             | [&]() { return f.endObject(); };
     }
   }
 };
@@ -317,14 +317,12 @@ struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
   static auto apply(Inspector& f, VPackBuilder& x) {
     if constexpr (Inspector::isLoading) {
       x.clear();
-      x.add(f.slice());
-      return Status{};
+      return f.value(x);
     } else {
       if (!x.isClosed()) {
-        return Status{"Exected closed VPackBuilder"};
+        return Status{"Expected closed VPackBuilder"};
       }
-      f.builder().add(x.slice());
-      return Status{};
+      return f.apply(x.slice());
     }
   }
 };
@@ -359,6 +357,120 @@ struct StorageTransformerAccess {
       auto v = StorageT(x);
       return f.apply(v);
     }
+  }
+};
+
+/**
+ * @brief This class behaves like an optional, but it will not serialize
+ *        to `null` and `field: null` will fail to deserialize.
+ *        This class cannot be embedded into a container (e.g. a vector)
+ *        as the null-value cannot be serialized there.
+ * @tparam T The actual data type.
+ */
+
+template<typename T>
+struct NonNullOptional : std::optional<T> {
+  using std::optional<T>::optional;
+
+  bool operator==(NonNullOptional<T> const& other) const noexcept = default;
+
+  template<typename U>
+  bool operator==(U const& other) const noexcept {
+    return this->has_value() && this->value() == other;
+  }
+};
+
+template<class T>
+struct Access<arangodb::inspection::NonNullOptional<T>> {
+  template<class Inspector>
+  [[nodiscard]] static Status apply(Inspector& f, NonNullOptional<T>& val) {
+    static_assert(Inspector::isLoading && !Inspector::isLoading,
+                  "Apply cannot be called, this type has to be a field and "
+                  "cannot be embedded into a container.");
+    // Added the return only to make some compilers happy.
+    // The above assert is ALWAYS true => The method can never be
+    // executed, or let alone end in this return statement.
+    return {"internal-error: static assertion violated."};
+  }
+
+  template<class Inspector>
+  [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
+                                      bool hasFallback, NonNullOptional<T>& val)
+      -> decltype(inspection::saveField(f, name, hasFallback, val.value())) {
+    if (val) {
+      return inspection::saveField(f, name, hasFallback, val.value());
+    }
+    return {};
+  }
+
+  template<class Inspector, class Transformer>
+  [[nodiscard]] static Status saveTransformedField(Inspector& f,
+                                                   std::string_view name,
+                                                   bool hasFallback,
+                                                   NonNullOptional<T>& val,
+                                                   Transformer& transformer) {
+    if (val) {
+      typename Transformer::SerializedType v;
+      return transformer.toSerialized(*val, v) |
+             [&]() { return inspection::saveField(f, name, hasFallback, v); };
+    }
+    return {};
+  }
+
+  template<class Inspector>
+  [[nodiscard]] static Status loadField(Inspector& f, std::string_view name,
+                                        bool isPresent,
+                                        NonNullOptional<T>& val) {
+    return loadField(f, name, isPresent, val, [](auto& v) { v.reset(); });
+  }
+
+  template<class Inspector, class ApplyFallback>
+  [[nodiscard]] static Status loadField(Inspector& f,
+                                        [[maybe_unused]] std::string_view name,
+                                        bool isPresent, NonNullOptional<T>& val,
+                                        ApplyFallback&& applyFallback) {
+    if (isPresent) {
+      T t{};
+      auto res = f.apply(t);
+      if (res.ok()) {
+        val = {std::move(t)};
+      }
+      return res;
+    }
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
+  }
+
+  template<class Inspector, class Transformer>
+  [[nodiscard]] static Status loadTransformedField(Inspector& f,
+                                                   std::string_view name,
+                                                   bool isPresent,
+                                                   NonNullOptional<T>& val,
+                                                   Transformer& transformer) {
+    return loadTransformedField(
+        f, name, isPresent, val, [](auto& v) { v.reset(); }, transformer);
+  }
+
+  template<class Inspector, class ApplyFallback, class Transformer>
+  [[nodiscard]] static Status loadTransformedField(
+      Inspector& f, [[maybe_unused]] std::string_view name, bool isPresent,
+      NonNullOptional<T>& val, ApplyFallback&& applyFallback,
+      Transformer& transformer) {
+    if (isPresent) {
+      typename Transformer::SerializedType v{};
+      auto load = [&]() -> Status {
+        T t{};
+        auto res = transformer.fromSerialized(v, t);
+        if (res.ok()) {
+          val = {std::move(t)};
+        }
+        return res;
+      };
+      return f.apply(v)  //
+             | load;     //
+    }
+    std::forward<ApplyFallback>(applyFallback)(val);
+    return {};
   }
 };
 

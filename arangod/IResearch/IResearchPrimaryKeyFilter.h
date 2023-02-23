@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,11 +54,11 @@ class PrimaryKeyFilter final : public irs::filter,
 
   using irs::filter::prepare;
   filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::Order const& /*ord*/,
+      irs::IndexReader const& index, irs::Order const& /*ord*/,
       irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
 
-  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+  void visit(irs::SubReader const&, irs::PreparedStateVisitor&,
              irs::score_t) const override {
     // NOOP
   }
@@ -145,7 +145,7 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   void clear() noexcept { _filters.clear(); }
 
   filter::prepared::ptr prepare(
-      irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
+      irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
       irs::attribute_provider const* ctx) const override;
 
  private:

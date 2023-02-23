@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,16 +31,17 @@ using namespace arangodb::aql;
 
 /// @brief names of query phases / states
 static std::string const StateNames[] = {
-    "initializing",         // INITIALIZATION
-    "parsing",              // PARSING
-    "optimizing ast",       // AST_OPTIMIZATION
-    "loading collections",  // LOADING_COLLECTIONS
-    "instantiating plan",   // PLAN_INSTANTIATION
-    "optimizing plan",      // PLAN_OPTIMIZATION
-    "executing",            // EXECUTION
-    "finalizing",           // FINALIZATION
-    "finished",             // FINISHED
-    "killed",               // KILLED
+    "initializing",             // INITIALIZATION
+    "parsing",                  // PARSING
+    "optimizing ast",           // AST_OPTIMIZATION
+    "loading collections",      // LOADING_COLLECTIONS
+    "instantiating plan",       // PLAN_INSTANTIATION
+    "optimizing plan",          // PLAN_OPTIMIZATION
+    "instantiating executors",  // PHYSICAL_INSTANTIATION
+    "executing",                // EXECUTION
+    "finalizing",               // FINALIZATION
+    "finished",                 // FINISHED
+    "killed",                   // KILLED
 
     "invalid"  // INVALID
 };

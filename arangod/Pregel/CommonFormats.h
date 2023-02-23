@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +29,12 @@
 
 #include <map>
 
-#include "Pregel/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"
+
+#include "Inspection/VPack.h"
 
 namespace arangodb::pregel {
 
@@ -79,19 +81,19 @@ struct HITSKleinbergValue {
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
-  std::map<PregelID, float> membershipDegree;
-  std::map<PregelID, float> disCol;
+  std::map<VertexID, float> membershipDegree;
+  std::map<VertexID, float> disCol;
 };
 
 struct DMIDMessage {
   DMIDMessage() {}
-  DMIDMessage(PregelID const& pid, float val) : senderId(pid), weight(val) {}
+  DMIDMessage(VertexID const& pid, float val) : senderId(pid), weight(val) {}
 
-  DMIDMessage(PregelID const& sender, PregelID const& leader)
+  DMIDMessage(VertexID const& sender, VertexID const& leader)
       : senderId(sender), leaderId(leader) {}
 
-  PregelID senderId;
-  PregelID leaderId;
+  VertexID senderId;
+  VertexID leaderId;
   float weight = 0;
 };
 
@@ -105,7 +107,7 @@ struct HLLCounter {
   constexpr static double ALPHA = 0.709;
 
   uint32_t getCount();
-  void addNode(PregelID const& pregelId);
+  void addNode(VertexID const& pregelId);
   void merge(HLLCounter const& counter);
 
  private:
@@ -119,7 +121,7 @@ struct ECValue {
 };
 
 struct SCCValue {
-  std::vector<PregelID> parents;
+  std::vector<VertexID> parents;
   uint64_t vertexID;
   uint64_t color;
 };
@@ -192,16 +194,16 @@ auto inspect(Inspector& f, ColorPropagationUserParameters& x) {
 
 struct WCCValue {
   uint64_t component;
-  std::unordered_set<PregelID> inboundNeighbors;
+  std::unordered_set<VertexID> inboundNeighbors;
 };
 
 template<typename T>
 struct SenderMessage {
   SenderMessage() = default;
-  SenderMessage(PregelID pid, T const& val)
+  SenderMessage(VertexID pid, T const& val)
       : senderId(std::move(pid)), value(val) {}
 
-  PregelID senderId;
+  VertexID senderId;
   T value;
 };
 
@@ -211,7 +213,8 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   SenderMessageFormat() = default;
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
-    senderVal.senderId.shard = (PregelShard)((*array).getUInt());
+    senderVal.senderId.shard =
+        PregelShard(static_cast<PregelShard::value_type>((*array).getUInt()));
     senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }

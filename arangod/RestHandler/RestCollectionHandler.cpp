@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -340,7 +341,8 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(_vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_BAD_PARAMETER);
     return;
   }
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
@@ -349,21 +351,27 @@ void RestCollectionHandler::handleCommandPost() {
 
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
+  auto config = _vocbase.getDatabaseConfiguration();
+  config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection =
-      PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
+  auto planCollection = CreateCollectionBody::fromCreateAPIBody(body, config);
+
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
                   planCollection.errorMessage());
-    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    // Try to get a name for Auditlog, if it is available, otherwise report
+    // empty string
+    auto collectionName = VelocyPackHelper::getStringView(
+        body, StaticStrings::DataSourceName, "");
+    events::CreateCollection(_vocbase.name(), collectionName,
+                             planCollection.errorNumber());
     return;
   }
-  std::vector<PlanCollection> collections{std::move(planCollection.get())};
-  auto parameters = planCollection->toCollectionsCreate();
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
 
   OperationOptions options(_context);
-  std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -372,6 +380,7 @@ void RestCollectionHandler::handleCommandPost() {
       /*isNewDatabase*/ false    // here always false
   );
 
+  std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
   Result res{TRI_ERROR_NO_ERROR};
   if (result.fail()) {
@@ -440,8 +449,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
-    if (flush &&
-        TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
+    if (flush && !coll->deleted()) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
                                                                      false);
     }
@@ -678,7 +686,7 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
+    res = methods::Collections::drop(*coll, allowDropSystem);
   }
 
   if (res.fail()) {
@@ -746,7 +754,12 @@ RestCollectionHandler::collectionRepresentationAsync(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  _builder.add("status", VPackValue(coll->status()));
+  // only here for API-compatibility...
+  if (coll->deleted()) {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  } else {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,6 @@
 
 #include "Supervision.h"
 
-#include <Basics/StringUtils.h>
-#include <Basics/overload.h>
-#include <thread>
-
 #include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
@@ -37,11 +33,14 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "Agency/NodeLoadInspector.h"
 #include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/overload.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Metrics/CounterBuilder.h"
@@ -54,6 +53,8 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/Supervision/CollectionGroupSupervision.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
 #include "MoveShard.h"
@@ -278,7 +279,7 @@ void Supervision::upgradeZero(Builder& builder) {
           VPackObjectBuilder oo(&builder);
           if (fails.length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails)) {
-              builder.add(VPackValue(fail.copyString()));
+              builder.add(VPackValue(fail.stringView()));
               { VPackArrayBuilder ooo(&builder); }
             }
           }
@@ -532,7 +533,7 @@ void handleOnStatus(
                            delayFailedFollower, failedLeaderAddsFollower);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
-  } else if (serverID.compare(0, 4, "SNGL") == 0) {
+  } else if (serverID.starts_with("SNGL")) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID,
                          jobId, envelope);
   } else {
@@ -559,7 +560,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
          ClusterHelpers::isDBServerName(machine.first)) ||
         (type == "Coordinators" &&
          ClusterHelpers::isCoordinatorName(machine.first)) ||
-        (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
+        (type == "Singles" && machine.first.starts_with("SNGL"))) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
         todelete.push_back(machine.first);
@@ -569,7 +570,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   if (!todelete.empty()) {
     velocypack::Builder builder;
-    removeTransactionBuilder(builder, todelete);
+    buildRemoveTransaction(builder, todelete);
     _agent->write(builder.slice());
   }
 
@@ -786,7 +787,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       Builder tReport;
       {
         VPackArrayBuilder transaction(&tReport);  // Transist Transaction
-        std::shared_ptr<VPackBuilder> envelope;
         {
           VPackObjectBuilder operation(&tReport);  // Operation
           tReport.add(
@@ -816,7 +816,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
                          envelope->slice()[0].isObject());
               for (VPackObjectIterator::ObjectPair i :
                    VPackObjectIterator(envelope->slice()[0])) {
-                pReport.add(i.key.copyString(), i.value);
+                pReport.add(i.key.stringView(), i.value);
               }
             }
           }  // Operation
@@ -883,14 +883,14 @@ bool Supervision::earlyBird() const {
 
   // every db server in plan accounted for in transient store?
   for (auto const& server : VPackObjectIterator(dbservers)) {
-    auto serverId = server.key.copyString();
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
   }
   // every db server in plan accounted for in transient store?
   for (auto const& server : VPackObjectIterator(coordinators)) {
-    auto serverId = server.key.copyString();
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
@@ -1393,15 +1393,16 @@ void Supervision::run() {
 }
 
 std::string Supervision::serverHealthFunctional(Node const& snapshot,
-                                                std::string const& serverName) {
-  std::string const serverStatus(healthPrefix + serverName + "/Status");
+                                                std::string_view serverName) {
+  std::string const serverStatus(
+      basics::StringUtils::concatT(healthPrefix, serverName, "/Status"));
   return (snapshot.has(serverStatus))
              ? snapshot.hasAsString(serverStatus).value()
              : std::string();
 }
 
 // Guarded by caller
-std::string Supervision::serverHealth(std::string const& serverName) {
+std::string Supervision::serverHealth(std::string_view serverName) const {
   _lock.assertLockedByCurrentThread();
   return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
@@ -1460,7 +1461,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
         }
       } catch (std::exception const& e) {
         LOG_TOPIC("21a9e", DEBUG, Logger::SUPERVISION)
-            << "Failing to analyse " << serverId << " as deletion candidate "
+            << "Failing to analyze " << serverId << " as deletion candidate "
             << e.what();
       }
 
@@ -1800,13 +1801,17 @@ void Supervision::handleJobs() {
       << "Begin checkUndoLeaderChangeActions";
   checkUndoLeaderChangeActions();
 
+  LOG_TOPIC("13da7", TRACE, Logger::SUPERVISION)
+      << "Begin checkCollectionGroups";
+  checkCollectionGroups();
+  updateSnapshot();  // make collection group write visible
+
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
 
   LOG_TOPIC("83676", TRACE, Logger::SUPERVISION)
       << "Begin cleanupReplicatedLogs";
   cleanupReplicatedLogs();  // TODO do this only every x seconds?
-  cleanupReplicatedStates();
 
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
@@ -1921,14 +1926,13 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     for (auto const& pp : dbservers->get()) {
       auto const& status = pp.second->hasAsString("Status");
       if (status) {
-        if (status->compare("COMPLETED") != 0 &&
-            status->compare("FAILED") != 0) {
+        if (status.value() != "COMPLETED" && status.value() != "FAILED") {
           // If we get here, we might be looking at an old leftover which
           // appears to be ongoing, or at a new style, properly ongoing
           // We ignore non-completedness of old crud and only consider
           // new jobs with a rebootId as incomplete:
           auto const& rebootId = pp.second->hasAsUInt(StaticStrings::RebootId);
-          if (status.value().compare("NEW") == 0 || rebootId) {
+          if (status.value() == "NEW" || rebootId) {
             completed = false;
           }
         }
@@ -2022,9 +2026,8 @@ void arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
           // Should not happen, just be cautious
           continue;
         }
-        if (status.value().compare("COMPLETED") == 0 ||
-            status.value().compare("FAILED") == 0 ||
-            status.value().compare("CANCELLED") == 0) {
+        if (status.value() == "COMPLETED" || status.value() == "FAILED" ||
+            status.value() == "CANCELLED") {
           // Nothing to do
           continue;
         }
@@ -2154,8 +2157,7 @@ void Supervision::workJobs() {
   bool doneFailedJob = false;
   while (it != todos.end()) {
     auto const& jobNode = *(it->second);
-    if (jobNode.hasAsString("type").value().compare(0, FAILED.length(),
-                                                    FAILED) == 0) {
+    if (jobNode.hasAsString("type").value().starts_with(FAILED)) {
       if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(
                               todos.size())) > maximalJobsPerRound) {
         LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
@@ -2186,8 +2188,7 @@ void Supervision::workJobs() {
         continue;
       }
       auto const& jobNode = *todoEnt.second;
-      if (jobNode.hasAsString("type").value().compare(0, FAILED.length(),
-                                                      FAILED) != 0) {
+      if (!jobNode.hasAsString("type").value().starts_with(FAILED)) {
         LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION)
             << "Begin JobContext::run()";
         JobContext(TODO, jobNode.hasAsString("jobId").value(), snapshot(),
@@ -2675,8 +2676,18 @@ void Supervision::deleteBrokenIndex(AgentInterface* agent,
 namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
-  auto builder = n.toBuilder();
-  return velocypack::deserialize<T>(builder.slice());
+  /*inspection::NodeUnsafeLoadInspector<> i{&n, {}};
+  T result;
+  if (auto status = i.apply(result); !status.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while reading from Agency node: "} + status.error() +
+            "\nPath: " + status.path());
+  }
+  return result;*/
+  VPackBuilder builder;
+  n.toBuilder(builder);
+  return deserialize<T>(builder.slice());
 }
 
 template<typename T>
@@ -2717,9 +2728,98 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
   }
 }
 
-}  // namespace
+using namespace replication2::document::supervision;
 
-namespace {
+auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
+                                std::string const& gid)
+    -> std::optional<replication2::document::supervision::CollectionGroup> {
+  auto targetPath =
+      aliases::target()->collectionGroups()->database(dbName)->group(gid);
+  // first check if target exists
+  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+      targetNode.has_value()) {
+    replication2::document::supervision::CollectionGroup spec;
+    spec.target =
+        parseSomethingFromNode<CollectionGroupTargetSpecification>(*targetNode);
+    spec.plan = parseIfExists<CollectionGroupPlanSpecification>(
+        root,
+        aliases::plan()->collectionGroups()->database(dbName)->group(gid)->str(
+            SkipComponents(1)));
+    spec.current = parseIfExists<CollectionGroupCurrentSpecification>(
+        root, basics::StringUtils::concatT("/Current/CollectionGroups/", dbName,
+                                           "/", gid));
+
+    // lookup all target collections
+    for (auto const& [cid, _] : spec.target.collections) {
+      auto coll = parseIfExists<CollectionTargetSpecification>(
+          root, basics::StringUtils::concatT("/Target/Collections/", dbName,
+                                             "/", cid));
+      if (coll.has_value()) {
+        spec.targetCollections[cid] = std::move(*coll);
+      }
+    }
+
+    if (spec.plan) {
+      // lookup all replicated logs
+      for (auto const& logId : spec.plan->shardSheaves) {
+        std::optional<replication2::agency::Log> log;
+        try {
+          log = parseReplicatedLogAgency(root, dbName,
+                                         to_string(logId.replicatedLog));
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("46717", ERR, Logger::SUPERVISION)
+              << "failed to parse replicated log " << dbName << "/"
+              << logId.replicatedLog << ": " << ex.what();
+          throw;
+        }
+        if (log.has_value()) {
+          spec.logs[logId.replicatedLog] = std::move(*log);
+        }
+      }
+
+      // lookup all plan collections
+      for (auto const& [cid, _] : spec.plan->collections) {
+        std::optional<CollectionPlanSpecification> coll;
+        try {
+          coll = parseIfExists<CollectionPlanSpecification>(
+              root, basics::StringUtils::concatT("/Plan/Collections/", dbName,
+                                                 "/", cid));
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("46716", ERR, Logger::SUPERVISION)
+              << "failed to parse plan collection " << dbName << "/" << cid
+              << ": " << ex.what();
+          throw;
+        }
+        if (coll.has_value()) {
+          spec.planCollections[cid] = std::move(*coll);
+        }
+
+        // parse current collection
+        {
+          std::optional<CollectionCurrentSpecification> current;
+          try {
+            current = parseIfExists<CollectionCurrentSpecification>(
+                root, basics::StringUtils::concatT("/Current/Collections/",
+                                                   dbName, "/", cid));
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("48716", ERR, Logger::SUPERVISION)
+                << "failed to parse current collection " << dbName << "/" << cid
+                << ": " << ex.what();
+            throw;
+          }
+          if (current.has_value()) {
+            spec.currentCollections[cid] = std::move(*current);
+          }
+        }
+      }
+    }
+
+    return {std::move(spec)};
+  } else {
+    return std::nullopt;
+  }
+}
+
 using namespace replication2::replicated_log;
 
 auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
@@ -2756,7 +2856,7 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
         << "Supervision caught exception while parsing replicated log" << dbName
         << "/" << idString << ": " << err.what();
-    throw;
+    return envelope;
   }
   if (maybeLog.has_value()) {
     try {
@@ -2764,24 +2864,85 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
       return replication2::replicated_log::executeCheckReplicatedLog(
           dbName, idString, std::move(log), health, std::move(envelope));
     } catch (std::exception const& err) {
-      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+      LOG_TOPIC("b6d7e", ERR, Logger::REPLICATION2)
           << "Supervision caught exception while handling replicated log"
           << dbName << "/" << idString << ": " << err.what();
       throw;
     }
   } else {
-    LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("56a0d", ERR, Logger::REPLICATION2)
         << "Supervision could not parse Target node for replicated log "
         << dbName << "/" << idString;
     return envelope;
   }
 } catch (std::exception const& err) {
-  LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
+  LOG_TOPIC("9f7fc", ERR, Logger::REPLICATION2)
       << "Supervision caught exception while working with replicated log"
       << dbName << "/" << idString << ": " << err.what();
   return envelope;
 }
+
+auto handleCollectionGroup(Node const& snapshot, Node const& targetNode,
+                           std::string const& dbName,
+                           std::string const& idString,
+                           ParticipantsHealth const& health,
+                           UniqueIdProvider& uniqid,
+                           arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
+  std::optional<replication2::document::supervision::CollectionGroup>
+      maybeGroup;
+  try {
+    maybeGroup = parseCollectionGroupAgency(snapshot, dbName, idString);
+  } catch (std::exception const& err) {
+    LOG_TOPIC("fe14f", ERR, Logger::REPLICATION2)
+        << "Supervision caught exception while parsing collection group "
+        << dbName << "/" << idString << ": " << err.what();
+    throw;
+  }
+  if (maybeGroup.has_value()) {
+    try {
+      auto& group = *maybeGroup;
+
+      return replication2::document::supervision::executeCheckCollectionGroup(
+          dbName, idString, group, health, uniqid, std::move(envelope));
+    } catch (std::exception const& err) {
+      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+          << "Supervision caught exception while handling collection group "
+          << dbName << "/" << idString << ": " << err.what();
+      throw;
+    }
+  } else {
+    LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
+        << "Supervision could not parse Target node for collection group  "
+        << dbName << "/" << idString;
+    return envelope;
+  }
+} catch (std::exception const& err) {
+  LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
+      << "Supervision caught exception while working with collection group "
+      << dbName << "/" << idString << ": " << err.what();
+  return envelope;
+}
+
 }  // namespace
+
+auto Supervision::collectParticipantsHealth() const -> ParticipantsHealth {
+  std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
+  auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
+  for (auto const& [serverId, node] : dbservers) {
+    bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                             (serverHealth(serverId) == HEALTH_STATUS_BAD);
+
+    auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
+        curServersKnown, serverId, "/", StaticStrings::RebootId));
+    if (rebootID) {
+      info.emplace(serverId,
+                   ParticipantHealth{RebootId{*rebootID}, notIsFailed});
+    }
+  }
+
+  return ParticipantsHealth{info};
+}
 
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
@@ -2796,23 +2957,7 @@ void Supervision::checkReplicatedLogs() {
 
   using namespace replication2::replicated_log;
 
-  ParticipantsHealth participantsHealth = std::invoke([&] {
-    std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
-    auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
-    for (auto const& [serverId, node] : dbservers) {
-      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
-                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
-
-      auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
-          curServersKnown, serverId, "/", StaticStrings::RebootId));
-      if (rebootID) {
-        info.emplace(serverId,
-                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
-      }
-    }
-    return ParticipantsHealth{info};
-  });
-
+  ParticipantsHealth participantsHealth = collectParticipantsHealth();
   velocypack::Builder builder;
   auto envelope = arangodb::agency::envelope::into_builder(builder);
 
@@ -2828,7 +2973,54 @@ void Supervision::checkReplicatedLogs() {
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
-          << "failed to update term in agency. Will retry. "
+          << "failed to update replicated logs in agency. Will retry. "
+          << builder.toJson();
+    }
+  }
+}
+
+void Supervision::checkCollectionGroups() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  // check if Target has replicated logs
+  auto const& targetNode = snapshot().hasAsNode("/Target/CollectionGroups");
+  if (!targetNode) {
+    return;
+  }
+
+  using namespace replication2::replicated_log;
+
+  struct SupervisionUniqueIdProvider : UniqueIdProvider {
+    explicit SupervisionUniqueIdProvider(Supervision* supervision)
+        : _supervision(supervision) {}
+    auto next() noexcept -> std::uint64_t override {
+      return _supervision->_jobId++;
+    }
+    Supervision* _supervision;
+  };
+
+  SupervisionUniqueIdProvider uniqid{this};
+
+  ParticipantsHealth participantsHealth = collectParticipantsHealth();
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
+    for (auto const& [gid, node] : db->children()) {
+      envelope = handleCollectionGroup(snapshot(), *node, dbName, gid,
+                                       participantsHealth, uniqid,
+                                       std::move(envelope));
+    }
+  }
+
+  envelope.done();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("12f36", WARN, Logger::SUPERVISION)
+          << "failed to update collection groups in agency. Will retry. "
           << builder.toJson();
     }
   }
@@ -3006,54 +3198,6 @@ void Supervision::cleanupReplicatedLogs() {
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("df4b1", WARN, Logger::SUPERVISION)
-          << "failed to update replicated log in agency. Will retry. "
-          << builder.toJson();
-    }
-  }
-}
-
-void Supervision::cleanupReplicatedStates() {
-  _lock.assertLockedByCurrentThread();
-
-  using namespace replication2::agency;
-
-  // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
-  if (!planNode) {
-    return;
-  }
-
-  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
-
-  velocypack::Builder builder;
-  auto envelope = arangodb::agency::envelope::into_builder(builder);
-
-  for (auto const& [dbName, db] : planNode->get().children()) {
-    for (auto const& [idString, node] : db->children()) {
-      // check if this node has an owner and the owner is 'target'
-      if (auto owner = node->hasAsString("owner");
-          !owner.has_value() || owner != "target") {
-        continue;
-      }
-
-      // now check if there is a replicated log in target with that id
-      if (targetNode.has_value() &&
-          targetNode->get().has(std::vector{dbName, idString})) {
-        continue;
-      }
-
-      // delete plan and target
-      auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-      envelope =
-          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
-    }
-  }
-
-  envelope.done();
-  if (builder.slice().length() > 0) {
-    write_ret_t res = _agent->write(builder.slice());
-    if (!res.successful()) {
-      LOG_TOPIC("df4c4", WARN, Logger::SUPERVISION)
           << "failed to update replicated log in agency. Will retry. "
           << builder.toJson();
     }
@@ -3284,10 +3428,9 @@ void Supervision::shrinkCluster() {
      * fullfilled we should add a follower to the plan
      * When seeing more servers in Current than replicationFactor we should
      * remove a server.
-     * RemoveServer then should be changed so that it really just kills a server
-     * after a while...
-     * this way we would have implemented changing the replicationFactor and
-     * have an awesome new feature
+     * RemoveServer then should be changed so that it really just kills a
+     *server after a while... this way we would have implemented changing the
+     *replicationFactor and have an awesome new feature
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
@@ -3308,8 +3451,8 @@ void Supervision::shrinkCluster() {
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinitely
-    // for them to recover or for the user to remove them
+    // a state of failed still have data of interest to us! We wait
+    // indefinitely for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers
@@ -3346,8 +3489,6 @@ bool Supervision::start(Agent* agent) {
       _agent->config().supervisionFailedLeaderAddsFollower();
   return start();
 }
-
-static std::string const syncLatest = "/Sync/LatestID";
 
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
@@ -3408,7 +3549,7 @@ Node const& Supervision::snapshot() const {
   return *_snapshot;
 }
 
-void Supervision::removeTransactionBuilder(
+void Supervision::buildRemoveTransaction(
     velocypack::Builder& del, std::vector<std::string> const& todelete) {
   VPackArrayBuilder trxs(&del);
   {
@@ -3474,17 +3615,17 @@ void Supervision::checkUndoLeaderChangeActions() {
   };
 
   auto const checkDeletion = [&](std::string const& shard,
-                                 std::shared_ptr<Node> entry) -> bool {
+                                 Node const& entry) -> bool {
     std::string now(timepointToString(std::chrono::system_clock::now()));
-    auto deadline = entry->hasAsString("removeIfNotStartedBy");
-    auto started = entry->hasAsString("started");
+    auto deadline = entry.hasAsString("removeIfNotStartedBy");
+    auto started = entry.hasAsString("started");
     if (deadline) {
       if (!started && now > deadline.value()) {
         return true;
       }
     }
     if (started) {
-      auto jobId = entry->hasAsString("jobId");
+      auto jobId = entry.hasAsString("jobId");
       if (jobId) {
         auto inTodo = _snapshot->hasAsNode(toDoPrefix + jobId.value());
         auto inPending = _snapshot->hasAsNode(pendingPrefix + jobId.value());
@@ -3497,7 +3638,7 @@ void Supervision::checkUndoLeaderChangeActions() {
         // jobId.
       }
     }
-    auto jobOpt = entry->hasAsNode("moveShard");
+    auto jobOpt = entry.hasAsNode("moveShard");
     if (!jobOpt) {
       return true;
     }
@@ -3509,7 +3650,10 @@ void Supervision::checkUndoLeaderChangeActions() {
       return true;
     } else {
       if (isReplication2(*database)) {
-        auto stateId = LogicalCollection::shardIdToStateId(shard);
+        auto stateId =
+            Job::getReplicatedStateId(*_snapshot, database.value(),
+                                      collection.value(), shard)
+                .value_or(LogicalCollection::shardIdToStateId(shard));
         auto target = Job::readStateTarget(snapshot(), *database, stateId);
         if (!target.has_value() || !target->participants.contains(*server)) {
           return true;
@@ -3558,7 +3702,8 @@ void Supervision::checkUndoLeaderChangeActions() {
       //  - deadline exceeded (and not yet started)
       //  - dependent MoveShard gone (and started)
       //  - fromServer no longer in Plan
-      if (checkDeletion(shard, entry)) {
+      TRI_ASSERT(entry != nullptr);
+      if (checkDeletion(shard, *entry)) {
         // Let's remove the entry:
         trx->add(VPackValue(returnLeadershipPrefix + shard));
         {

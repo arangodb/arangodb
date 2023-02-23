@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -446,7 +446,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::didResign()
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore,
-    InMemoryLog inMemoryLog)
+    InMemoryLog inMemoryLog) noexcept
     : _follower(self),
       _inMemoryLog(std::move(inMemoryLog)),
       _logCore(std::move(logCore)) {}
@@ -471,7 +471,9 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
-  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+  auto stateStatus = _stateHandle->getQuickStatus();
+  return _guardedFollowerData.doUnderLock([this, stateStatus](
+                                              auto const& followerData) {
     if (followerData._logCore == nullptr) {
       throw ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
@@ -479,6 +481,7 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
     constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{
         .role = ParticipantRole::kFollower,
+        .localState = stateStatus,
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
         .leadershipEstablished = followerData._commitIndex > kBaseIndex,
@@ -552,10 +555,10 @@ replicated_log::LogFollower::LogFollower(
     LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    ParticipantId id, std::unique_ptr<LogCore>&& logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
     std::shared_ptr<IReplicatedStateHandle> stateHandle,
-    replicated_log::InMemoryLog inMemoryLog,
+    InMemoryLog inMemoryLog,
     std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
     : _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
@@ -569,47 +572,60 @@ replicated_log::LogFollower::LogFollower(
       _stateHandle(std::move(stateHandle)),
       leaderCommunicator(std::move(leaderCommunicator)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
-  auto guard = _guardedFollowerData.getLockedGuard();
-  auto snapshotStatus = guard->_logCore->getSnapshotState();
-  if (snapshotStatus.fail()) {
-    THROW_ARANGO_EXCEPTION(snapshotStatus.result());
-  }
-  if (snapshotStatus == replicated_state::SnapshotStatus::kCompleted) {
-    guard->_snapshotProgress =
-        GuardedFollowerData::SnapshotProgress::kCompleted;
-  } else {
-    guard->_snapshotProgress =
-        GuardedFollowerData::SnapshotProgress::kUninitialized;
-  }
+  try {
+    auto guard = _guardedFollowerData.getLockedGuard();
+    auto snapshotStatus = guard->_logCore->getSnapshotState();
+    if (snapshotStatus.fail()) {
+      THROW_ARANGO_EXCEPTION(snapshotStatus.result());
+    }
+    if (snapshotStatus == replicated_state::SnapshotStatus::kCompleted) {
+      guard->_snapshotProgress =
+          GuardedFollowerData::SnapshotProgress::kCompleted;
+    } else {
+      guard->_snapshotProgress =
+          GuardedFollowerData::SnapshotProgress::kUninitialized;
+    }
 
-  LOG_CTX("c3791", DEBUG, _loggerContext)
-      << "loaded snapshot status: " << to_string(*snapshotStatus);
+    LOG_CTX("c3791", DEBUG, _loggerContext)
+        << "loaded snapshot status: " << to_string(*snapshotStatus);
 
-  struct MethodsImpl : IReplicatedLogFollowerMethods {
-    explicit MethodsImpl(LogFollower& log) : _log(log) {}
-    auto releaseIndex(LogIndex index) -> void override {
-      if (auto res = _log.release(index); res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+    struct MethodsImpl : IReplicatedLogFollowerMethods {
+      explicit MethodsImpl(LogFollower& log) : _log(log) {}
+      auto releaseIndex(LogIndex index) -> void override {
+        if (auto res = _log.release(index); res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
+      auto getLogSnapshot() -> InMemoryLog override {
+        return _log.copyInMemoryLog();
+      }
+      auto snapshotCompleted() -> Result override {
+        return _log.onSnapshotCompleted();
+      }
+      auto waitFor(LogIndex index) -> WaitForFuture override {
+        return _log.waitFor(index);
+      }
+      auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+        return _log.waitForIterator(index);
+      }
+      LogFollower& _log;
+    };
+    LOG_CTX("f3668", DEBUG, _loggerContext)
+        << "calling becomeFollower on state handle";
+    _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
+    _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
+  } catch (...) {
+    try {
+      // In case of an exception, the `logCore` parameter *must* stay unchanged.
+      auto guard = _guardedFollowerData.getLockedGuard();
+      ADB_PROD_ASSERT(logCore == nullptr && guard->_logCore != nullptr);
+      logCore = std::move(guard->_logCore);
+      ADB_PROD_ASSERT(logCore != nullptr);
+    } catch (...) {
+      ADB_PROD_ASSERT(false) << "non-handleable exception";
     }
-    auto getLogSnapshot() -> InMemoryLog override {
-      return _log.copyInMemoryLog();
-    }
-    auto snapshotCompleted() -> Result override {
-      return _log.onSnapshotCompleted();
-    }
-    auto waitFor(LogIndex index) -> WaitForFuture override {
-      return _log.waitFor(index);
-    }
-    auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
-      return _log.waitForIterator(index);
-    }
-    LogFollower& _log;
-  };
-  LOG_CTX("f3668", DEBUG, _loggerContext)
-      << "calling becomeFollower on state handle";
-  _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
-  _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
+    throw;
+  }
 }
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
@@ -651,9 +667,9 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
           TRI_ASSERT(index <= followerData._commitIndex);
 
           /*
-           * This code here ensures that if only private log entries are present
-           * we do not reply with an empty iterator but instead wait for the
-           * next entry containing payload.
+           * This code here ensures that if only private log entries are
+           * present we do not reply with an empty iterator but instead
+           * wait for the next entry containing payload.
            */
 
           auto actualIndex =
@@ -742,7 +758,7 @@ auto LogFollower::construct(
     LoggerContext const& loggerContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    ParticipantId id, std::unique_ptr<LogCore>&& logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
     std::shared_ptr<IReplicatedStateHandle> stateHandle,
     std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
@@ -762,7 +778,7 @@ auto LogFollower::construct(
         LoggerContext const& loggerContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+        ParticipantId id, std::unique_ptr<LogCore>&& logCore, LogTerm term,
         std::optional<ParticipantId> leaderId,
         std::shared_ptr<IReplicatedStateHandle> stateHandle,
         InMemoryLog inMemoryLog,

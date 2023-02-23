@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,15 +136,15 @@ Result LogicalView::drop() {
     return {};  // view already dropped
   }
   // mark as deleted to avoid double-delete (including recursive calls)
-  deleted(true);
+  setDeleted();
   try {
     auto r = dropImpl();
     if (!r.ok()) {
-      deleted(false);
+      setUndeleted();
     }
     return r;
   } catch (...) {
-    deleted(false);
+    setUndeleted();
     throw;
   }
 }

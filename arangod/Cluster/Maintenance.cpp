@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #include "Maintenance.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -407,8 +408,8 @@ static void handlePlanShard(
     }
   } else {  // Create the collection, if not a previous error stops us
     if (!errors.shards.contains(dbname + "/" + colname + "/" + shname)) {
-      if (replicationVersion != replication::Version::TWO) {
-        // Skip for replication 2 databases
+      if (replicationVersion != replication::Version::TWO || shouldBeLeading) {
+        // Skip for replication 2 databases on followers
         auto props = createProps(cprops);  // Only once might need often!
         description = std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
@@ -417,9 +418,11 @@ static void handlePlanShard(
                 {SHARD, shname},
                 {DATABASE, dbname},
                 {SERVER_ID, serverId},
+                {"from", "maintenance"},  // ugly hack - leader uses maintenance
+                                          // action as well. Used to distinguish
+                                          // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
-            std::move(props));
+            SLOW_OP_PRIORITY, true, std::move(props));
         makeDirty.insert(dbname);
         callNotify = true;
         actions.emplace_back(std::move(description));
@@ -460,11 +463,13 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    if (replicationVersion != replication::Version::TWO) {
+    if (replicationVersion != replication::Version::TWO || isLeading) {
       // This collection is not planned anymore, can drop it
       description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
+          std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
+                                             {DATABASE, dbname},
+                                             {SHARD, colname},
+                                             {"from", "maintenance"}},
           isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
       makeDirty.insert(dbname);
       callNotify = true;
@@ -1337,8 +1342,22 @@ static auto reportCurrentReplicatedLogLocal(
   if (auto localTerm = status.getCurrentTerm(); localTerm.has_value()) {
     // If so, check if there is nothing in Agency/Current or the term value is
     // different. Also update snapshot information.
-    if (currentLocal == nullptr || currentLocal->term != *localTerm ||
-        currentLocal->snapshotAvailable != status.snapshotAvailable) {
+    const bool wantUpdate = [&] {
+      // always report if no local present or term is different
+      if (currentLocal == nullptr || currentLocal->term != *localTerm) {
+        return true;
+      }
+      // report is state has changed
+      if (currentLocal->state != status.localState) {
+        return true;
+      }
+      // report is snapshot status has changed
+      if (currentLocal->snapshotAvailable != status.snapshotAvailable) {
+        return true;
+      }
+      return false;
+    }();
+    if (wantUpdate) {
       auto localStats = status.getLocalStatistics();
       TRI_ASSERT(
           localStats
@@ -1347,6 +1366,7 @@ static auto reportCurrentReplicatedLogLocal(
       localState.term = localTerm.value();
       localState.spearhead = localStats->spearHead;
       localState.snapshotAvailable = status.snapshotAvailable;
+      localState.state = status.localState;
       return localState;
     }
   }

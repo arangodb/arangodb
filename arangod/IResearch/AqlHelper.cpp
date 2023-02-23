@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,7 +145,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_VALUE: {
-      return 0 == aql::CompareAstNodes(lhs, rhs, true);
+      return 0 == aql::compareAstNodes(lhs, rhs, true);
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
@@ -190,7 +190,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(static_cast<const void*>(typeString.c_str()),
+  hash = fasthash64(static_cast<const void*>(typeString.data()),
                     typeString.size(), hash);
 
   // hash node members

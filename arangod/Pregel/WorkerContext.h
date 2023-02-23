@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -39,7 +38,6 @@ class WorkerContext {
   uint64_t _vertexCount, _edgeCount;
   AggregatorHandler* _readAggregators;
   AggregatorHandler* _writeAggregators;
-  ReportManager* _reports;
 
  protected:
   template<typename T>
@@ -59,8 +57,6 @@ class WorkerContext {
   virtual void preGlobalSuperstep(uint64_t gss) {}
   virtual void postGlobalSuperstep(uint64_t gss) {}
   virtual void postApplication() {}
-
-  ReportManager& getReportManager() const { return *_reports; }
 
  public:
   WorkerContext()

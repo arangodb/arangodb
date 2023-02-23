@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -70,16 +71,16 @@ struct IDocumentStateTransaction;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
-  virtual auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
   virtual auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
-  virtual auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+  virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                                     GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
-  virtual auto createTransactionHandler(GlobalLogIdentifier gid)
+  virtual auto createTransactionHandler(TRI_vocbase_t& vocbase,
+                                        GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(DocumentLogEntry const& doc,
-                                 IDatabaseGuard const& dbGuard)
+                                 TRI_vocbase_t& vocbase)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
@@ -89,30 +90,23 @@ class DocumentStateHandlersFactory
     : public IDocumentStateHandlersFactory,
       public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
-  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
-                               network::ConnectionPool* connectionPool,
-                               MaintenanceFeature& maintenaceFeature,
-                               DatabaseFeature& databaseFeature);
-  auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> override;
+  DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
+                               MaintenanceFeature& maintenanceFeature);
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+  auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                             GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
-  auto createTransactionHandler(GlobalLogIdentifier gid)
+  auto createTransactionHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(DocumentLogEntry const& doc,
-                         IDatabaseGuard const& dbGuard)
+  auto createTransaction(DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
 
  private:
-  ArangodServer& _server;
-  AgencyCache& _agencyCache;
   network::ConnectionPool* _connectionPool;
   MaintenanceFeature& _maintenanceFeature;
-  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

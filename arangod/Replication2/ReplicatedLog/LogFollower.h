@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,12 +52,14 @@ class LogFollower : public ILogFollower,
  public:
   ~LogFollower() override;
   static auto construct(
-      LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      LoggerContext const& loggerContext,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+      ParticipantId id, std::unique_ptr<LogCore>&& logCore, LogTerm term,
       std::optional<ParticipantId> leaderId,
-      std::shared_ptr<IReplicatedStateHandle>,
-      std::shared_ptr<ILeaderCommunicator>) -> std::shared_ptr<LogFollower>;
+      std::shared_ptr<IReplicatedStateHandle> stateHandle,
+      std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
+      -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -85,19 +87,24 @@ class LogFollower : public ILogFollower,
   auto waitForLeaderAcked() -> WaitForFuture;
 
  private:
-  LogFollower(LoggerContext const&,
+  LogFollower(LoggerContext const& logContext,
               std::shared_ptr<ReplicatedLogMetrics> logMetrics,
               std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-              ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              std::optional<ParticipantId> leaderId,
-              std::shared_ptr<IReplicatedStateHandle>, InMemoryLog inMemoryLog,
-              std::shared_ptr<ILeaderCommunicator>);
+              ParticipantId id, std::unique_ptr<LogCore>&& logCore,
+              LogTerm term, std::optional<ParticipantId> leaderId,
+              std::shared_ptr<IReplicatedStateHandle> stateHandle,
+              InMemoryLog inMemoryLog,
+              std::shared_ptr<ILeaderCommunicator> leaderCommunicator);
 
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;
+    // It is relied upon this to be noexcept, so the LogCore doesn't get lost.
+    // If you need to remove it, change the `logCore` parameter to an
+    // rvalue-reference, and make sure the referenced unique_ptr isn't changed
+    // in case of an exception.
     GuardedFollowerData(LogFollower const& self,
                         std::unique_ptr<LogCore> logCore,
-                        InMemoryLog inMemoryLog);
+                        InMemoryLog inMemoryLog) noexcept;
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const

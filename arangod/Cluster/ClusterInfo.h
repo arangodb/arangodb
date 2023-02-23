@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -438,6 +438,14 @@ class ClusterInfo final {
   cluster::RebootTracker const& rebootTracker() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   ///
   /// A database is first created in the isBuilding state, and therefore not
@@ -846,6 +854,10 @@ class ClusterInfo final {
       -> ResultT<
           std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
+  auto getCollectionGroupById(replication2::agency::CollectionGroupId)
+      -> std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -876,6 +888,14 @@ class ClusterInfo final {
   }
 
   ArangodServer& server() const;
+
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
 
  private:
   /// @brief worker function for dropIndexCoordinator
@@ -917,12 +937,6 @@ class ClusterInfo final {
   void triggerWaiting(
       std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
@@ -1153,7 +1167,10 @@ class ClusterInfo final {
 
   using CollectionGroupMap = containers::FlatHashMap<
       replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
+      std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>>;
+  // note: protected by _planProt
+  CollectionGroupMap _collectionGroups;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

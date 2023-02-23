@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +88,7 @@ template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
                             f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("state", x.state),
                             f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
@@ -145,6 +146,12 @@ auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderInvalid& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderExcluded& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::TargetLeaderSnapshotMissing& x) {
   return f.object(x).fields();
 }
 
@@ -212,6 +219,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetLeaderInvalid::code),
           insp::type<LogCurrentSupervision::TargetLeaderExcluded>(
               LogCurrentSupervision::TargetLeaderExcluded::code),
+          insp::type<LogCurrentSupervision::TargetLeaderSnapshotMissing>(
+              LogCurrentSupervision::TargetLeaderSnapshotMissing::code),
           insp::type<LogCurrentSupervision::TargetLeaderFailed>(
               LogCurrentSupervision::TargetLeaderFailed::code),
           insp::type<LogCurrentSupervision::TargetNotEnoughParticipants>(

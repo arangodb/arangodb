@@ -32,7 +32,6 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -86,6 +85,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
@@ -176,7 +176,13 @@ set(ARANGODB_TESTS_SOURCES
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
-  Basics/InspectionTest.cpp
+  Basics/Inspection/InspectionTest.cpp
+  Basics/Inspection/JsonPrintTest.cpp
+  Basics/Inspection/NodeLoadTest.cpp
+  Basics/Inspection/ValidateTest.cpp
+  Basics/Inspection/ValidateTest.cpp
+  Basics/Inspection/VPackLoadTest.cpp
+  Basics/Inspection/VPackSaveTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
@@ -207,8 +213,11 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
-  Cluster/RebootTrackerTest.cpp
+  Cluster/EvenDistributionTest.cpp
+  Cluster/PlanCollectionToAgencyWriterTest.cpp
+  Cluster/PlanCollectionEntryTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -233,9 +242,7 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
-  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -275,12 +282,9 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
-  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
-  Zkd/Conversion.cpp
-  Zkd/Library.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)
@@ -299,8 +303,23 @@ endif ()
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
+
+# This is the default from the Jenkins setup
 add_test(NAME arangodbtests
-  COMMAND arangodbtests)
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning)
+
+# Run all tests
+add_test(NAME arangodbtests-full
+  COMMAND arangodbtests --gtest_output=xml)
+
+# An attempt at partitioning tests cases
+# for CircleCI
+add_test(NAME arangodbtests-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=IResearch*)
+
+add_test(NAME arangodbtests-non-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning:IResearch*)
+
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -313,6 +332,9 @@ target_link_libraries(arangodbtests
   arango_tests_replication2
   arango_tests_graph
   arango_tests_futures
+  arango_tests_zkd
+  arango_tests_pregel
+  arango_tests_actor
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -370,4 +392,6 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Pregel)
 add_subdirectory(sepp)
+add_subdirectory(VocBase/Properties)

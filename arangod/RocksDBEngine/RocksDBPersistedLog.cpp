@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -429,6 +429,7 @@ auto RocksDBLogStorageMethods::drop() -> Result {
   }
 
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  // TODO should we remove using rocksutils::removeLargeRange instead?
   auto start = range.start();
   auto end = range.end();
   if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {

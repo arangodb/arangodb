@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,6 +87,16 @@ class Methods;
 struct Options;
 
 }  // namespace transaction
+
+class StorageSnapshot {
+ public:
+  StorageSnapshot() = default;
+  StorageSnapshot(StorageSnapshot const&) = delete;
+  StorageSnapshot& operator=(StorageSnapshot const&) = delete;
+  virtual ~StorageSnapshot() = default;
+
+  virtual TRI_voc_tick_t tick() const noexcept = 0;
+};
 
 class StorageEngine : public ArangodFeature {
  public:
@@ -352,6 +362,7 @@ class StorageEngine : public ArangodFeature {
   virtual TRI_voc_tick_t currentTick() const = 0;
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
+  virtual std::shared_ptr<StorageSnapshot> currentSnapshot() = 0;
 
   virtual void scheduleFullIndexRefill(std::string const& database,
                                        std::string const& collection,

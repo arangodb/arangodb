@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,25 +26,23 @@
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool IdentityAnalyzer::normalize(std::string_view /*args*/,
-                                            std::string& out) {
+bool IdentityAnalyzer::normalize(std::string_view /*args*/, std::string& out) {
   out.resize(VPackSlice::emptyObjectSlice().byteSize());
   std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
-    std::string_view /*args*/) {
+irs::analysis::analyzer::ptr IdentityAnalyzer::make(std::string_view /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-/*static*/ bool IdentityAnalyzer::normalize_json(std::string_view /*args*/,
-                                                 std::string& out) {
+bool IdentityAnalyzer::normalize_json(std::string_view /*args*/,
+                                      std::string& out) {
   out = "{}";
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
+irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
     std::string_view /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }

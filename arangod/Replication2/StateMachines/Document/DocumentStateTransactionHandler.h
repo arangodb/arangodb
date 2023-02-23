@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,6 +49,7 @@ struct IDocumentStateTransactionHandler {
   virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
+  virtual void abortTransactionsForShard(ShardID const&) = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
 };
@@ -55,13 +57,14 @@ struct IDocumentStateTransactionHandler {
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(
-      GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+  DocumentStateTransactionHandler(
+      GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
       std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
   auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
+  void abortTransactionsForShard(ShardID const&) override;
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
 
@@ -70,7 +73,7 @@ class DocumentStateTransactionHandler
 
  private:
   GlobalLogIdentifier _gid;
-  std::unique_ptr<IDatabaseGuard> _dbGuard;
+  TRI_vocbase_t* _vocbase;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   TransactionMap _transactions;
 };

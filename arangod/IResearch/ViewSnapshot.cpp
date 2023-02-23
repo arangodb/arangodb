@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,7 @@ namespace arangodb::iresearch {
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 ///        the container storing the view state for a given TransactionState
 /// @note it is assumed that DBServer ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate
@@ -51,10 +51,10 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   void compute(bool sync, std::string_view name);
 
  private:
-  [[nodiscard]] irs::sub_reader const& operator[](
+  [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return *(_segments[i].second);
+    return *(std::get<1>(_segments[i]));
   }
 
   [[nodiscard]] std::size_t size() const noexcept final {
@@ -63,13 +63,29 @@ class ViewSnapshotCookie final : public ViewSnapshot,
 
   [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
+    return std::get<0>(_segments[i]);
+  }
+
+  [[nodiscard]] StorageSnapshot const& snapshot(
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return std::get<2>(_segments[i]);
+  }
+
+  [[nodiscard]] ViewSegment const& segment(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i];
+  }
+
+  [[nodiscard]] ImmutablePartCache& immutablePartCache() noexcept final {
+    return _immutablePartCache;
   }
 
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
-  std::vector<irs::directory_reader> _readers;
+  std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
   Segments _segments;
+  ImmutablePartCache _immutablePartCache;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
@@ -99,37 +115,39 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
       }
     }
     _readers.push_back(IResearchDataStore::reader(link));
-    segments += _readers.back().size();
+    segments += _readers.back()->_reader.size();
   }
   _segments.reserve(segments);
   for (size_t i = 0; i != _links.size(); ++i) {
     auto const cid = _links[i]->index().collection().id();
     auto const& reader = _readers[i];
-    for (auto const& segment : reader) {
-      _segments.emplace_back(cid, &segment);
+    auto const& snapshot = reader->_snapshot;
+    for (auto const& segment : reader->_reader) {
+      _segments.emplace_back(cid, &segment, *snapshot.get());
     }
-    _live_docs_count += reader.live_docs_count();
-    _docs_count += reader.docs_count();
+    _live_docs_count += reader->_reader.live_docs_count();
+    _docs_count += reader->_reader.docs_count();
     _hasNestedFields |= _links[i]->hasNestedFields();
   }
 }
 
 }  // namespace
 
-ViewSnapshotView::ViewSnapshotView(
-    const ViewSnapshot& rhs,  // TODO(MBkkt) Maybe we should move?
-    containers::FlatHashSet<DataSourceId> const& collections) noexcept {
-  for (std::size_t i = 0, size = rhs.size(); i != size; ++i) {
-    auto const cid = rhs.cid(i);
-    if (!collections.contains(cid)) {
-      continue;
-    }
-    auto const& segment = rhs[i];
-    _docs_count += segment.docs_count();
-    _live_docs_count += segment.live_docs_count();
-    _segments.emplace_back(cid, &segment);
-  }
-}
+// See comment in header file for this class.
+// ViewSnapshotView::ViewSnapshotView(
+//    const ViewSnapshot& rhs,  // TODO(MBkkt) Maybe we should move?
+//    containers::FlatHashSet<DataSourceId> const& collections) noexcept {
+//  for (std::size_t i = 0, size = rhs.size(); i != size; ++i) {
+//    auto const cid = rhs.cid(i);
+//    if (!collections.contains(cid)) {
+//      continue;
+//    }
+//    auto const& segment = rhs[i];
+//    _docs_count += segment.docs_count();
+//    _live_docs_count += segment.live_docs_count();
+//    _segments.emplace_back(cid, &segment, rhs.snapshot(i));
+//  }
+//}
 
 ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
                               void const* key) noexcept {
@@ -172,7 +190,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
   for (auto const& link : links) {
     if (!link) {
       LOG_TOPIC("fffff", WARN, TOPIC)
-          << "failed to lock a link for view '" << name << "'";
+          << "failed to lock ArangoSearch data source '" << name << "'";
       return nullptr;
     }
 
@@ -180,7 +198,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
       // link is out of sync, we cannot use it for querying
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          absl::StrCat("link ", link->index().id().id(),
+          absl::StrCat("ArangoSearch index ", link->index().id().id(),
                        " has been marked as failed and needs to be recreated"));
     }
   }

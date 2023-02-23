@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -190,7 +190,6 @@ class AgencyCommHelper {
 
  public:
   static void initialize(std::string const& prefix);
-  static void shutdown();
 
   static std::string const& path() noexcept;
   static std::string path(std::string const&);
@@ -214,6 +213,8 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  AgencyPrecondition(std::string const& key, Type,
+                     std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
       : key(AgencyCommHelper::path(key)),
@@ -228,6 +229,8 @@ class AgencyPrecondition {
                      Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type, velocypack::Slice const&);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type t, T const& v)
@@ -247,8 +250,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice value;
   std::shared_ptr<VPackBuilder> builder;
+  velocypack::Slice value;
 };
 
 // -----------------------------------------------------------------------------
@@ -323,6 +326,10 @@ class AgencyOperation {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::string const& key() const { return _key; }
+#endif
 
  public:
   uint64_t _ttl = 0;
@@ -635,14 +642,6 @@ class AgencyComm {
 
   AgencyCommResult unregisterCallback(std::string const& key,
                                       std::string const& endpoint);
-
-  bool lockRead(std::string const&, double, double);
-
-  bool lockWrite(std::string const&, double, double);
-
-  bool unlockRead(std::string const&, double);
-
-  bool unlockWrite(std::string const&, double);
 
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);

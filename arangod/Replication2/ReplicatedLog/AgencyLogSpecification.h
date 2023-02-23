@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -169,6 +168,7 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
   bool snapshotAvailable{false};
+  replicated_log::LocalStateMachineStatus state;
 
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
@@ -227,6 +227,12 @@ struct LogCurrentSupervision {
     static constexpr std::string_view code = "TargetLeaderExcluded";
     friend auto operator==(TargetLeaderExcluded const& s,
                            TargetLeaderExcluded const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderSnapshotMissing {
+    static constexpr std::string_view code = "TargetLeaderSnapshotMissing";
+    friend auto operator==(TargetLeaderSnapshotMissing const& s,
+                           TargetLeaderSnapshotMissing const& s2) noexcept
         -> bool = default;
   };
   struct TargetLeaderFailed {
@@ -294,11 +300,11 @@ struct LogCurrentSupervision {
 
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
-                   TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, LeaderElectionImpossible,
-                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
-                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
-                   CurrentNotAvailable>;
+                   TargetLeaderSnapshotMissing, TargetLeaderFailed,
+                   TargetNotEnoughParticipants, WaitingForConfigCommitted,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 

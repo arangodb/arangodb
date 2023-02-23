@@ -276,9 +276,16 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = false}},
-      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
+      {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"E", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantsAcceptableAsLeaders("A", participants);
+  auto localStates = std::unordered_map<ParticipantId, LogCurrentLocalState>{};
+  localStates["A"].snapshotAvailable = true;
+  localStates["B"].snapshotAvailable = true;
+  localStates["C"].snapshotAvailable = true;
+  localStates["D"].snapshotAvailable = true;
+
+  auto r = getParticipantsAcceptableAsLeaders("A", participants, localStates);
 
   auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
   auto acceptable = std::set<ParticipantId>{};
@@ -678,6 +685,7 @@ TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
       .setPlanParticipant("C", defaultFlags);
   log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.allSnapshotsTrue().allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -756,5 +764,55 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
     auto const& elec = std::get<LeaderElectionAction>(r);
     EXPECT_EQ(elec._assumedWriteConcern, 2U);
     EXPECT_EQ(elec._effectiveWriteConcern, 3U);
+  }
+}
+
+TEST_F(LogSupervisionTest, test_wait_for_config_committed_action) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{2, 2, true})
+      .setId(logId)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetParticipant("D", defaultFlags)
+      .setTargetVersion(1);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags)
+      .setPlanParticipant("D", defaultFlags);
+  log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
+  log.establishLeadership();
+  log.commitCurrentParticipantsConfig();
+  log.setPlanConfigGeneration(2);
+  log.setPlanParticipant("B", {true, true, true});
+
+  log.acknowledgeTerm("A")
+      .acknowledgeTerm("B")
+      .acknowledgeTerm("C")
+      .acknowledgeTerm("D")
+      .allSnapshotsTrue();
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_TRUE(ctx.hasAction());
+
+    auto const& r = ctx.getAction();
+    ASSERT_TRUE(std::holds_alternative<NoActionPossibleAction>(r))
+        << fmt::format("{}", r);
   }
 }

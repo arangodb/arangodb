@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/LoggerContext.h"
@@ -33,7 +35,16 @@ namespace {
 
 auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
-    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    /*
+     * These errors are ignored because the snapshot can be more recent than
+     * the applied log entries.
+     * TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED could happen during insert
+     * operations.
+     * TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND could happen during
+     * remove operations.
+     */
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+           code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   };
 
   if (res.fail() && !ignoreError(res.errorNumber())) {
@@ -73,11 +84,13 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+    GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
     std::shared_ptr<IDocumentStateHandlersFactory> factory)
-    : _gid(std::move(gid)),
-      _dbGuard(std::move(dbGuard)),
-      _factory(std::move(factory)) {}
+    : _gid(std::move(gid)), _vocbase(vocbase), _factory(std::move(factory)) {
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_vocbase != nullptr);
+#endif
+}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {
@@ -135,6 +148,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
+        FATAL_ERROR_EXIT();
       case OperationType::kIntermediateCommit:
         return trx->intermediateCommit();
       default:
@@ -157,7 +171,7 @@ auto DocumentStateTransactionHandler::ensureTransaction(
     return trx;
   }
 
-  trx = _factory->createTransaction(doc, *_dbGuard);
+  trx = _factory->createTransaction(doc, *_vocbase);
   _transactions.emplace(tid, trx);
   return trx;
 }
@@ -169,6 +183,21 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
 auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
     -> TransactionMap const& {
   return _transactions;
+}
+
+void DocumentStateTransactionHandler::abortTransactionsForShard(
+    ShardID const& sid) {
+  for (auto it = _transactions.begin(); it != _transactions.end();) {
+    auto const& [tid, trx] = *it;
+    if (it->second->containsShard(sid)) {
+      auto result = trx->abort();
+      ADB_PROD_ASSERT(result.ok())
+          << result.errorMessage();  // TODO error handling
+      it = _transactions.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

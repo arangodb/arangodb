@@ -57,7 +57,7 @@ struct custom_sort : public irs::sort {
      public:
       field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
+      virtual void collect(const irs::SubReader& segment,
                            const irs::term_reader& field) override {
         if (sort_.field_collector_collect) {
           sort_.field_collector_collect(segment, field);
@@ -78,7 +78,7 @@ struct custom_sort : public irs::sort {
      public:
       term_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
+      virtual void collect(const irs::SubReader& segment,
                            const irs::term_reader& field,
                            const irs::attribute_provider& term_attrs) override {
         if (sort_.term_collector_collect) {
@@ -97,7 +97,7 @@ struct custom_sort : public irs::sort {
     };
 
     struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
+      scorer(const custom_sort& sort, const irs::SubReader& segment_reader,
              const irs::term_reader& term_reader, const irs::byte_type* stats,
              const irs::attribute_provider& document_attrs)
           : document_attrs_(document_attrs),
@@ -108,7 +108,7 @@ struct custom_sort : public irs::sort {
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* stats_;
-      const irs::sub_reader& segment_reader_;
+      const irs::SubReader& segment_reader_;
       const custom_sort& sort_;
       const irs::term_reader& term_reader_;
     };
@@ -116,7 +116,7 @@ struct custom_sort : public irs::sort {
     prepared(const custom_sort& sort) : sort_(sort) {}
 
     virtual void collect(irs::byte_type* filter_attrs,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       if (sort_.collector_finish) {
@@ -138,7 +138,7 @@ struct custom_sort : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const& segment_reader,
+        irs::SubReader const& segment_reader,
         irs::term_reader const& term_reader,
         irs::byte_type const* filter_node_attrs,
         irs::attribute_provider const& document_attrs,
@@ -178,17 +178,17 @@ struct custom_sort : public irs::sort {
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&)>
+  std::function<void(const irs::SubReader&, const irs::term_reader&)>
       field_collector_collect;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&,
+  std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
       term_collector_collect;
-  std::function<void(irs::byte_type*, const irs::index_reader&,
+  std::function<void(irs::byte_type*, const irs::IndexReader&,
                      const irs::sort::field_collector*,
                      const irs::sort::term_collector*)>
       collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&,
+  std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::byte_type*, const irs::attribute_provider&,
                      irs::score_t)>
       prepare_scorer;
@@ -234,7 +234,7 @@ TEST(GeoFilterTest, equal) {
   GeoFilter q;
   q.mutable_options()->type = GeoFilterType::INTERSECTS;
   q.mutable_options()->shape.reset(
-      std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+      std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
       geo::ShapeContainer::Type::S2_POINT);
   *q.mutable_field() = "field";
 
@@ -242,7 +242,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
@@ -254,7 +254,7 @@ TEST(GeoFilterTest, equal) {
     q1.boost(1.5);
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
@@ -265,7 +265,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field1";
     ASSERT_NE(q, q1);
@@ -275,7 +275,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::CONTAINS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
@@ -297,11 +297,11 @@ TEST(GeoFilterTest, boost) {
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -311,12 +311,12 @@ TEST(GeoFilterTest, boost) {
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(boost, prepared->boost());
   }
 }
@@ -354,39 +354,40 @@ TEST(GeoFilterTest, query) {
   ])");
 
   irs::memory_directory dir;
+  irs::DirectoryReader reader;
 
   // index data
   {
     constexpr auto formatId = arangodb::iresearch::getFormat(LinkVersion::MAX);
     auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
     GeoField geoField;
     geoField.fieldName = "geometry";
     StringField nameField;
     nameField.fieldName = "name";
     {
-      auto segment0 = writer->documents();
-      auto segment1 = writer->documents();
+      auto segment0 = writer->GetBatch();
+      auto segment1 = writer->GetBatch();
       {
         size_t i = 0;
         for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
-          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          auto doc = (i++ % 2 ? segment0 : segment1).Insert();
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
         }
       }
     }
-    writer->commit();
+    writer->Commit();
+    reader = writer->GetSnapshot();
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2U, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
@@ -527,10 +528,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -543,10 +545,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -559,10 +562,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -585,16 +589,19 @@ TEST(GeoFilterTest, query) {
 
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache));
+            shapeJson->slice(), shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache));
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, point, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       if (!shape.contains(point)) {
         continue;
       }
@@ -608,7 +615,8 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -631,16 +639,19 @@ TEST(GeoFilterTest, query) {
 
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache));
+            shapeJson->slice(), shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache));
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, point, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       if (!shape.contains(point)) {
         continue;
       }
@@ -654,7 +665,8 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -677,13 +689,14 @@ TEST(GeoFilterTest, query) {
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
     std::set<std::string> expected;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -723,39 +736,40 @@ TEST(GeoFilterTest, checkScorer) {
   ])");
 
   irs::memory_directory dir;
+  irs::DirectoryReader reader;
 
   // index data
   {
     constexpr auto formatId = arangodb::iresearch::getFormat(LinkVersion::MAX);
     auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
     GeoField geoField;
     geoField.fieldName = "geometry";
     StringField nameField;
     nameField.fieldName = "name";
     {
-      auto segment0 = writer->documents();
-      auto segment1 = writer->documents();
+      auto segment0 = writer->GetBatch();
+      auto segment1 = writer->GetBatch();
       {
         size_t i = 0;
         for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
-          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          auto doc = (i++ % 2 ? segment0 : segment1).Insert();
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
         }
       }
     }
-    writer->commit();
+    writer->Commit();
+    reader = writer->GetSnapshot();
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
@@ -878,24 +892,24 @@ TEST(GeoFilterTest, checkScorer) {
     ::custom_sort sort;
 
     sort.field_collector_collect = [&collector_collect_field_count, &q](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
     sort.term_collector_collect = [&collector_collect_term_count, &q](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader& field,
                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
     sort.collector_finish = [&collector_finish_count](
-                                irs::byte_type*, const irs::index_reader&,
+                                irs::byte_type*, const irs::IndexReader&,
                                 const irs::sort::field_collector*,
                                 const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
     };
     sort.prepare_scorer = [&prepare_scorer_count, &q](
-                              const irs::sub_reader&, const irs::term_reader&,
+                              const irs::SubReader&, const irs::term_reader&,
                               const irs::byte_type*,
                               const irs::attribute_provider&,
                               irs::score_t boost) {
@@ -953,24 +967,24 @@ TEST(GeoFilterTest, checkScorer) {
     ::custom_sort sort;
 
     sort.field_collector_collect = [&collector_collect_field_count, &q](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
     sort.term_collector_collect = [&collector_collect_term_count, &q](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader& field,
                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
     sort.collector_finish = [&collector_finish_count](
-                                irs::byte_type*, const irs::index_reader&,
+                                irs::byte_type*, const irs::IndexReader&,
                                 const irs::sort::field_collector*,
                                 const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
     };
     sort.prepare_scorer = [&prepare_scorer_count, &q](
-                              const irs::sub_reader&, const irs::term_reader&,
+                              const irs::SubReader&, const irs::term_reader&,
                               const irs::byte_type*,
                               const irs::attribute_provider&,
                               irs::score_t boost) {

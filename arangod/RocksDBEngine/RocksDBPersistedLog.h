@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -213,28 +213,31 @@ struct RocksDBLogStorageMethods final
       std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db,
       rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf);
 
-  auto updateMetadata(replication2::replicated_state::PersistedStateInfo info)
+  [[nodiscard]] auto updateMetadata(
+      replication2::replicated_state::PersistedStateInfo info)
       -> Result override;
-  auto readMetadata()
+  [[nodiscard]] auto readMetadata()
       -> ResultT<replication2::replicated_state::PersistedStateInfo> override;
-  auto read(replication2::LogIndex first)
+  [[nodiscard]] auto read(replication2::LogIndex first)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  auto insert(std::unique_ptr<replication2::PersistedLogIterator> ptr,
-              WriteOptions const&)
+  [[nodiscard]] auto insert(
+      std::unique_ptr<replication2::PersistedLogIterator> ptr,
+      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeFront(replication2::LogIndex stop,
+                                 WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  auto removeFront(replication2::LogIndex stop, WriteOptions const&)
+  [[nodiscard]] auto removeBack(replication2::LogIndex start,
+                                WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  auto removeBack(replication2::LogIndex start, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> override;
-  auto getObjectId() -> std::uint64_t override;
-  auto getLogId() -> replication2::LogId override;
+  [[nodiscard]] auto getObjectId() -> std::uint64_t override;
+  [[nodiscard]] auto getLogId() -> replication2::LogId override;
 
-  auto getSyncedSequenceNumber() -> SequenceNumber override;
-  auto waitForSync(SequenceNumber number)
+  [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
+  [[nodiscard]] auto waitForSync(SequenceNumber number)
       -> futures::Future<futures::Unit> override;
 
-  auto drop() -> Result;
-  auto compact() -> Result;
+  [[nodiscard]] auto drop() -> Result;
+  [[nodiscard]] auto compact() -> Result;
 
   replication2::LogId const logId;
   std::shared_ptr<IRocksDBAsyncLogWriteBatcher> const batcher;

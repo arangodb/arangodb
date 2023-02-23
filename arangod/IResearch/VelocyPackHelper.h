@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,8 +160,7 @@ inline bool getNumber(T& buf, velocypack::Slice const& slice) noexcept {
     return false;
   }
 
-  typedef typename std::conditional<std::is_floating_point<T>::value, T,
-                                    double>::type NumType;
+  using NumType = std::conditional_t<std::is_floating_point_v<T>, T, double>;
 
   try {
     auto value = slice.getNumber<NumType>();

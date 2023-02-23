@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,7 +159,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief return the collection from a transaction
   [[nodiscard]] TransactionCollection* collection(
-      std::string const& name, AccessMode::Type accessType) const;
+      std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,

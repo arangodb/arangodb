@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,6 +46,8 @@ enum class OperationType {
   kAbort,
   kAbortAllOngoingTrx,
   kIntermediateCommit,
+  kCreateShard,
+  kDropShard
 };
 
 template<class Inspector>
@@ -59,7 +61,9 @@ auto inspect(Inspector& f, OperationType& p) {
       OperationType::kCommit, "Commit",                          //
       OperationType::kAbort, "Abort",                            //
       OperationType::kAbortAllOngoingTrx, "AbortAllOngoingTrx",  //
-      OperationType::kIntermediateCommit, "IntermediateCommit"   //
+      OperationType::kIntermediateCommit, "IntermediateCommit",  //
+      OperationType::kCreateShard, "CreateShard",                //
+      OperationType::kDropShard, "DropShard"                     //
   );
 }
 
@@ -71,11 +75,13 @@ struct DocumentLogEntry {
   OperationType operation;
   velocypack::SharedSlice data;
   TransactionId tid;
+  std::string collectionId;  // only set for create/drop/modifyCollection
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
     return f.object(p).fields(
-        f.field("shardId", p.shardId), f.field("operation", p.operation),
+        f.field("shardId", p.shardId), f.field("collectionId", p.collectionId),
+        f.field("operation", p.operation),
         f.field("data", p.data).fallback(velocypack::SharedSlice{}),
         f.field("tid", p.tid));
   }

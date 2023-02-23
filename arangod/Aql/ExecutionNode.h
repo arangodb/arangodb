@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1170,10 +1170,6 @@ class MaterializeNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  template<typename T>
-  auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
-      -> RegIdSet;
-
  protected:
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
@@ -1182,20 +1178,9 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-template<typename T>
-auto MaterializeNode::getReadableInputRegisters(
-    T const collectionSource, RegisterId const inNmDocId) const -> RegIdSet {
-  if constexpr (std::is_same_v<T, RegisterId>) {
-    return RegIdSet{collectionSource, inNmDocId};
-  } else {
-    return RegIdSet{inNmDocId};
-  }
-}
-
 class MaterializeMultiNode : public MaterializeNode {
  public:
   MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inColPtr,
                        aql::Variable const& inDocId,
                        aql::Variable const& outVariable);
 
@@ -1212,19 +1197,13 @@ class MaterializeMultiNode : public MaterializeNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override final;
-
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
-
- private:
-  /// @brief input variable non-materialized collection ids
-  aql::Variable const* _inNonMaterializedColPtr;
 };
 
+template<bool localDocumentId>
 class MaterializeSingleNode : public MaterializeNode,
                               public CollectionAccessingNode {
  public:
@@ -1253,7 +1232,7 @@ class MaterializeSingleNode : public MaterializeNode,
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base);
+                                       arangodb::velocypack::Slice const base);
 
 }  // namespace materialize
 }  // namespace aql

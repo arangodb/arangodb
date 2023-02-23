@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +42,9 @@
 namespace arangodb {
 namespace velocypack {
 class Slice;
+}
+namespace replication2::replicated_log {
+struct ParticipantsHealth;
 }
 
 namespace consensus {
@@ -116,12 +119,15 @@ class Supervision : public arangodb::Thread {
    * @param  del       Agency transaction builder
    * @param  todelete  List of servers to be removed
    */
-  static void removeTransactionBuilder(
-      velocypack::Builder& del, std::vector<std::string> const& todelete);
+  static void buildRemoveTransaction(velocypack::Builder& del,
+                                     std::vector<std::string> const& todelete);
 
   static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
   static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
   static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
+  // should never be stored in the agency. only used internally to return an
+  // unclear health status
+  static constexpr std::string_view HEALTH_STATUS_UNCLEAR = "UNCLEAR";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 
@@ -130,7 +136,7 @@ class Supervision : public arangodb::Thread {
   }
 
   static std::string serverHealthFunctional(Node const& snapshot,
-                                            std::string const&);
+                                            std::string_view);
 
   static bool verifyServerRebootID(Node const& snapshot,
                                    std::string const& serverID,
@@ -221,11 +227,11 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedLogs();
 
+  /// @brief Check collection groups
+  void checkCollectionGroups();
+
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
-
-  /// @brief Clean up replicated states
-  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
@@ -285,6 +291,9 @@ class Supervision : public arangodb::Thread {
 
   void updateDBServerMaintenance();
 
+  replication2::replicated_log::ParticipantsHealth collectParticipantsHealth()
+      const;
+
   void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
@@ -296,8 +305,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
 
-  Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
-  Agent* _agent; /**< @brief My agent */
+  mutable Mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
+  Agent* _agent;        /**< @brief My agent */
   Store _spearhead;
   mutable Node const* _snapshot;
   Node _transient;
@@ -321,7 +330,7 @@ class Supervision : public arangodb::Thread {
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
 
-  std::string serverHealth(std::string const&);
+  std::string serverHealth(std::string_view) const;
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 

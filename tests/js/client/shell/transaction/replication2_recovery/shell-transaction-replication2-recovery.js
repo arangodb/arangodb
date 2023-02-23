@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -37,12 +36,14 @@ const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const internal = require('internal');
+const print = internal.print;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const request = require('@arangodb/request');
+const console = require('console');
 
 /**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
@@ -54,8 +55,9 @@ const syncShardsWithLogs = function(dbn) {
   let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
   let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
   for (const [colId, colInfo] of Object.entries(collections)) {
+    const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, colId);
     for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardId.slice(1);
+      const logId = shardsToLogs[shardId];
       if (logId in logs) {
         helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
       }
@@ -91,9 +93,20 @@ function transactionReplication2Recovery() {
   let shards = null;
   let shardId = null;
   let logId = null;
+  let logs = null;
+  let shardsToLogs = null;
 
-  const { setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd } =
-    replicatedLogsHelper.testHelperFunctions(dbn, { replicationVersion: "2" });
+  const {
+    setUpAll,
+    tearDownAll,
+    stopServerWait,
+    stopServersWait,
+    continueServerWait,
+    continueServersWait,
+    setUpAnd,
+    tearDownAnd,
+  } =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: '2'});
 
   return {
     setUpAll,
@@ -101,8 +114,10 @@ function transactionReplication2Recovery() {
     setUp: setUpAnd(() => {
       c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3 });
       shards = c.shards();
+      shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, c._id);
+      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
       shardId = shards[0];
-      logId = shardId.slice(1);
+      logId = shardsToLogs[shardId];
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -153,7 +168,7 @@ function transactionReplication2Recovery() {
         dbn, logId, newTerm, followers));
 
       // Check if the universal abort command appears in the log during the current term.
-      let logContents = replicatedLogsHelper.dumpShardLog(shardId);
+      let logContents = replicatedLogsHelper.dumpLogHead(logId);
       let abortAllEntryFound = _.some(logContents, entry => {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
@@ -168,7 +183,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: 'test3', value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum,
           `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
@@ -197,7 +212,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "foo" });
         trx.commit();
       } catch (err) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
@@ -225,7 +240,7 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "bar" });
         trx.commit();
       } catch (err) {
-        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
@@ -308,7 +323,7 @@ function transactionReplication2Recovery() {
       try {
         tc.insert({_key: "test3", value: 3});
       } catch (err) {
-        const logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        const logContents = replicatedLogsHelper.dumpLogHead(logId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
           ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       } finally {
@@ -346,9 +361,7 @@ function transactionReplication2Recovery() {
       });
 
       // Stop all servers except for the leader.
-      for (const serverId of allOtherServers) {
-        stopServerWait(serverId);
-      }
+      stopServersWait(allOtherServers);
 
       let tc = trx.collection(c.name());
       tc.insert({_key: 'test1', value: 1});
@@ -359,22 +372,26 @@ function transactionReplication2Recovery() {
       request.put({url: coordinatorEndpoint + url, timeout: 3});
 
       let leaderServer = replicatedLogsHelper.getServerUrl(leader);
-      replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
-        "test1", false));
+      replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", false)();
 
       // Resume enough participants to reach write concern.
-      for (let cnt = 0; cnt < WC - 1; ++cnt) {
-        continueServerWait(followers[cnt]);
-      }
+      continueServersWait(followers.slice(0, WC - 1));
 
       // Expect the transaction to be committed
       replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
         "test1", true, 1));
-      for (let cnt = 0; cnt < WC - 1; ++cnt) {
-        let server = replicatedLogsHelper.getServerUrl(followers[cnt]);
-        replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(server, dbn, shardId,
-          "test1", true, 1));
-      }
+      // TODO Uncomment this, after https://arangodb.atlassian.net/browse/CINFRA-668 is addressed.
+      //      Currently, this can occasionally fail, if the replicated state is recreated (due to the change in
+      //      RebootId) *after* the replicated log on the follower is completely up-to-date (including commit index),
+      //      but *before* the latest entries have been applied to the replicated state.
+      //      Because then, the leader has no reason to send new append entries requests, while the follower's log
+      //      still has a freshly initialized commit index of 0.
+      // for (let cnt = 0; cnt < WC - 1; ++cnt) {
+      //   let server = replicatedLogsHelper.getServerUrl(followers[cnt]);
+      //   replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(server, dbn, shardId,
+      //     "test1", true, 1));
+      // }
     },
   };
 }

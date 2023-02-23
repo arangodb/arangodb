@@ -393,6 +393,36 @@ function removeCost (obj) {
   }
 }
 
+function unpackRawExpression (node, transform = false) {
+  if (node.type === 'array') {
+    if (node.hasOwnProperty('raw')) {
+      node.subNodes = [];
+      node.raw.forEach((n) => {
+        node.subNodes.push(unpackRawExpression(n, true));
+      });
+      delete node.raw;
+    } else {
+      node.subNodes.map((s) => unpackRawExpression(s, false));
+    }
+  } else if (node.type === 'object') {
+    if (node.hasOwnProperty('raw')) {
+      node.subNodes = [];
+      let keys = Object.keys(node.raw);
+      keys.forEach((k) => {
+        node.subNodes.push({ type: "object element", name: k, subNodes: [unpackRawExpression(node.raw[k], true)] });
+      });
+      delete node.raw;
+    } else {
+      node.subNodes.map((s) => unpackRawExpression(s, false));
+    }
+  } else if (node.hasOwnProperty('subNodes') && node.subNodes.length) {
+    node.subNodes.map((s) => unpackRawExpression(s, false));
+  } else if (transform) {
+    return { type: 'value', value: node };
+  }
+  return node;
+}
+
 function sanitizeStats (stats) {
   // remove these members from the stats because they don't matter
   // for the comparisons
@@ -429,4 +459,5 @@ exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
+exports.unpackRawExpression = unpackRawExpression;
 exports.sanitizeStats = sanitizeStats;

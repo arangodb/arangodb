@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,10 +49,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 
 #ifdef USE_ENTERPRISE
@@ -70,18 +70,6 @@ using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
 
 namespace {
-
-static std::string translateStatus(TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    default:
-      return "unknown";
-  }
-}
 
 std::string readGloballyUniqueId(velocypack::Slice info) {
   auto guid = basics::VelocyPackHelper::getStringValue(
@@ -148,8 +136,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
           info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
-      _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
-          info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isDisjoint(
@@ -160,10 +146,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 #endif
       _allowUserKeys(
           Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
-      _waitForSync(Helper::getBooleanValue(
-          info, StaticStrings::WaitForSyncString, false)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _waitForSync(Helper::getBooleanValue(
+          info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
       _physical(vocbase.server()
@@ -172,7 +158,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                     .createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
-    _usesRevisionsAsDocumentIds.store(false);
+    _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
   }
 
@@ -241,6 +227,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
   }
+
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+  }
 }
 
 LogicalCollection::~LogicalCollection() = default;
@@ -286,16 +277,17 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  auto result =
-      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+  if (!computedValues.isNone()) {
+    auto result =
+        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-  if (result.fail()) {
-    return result.result();
+    if (result.fail()) {
+      return result.result();
+    }
+
+    std::atomic_store_explicit(&_computedValues, result.get(),
+                               std::memory_order_release);
   }
-
-  std::atomic_store_explicit(&_computedValues, result.get(),
-                             std::memory_order_release);
-
   return {};
 }
 
@@ -311,6 +303,29 @@ RevisionId LogicalCollection::newRevisionId() const {
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();
+}
+
+UserInputCollectionProperties LogicalCollection::getCollectionProperties()
+    const noexcept {
+  UserInputCollectionProperties props;
+  // NOTE: This implementation is NOT complete.
+  // It only contains what was absolute necessary to get distributeShardsLike
+  // to work.
+  // Longterm-Plan: A logical collection should have those properties as a
+  // member and just return a reference to them.
+  props.name = name();
+  props.id = id();
+  props.numberOfShards = numberOfShards();
+  props.writeConcern = writeConcern();
+  props.replicationFactor = replicationFactor();
+  auto distLike = distributeShardsLike();
+  if (!distLike.empty()) {
+    props.distributeShardsLikeCid = std::move(distLike);
+  }
+  props.shardKeys = shardKeys();
+  props.shardingStrategy = shardingInfo()->shardingStrategyName();
+  props.waitForSync = waitForSync();
+  return props;
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -468,31 +483,10 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   return numberOfShards() != 1;
 }
 
-uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
-
-TRI_col_type_e LogicalCollection::type() const { return _type; }
-
-TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
-
-TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _statusLock);
-  return _status;
-}
-
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
   WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
-}
-
-TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _statusLock);
-  if (locker.isLocked()) {
-    didFetch = true;
-    return _status;
-  }
-  didFetch = false;
-  return TRI_VOC_COL_STATUS_CORRUPTED;
 }
 
 // SECTION: Properties
@@ -519,7 +513,7 @@ void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
 #endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
-  return _usesRevisionsAsDocumentIds.load(std::memory_order_relaxed);
+  return _usesRevisionsAsDocumentIds;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
@@ -585,15 +579,9 @@ Result LogicalCollection::rename(std::string&& newName) {
         "failed to find feature 'Database' while renaming collection");
   }
 
-  // Check for illegal states.
-  if (_status != TRI_VOC_COL_STATUS_LOADED) {
-    if (_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    } else if (_status == TRI_VOC_COL_STATUS_DELETED) {
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    }
-    // Unknown status
-    return TRI_ERROR_INTERNAL;
+  // Check for illegal state.
+  if (deleted()) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   std::string oldName = name();
@@ -604,6 +592,7 @@ Result LogicalCollection::rename(std::string&& newName) {
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
     engine.changeCollection(vocbase(), *this);
+    ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -616,9 +605,6 @@ Result LogicalCollection::rename(std::string&& newName) {
     return {TRI_ERROR_INTERNAL};
   }
 
-  // CHECK if this ordering is okay. Before change the version was increased
-  // after swapping in vocbase mapping.
-  increaseV8Version();
   return {};
 }
 
@@ -629,18 +615,10 @@ Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  deleted(true);
+  setDeleted();
   _physical->drop();
 
   return {};
-}
-
-void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
-  _status = status;
-
-  if (status == TRI_VOC_COL_STATUS_LOADED) {
-    increaseV8Version();
-  }
 }
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
@@ -739,8 +717,17 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
-  build.add("status", VPackValue(_status));
-  build.add("statusString", VPackValue(::translateStatus(_status)));
+
+  // there are no collection statuses anymore, but we need to keep
+  // API-compatibility. so the following attributes' values are hard-coded.
+  if (deleted()) {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+    build.add("statusString", VPackValue("deleted"));
+  } else {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+    build.add("statusString", VPackValue("loaded"));
+  }
+
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
@@ -807,6 +794,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   _sharding->toVelocyPack(build, ctx != Serialization::List);
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
+
+  if (replicationVersion() == replication::Version::TWO &&
+      _groupId.has_value()) {
+    build.add("groupId", VPackValue(_groupId.value()));
+  }
   // We leave the object open
   return {};
 }
@@ -838,8 +830,6 @@ void LogicalCollection::includeVelocyPackEnterprise(
   // We ain't no Enterprise Edition
 }
 #endif
-
-void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(_sharding != nullptr);
@@ -1258,11 +1248,18 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   return replication2::LogId::fromString(stateId);
 }
 
+void LogicalCollection::setDocumentStateId(replication2::LogId id) {
+  _replicatedStateId = id;
+}
+
 auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;
-  auto maybeState = vocbase().getReplicatedStateById(shardIdToStateId(name()));
+
+  TRI_ASSERT(_replicatedStateId.has_value());
+  auto maybeState =
+      vocbase().getReplicatedStateById(_replicatedStateId.value());
   // Note that while we assert this for now, I am not sure that we can rely on
   // it. I don't know of any mechanism (I also haven't checked thoroughly) that
   // would prevent the state of a collection being deleted while this function
@@ -1271,8 +1268,12 @@ auto LogicalCollection::getDocumentState()
   //      either return a nullptr or throw an exception instead.
   // TODO If we have to remove the assert, we must make sure that the caller (or
   //      callers) are prepared for that (they currently aren't).
+  if (maybeState.fail()) {
+    THROW_ARANGO_EXCEPTION(maybeState.result());
+  }
   ADB_PROD_ASSERT(maybeState.ok())
-      << "Missing document state in shard " << name();
+      << "Missing document state in shard " << name() << " and log "
+      << _replicatedStateId.value();
   auto stateMachine =
       basics::downCast<ReplicatedState<document::DocumentState>>(
           std::move(maybeState).get());
@@ -1298,7 +1299,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available, accessed "
                      "from {}/{}. No status available.",
-                     shardIdToStateId(name()), vocbase().name(), name());
+                     *_replicatedStateId, vocbase().name(), name());
   }
 
   auto const* const leaderStatus = status->asLeaderStatus();
@@ -1306,7 +1307,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
-                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *_replicatedStateId, vocbase().name(), name(),
                      fmt::streamed(*status));
   }
 
@@ -1315,7 +1316,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
-                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *_replicatedStateId, vocbase().name(), name(),
                      /* to_string(leaderStatus->managerState.state) */ "n/a");
   }
 
@@ -1337,3 +1338,10 @@ void LogicalCollection::decorateWithInternalEEValidators() {
   // Only available in Enterprise Mode
 }
 #endif
+
+auto LogicalCollection::groupID() const noexcept
+    -> arangodb::replication2::agency::CollectionGroupId {
+  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
+                  _groupId.has_value());
+  return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+}

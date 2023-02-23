@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -161,6 +161,12 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   std::lock_guard w(_waitLock);
   return _waiting.emplace(index, futures::Promise<arangodb::Result>())
       ->second.getFuture();
+}
+
+futures::Future<Result> AgencyCache::waitForLatestCommitIndex() {
+  AsyncAgencyComm ac;
+  return ac.getCurrentCommitIndex().thenValue(
+      [this](consensus::index_t idx) { return this->waitFor(idx); });
 }
 
 index_t AgencyCache::index() const {

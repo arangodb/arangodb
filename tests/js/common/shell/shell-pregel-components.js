@@ -68,10 +68,13 @@ function componentsTestSuite() {
         setUpAll: function () {
 
             console.log("Beginning to insert test data with " + (numComponents * n) +
-                " vertices, " + (numComponents * (m + n)) + " edges");
+              " vertices, " + (numComponents * (m + n)) + " edges");
 
             var graph = graph_module._create(graphName);
-            db._create(vColl, {numberOfShards: 4});
+            db._create(vColl, {
+                numberOfShards: 4,
+                replicationFactor: 1
+            });
             graph._addVertexCollection(vColl);
             db._createEdgeCollection(eColl, {
                 numberOfShards: 4,
@@ -200,29 +203,15 @@ function componentsTestSuite() {
 
         testWCC: function () {
             var pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
-            var i = 10000;
-            do {
-                internal.sleep(0.2);
-                let stats = pregel.status(pid);
-                if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-                    assertEqual(stats.vertexCount, numComponents * n, stats);
-                    assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+            const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-                    let c = db[vColl].all();
-                    let mySet = new Set();
-                    while (c.hasNext()) {
-                        let doc = c.next();
-                        assertTrue(doc.result !== undefined, doc);
-                        mySet.add(doc.result);
-                    }
-                    assertEqual(mySet.size, numComponents);
+            assertEqual(stats.vertexCount, numComponents * n, stats);
+            assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
-                    break;
-                }
-            } while (i-- >= 0);
-            if (i === 0) {
-                assertTrue(false, "timeout in WCC execution");
-            }
+            let c = db[vColl].all();
+            const uniquePregelResults = pregelTestHelpers.uniquePregelResults(c);
+            assertEqual(uniquePregelResults.size, numComponents);
+
         },
 
         testWCC2: function () {
@@ -233,20 +222,10 @@ function componentsTestSuite() {
             }
 
             // weakly connected components algorithm
-            var handle = pregel.start('wcc', problematicGraphName, {
+            var pid = pregel.start('wcc', problematicGraphName, {
                 maxGSS: 250, resultField: 'component'
             });
-
-            while (true) {
-                var status = pregel.status(handle);
-                if (status.state !== 'loading' && status.state !== 'running' && status.state !== 'storing') {
-                    console.log(status);
-                    break;
-                } else {
-                    console.log('Waiting for Pregel result...');
-                    internal.sleep(1);
-                }
-            }
+            pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid, 120, 0.2);
 
             const counts = db._query(
                 `FOR vert IN @@v
@@ -273,7 +252,10 @@ function wccRegressionTestSuite() {
     return {
 
         setUp: function () {
-            db._create(vColl, {numberOfShards: 4});
+            db._create(vColl, {
+                numberOfShards: 4,
+                replicationFactor: 1
+            });
             db._createEdgeCollection(eColl, {
                 numberOfShards: 4,
                 replicationFactor: 1,
@@ -311,15 +293,7 @@ function wccRegressionTestSuite() {
             db[eColl].save(edges);
 
             const pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
-            const maxWaitTimeSecs = 120;
-            const sleepIntervalSecs = 0.2;
-            let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-            while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
-                wakeupsLeft--;
-                internal.sleep(0.2);
-            }
-            const status = pregel.status(pid);
-            assertEqual(status.state, "done", "Pregel Job did never succeed.");
+            pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
             // Now test the result.
             // We expect two components
@@ -381,15 +355,7 @@ function wccRegressionTestSuite() {
             db[eColl].save(edges);
 
             const pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
-            const maxWaitTimeSecs = 120;
-            const sleepIntervalSecs = 0.2;
-            let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-            while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
-                wakeupsLeft--;
-                internal.sleep(0.2);
-            }
-            const status = pregel.status(pid);
-            assertEqual(status.state, "done", "Pregel Job did never succeed.");
+            pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
             // Now test the result.
             // We expect two components

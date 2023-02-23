@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -346,6 +346,8 @@ void Query::prepareQuery(SerializationFormat format) {
         throw;
       }
     }
+
+    enterState(QueryExecutionState::ValueType::PHYSICAL_INSTANTIATION);
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
@@ -937,6 +939,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
       engine->collectExecutionStats(_execStats);
     }
 
+    // execution statistics
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
 
@@ -1083,10 +1086,19 @@ QueryResult Query::explain() {
 
     result.extra = std::make_shared<VPackBuilder>();
     {
-      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
-      _warnings.toVelocyPack(*result.extra);
-      result.extra->add(VPackValue("stats"));
-      opt._stats.toVelocyPack(*result.extra);
+      VPackBuilder& b = *result.extra;
+      VPackObjectBuilder guard(&b, /*unindexed*/ true);
+      // warnings
+      _warnings.toVelocyPack(b);
+      b.add(VPackValue("stats"));
+      {
+        // optimizer statistics
+        ensureExecutionTime();
+        VPackObjectBuilder guard(&b, /*unindexed*/ true);
+        opt._stats.toVelocyPack(b);
+        b.add("peakMemoryUsage", VPackValue(_resourceMonitor.peak()));
+        b.add("executionTime", VPackValue(executionTime()));
+      }
     }
 
   } catch (Exception const& ex) {

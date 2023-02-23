@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -696,7 +696,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase.dropCollection(col->id(), false, -1.0);
+      vocbase.dropCollection(col->id(), false);
     }
   }
 
@@ -763,7 +763,7 @@ Result Syncer::dropCollection(velocypack::Slice slice, bool reportError) {
     return Result();
   }
 
-  return vocbase->dropCollection(col->id(), true, -1.0);
+  return vocbase->dropCollection(col->id(), true);
 }
 
 /// @brief creates an index, based on the VelocyPack provided

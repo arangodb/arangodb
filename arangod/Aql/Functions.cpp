@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,10 +60,10 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -88,6 +88,8 @@
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 #include "utils/utf8_utils.hpp"
+
+#include <absl/strings/str_cat.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1136,6 +1138,12 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
+    if (isolate == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "no V8 context available when executing call to function ", AFN));
+    }
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
 
@@ -1495,9 +1503,7 @@ AqlValue functions::IsObject(ExpressionContext*, AstNode const&,
 AqlValue functions::Typename(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  char const* type = value.getTypeString();
-
-  return AqlValue(type, std::strlen(type));
+  return AqlValue(value.getTypeString());
 }
 
 /// @brief function TO_NUMBER
@@ -2683,7 +2689,8 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     VPackSlice slice = materializer.slice(search, false);
     matchPatterns.reserve(slice.length());
     replacePatterns.reserve(slice.length());
-    for (auto it : VPackObjectIterator(slice)) {
+    for (auto it :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(
@@ -8804,7 +8811,11 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    worker->aqlResult(builder, withId);
+    auto results = worker->aqlResult(withId);
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(results.results.slice()));
+    }
   }
 
   if (builder.isEmpty()) {
@@ -9120,7 +9131,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
     VPackArrayIterator end;
   };
 
-  std::list<ArrayIteratorPair> iters;
+  std::list<velocypack::ArrayIterator> iters;
   std::vector<AqlValueMaterializer> materializers;
   materializers.reserve(parameters.size());
 
@@ -9136,9 +9147,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
       continue;  // skip empty array here
     }
 
-    VPackArrayIterator iter(slice);
-    ArrayIteratorPair pair{iter.begin(), iter.end()};
-    iters.emplace_back(pair);
+    iters.emplace_back(velocypack::ArrayIterator(slice));
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -9146,10 +9155,10 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   while (!iters.empty()) {  // in this loop we only deal with nonempty arrays
     for (auto i = iters.begin(); i != iters.end();) {
-      builder->add(i->current.value());  // thus this will always be valid on
-                                         // the first iteration
-      i->current++;
-      if (i->current == i->end) {
+      builder->add(i->value());  // thus this will always be valid on
+                                 // the first iteration
+      i->next();
+      if (*i == std::default_sentinel) {
         i = iters.erase(i);
       } else {
         i++;
@@ -9294,7 +9303,8 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
         *builder,
         std::string_view(logicalCollection->keyGenerator().generate(input)),
         /*closeObject*/ false);
-    for (auto cur : VPackObjectIterator(input)) {
+    for (auto cur :
+         VPackObjectIterator(input, /*useSequentialIteration*/ true)) {
       builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
@@ -9539,19 +9549,20 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
                       F&& distanceFunc) {
   auto calculateDistance = [distanceFunc = std::forward<F>(distanceFunc),
                             expressionContext,
-                            &node](const VPackSlice lhs, const VPackSlice rhs) {
+                            &node](VPackSlice lhs, VPackSlice rhs) {
     TRI_ASSERT(lhs.isArray());
     TRI_ASSERT(rhs.isArray());
-    auto lhsLength = lhs.length();
-    auto rhsLength = rhs.length();
 
-    if (lhsLength != rhsLength) {
+    auto lhsIt = VPackArrayIterator(lhs);
+    auto rhsIt = VPackArrayIterator(rhs);
+
+    if (lhsIt.size() != rhsIt.size()) {
       aql::registerWarning(expressionContext, getFunctionName(node).data(),
                            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
 
-    return distanceFunc(lhs, rhs, lhsLength);
+    return distanceFunc(lhsIt, rhsIt);
   };
 
   // extract arguments
@@ -9613,15 +9624,17 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
                                      AstNode const& node,
                                      VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
-                                  const VPackSlice lhs, const VPackSlice rhs,
-                                  const VPackValueLength& length) {
+                                  VPackArrayIterator lhsIt,
+                                  VPackArrayIterator rhsIt) {
     double numerator{};
     double lhsSum{};
     double rhsSum{};
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
+
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9634,6 +9647,9 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
       numerator += lhsVal * rhsVal;
       lhsSum += lhsVal * lhsVal;
       rhsSum += rhsVal * rhsVal;
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     double denominator = std::sqrt(lhsSum) * std::sqrt(rhsSum);
@@ -9653,14 +9669,14 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
 AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
-  auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
-                                               const VPackSlice rhs,
-                                               const VPackValueLength& length) {
+  auto L1DistFunc = [expressionContext, &node](VPackArrayIterator lhsIt,
+                                               VPackArrayIterator rhsIt) {
     double dist{};
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         aql::registerWarning(expressionContext, getFunctionName(node).data(),
                              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9669,6 +9685,9 @@ AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
 
       dist +=
           std::abs(lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>());
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     return ::numberValue(dist, true);
@@ -9680,14 +9699,15 @@ AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
 AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
-  auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
-                                               const VPackSlice rhs,
-                                               const VPackValueLength& length) {
+  auto L2DistFunc = [expressionContext, &node](VPackArrayIterator lhsIt,
+                                               VPackArrayIterator rhsIt) {
     double dist{};
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
+
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9697,6 +9717,9 @@ AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
       double diff = lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>();
 
       dist += std::pow(diff, 2);
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     return ::numberValue(std::sqrt(dist), true);

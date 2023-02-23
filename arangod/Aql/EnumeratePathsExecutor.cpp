@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -327,7 +327,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
           builder.clear();
           builder.add(VPackValue(idString));
           id = builder.slice();
-          // Guranteed by extractIdValue
+          // Guaranteed by extractIdValue
           TRI_ASSERT(::isValidId(id));
         } catch (...) {
           // _id or _key not present... ignore this error and fall through
@@ -428,7 +428,8 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
 // template class ::arangodb::aql::EnumeratePathsExecutor<
 //     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-/* Fallback Section - Can be removed completely after refactor is done */
+/* TODO [GraphRefactor]: Fallback Section - Can be removed completely after
+ * refactor is done */
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     arangodb::graph::KShortestPathsFinderInterface>;

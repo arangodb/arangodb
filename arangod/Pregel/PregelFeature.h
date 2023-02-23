@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -56,13 +57,8 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  ResultT<ExecutionNumber> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
-      std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          edgeCollectionRestrictions,
-      VPackSlice const& params);
+  ResultT<ExecutionNumber> startExecution(TRI_vocbase_t& vocbase,
+                                          PregelOptions options);
 
   void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions>
                           options) override final;

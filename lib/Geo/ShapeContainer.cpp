@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,12 @@
 #include "Geo/Ellipsoid.h"
 #include "Geo/Utils.h"
 #include "Geo/S2/S2MultiPointRegion.h"
-#include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/S2/S2MultiPolylineRegion.h"
 #include "Geo/karney/geodesic.h"
+#include "Basics/application-exit.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <s2/s1angle.h>
 #include <s2/s2latlng.h>
@@ -38,6 +40,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
 
+#include <bit>
 #include <cmath>
 
 namespace arangodb::geo {
@@ -151,7 +154,7 @@ bool containsPolyline(T const& lhs, S2Polyline const& rhs) {
   } else if constexpr (std::is_same_v<T, S2Polygon>) {
     return lhs.Contains(rhs);
   } else {
-    static_assert(std::is_same_v<T, S2MultiPolyline>);
+    static_assert(std::is_same_v<T, S2MultiPolylineRegion>);
     for (auto const& polyline : lhs.Impl()) {
       if (polyline.ApproxEquals(rhs, kMaxError)) {
         return true;
@@ -171,7 +174,7 @@ bool containsPolyline(S2Region const& region, S2Region const& polyline) {
 template<typename T>
 bool containsPolylines(S2Region const& region, S2Region const& polylines) {
   auto const& lhs = basics::downCast<T>(region);
-  auto const& rhs = basics::downCast<S2MultiPolyline>(polylines);
+  auto const& rhs = basics::downCast<S2MultiPolylineRegion>(polylines);
   for (auto const& polyline : rhs.Impl()) {
     if (!containsPolyline<T>(lhs, polyline)) {
       return false;
@@ -287,20 +290,19 @@ S2Point ShapeContainer::centroid() const noexcept {
       return basics::downCast<S2Polyline>(*_data).GetCentroid().Normalize();
     case Type::S2_LATLNGRECT:  // only used in legacy situations
       // S2LatLngRect should be constructed from Normalized S2LatLng,
-      // so it's ok to don't Normilize here
-      // return basics::downCast<S2LatLngRect>(*_data).GetCenter().ToPoint();
+      // so it's ok to don't Normalize here?
       return basics::downCast<S2LatLngRect>(*_data).GetCentroid().Normalize();
     case Type::S2_POLYGON:
       // S2Polygon::GetCentroid() result isn't unit length
       return basics::downCast<S2Polygon>(*_data).GetCentroid().Normalize();
     case Type::S2_MULTIPOINT:
-      // S2MultiPoint::GetCentroid() result isn't unit length
+      // S2MultiPointRegion::GetCentroid() result isn't unit length
       return basics::downCast<S2MultiPointRegion>(*_data)
           .GetCentroid()
           .Normalize();
     case Type::S2_MULTIPOLYLINE:
-      // S2MultiLine::GetCentroid() result isn't unit length
-      return basics::downCast<S2MultiPolyline>(*_data)
+      // S2MultiPolylineRegion::GetCentroid() result isn't unit length
+      return basics::downCast<S2MultiPolylineRegion>(*_data)
           .GetCentroid()
           .Normalize();
     case Type::EMPTY:
@@ -315,6 +317,7 @@ bool ShapeContainer::contains(S2Point const& other) const {
 }
 
 bool ShapeContainer::contains(ShapeContainer const& other) const {
+  TRI_ASSERT(coding::isSameLoss(_options, other._options));
   // In this implementation we force compiler to generate single jmp table.
   auto const sum = binOpCase(_type, other._type);
   switch (sum) {
@@ -343,7 +346,7 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
     case binOpCase(Type::S2_POLYGON, Type::S2_POLYLINE):
       return containsPolyline<S2Polygon>(*_data, *other._data);
     case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_POLYLINE):
-      return containsPolyline<S2MultiPolyline>(*_data, *other._data);
+      return containsPolyline<S2MultiPolylineRegion>(*_data, *other._data);
 
     case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2Polyline>(*_data, *other._data);
@@ -352,7 +355,7 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
     case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2Polygon>(*_data, *other._data);
     case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOLYLINE):
-      return containsPolylines<S2MultiPolyline>(*_data, *other._data);
+      return containsPolylines<S2MultiPolylineRegion>(*_data, *other._data);
 
       // only used in legacy situations
     case binOpCase(Type::S2_POINT, Type::S2_LATLNGRECT):
@@ -398,6 +401,7 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
 }
 
 bool ShapeContainer::intersects(ShapeContainer const& other) const {
+  TRI_ASSERT(coding::isSameLoss(_options, other._options));
   // In this implementation we manually decrease count of switch cases,
   // and force compiler to generate single jmp table.
   // We can because user expect intersects(a, b) == intersects(b, a)
@@ -427,7 +431,7 @@ bool ShapeContainer::intersects(ShapeContainer const& other) const {
     case binOpCase(Type::S2_POLYLINE, Type::S2_POLYGON):
       return intersectsHelper<S2Polyline, S2Polygon>(*d1, *d2);
     case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOLYLINE):
-      return intersectsHelper<S2Polyline, S2MultiPolyline>(*d1, *d2);
+      return intersectsHelper<S2Polyline, S2MultiPolylineRegion>(*d1, *d2);
 
     case binOpCase(Type::S2_LATLNGRECT, Type::S2_LATLNGRECT):
       return intersectsHelper<S2LatLngRect, S2LatLngRect>(*d1, *d2);
@@ -436,20 +440,21 @@ bool ShapeContainer::intersects(ShapeContainer const& other) const {
     case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOINT):
       return intersectsHelper<S2LatLngRect, S2MultiPointRegion>(*d1, *d2);
     case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOLYLINE):
-      return intersectsHelper<S2LatLngRect, S2MultiPolyline>(*d1, *d2);
+      return intersectsHelper<S2LatLngRect, S2MultiPolylineRegion>(*d1, *d2);
 
     case binOpCase(Type::S2_POLYGON, Type::S2_POLYGON):
       return intersectsHelper<S2Polygon, S2Polygon>(*d1, *d2);
     case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOINT):
       return intersectsHelper<S2Polygon, S2MultiPointRegion>(*d1, *d2);
     case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOLYLINE):
-      return intersectsHelper<S2Polygon, S2MultiPolyline>(*d1, *d2);
+      return intersectsHelper<S2Polygon, S2MultiPolylineRegion>(*d1, *d2);
 
     case binOpCase(Type::S2_MULTIPOINT, Type::S2_MULTIPOINT):
       return intersectsHelper<S2MultiPointRegion, S2MultiPointRegion>(*d1, *d2);
 
     case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOLYLINE):
-      return intersectsHelper<S2MultiPolyline, S2MultiPolyline>(*d1, *d2);
+      return intersectsHelper<S2MultiPolylineRegion, S2MultiPolylineRegion>(
+          *d1, *d2);
 
     case binOpCase(Type::S2_POINT, Type::S2_POLYLINE):
     case binOpCase(Type::S2_POINT, Type::S2_MULTIPOLYLINE):
@@ -466,13 +471,17 @@ bool ShapeContainer::intersects(ShapeContainer const& other) const {
   return false;
 }
 
-void ShapeContainer::reset(std::unique_ptr<S2Region> data, Type type) noexcept {
+void ShapeContainer::reset(std::unique_ptr<S2Region> data, Type type,
+                           coding::Options options) noexcept {
   TRI_ASSERT((data == nullptr) == (type == Type::EMPTY));
+  TRI_ASSERT(data == nullptr || type != Type::S2_POINT ||
+             S2::IsUnitLength(basics::downCast<S2PointRegion>(*data).point()));
   _data = std::move(data);
   _type = type;
+  _options = options;
 }
 
-void ShapeContainer::reset(S2Point point) {
+void ShapeContainer::reset(S2Point point, coding::Options options) {
   // TODO(MBkkt) enable s2 checks in maintainer mode
   // assert from S2PointRegion ctor
   TRI_ASSERT(S2::IsUnitLength(point));
@@ -484,10 +493,11 @@ void ShapeContainer::reset(S2Point point) {
     _data = std::make_unique<S2PointRegion>(point);
     _type = Type::S2_POINT;
   }
+  _options = options;
 }
 
 bool ShapeContainer::equals(ShapeContainer const& other) const {
-  if (_type != other._type) {
+  if (_type != other._type || !coding::isSameLoss(_options, other._options)) {
     return false;
   }
   switch (_type) {
@@ -530,8 +540,8 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       return true;
     }
     case Type::S2_MULTIPOLYLINE: {
-      auto const& lhs = basics::downCast<S2MultiPolyline>(*_data);
-      auto const& rhs = basics::downCast<S2MultiPolyline>(*other._data);
+      auto const& lhs = basics::downCast<S2MultiPolylineRegion>(*_data);
+      auto const& rhs = basics::downCast<S2MultiPolylineRegion>(*other._data);
       auto const& lhsLines = lhs.Impl();
       auto const& rhsLines = rhs.Impl();
       auto const size = lhsLines.size();
@@ -645,15 +655,13 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
       auto const& points = data.Impl();
       cover.reserve(points.size());
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       for (auto const& point : points) {
         cover.emplace_back(S2CellId{point});
       }
     } break;
     case Type::S2_MULTIPOLYLINE: {
-      auto const& data = basics::downCast<S2MultiPolyline>(*_data);
+      auto const& data = basics::downCast<S2MultiPolylineRegion>(*_data);
       auto const& lines = data.Impl();
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       std::vector<S2CellId> lineCover;
       for (auto const& line : lines) {
         coverer.GetCovering(line, &lineCover);
@@ -666,6 +674,108 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       TRI_ASSERT(false);
   }
   return cover;
+}
+
+void ShapeContainer::Encode(Encoder& encoder, coding::Options options) const {
+  ensureLittleEndian();
+  TRI_ASSERT(coding::isOptionsS2(options));
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t));
+  switch (_type) {
+    case Type::S2_POLYLINE: {
+      auto const& data = basics::downCast<S2Polyline>(*_data);
+      encodePolyline(encoder, data, options);
+    } break;
+    case Type::S2_POLYGON: {
+      auto const& data = basics::downCast<S2Polygon>(*_data);
+      encodePolygon(encoder, data, options);
+    } break;
+    case Type::S2_MULTIPOINT: {
+      auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
+      data.Encode(encoder, options);
+    } break;
+    case Type::S2_MULTIPOLYLINE: {
+      auto const& data = basics::downCast<S2MultiPolylineRegion>(*_data);
+      data.Encode(encoder, options);
+    } break;
+    case Type::S2_POINT:       // encoded in other path
+    case Type::S2_LATLNGRECT:  // not exist in non-legacy geo
+    case Type::EMPTY:
+      TRI_ASSERT(false);
+  }
+}
+
+template<ShapeContainer::Type TypeT, typename T>
+void ShapeContainer::decodeImpl(Decoder& decoder) {
+  if (ADB_UNLIKELY(_type != TypeT)) {
+    if constexpr (std::is_same_v<T, S2PointRegion>) {
+      // Any S2Point, but should be unit length
+      _data = std::make_unique<T>(S2Point{1, 0, 0});
+    } else {
+      auto data = std::make_unique<T>();
+      if constexpr (std::is_same_v<T, S2Polyline> ||
+                    std::is_same_v<T, S2Polygon>) {
+        data->set_s2debug_override(S2Debug::DISABLE);
+      }
+      _data = std::move(data);
+    }
+    _type = TypeT;
+  }
+}
+
+bool ShapeContainer::Decode(Decoder& decoder, std::vector<S2Point>& cache) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return false;
+  }
+  if (decoder.avail() < sizeof(uint8_t)) {
+    return false;
+  }
+  auto const tag = decoder.get8();
+  switch (coding::toType(tag)) {
+    case coding::toTag<coding::Type::kPoint>(): {
+      decodeImpl<Type::S2_POINT, S2PointRegion>(decoder);
+      auto& data = basics::downCast<S2PointRegion>(*_data);
+      if (S2Point point; decodePoint(decoder, point, tag)) {
+        data = S2PointRegion{point};
+        _options = static_cast<coding::Options>(coding::toPoint(tag));
+        return true;
+      }
+    } break;
+    case coding::toTag<coding::Type::kPolyline>(): {
+      decodeImpl<Type::S2_POLYLINE, S2Polyline>(decoder);
+      auto& polyline = basics::downCast<S2Polyline>(*_data);
+      if (decodePolyline(decoder, polyline, tag, cache)) {
+        _options = static_cast<coding::Options>(coding::toPoint(tag));
+        return true;
+      }
+    } break;
+    case coding::toTag<coding::Type::kPolygon>(): {
+      decodeImpl<Type::S2_POLYGON, S2Polygon>(decoder);
+      auto& polygon = basics::downCast<S2Polygon>(*_data);
+      if (decodePolygon(decoder, polygon, tag, cache)) {
+        _options = static_cast<coding::Options>(coding::toPoint(tag));
+        return true;
+      }
+    } break;
+    case coding::toTag<coding::Type::kMultiPoint>(): {
+      decodeImpl<Type::S2_MULTIPOINT, S2MultiPointRegion>(decoder);
+      auto& points = basics::downCast<S2MultiPointRegion>(*_data);
+      if (points.Decode(decoder, tag)) {
+        _options = static_cast<coding::Options>(coding::toPoint(tag));
+        return true;
+      }
+    } break;
+    case coding::toTag<coding::Type::kMultiPolyline>(): {
+      decodeImpl<Type::S2_MULTIPOLYLINE, S2MultiPolylineRegion>(decoder);
+      auto& polylines = basics::downCast<S2MultiPolylineRegion>(*_data);
+      if (polylines.Decode(decoder, tag, cache)) {
+        _options = static_cast<coding::Options>(coding::toPoint(tag));
+        return true;
+      }
+    } break;
+    default:
+      TRI_ASSERT(false);
+  }
+  return false;
 }
 
 }  // namespace arangodb::geo

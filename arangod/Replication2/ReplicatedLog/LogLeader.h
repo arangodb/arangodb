@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,12 +95,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<LogCore> logCore,
+      std::unique_ptr<LogCore>&& logCore,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IReplicatedStateHandle>,
+      std::shared_ptr<IReplicatedStateHandle> stateHandle,
       std::shared_ptr<IAbstractFollowerFactory> followerFactory)
       -> std::shared_ptr<LogLeader>;
 
@@ -154,7 +154,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // entry within its term has been committed.
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
 
-  auto waitForLeadership() -> WaitForFuture;
+  auto waitForLeadership() -> WaitForFuture override;
   auto ping(std::optional<std::string> message) -> LogIndex override;
 
   // This function returns the current commit index. Do NOT poll this function,
@@ -221,8 +221,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   struct LocalFollower final : AbstractFollower {
     // The LocalFollower assumes that the last entry of log core matches
     // lastIndex.
+    // The LogCore parameter will (and must) stay untouched in case of an
+    // exception.
     LocalFollower(LogLeader& self, LoggerContext logContext,
-                  std::unique_ptr<LogCore> logCore, TermIndexPair lastIndex);
+                  std::unique_ptr<LogCore>&& logCore, TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
