@@ -32,6 +32,7 @@ export const FieldSelect = ({
       components={{
         MultiValueLabel
       }}
+      menuPortalTarget={document.body}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
           removeField((action.removedValue as any).value as string);
