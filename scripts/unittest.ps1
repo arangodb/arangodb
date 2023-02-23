@@ -41,7 +41,7 @@ $arguments = @(
   "-c etc/relative/arangosh.conf",
   "--log.level warning",
   "--server.endpoint none",
-  "--javascript.execute UnitTests/unittest.js"
+  "--javascript.execute js/client/modules/@arangodb/unittest.js"
 )
 
 Start-Process `
