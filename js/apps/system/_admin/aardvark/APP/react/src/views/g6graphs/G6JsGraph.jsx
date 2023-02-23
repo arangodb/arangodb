@@ -414,15 +414,15 @@ const G6JsGraph = () => {
     setShowNodeToAddModal(true);
   }
 
-  const expandNode = (node) => {
-    const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+  const expandNode = (nodeId) => {
+    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${nodeId}" GRAPH "${graphName}" RETURN p`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
     .then(response => response.json())
     .then(data => {
-      const mergedNodes = graphData.nodes.concat(data.nodes);
-      const mergedEdges = graphData.edges.concat(data.edges);
+      const mergedNodes = visGraphData.nodes.concat(data.nodes);
+      const mergedEdges = visGraphData.edges.concat(data.edges);
       const uniqueMergedNodes = uniqBy(mergedNodes, 'id');
       const uniqueMergedEdges = uniqBy(mergedEdges, 'id');
       const newGraphData = {
@@ -434,6 +434,8 @@ const G6JsGraph = () => {
         ]
       };
       
+      /*
+      // Calculate some settings after the node has been expanded
       if(urlParameters.nodeSize) {
         setNodesSizeMinMax(data.settings.nodesSizeMinMax);
       }
@@ -449,7 +451,8 @@ const G6JsGraph = () => {
           }
         }
       }
-      setGraphData(newGraphData);
+      */
+      setVisGraphData(newGraphData);
     })
     .catch((err) => {
       arangoHelper.arangoError('Graph', 'Could not expand node.');
@@ -682,7 +685,7 @@ const G6JsGraph = () => {
               onEditEdge={(edgeId) => openEditEdgeModal(edgeId)}
               onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
               onAddNodeToDb={() => openAddNodeModal()}
-              onExpandNode={(node) => expandNode(node)}
+              onExpandNode={(nodeId) => expandNode(nodeId)}
               onSetStartnode={(nodeId) => setStartnode(nodeId)}
               onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
               graphName={graphName}

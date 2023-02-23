@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
 
-const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode}) => {
+const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode}) => {
 const [layoutOptions, setLayoutOptions] = useState(options);
 const [showNodeContextMenu, toggleNodeContextMenu] = useState(false);
 const [showEdgeContextMenu, toggleEdgeContextMenu] = useState(false);
@@ -137,7 +137,12 @@ return <>
 				}}>
 				Edit node
 			</li>
-			<li title='expandNode'>Expand node</li>
+			<li title='expandNode'
+				onClick={() => {
+					onExpandNode(contextMenuNodeID);
+				}}>
+				Expand node
+			</li>
 			<li title='setAsStartnode'
 				onClick={() => {
 					onSetStartnode(contextMenuNodeID);
