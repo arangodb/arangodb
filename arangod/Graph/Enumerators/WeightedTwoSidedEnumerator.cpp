@@ -186,7 +186,6 @@ auto WeightedTwoSidedEnumerator<
     PathValidator>::Ball::fetchResults(CandidatesStore& candidates) -> void {
   std::vector<Step*> looseEnds{};
 
-  // TODO: Check read of candidates
   if (_direction == Direction::FORWARD) {
     for (auto& [weight, firstStep, secondStep] : candidates.getQueue()) {
       auto& step = firstStep;
