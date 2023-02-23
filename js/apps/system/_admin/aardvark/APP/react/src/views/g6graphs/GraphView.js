@@ -718,6 +718,9 @@ export class GraphView extends React.Component {
         onEditNode={(nodeId) => {
           this.props.onEditNode(nodeId);
         }}
+        onEditEdge={(edgeId) => {
+          this.props.onEditEdge(edgeId);
+        }}
       />
 
       <GraphInfo>

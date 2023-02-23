@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
 
-const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode}) => {
+const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge}) => {
 const [layoutOptions, setLayoutOptions] = useState(options);
 const [showNodeContextMenu, toggleNodeContextMenu] = useState(false);
 const [showEdgeContextMenu, toggleEdgeContextMenu] = useState(false);
@@ -26,8 +26,8 @@ position: absolute;
 left: ${(props) => props.left};
 top: ${(props) => props.top};
 width: 100px;
-background: blue;
-height: 100px;
+background: #eeeeee;
+height: auto;
 z-index: 99999;
 &:hover {
     background: red;
@@ -100,7 +100,7 @@ network.on("oncontext", (args) => {
     console.log(`network.getEdgeAt: - ${network.getEdgeAt(args.pointer.DOM)}`);
     console.log(`network.getNodeAt: - ${network.getNodeAt(args.pointer.DOM)}`);
     if (network.getNodeAt(args.pointer.DOM)) {
-        toggleNodeContextMenu(true);
+		toggleNodeContextMenu(true);
         network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 		setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
         setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
@@ -110,7 +110,9 @@ network.on("oncontext", (args) => {
 		setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
         setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
     } else {
-        toggleContextMenu(false);
+        //toggleContextMenu(false);
+		toggleNodeContextMenu(true);
+		toggleEdgeContextMenu(true);
     }
 });
 return () => {
@@ -151,7 +153,12 @@ return <>
 				}}>
 				Delete edge
 			</li>
-			<li title='editEdge'>Edit edge</li>
+			<li title='editEdge'
+				onClick={() => {
+					onEditEdge(contextMenuEdgeID);
+				}}>
+				Edit edge
+			</li>
 		</ul>
     </StyledContextComponent>
 	}
