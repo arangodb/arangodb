@@ -845,11 +845,7 @@ void EnumeratePathsNode::prepareOptions() {
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
-  if (ServerState::instance()->isCoordinator()) {
-    if (!opts->refactor()) {
-      _options->activateCache(false, engines());
-    }
-  } else {
+  if (!ServerState::instance()->isCoordinator()) {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
