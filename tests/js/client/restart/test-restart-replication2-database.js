@@ -67,7 +67,7 @@ function testSuite () {
     },
 
     testRestartDatabaseServers: function () {
-      db._createDocumentCollection(colName);
+      db._createDocumentCollection(colName, {numberOfShards: 3, replicationFactor: 2});
       const expectedKeys = ['42'];
       db[colName].insert(expectedKeys.map(_key => ({_key})));
 
