@@ -1565,7 +1565,9 @@ function ParallelIndexSuite() {
     },
 
     testCreateInParallel: function () {
-      // maximum concurrency for index creation
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
       const maxThreads = 15;
       // Relax condition for windows - TODO: fix this.
       const noIndexes = (platform.substr(0, 3) === 'win') ? 40 : 80;
@@ -1595,7 +1597,9 @@ function ParallelIndexSuite() {
     },
 
     testCreateInParallelDuplicate: function () {
-      // maximum concurrency for index creation
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
       const maxThreads = 15;
       const noIndexes = 100;
 
