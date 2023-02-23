@@ -5,13 +5,37 @@ v3.10.4 (XXXX-XX-XX)
   of server threads, if `--javascript.v8-contexts` is not set explicitly. 
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
   option `--javascript.v8-contexts` option was not set explicitly.
-  Now the maximum number defaults to the value of `--server.maximal-threads`,
-  regardless of if this was is explicitly configured or the default value is
-  used.
+  Now the maximum number defaults to 7/8 of the value of the startup option
+  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  the default value is used. Only 7/8 are used to leave some headroom for other
+  important maintenance tasks.
   A server with default configuration should now not block waiting for V8 
   contexts to become available, but it may use more memory for the additional V8 
-  contexts if there are many concurrent that invoke JavaScript actions (e.g.
-  using the web UI or Foxx).
+  contexts if there are many concurrent requests that invoke JavaScript actions 
+  (e.g. requests using the web UI or Foxx).
+
+* Updated ArangoDB Starter to 0.15.7.
+
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used on
+  query when geo index was present, because it would override the choice of the
+  index hint with optimizations related to it.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the smart edge caching
+  out-of-sync, which would yield different results for OUTBOUND/INBOUND search
+  over edges. This is now fixed, however there is now a slightly higher chance
+  to get a CONFLICT response back on those queries.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Made all transactions used by the gharial API on coordinators and a few others
+  marked "globally managed". This fixes an issue where transaction conflicts
+  could lead to a silent out of sync situation between a leader shard and its
+  followers.
 
 * BTS-1219: Fix cost estimation for geo index usage and for collection
   enumeration with included filtering. This fixes a regression from 3.9 where a
