@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,12 +30,11 @@ namespace velocypack {
 class Builder;
 }
 
-class RestSupportInfoHandler : public arangodb::RestBaseHandler {
+class RestServerInfoHandler : public arangodb::RestBaseHandler {
  public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestServerInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- public:
-  char const* name() const override final { return "RestSupportInfoHandler"; }
+  char const* name() const override final { return "RestServerInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 };

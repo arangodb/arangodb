@@ -1,6 +1,14 @@
 devel
 -----
 
+* APM-294: Added telemetrics API that gathers info about a deployment for 
+  the receiving side to generate statistics. It's accessible via 
+  `_admin/server-info`. It's on by default and can be turned off with
+  server startup parameter `--server.send-telemetrics` set to false. 
+  If set to true, every time the user logs into arangosh, one request is
+  sent to gather telemetrics from `_admin/server-info`. Only users that are 
+  admin might get a successful http response with the telemetrics object.
+
 * Updated ArangoDB Starter to 0.15.7.
 
 * Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.

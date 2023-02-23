@@ -24,6 +24,9 @@
 #pragma once
 
 #include "Shell/arangosh.h"
+#include "Shell/TelemetricsHandler.h"
+
+#include <thread>
 
 namespace arangodb {
 
@@ -37,6 +40,7 @@ class ShellFeature final : public ArangoshFeature {
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
+  void beginShutdown() override;
 
   void setExitCode(int code) { *_result = code; }
 
@@ -63,6 +67,8 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _positionals;
   std::string _unitTestFilter;
   std::vector<std::string> _scriptParameters;
+  TelemetricsHandler _telemetricsHandler;
+  bool _printTelemetrics{false};
   bool _runMain{false};
 };
 

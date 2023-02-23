@@ -96,6 +96,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestServerInfoHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -156,6 +157,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
 #endif
       _allowEarlyConnections(false),
       _allowMethodOverride(false),
+      _enableTelemetrics(true),
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
@@ -201,6 +203,14 @@ void GeneralServerFeature::collectOptions(
                         "http.hide-product-header");
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("no-server", "server.rest-server");
+
+  options
+      ->addOption("--server.send-telemetrics",
+                  "Whether to enable the telemetrics API.",
+                  new options::BooleanParameter(&_enableTelemetrics),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31100);
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
@@ -798,6 +808,9 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
   }
+
+  f.addHandler("/_admin/server-info",
+               RestHandlerCreator<RestServerInfoHandler>::createNoData);
 
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData);

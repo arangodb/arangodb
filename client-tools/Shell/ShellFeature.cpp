@@ -49,6 +49,10 @@ ShellFeature::ShellFeature(Server& server, int* result)
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  options->addOption("--print-telemetrics",
+                     "Whether to print telemetrics if enabled",
+                     new VectorParameter<StringParameter>(&_printTelemetrics));
+
   options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
                      new VectorParameter<StringParameter>(&_jslint));
 
@@ -141,15 +145,25 @@ void ShellFeature::validateOptions(
 }
 
 void ShellFeature::start() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  if (_printTelemetrics) {
+    _telemetricsHandler.setPrintTelemetrics(true);
+  }
+#endif
+  ClientFeature& clientFeature =
+      server().getFeature<HttpEndpointProvider, ClientFeature>();
+  auto client = clientFeature.createHttpClient();
+
   *_result = EXIT_SUCCESS;
 
   V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
-
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
+        _telemetricsHandler.setHttpClient(client);
+        _telemetricsHandler.runTelemetrics();
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
@@ -168,6 +182,8 @@ void ShellFeature::start() {
         break;
 
       case RunMode::UNIT_TESTS:
+        _telemetricsHandler.setHttpClient(client);
+        _telemetricsHandler.runTelemetrics();
         ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
@@ -188,6 +204,10 @@ void ShellFeature::start() {
   if (*_result == EXIT_SUCCESS && !ok) {
     *_result = EXIT_FAILURE;
   }
+}
+
+void ShellFeature::beginShutdown() {
+  _telemetricsHandler.disableRunCondition();
 }
 
 }  // namespace arangodb

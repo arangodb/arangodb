@@ -87,6 +87,8 @@ class GeneralServerFeature final : public ArangodFeature {
 
   void countVstConnection() { _vstConnections.count(); }
 
+  bool isTelemetricsEnabled() { return _enableTelemetrics; }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -103,6 +105,7 @@ class GeneralServerFeature final : public ArangodFeature {
 #endif
   bool _allowEarlyConnections;
   bool _allowMethodOverride;
+  bool _enableTelemetrics;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;

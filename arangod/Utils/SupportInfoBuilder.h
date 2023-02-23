@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,25 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+
 namespace velocypack {
 class Builder;
 }
 
-class RestSupportInfoHandler : public arangodb::RestBaseHandler {
+class SupportInfoBuilder {
  public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  SupportInfoBuilder() = delete;
+  static void buildInfoMessage(velocypack::Builder& result,
+                               std::string const& dbName, ArangodServer& server,
+                               bool isLocal);
+  static void buildDbServerInfo(velocypack::Builder& result,
+                                ArangodServer& server);
 
- public:
-  char const* name() const override final { return "RestSupportInfoHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
+ private:
+  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);
 };
+
 }  // namespace arangodb
