@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -7470,6 +7469,30 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
+    bool mustRespectIdxHint = false;
+    auto enumerateColNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto const& colNodeHints = enumerateColNode->hint();
+    if (colNodeHints.isForced() &&
+        colNodeHints.type() == IndexHint::HintType::Simple) {
+      auto indexes = enumerateColNode->collection()->indexes();
+      auto& idxNames = colNodeHints.hint();
+      for (auto const& idxName : idxNames) {
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == idxName) {
+            auto idxType = idx->type();
+            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+              mustRespectIdxHint = true;
+            } else {
+              info.index = idx;
+            }
+            break;
+          }
+        }
+      }
+    }
 
     while (current) {
       if (current->getType() == EN::FILTER) {
@@ -7511,7 +7534,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      if (applyGeoOptimization(plan.get(), limit, info)) {
+      if (!mustRespectIdxHint &&
+          applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
     }

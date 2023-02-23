@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,9 @@
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
+#endif
 
 #include <frozen/set.h>
 
@@ -188,7 +191,9 @@ std::string_view extractAnalyzerName(std::string_view fieldName) {
 
 static constexpr auto kGeoAnalyzers = frozen::make_set<std::string_view>({
     GeoVPackAnalyzer::type_name(),
+#ifdef USE_ENTERPRISE
     GeoS2Analyzer::type_name(),
+#endif
     GeoPointAnalyzer::type_name(),
 });
 

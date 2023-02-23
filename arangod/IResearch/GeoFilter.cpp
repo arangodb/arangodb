@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,8 +67,13 @@ irs::filter::prepared::ptr match_all(irs::IndexReader const& index,
 }
 
 // Returns singleton S2Cap that tolerates precision errors
-inline S2Cap fromPoint(S2Point const& origin) {
+// TODO(MBkkt) Probably remove it
+inline S2Cap fromPoint(S2Point const& origin) noexcept {
   return S2Cap{origin, S1Angle::Radians(kSingletonCapEps)};
+}
+
+inline S2Cap fromPoint(S2Point origin, double distance) noexcept {
+  return {origin, S1Angle::Radians(geo::metersToRadians(distance))};
 }
 
 struct S2PointParser;
@@ -264,11 +269,13 @@ struct VPackParser {
 
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
-    return parseShape<Parsing::FromIndex>(slice(value), shape, _cache, _legacy);
+    return parseShape<Parsing::FromIndex>(slice(value), shape, _cache, _legacy,
+                                          geo::coding::Options::kInvalid,
+                                          nullptr);
   }
 
  private:
-  mutable std::vector<S2Point> _cache;
+  mutable std::vector<S2LatLng> _cache;
   bool _legacy;
 };
 
@@ -276,23 +283,29 @@ struct S2ShapeParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     Decoder decoder{value.data(), value.size()};
-    auto r = shape.Decode(decoder);
+    auto r = shape.Decode(decoder, _cache);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
     return r;
   }
+
+ private:
+  mutable std::vector<S2Point> _cache;
 };
 
 struct S2PointParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     TRI_ASSERT(shape.type() == geo::ShapeContainer::Type::S2_POINT);
-    auto& point =
-        basics::downCast<S2PointRegion>(*const_cast<S2Region*>(shape.region()));
     Decoder decoder{value.data(), value.size()};
-    auto r = geo::decodePoint(decoder, point);
+    S2Point point;
+    uint8_t tag = 0;
+    auto r = geo::decodePoint(decoder, point, &tag);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
+    basics::downCast<S2PointRegion>(*shape.region()) = S2PointRegion{point};
+    shape.setCoding(
+        static_cast<geo::coding::Options>(geo::coding::toPoint(tag)));
     return r;
   }
 };
@@ -336,11 +349,12 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
       return irs::memory::make_managed<GeoQuery<VPackParser, Acceptor>>(
           std::move(states), std::move(stats), VPackParser{legacy},
           std::forward<Acceptor>(acceptor), boost);
-    case StoredType::S2Shape:
+    case StoredType::S2Region:
       return irs::memory::make_managed<GeoQuery<S2ShapeParser, Acceptor>>(
           std::move(states), std::move(stats), S2ShapeParser{},
           std::forward<Acceptor>(acceptor), boost);
     case StoredType::S2Point:
+    case StoredType::S2Centroid:
       return irs::memory::make_managed<GeoQuery<S2PointParser, Acceptor>>(
           std::move(states), std::move(stats), S2PointParser{},
           std::forward<Acceptor>(acceptor), boost);
@@ -414,11 +428,8 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
     return {S2Cap::Full(), true};
   }
 
-  return {
-      (0. == distance
-           ? fromPoint(origin)
-           : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
-      irs::BoundType::INCLUSIVE == type};
+  return {(0. == distance ? fromPoint(origin) : fromPoint(origin, distance)),
+          irs::BoundType::INCLUSIVE == type};
 }
 
 irs::filter::prepared::ptr prepareOpenInterval(
@@ -539,18 +550,22 @@ irs::filter::prepared::ptr prepareInterval(
     return prepareOpenInterval(index, order, boost, field, options, false);
   }
 
+  bool const minIncl = range.min_type == irs::BoundType::INCLUSIVE;
+  bool const maxIncl = range.max_type == irs::BoundType::INCLUSIVE;
+
   if (irs::math::approx_equals(range.min, range.max)) {
-    if (irs::BoundType::INCLUSIVE != range.min_type ||
-        irs::BoundType::INCLUSIVE != range.max_type) {
+    if (!minIncl || !maxIncl) {
       return irs::filter::prepared::empty();
     }
+  } else if (range.min > range.max) {
+    return irs::filter::prepared::empty();
   }
 
   auto const& origin = options.origin;
 
   if (0. == range.max && 0. == range.min) {
-    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.min_type);
-    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.max_type);
+    TRI_ASSERT(minIncl);
+    TRI_ASSERT(maxIncl);
 
     S2RegionTermIndexer indexer(options.options);
     auto const geoTerms = indexer.GetQueryTerms(origin, options.prefix);
@@ -568,27 +583,21 @@ irs::filter::prepared::ptr prepareInterval(
         });
   }
 
-  auto [minBound, minIncl] = getBound(range.min_type, origin, range.min);
-  auto [maxBound, maxIncl] = getBound(range.max_type, origin, range.max);
+  auto minBound = fromPoint(origin, range.min);
+  auto maxBound = fromPoint(origin, range.max);
 
   if (!minBound.is_valid() || !maxBound.is_valid()) {
     return irs::filter::prepared::empty();
   }
 
-  // complement is not bijective => complement of singleton cap is an empty cap
-  minBound = minBound.Complement();
-
-  if ((maxIncl && !maxBound.Intersects(minBound)) ||
-      (!maxIncl && !maxBound.InteriorIntersects(minBound))) {
-    return irs::filter::prepared::empty();
-  }
-
-  TRI_ASSERT(!minBound.is_empty());
-  TRI_ASSERT(!maxBound.is_empty());
-
   S2RegionTermIndexer indexer(options.options);
   S2RegionCoverer coverer(options.options);
 
+  // max.Intersection(min.Complement()) instead of max.Difference(min) used here
+  // because we want to make conservative covering
+  minBound = minBound.Complement();
+  TRI_ASSERT(!minBound.is_empty());
+  TRI_ASSERT(!maxBound.is_empty());
   auto const ring =
       coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
   auto const geoTerms =

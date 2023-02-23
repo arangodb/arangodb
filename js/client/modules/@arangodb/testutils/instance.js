@@ -520,7 +520,9 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
     }
-    fs.removeDirectoryRecursive(this.rootDir, true);
+    if (fs.exists(this.rootDir)) {
+      fs.removeDirectoryRecursive(this.rootDir, true);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -528,6 +530,12 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   readAssertLogLines (expectAsserts) {
+    if (!fs.exists(this.logFile)) {
+      if (fs.exists(this.rootDir)) {
+        print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
+      }
+      return;
+    }
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
@@ -856,12 +864,12 @@ class instance {
     return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
   }
 
-  dumpAgent(path, method, fn) {
+  dumpAgent(path, method, fn, dumpdir) {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
-      fs.write(fs.join(this.options.testOutputDirectory, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+      fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     } else {
       print(agencyReply);
     }

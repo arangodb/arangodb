@@ -4,7 +4,66 @@ devel
 * Expose BlobDB-related options in RocksDB for use with the documents
   column family. Usage of BlobDB is turned off by default.
 
-* Upgrade bundled version of RocksDB to 7.10.
+* Upgrade bundled version of RocksDB to 8.0.
+
+* Improve memory usage of in-memory edge index cache if most of the edges in an
+  index refer to a single or mostly the same collection.
+  Previously the full edge ids, consisting of the the referred-to collection
+  name and the referred-to key of the edge were stored in full. Now, the first
+  edge inserted into an edge index' in-memory cache will determine the
+  collection name for which all corresponding edges can be prefix-compressed.
+  For example, when inserting an edge pointing to `the-collection/abc` into the
+  empty cache, the collection name `the-collection` will be noted for that
+  cache as a prefix. The edge will be stored in memory as only `/abc`. Further
+  edges that are inserted into the cache and that point to the same collection
+  will also be stored prefix-compressed.
+  The prefix compression is transparent and does not require configuration or
+  setup. Compression is done separately for each cache, i.e. a separate prefix
+  can be used for each individual edge index, and separately for the `_from`
+  and `_to` parts. Lookups from the in-memory edge cache will not return
+  compressed values but the full-length edge ids. The compressed values will
+  also be used in memory only and will not be persisted on disk.
+
+* Updated ArangoDB Starter to 0.15.7.
+
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
+* Made all transactions used by the gharial API on coordinators and a few
+  others marked "globally managed". This fixes an issue where
+  transaction conflicts could lead to a silent out of sync situation
+  between a leader shard and its followers.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
+
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
+* FE-131: Added search input for query page.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
+* FE-133: Alphabetical sorting for collections on user permissions page.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
