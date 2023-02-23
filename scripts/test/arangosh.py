@@ -40,6 +40,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         """ testing.js wrapper """
         logging.info('------')
         logging.info(testing_args)
+        testscript = self.cfg.base_path / 'js' / 'client' / 'modules' / '@arangodb' / 'testutils' / 'unittest.js'
         args = [
             '-c', str(self.cfg.cfgdir / 'arangosh.conf'),
             "--log.foreground-tty", "true",
@@ -48,7 +49,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             "--log.level", "v8=debug",
             '--server.endpoint', 'none',
             '--javascript.allow-external-process-control', 'true',
-            '--javascript.execute', self.cfg.base_path / 'UnitTests' / 'unittest.js',
+            '--javascript.execute', testscript,
             ]
         run_cmd = args +[
             '--',
