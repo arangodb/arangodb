@@ -40,12 +40,6 @@ namespace velocypack {
 class Slice;
 }
 
-namespace graph {
-template<class ProviderType>
-class KShortestPathsFinder;  // TODO Check if still required
-class TraverserCache;
-}  // namespace graph
-
 namespace aql {
 
 template<BlockPassthrough>
