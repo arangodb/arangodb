@@ -33,16 +33,18 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
+#include "Geo/Coding.h"
 
 class S2LatLng;
 class S2Loop;
 class S2Polyline;
 class S2Polygon;
+class Encoder;
 
 namespace arangodb::geo {
 
 class S2MultiPointRegion;
-class S2MultiPolyline;
+class S2MultiPolylineRegion;
 
 class ShapeContainer;
 
@@ -130,7 +132,8 @@ Result parseLinestring(velocypack::Slice vpack, S2Polyline& region);
 ///   "type": "MultiLineString",
 ///   "coordinates": [
 ///     [[lon0, lat0], [lon1, lat1], ...], ...
-Result parseMultiLinestring(velocypack::Slice vpack, S2MultiPolyline& region);
+Result parseMultiLinestring(velocypack::Slice vpack,
+                            S2MultiPolylineRegion& region);
 
 /// @brief Expects an GeoJson Polygon:
 /// Each loop should be closed, so should contains at least four points
@@ -156,13 +159,17 @@ Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region);
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
                    bool legacy);
 
-template<bool Validation>
+template<bool Valid = true>
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
-                   std::vector<S2Point>& cache, bool legacy);
+                   std::vector<S2LatLng>& cache, bool legacy,
+                   coding::Options options = coding::Options::kInvalid,
+                   Encoder* encoder = nullptr);
 
-template<bool Validation>
+template<bool Valid = true>
 Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
-                        bool geoJson);
+                        bool geoJson,
+                        coding::Options options = coding::Options::kInvalid,
+                        Encoder* encoder = nullptr);
 
 /// @brief Parse a loop (LinearRing)
 ///

@@ -153,7 +153,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 }
 
 template<bool checkUniqueness>
-std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
+IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
 
@@ -434,6 +434,7 @@ IndexIterator::CoveringCallback aql::getCallback(
                     IndexIteratorCoveringData& covering) {
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;

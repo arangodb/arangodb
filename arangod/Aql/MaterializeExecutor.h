@@ -84,26 +84,25 @@ class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 
-  RegisterId outputMaterializedDocumentRegId() const {
+  RegisterId outputMaterializedDocumentRegId() const noexcept {
     return _outMaterializedDocumentRegId;
   }
 
-  RegisterId inputNonMaterializedDocRegId() const {
+  RegisterId inputNonMaterializedDocRegId() const noexcept {
     return _inNonMaterializedDocRegId;
   }
 
-  aql::QueryContext& query() const { return _query; }
+  aql::QueryContext& query() const noexcept { return _query; }
 
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
-
   aql::QueryContext& _query;
 };
 
-template<typename T>
+template<typename T, bool localDocumentId>
 class MaterializeExecutor {
  public:
   struct Properties {

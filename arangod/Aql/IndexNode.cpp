@@ -192,7 +192,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
-
+  _options.forLateMaterialization = isLateMaterialized();
   prepareProjections();
 }
 
@@ -555,6 +555,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
   }
+  _options.forLateMaterialization = true;
 }
 
 transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
