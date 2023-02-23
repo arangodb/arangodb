@@ -73,7 +73,8 @@ void CollectionGroupUpdates::addToExistingGroup(
       AddCollectionToGroup{groupId, ::toCollectionIdString(cid)});
 }
 
-auto CollectionGroupUpdates::getAllModifiedGroups() const noexcept -> std::unordered_set<agency::CollectionGroupId> {
+auto CollectionGroupUpdates::getAllModifiedGroups() const noexcept
+    -> std::unordered_set<agency::CollectionGroupId> {
   std::unordered_set<agency::CollectionGroupId> modifiedGroups;
   modifiedGroups.reserve(additionsToGroup.size());
   for (auto const& add : additionsToGroup) {

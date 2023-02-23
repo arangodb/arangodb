@@ -82,16 +82,17 @@ TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
 
 std::shared_ptr<CurrentWatcher>
 TargetCollectionAgencyWriter::prepareCurrentWatcher(
-    std::string_view databaseName, bool waitForSyncReplication, AgencyCache& agencyCache) const {
+    std::string_view databaseName, bool waitForSyncReplication,
+    AgencyCache& agencyCache) const {
   auto report = std::make_shared<CurrentWatcher>();
 
   auto const baseStatePath = pathCollectionGroupInCurrent(databaseName);
   auto modGroups = _collectionGroups.getAllModifiedGroups();
 
-  auto registerWaitForSupervisionVersion = [&](std::string gid, uint64_t version) {
+  auto registerWaitForSupervisionVersion = [&](std::string gid,
+                                               uint64_t version) {
     auto const groupPath = baseStatePath->group(gid)->supervision();
-    auto callback = [report, gid, version](
-                        velocypack::Slice slice) -> bool {
+    auto callback = [report, gid, version](velocypack::Slice slice) -> bool {
       if (report->hasReported(gid)) {
         // This replicatedLog has already reported
         return true;
