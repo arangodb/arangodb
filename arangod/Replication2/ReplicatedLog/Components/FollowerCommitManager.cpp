@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -102,6 +103,13 @@ auto FollowerCommitManager::waitForBoth(LogIndex index) noexcept
     -> futures::Future<std::pair<WaitForResult, InMemoryLog>> {
   auto guard = guardedData.getLockedGuard();
 
+  if (guard->isResigned) {
+    auto promise = ResolvePromise{};
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+    return promise.getFuture();
+  }
+
   if (index <= guard->resolveIndex) {
     // resolve immediately
     auto result = WaitForResult(guard->commitIndex, nullptr);
@@ -110,6 +118,17 @@ auto FollowerCommitManager::waitForBoth(LogIndex index) noexcept
   }
 
   return guard->waitQueue.emplace(index, ResolvePromise{})->second.getFuture();
+}
+
+void FollowerCommitManager::resign() noexcept {
+  auto guard = guardedData.getLockedGuard();
+  ADB_PROD_ASSERT(not guard->isResigned);
+  guard->isResigned = true;
+  for (auto& [idx, promise] : guard->waitQueue) {
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+  }
+  guard->waitQueue.clear();
 }
 
 FollowerCommitManager::GuardedData::GuardedData(

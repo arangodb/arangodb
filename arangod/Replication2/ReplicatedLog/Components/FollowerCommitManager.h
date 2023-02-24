@@ -43,6 +43,8 @@ struct FollowerCommitManager : IFollowerCommitManager {
   auto waitForIterator(LogIndex index) noexcept
       -> ILogParticipant::WaitForIteratorFuture override;
 
+  void resign() noexcept;
+
  private:
   using ResolveType = std::pair<WaitForResult, InMemoryLog>;
   using ResolveFuture = futures::Future<ResolveType>;
@@ -56,6 +58,7 @@ struct FollowerCommitManager : IFollowerCommitManager {
     LogIndex commitIndex{0};
     LogIndex resolveIndex{0};
     WaitForQueue waitQueue;
+    bool isResigned{false};
 
     IStorageManager& storage;
     IStateHandleManager& stateHandle;

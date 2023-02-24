@@ -74,6 +74,7 @@ struct ExclusiveBool {
 inline void ExclusiveBoolGuard::reset() noexcept {
   if (ptr) {
     ptr->value.clear();
+    ptr.reset();
   }
 }
 

@@ -166,7 +166,8 @@ auto FollowerManager::resign()
   auto handle = stateHandle->resign();
   // 2. resign the storage manager to receive the storage engine methods
   auto methods = storage->resign();
-  // TODO resign CommitManager
+  // 3. abort all wait for promises.
+  commit->resign();
   return std::make_tuple(std::move(methods), std::move(handle),
                          DeferredAction{});
 }
