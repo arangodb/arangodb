@@ -767,7 +767,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     if (!_results.empty()) {
       if (_options.getPathType() == PathType::Type::ShortestPath) {
         ADB_PROD_ASSERT(_results.size() == 1)
-            << " ShortestPath found more than one path. This is not allowed.";
+            << "ShortestPath found more than one path. This is not allowed.";
       }
 
       // remove handled result
