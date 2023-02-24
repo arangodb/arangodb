@@ -225,8 +225,6 @@ class WeightedTwoSidedEnumerator {
    private:
     Ball& _internalLeft;
     Ball& _internalRight;
-
-    // TODO: First implement simple, then add advanced range-based std::set
     std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
   };
 
