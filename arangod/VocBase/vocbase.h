@@ -215,6 +215,8 @@ struct TRI_vocbase_t {
   auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
 
+  void shutdownReplicatedLogs() noexcept;
+
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;
 
