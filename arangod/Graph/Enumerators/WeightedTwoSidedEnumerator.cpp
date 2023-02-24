@@ -299,7 +299,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
           std::make_tuple(nextFullPathWeight, otherStep, ourStep));
     }
 
-    if (fullPathWeight == -1.0 || fullPathWeight > nextFullPathWeight) {
+    if (fullPathWeight < 0.0 || fullPathWeight > nextFullPathWeight) {
       fullPathWeight = nextFullPathWeight;
     }
   }
