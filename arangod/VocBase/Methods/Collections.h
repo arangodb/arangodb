@@ -97,8 +97,8 @@ struct Collections {
       TRI_vocbase_t& vocbase,  // collection vocbase
       OperationOptions const& options,
       std::vector<CreateCollectionBody> collections,  // Collections to create
-      bool createWaitsForSyncReplication,       // replication wait flag
-      bool enforceReplicationFactor,            // replication factor flag
+      bool createWaitsForSyncReplication,             // replication wait flag
+      bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called during restore
 

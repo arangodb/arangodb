@@ -603,8 +603,8 @@ Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
     std::vector<CreateCollectionBody> collections,  // Collections to create
-    bool createWaitsForSyncReplication,       // replication wait flag
-    bool enforceReplicationFactor,            // replication factor flag
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
   std::vector<std::shared_ptr<LogicalCollection>> results;

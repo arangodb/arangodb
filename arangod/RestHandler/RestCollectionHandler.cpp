@@ -360,7 +360,8 @@ void RestCollectionHandler::handleCommandPost() {
     events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
     return;
   }
-  std::vector<CreateCollectionBody> collections{std::move(planCollection.get())};
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
   auto parameters = planCollection->toCollectionsCreate();
 
   OperationOptions options(_context);

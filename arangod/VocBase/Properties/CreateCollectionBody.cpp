@@ -39,8 +39,7 @@ ResultT<CreateCollectionBody> parseAndValidate(
   try {
     CreateCollectionBody res;
     applyDefaults(res);
-    auto status =
-        velocypack::deserializeWithStatus(input, res, {});
+    auto status = velocypack::deserializeWithStatus(input, res, {});
     if (status.ok()) {
       // Inject default values, and finally check if collection is allowed
       auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
