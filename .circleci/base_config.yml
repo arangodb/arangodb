@@ -54,7 +54,7 @@ jobs:
       - run:
           name: Run clang-format
           command: |
-            utils/clang-format.sh
+            scripts/clang-format-circleci.sh
       - run:
           name: Store diff
           command: |
@@ -189,11 +189,13 @@ jobs:
           command: |
             mkdir work
             python3 scripts/test/test_launch_controller.py << parameters.suites >> --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> --extraArgs "<< parameters.extraArgs >>" --definition tests/test-definitions.txt
+            mkdir test-results
+            find testrun -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/
       - store_test_results:
-          path: ./work/
+          path: ./test-results/
 
 workflows:
   lint:
