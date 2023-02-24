@@ -379,8 +379,7 @@ auto WeightedTwoSidedEnumerator<
       _internalLeft.provider(), _internalRight.provider()};
 
   // generates left and right parts of the path and combines them
-  // TODO: Check if we can implement this more effectively.
-  //  Right now the I'm using a quick approach here for code verification.
+  // then checks whether we do have a path duplicate or not.
   _internalLeft.buildPath(first, resultPathCandidate);
   _internalRight.buildPath(second, resultPathCandidate);
   for (auto const& pathToCheck : _internalResultsCache) {
