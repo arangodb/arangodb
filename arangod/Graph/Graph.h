@@ -291,6 +291,16 @@ class Graph {
 
   std::ostream& operator<<(std::ostream& ostream);
 
+  auto prepareCreateCollectionBodyEdge(
+      std::string_view name,
+      std::optional<std::string_view> const& leadingCollection) const noexcept
+      -> CreateCollectionBody;
+
+  auto prepareCreateCollectionBodyVertex(
+      std::string_view name,
+      std::optional<std::string_view> const& leadingCollection) const noexcept
+      -> CreateCollectionBody;
+
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph
   void parseEdgeDefinitions(velocypack::Slice edgeDefs);
@@ -313,6 +323,10 @@ class Graph {
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 
+  virtual auto prepareCreateCollectionBody(
+      std::string_view name, TRI_col_type_e type,
+      std::optional<std::string_view> const& leadingCollection) const noexcept
+      -> CreateCollectionBody;
   /////////////////////////////////////////////////////////////////////////////////
   //
   // SECTION: Variables

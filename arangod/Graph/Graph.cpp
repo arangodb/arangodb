@@ -826,3 +826,31 @@ auto Graph::addSatellites(VPackSlice const&) -> Result {
   // Enterprise only
   return TRI_ERROR_NO_ERROR;
 }
+
+auto Graph::prepareCreateCollectionBodyEdge(
+    std::string_view name,
+    std::optional<std::string_view> const& leadingCollection) const noexcept
+    -> CreateCollectionBody {
+  return prepareCreateCollectionBody(name, TRI_col_type_e::TRI_COL_TYPE_EDGE,
+                                     leadingCollection);
+}
+
+auto Graph::prepareCreateCollectionBodyVertex(
+    std::string_view name,
+    std::optional<std::string_view> const& leadingCollection) const noexcept
+    -> CreateCollectionBody {
+  return prepareCreateCollectionBody(
+      name, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, leadingCollection);
+}
+
+auto Graph::prepareCreateCollectionBody(
+    std::string_view name, TRI_col_type_e type,
+    std::optional<std::string_view> const&) const noexcept
+    -> CreateCollectionBody {
+  // Only specialized enterprise Graphs make use of the leadingCollection.
+  CreateCollectionBody body;
+  body.name = name;
+  body.type = type;
+  // Inject all attributes required for a collection
+  return body;
+}
