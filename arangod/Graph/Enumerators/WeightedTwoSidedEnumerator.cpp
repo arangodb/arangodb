@@ -765,11 +765,10 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of stored results (in: _results)
      */
     if (!_results.empty()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (_options.getPathType() == PathType::Type::ShortestPath) {
-        TRI_ASSERT(_results.size() == 1);
+        ADB_PROD_ASSERT(_results.size() == 1)
+            << " ShortestPath found more than one path. This is not allowed.";
       }
-#endif
 
       // remove handled result
       _results.pop_front();
