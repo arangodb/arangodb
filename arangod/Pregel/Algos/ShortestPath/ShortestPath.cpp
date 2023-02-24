@@ -24,7 +24,7 @@
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/WorkerConfig.h"

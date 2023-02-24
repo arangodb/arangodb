@@ -31,6 +31,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
