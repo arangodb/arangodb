@@ -1529,7 +1529,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const interactionOptions = {
       dragNodes: true,
       dragView: true,
-      hideEdgesOnDrag: true,
+      hideEdgesOnDrag: false,
       hideNodesOnDrag: false,
       hover: true,
       hoverConnectedEdges: true,

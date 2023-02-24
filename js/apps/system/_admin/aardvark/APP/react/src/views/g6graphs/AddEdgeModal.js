@@ -45,8 +45,8 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
       json._key = key;
     }
 
-    json._from = edgeModelToAdd.source;
-    json._to = edgeModelToAdd.target;
+    json._from = edgeModelToAdd.from;
+    json._to = edgeModelToAdd.to;
 
     $.ajax({
       type: 'POST',
@@ -58,8 +58,8 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
         const edgeModel = {
           id: response.edge._id,
           label: response.edge._key,
-          source: edgeModelToAdd.source,
-          target: edgeModelToAdd.target
+          from: edgeModelToAdd.from,
+          to: edgeModelToAdd.to
         };
         openNotificationWithIcon(response.edge._id);
         onEdgeCreation(edgeModel);
@@ -86,8 +86,8 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
           {children}<br />
-          <strong>_from:</strong> {edgeModelToAdd.source}<br />
-          <strong>_to:</strong> {edgeModelToAdd.target}
+          <strong>_from:</strong> {edgeModelToAdd.from}<br />
+          <strong>_to:</strong> {edgeModelToAdd.to}
         </div>
         <Input
           ref={keyInputRef}

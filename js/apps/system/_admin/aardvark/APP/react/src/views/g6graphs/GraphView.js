@@ -730,6 +730,11 @@ export class GraphView extends React.Component {
         onAddNodeToDb={() => {
           this.props.onAddNodeToDb();
         }}
+        onAddEdge={(edgeData) => {
+          const id = (Math.random() + 1).toString(36).substring(7);
+          edgeData.id = id;
+          this.props.onAddEdgeToDb(edgeData);
+        }}
       />
 
       <GraphInfo>

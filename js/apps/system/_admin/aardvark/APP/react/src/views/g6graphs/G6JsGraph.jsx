@@ -177,9 +177,10 @@ const G6JsGraph = () => {
           return true;
         });
         setVertexCollectionsColors(collectionColors);
-        
 
-        setEdgeCollections(data.settings.edgeCollections);
+        if(data.settings.edgeCollections !== undefined) {
+          setEdgeCollections(data.settings.edgeCollections);
+        }
         setVisGraphData(data);
       },
       error: function (e) {
@@ -227,17 +228,17 @@ const G6JsGraph = () => {
   }
 
   const updateGraphDataWithEdge = (newEdge) => {
-    const currentNodes = graphData.nodes;
+    const currentNodes = visGraphData.nodes;
     const newGraphData = {
       nodes: [
         ...currentNodes,
       ],
       edges: [
-        ...graphData.edges,
+        ...visGraphData.edges,
         newEdge
       ]
     };
-    setGraphData(newGraphData);
+    setVisGraphData(newGraphData);
   }
 
   const removeDrawnEdge = () => {
@@ -667,7 +668,6 @@ const G6JsGraph = () => {
           <strong>Add node</strong>
         </AddNodeModal>
 
-
         <GraphView
               data={graphData}
               visGraphData={visGraphData}
@@ -678,6 +678,10 @@ const G6JsGraph = () => {
               onAddSingleEdge={(newEdge) => {
                 setEdgeModelToAdd(newEdge);
                 openAddEdgeModal(newEdge);
+              }}
+              onAddEdgeToDb={(edgeData) => {
+                setEdgeModelToAdd(edgeData);
+                openAddEdgeModal(edgeData);
               }}
               onRemoveSingleNode={(node) => removeNode(node)}
               onRemoveSingleEdge={(edge) => removeEdge(edge)}
