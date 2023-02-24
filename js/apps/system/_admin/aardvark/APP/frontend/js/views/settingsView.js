@@ -260,20 +260,22 @@
             } else {
               var wfs = data.waitForSync;
               if (data.replicationFactor && frontendConfig.isCluster) {
-                var msg = null;
+                var reason = null;
+                var hint = '';
                 if (data.replicationFactor === 'satellite') {
-                  msg = 'This collection is a SatelliteCollection.';
+                  reason = 'This collection is a SatelliteCollection.';
                 } else if (data.distributeShardsLike !== undefined) {
-                  msg = 'This collection uses \'distributeShardsLike\'.';
+                  reason = 'This collection uses \'distributeShardsLike\'.';
+                  hint = ' The value can be changed in collection \'' + data.distributeShardsLike + '\' instead.';
                 }
 
-                if (msg !== null) {
+                if (reason !== null) {
                   tableContent.push(
                     window.modalView.createReadOnlyEntry(
                       'change-replication-factor',
                       'Replication factor',
                       data.replicationFactor,
-                      msg + ' The replication factor is not changeable.',
+                      reason + ' The replication factor is not changeable for this collection.' + hint,
                       '',
                       true
                     )
@@ -283,7 +285,7 @@
                       'change-write-concern',
                       'Write concern',
                       JSON.stringify(data.writeConcern),
-                      msg + ' The write concern is not changeable.',
+                      reason + ' The write concern is not changeable for this collection.' + hint,
                       '',
                       true
                     )
