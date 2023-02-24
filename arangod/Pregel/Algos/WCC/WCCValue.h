@@ -35,6 +35,11 @@ struct WCCValue {
 template<typename Inspector>
 auto inspect(Inspector& f, WCCValue& v) {
   return f.object(v).fields(f.field("component", v.component));
+  //                            TODO: Inspectors do not yet support
+  //                                  SetLike structures; once the support is
+  //                                  added activate this field. Note also that
+  //                                  at the moment this inspector is not used
+  //                                  yet.
   //                            f.field("inboundNeighbors",
   //                            v.inboundNeighbors));
 }
