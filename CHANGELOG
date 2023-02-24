@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.15.0-preview-1.
+
 * The internal Graph code is completely converted to the new graph engine.
   Last algorithms added to that lists are: ShortestPath, WeightedShortestPath,
   KShortestPaths and WeightedKShortestPaths.
