@@ -135,10 +135,6 @@ class WeightedTwoSidedEnumerator {
         auto const& [weightA, candAA, candAB] = a;
         auto const& [weightB, candBA, candBB] = b;
         if (weightA == weightB) {
-          /*if (a.getDepth() == b.getDepth()) {
-            // Only false if A is not processable but B is.
-            return !a.isProcessable() || b.isProcessable();
-          }*/
           return weightA > weightB;
         }
         return weightA > weightB;
