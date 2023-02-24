@@ -1618,11 +1618,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
+            /* Skip adding a _rev attribute to the document, this
+             * has to be done on the leader.
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = collection->newRevisionId();
 
             documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            */
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);
