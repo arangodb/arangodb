@@ -508,7 +508,6 @@ TEST_F(WeightedKShortestPathsFinderTest, diamond_path) {
     ASSERT_TRUE(finder.getNextPath(result));
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {1, 2, 4});
-    LOG_DEVEL << result.slice().toJson();
     pathWeightDouble(result.slice(), 20);
     EXPECT_FALSE(finder.isDone());
   }
@@ -526,7 +525,6 @@ TEST_F(WeightedKShortestPathsFinderTest,
   {
     result.clear();
     ASSERT_TRUE(finder.getNextPath(result));
-    LOG_DEVEL << result.toJson();
     pathStructureValid(result.slice(), 0);
     pathEquals(result.slice(), {100});
     pathWeightDouble(result.slice(), 0);
