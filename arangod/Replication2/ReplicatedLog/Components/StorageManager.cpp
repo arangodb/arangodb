@@ -237,7 +237,8 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
           LOG_CTX("507fe", INFO, self->loggerContext)
               << "aborting storage operation because of error in previous "
                  "operation";
-          r.promise.setValue(TRI_ERROR_ARANGO_CONFLICT);
+          r.promise.setValue(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT);
         }
         // and lock again
         guard = self->guardedData.getLockedGuard();

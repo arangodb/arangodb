@@ -311,7 +311,8 @@ TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
 
   // others are aborted due to conflict
   ASSERT_TRUE(f2.isReady());
-  EXPECT_EQ(f2.get().errorNumber(), TRI_ERROR_ARANGO_CONFLICT);
+  EXPECT_EQ(f2.get().errorNumber(),
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT);
 }
 
 TEST_F(StorageManagerGMockTest, resign_calls_barrier) {
