@@ -199,7 +199,7 @@ void ClusterMetricsFeature::update() {
         });
   }
   if (leader->empty()) {
-    return repeatUpdate(1);  // invalid leader, immediately retry
+    return repeatUpdate(100);  // invalid leader, immediately retry
   }
   auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
   // We use `"0"` instead of `""` because we cannot parse empty string parameter
@@ -210,7 +210,7 @@ void ClusterMetricsFeature::update() {
         if (wasStop()) {
           return;
         }
-        uint32_t timeoutMs = 1;  // invalid leader, immediately retry
+        uint32_t timeoutMs = 100;  // invalid leader, immediately retry
         try {
           if (readData(std::move(raw))) {
             timeoutMs = 0;  // success
@@ -239,9 +239,11 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
     return false;
   }
   auto metrics = parse(std::move(raw).get());
-  if (metrics.values.empty()) {
+  bool const currEmpty = metrics.values.empty();
+  if (currEmpty && _prevEmpty) {
     return true;
   }
+  _prevEmpty = currEmpty;
   velocypack::Builder builder;
   builder.openObject();
   builder.add("ServerId", VPackValue{ServerState::instance()->getId()});
@@ -262,11 +264,15 @@ bool ClusterMetricsFeature::readData(futures::Try<LeaderResponse>&& raw) {
     return false;
   }
   velocypack::Slice metrics{raw.get()->data()};
+  if (metrics.isNull()) {
+    return true;  // our data is up to date
+  }
   if (!metrics.isObject()) {
     return false;
   }
   auto data = Data::fromVPack(metrics);
   data->packed = std::move(raw).get();
+  _prevEmpty = data->metrics.values.empty();
   std::atomic_store_explicit(&_data, std::move(data),
                              std::memory_order_release);
   return true;
