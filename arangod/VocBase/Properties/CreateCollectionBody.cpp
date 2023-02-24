@@ -21,42 +21,47 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PlanCollection.h"
-#include "Cluster/ServerDefaults.h"
+#include "CreateCollectionBody.h"
+
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
 
-PlanCollection::PlanCollection() {}
+CreateCollectionBody::CreateCollectionBody() {}
 
-ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
-    VPackSlice input, ServerDefaults defaultValues) {
-  if (!input.isObject()) {
-    // Special handling to be backwards compatible error reporting
-    // on "name"
-    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-  }
+ResultT<CreateCollectionBody> parseAndValidate(
+    DatabaseConfiguration const& config, VPackSlice input,
+    std::function<void(CreateCollectionBody&)> applyDefaults) {
   try {
-    PlanCollection res;
-    // Inject certain default values.
-    // This will make sure the default configuration for Sharding attributes are
-    // applied
-    res.numberOfShards = defaultValues.numberOfShards;
-    res.replicationFactor = defaultValues.replicationFactor;
-    res.writeConcern = defaultValues.writeConcern;
-
-    auto status = velocypack::deserializeWithStatus(input, res);
+    CreateCollectionBody res;
+    applyDefaults(res);
+    auto status =
+        velocypack::deserializeWithStatus(input, res, {});
     if (status.ok()) {
+      // Inject default values, and finally check if collection is allowed
+      auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
+      if (result.fail()) {
+        return result;
+      }
       return res;
     }
     if (status.path() == "name") {
       // Special handling to be backwards compatible error reporting
       // on "name"
       return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    }
+
+    if (status.path().rfind("keyOptions", 0) == 0) {
+      // Special handling to be backwards compatible error reporting
+      // on "keyOptions"
+      return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+    }
+    if (status.path() == StaticStrings::SmartJoinAttribute) {
+      return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
     }
     return Result{
         TRI_ERROR_BAD_PARAMETER,
@@ -69,69 +74,48 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
   }
 }
 
-auto PlanCollection::Invariants::isNonEmpty(std::string const& value)
-    -> inspection::Status {
-  if (value.empty()) {
-    return {"Value cannot be empty."};
+ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
+    VPackSlice input, DatabaseConfiguration const& config) {
+  if (!input.isObject()) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return inspection::Status::Success{};
+  return ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
 }
 
-auto PlanCollection::Invariants::isGreaterZero(uint64_t const& value)
-    -> inspection::Status {
-  if (value > 0) {
-    return inspection::Status::Success{};
+ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
+    VPackSlice properties, std::string const& name, TRI_col_type_e type,
+    DatabaseConfiguration const& config) {
+  if (name.empty()) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return {"Value has to be > 0"};
+  return ::parseAndValidate(config, properties,
+                            [&name, &type](CreateCollectionBody& col) {
+                              // Inject the default values given by V8 in a
+                              // separate parameter
+                              col.type = type;
+                              col.name = name;
+                            });
 }
 
-auto PlanCollection::Invariants::isValidShardingStrategy(
-    std::string const& strat) -> inspection::Status {
-  // Note we may be better off with a lookup list here
-  // Hash is first on purpose (default)
-  if (strat == "" || strat == "hash" || strat == "enterprise-hash-smart-edge" ||
-      strat == "community-compat" || strat == "enterprise-compat" ||
-      strat == "enterprise-smart-edge-compat") {
-    return inspection::Status::Success{};
+arangodb::velocypack::Builder
+CreateCollectionBody::toCreateCollectionProperties(
+    std::vector<CreateCollectionBody> const& collections) {
+  arangodb::velocypack::Builder builder;
+  VPackArrayBuilder guard{&builder};
+  for (auto const& c : collections) {
+    // TODO: This is copying multiple times.
+    // Nevermind this is only temporary code.
+    builder.add(c.toCollectionsCreate().slice());
   }
-  return {
-      "Please use 'hash' or remove, advanced users please "
-      "pick a strategy from the documentation, " +
-      strat + " is not allowed."};
+  return builder;
 }
 
-auto PlanCollection::Invariants::isValidCollectionType(
-    std::underlying_type_t<TRI_col_type_e> const& type) -> inspection::Status {
-  if (type == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
-      type == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    return inspection::Status::Success{};
-  }
-  return {"Only 2 (document) and 3 (edge) are allowed."};
-}
-
-auto PlanCollection::Transformers::ReplicationSatellite::toSerialized(
-    MemoryType v, SerializedType& result) -> arangodb::inspection::Status {
-  result.add(VPackValue(v));
-  return {};
-}
-
-auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
-    SerializedType const& b, MemoryType& result)
-    -> arangodb::inspection::Status {
-  auto v = b.slice();
-  if (v.isString() && v.isEqualString("satellite")) {
-    result = 0;
-    return {};
-  } else if (v.isNumber()) {
-    result = v.getNumber<MemoryType>();
-    if (result != 0) {
-      return {};
-    }
-  }
-  return {"Only an integer number or 'satellite' is allowed"};
-}
-
-arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
+arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
+    const {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
   // TODO: This is a hack to erase attributes that are not expected by follow up

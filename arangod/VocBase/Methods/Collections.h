@@ -40,7 +40,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
-struct PlanCollection;
+struct CreateCollectionBody;
 
 namespace transaction {
 class Methods;
@@ -96,7 +96,7 @@ struct Collections {
   create(                      // create collection
       TRI_vocbase_t& vocbase,  // collection vocbase
       OperationOptions const& options,
-      std::vector<PlanCollection> collections,  // Collections to create
+      std::vector<CreateCollectionBody> collections,  // Collections to create
       bool createWaitsForSyncReplication,       // replication wait flag
       bool enforceReplicationFactor,            // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,

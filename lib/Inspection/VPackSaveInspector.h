@@ -42,7 +42,7 @@ namespace arangodb::inspection {
 template<class Context = NoContext>
 struct VPackSaveInspector
     : SaveInspectorBase<VPackSaveInspector<Context>, Context> {
- protected:
+ public:
   using Base = SaveInspectorBase<VPackSaveInspector, Context>;
 
  public:
