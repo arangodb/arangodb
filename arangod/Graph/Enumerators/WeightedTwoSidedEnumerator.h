@@ -130,9 +130,6 @@ class WeightedTwoSidedEnumerator {
                       CalculatedCandidate const& b) {
         auto const& [weightA, candAA, candAB] = a;
         auto const& [weightB, candBA, candBB] = b;
-        if (weightA == weightB) {
-          return weightA > weightB;
-        }
         return weightA > weightB;
       }
     };
