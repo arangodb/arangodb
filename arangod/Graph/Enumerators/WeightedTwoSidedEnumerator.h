@@ -24,20 +24,15 @@
 
 #pragma once
 
-#include "Containers/HashSet.h"
-
+#include "Assertions/Assert.h"
 #include "Basics/ResourceUsage.h"
-
+#include "Containers/HashSet.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
 
-// TODO: CLEAN THIS UP LATER move implementation to cpp file remove this include
-#include "Assertions/Assert.h"
-
 #include <set>
 #include <deque>
-#include <unordered_map>
 
 namespace arangodb {
 
@@ -164,16 +159,16 @@ class WeightedTwoSidedEnumerator {
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, CandidatesStore& results,
-                             PathValidatorType const& otherSideValidator)
-        -> double;
+    [[nodiscard]] auto matchResultsInShell(
+        Step const& match, CandidatesStore& results,
+        PathValidatorType const& otherSideValidator) -> double;
 
     // @brief returns a positive double in a match has been found.
     // returns -1.0 if no match has been found.
-    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
-        -> double;
+    [[nodiscard]] auto computeNeighbourhoodOfNextVertex(
+        Ball& other, CandidatesStore& results) -> double;
 
-    auto hasBeenVisited(Step const& step) -> bool;
+    [[nodiscard]] auto hasBeenVisited(Step const& step) -> bool;
 
     // Ensure that we have fetched all vertices in the _results list.
     // Otherwise, we will not be able to generate the resulting path
@@ -198,7 +193,7 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    std::unordered_map<typename Step::VertexType, std::vector<size_t>>
+    containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
         _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
