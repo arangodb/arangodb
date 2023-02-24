@@ -1268,6 +1268,9 @@ auto LogicalCollection::getDocumentState()
   //      either return a nullptr or throw an exception instead.
   // TODO If we have to remove the assert, we must make sure that the caller (or
   //      callers) are prepared for that (they currently aren't).
+  if (maybeState.fail()) {
+    THROW_ARANGO_EXCEPTION(maybeState.result());
+  }
   ADB_PROD_ASSERT(maybeState.ok())
       << "Missing document state in shard " << name() << " and log "
       << _replicatedStateId.value();

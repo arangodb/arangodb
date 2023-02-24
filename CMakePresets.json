@@ -164,12 +164,14 @@
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
     {
-      "name": "pr-replication-2-pure",
-      "inherits": "community-developer",
-      "displayName": "Preset used for replication 2 CI Tests",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
+      "name": "community-developer-coverage",
+      "inherits": [ "gcov", "community-developer" ],
+      "displayName": "Build ArangoDB Community Edition (Coverage Build)"
+    },
+    {
+      "name": "enterprise-developer-coverage",
+      "inherits": [ "gcov", "enterprise-developer" ],
+      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build)"
     }
   ],
   "buildPresets": [
@@ -214,8 +216,12 @@
       "configurePreset": "enterprise-developer-asan-ubsan"
     },
     {
-      "name": "pr-replication-2-pure",
-      "configurePreset": "pr-replication-2-pure"
+      "name": "community-developer-coverage",
+      "configurePreset": "community-developer-coverage"
+    },
+    {
+      "name": "enterprise-developer-coverage",
+      "configurePreset": "enterprise-developer-coverage"
     }
   ],
   "testPresets": [

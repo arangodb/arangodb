@@ -280,6 +280,9 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
               shard, collection,
               velocypack::SharedSlice(_description.properties()->bufferRef()))
           .get();
+    } else {
+      // TODO prevent busy loop and wait for log to become ready.
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
     }
   }
 

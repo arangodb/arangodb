@@ -26,6 +26,9 @@
 
 #include "IResearch/common.h"
 #include "IResearch/GeoAnalyzer.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
+#endif
 #include "IResearch/GeoFilter.h"
 #include "Basics/DownCast.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -52,13 +55,14 @@ TEST(GeoOptionsTest, options) {
   ASSERT_EQ(GeoOptions::kDefaultMaxLevel, opts.maxLevel);
 }
 
+#ifdef USE_ENTERPRISE
 TEST(GeoBench, sizes) {
   GTEST_SKIP() << "It's just for check sizes, not comment out to allow compile";
   GeoVPackAnalyzer::Options vpackOptions;
   vpackOptions.legacy = false;
   GeoVPackAnalyzer vpackAnalyzer{vpackOptions};
   GeoS2Analyzer::Options s2Options;
-  s2Options.hint = s2coding::CodingHint::COMPACT;
+  s2Options.coding = geo::coding::Options::kS2LatLngInt;
   GeoS2Analyzer s2Analyzer{s2Options};
 
   auto builder = VPackParser::fromJson(R"=([ 6.537, 50.332 ])=");
@@ -189,6 +193,7 @@ TEST(GeoBench, sizes) {
   std::cerr << GeoS2Analyzer::store(&s2Analyzer, builder->slice()).size()
             << std::endl;
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       GeoPointAnalyzer test suite
@@ -1952,9 +1957,10 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
   auto json = VPackParser::fromJson(R"([ 53.72314453125, 63.57789956676574 ])");
 
   geo::ShapeContainer shape;
-  std::vector<S2Point> cache;
+  std::vector<S2LatLng> cache;
   ASSERT_TRUE(parseShape<arangodb::iresearch::Parsing::OnlyPoint>(
-      json->slice(), shape, cache, false));
+      json->slice(), shape, cache, false, geo::coding::Options::kInvalid,
+      nullptr));
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape
