@@ -5,8 +5,14 @@ devel
   transformation to disjunctive normal form (DNF). This transformation can use
   a lot of memory for complex filter conditions, which was previously not
   accounted for. Now if the transformation uses a lot of memory and hits the
-  configured query memory limit, the query will rather be aborted than overuse
-  memory.
+  configured query memory limit, the query will rather be aborted with a 
+  proper error message than overuse memory.
+  For very complex conditions that would use massive amounts of memory when
+  transformed into DNF, the DNF conversion is aborted at some hard-coded
+  threshold value and the query is continued with a simplified representation
+  of the condition, which will not be usable in indexes. However, this should
+  still be better than overusing memory or taking a very long time to compute
+  the DNF version.
 
 * Improve memory usage of in-memory edge index cache if most of the edges in an
   index refer to a single or mostly the same collection.
