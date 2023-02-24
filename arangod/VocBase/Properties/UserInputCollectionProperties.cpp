@@ -52,8 +52,13 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
   // have to handle this first
   if (!config.defaultDistributeShardsLike.empty()) {
     if (!distributeShardsLike.has_value()) {
-      distributeShardsLike = config.defaultDistributeShardsLike;
-    } else {
+      if (name != config.defaultDistributeShardsLike) {
+        // Special handling for the initial default collection
+        // It cannot follow itself.
+        distributeShardsLike = config.defaultDistributeShardsLike;
+      }
+    } else if (distributeShardsLike.value() !=
+               config.defaultDistributeShardsLike) {
       // NOTE: For the time being only oneShardDBs have a default
       // distributeShardsLikeValue. So this error message is good enough. If
       // this should ever change we need to adapt the message here. NOTE: The
@@ -64,7 +69,6 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
               "distributeShardsLike"};
     }
   }
-
   if (!shardKeys.has_value()) {
     setDefaultShardKeys();
   }
