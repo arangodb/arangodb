@@ -118,7 +118,7 @@ class WeightedTwoSidedEnumerator {
       return _queue.front();
     }
 
-    CalculatedCandidate pop() {
+    [[nodiscard]] CalculatedCandidate pop() {
       TRI_ASSERT(!isEmpty());
       // std::pop_heap will move the front element (the one we would like to
       // steal) to the back of the vector, keeping the tree intact otherwise.
@@ -145,9 +145,7 @@ class WeightedTwoSidedEnumerator {
     WeightedComparator _cmpHeap{};
 
     /// @brief queue datastore
-    /// Note: Mutable is a required for hasProcessableElement right now which is
-    /// const. We can easily make it non const here.
-    mutable std::vector<CalculatedCandidate> _queue;
+    std::vector<CalculatedCandidate> _queue;
   };
 
   class Ball {
