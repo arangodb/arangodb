@@ -25,6 +25,8 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 
+#include <unordered_set>
+
 namespace arangodb {
 struct UserInputCollectionProperties;
 class DataSourceId;
@@ -49,6 +51,9 @@ struct CollectionGroupUpdates {
                      arangodb::DataSourceId cid);
   void addToExistingGroup(agency::CollectionGroupId const& groupId,
                           arangodb::DataSourceId cid);
+
+  [[nodiscard]] auto getAllModifiedGroups() const noexcept
+      -> std::unordered_set<agency::CollectionGroupId>;
 };
 
 }  // namespace arangodb::replication2

@@ -370,6 +370,16 @@ class ClusterInfo final {
       std::string_view databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Generate Collection Stubs during Database buiding
+  /// These stubs are no real collection, use this API with care
+  /// and only if the database is in building state.
+  //////////////////////////////////////////////////////////////////////////////
+
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::shared_ptr<LogicalCollection>>
+  generateCollectionStubs(TRI_vocbase_t& database);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a view name (both cluster-wide).
