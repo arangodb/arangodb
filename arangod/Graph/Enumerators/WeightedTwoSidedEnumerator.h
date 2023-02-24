@@ -101,9 +101,9 @@ class WeightedTwoSidedEnumerator {
       std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
     }
 
-    size_t size() const { return _queue.size(); }
+    [[nodiscard]] size_t size() const { return _queue.size(); }
 
-    bool isEmpty() const { return _queue.empty(); }
+    [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
 
     std::vector<CalculatedCandidate> getQueue() const { return _queue; };
 
