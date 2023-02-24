@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating
+  the same _rev value for two different documents concurrently.
+
 * Improve memory usage of in-memory edge index cache if most of the edges in an
   index refer to a single or mostly the same collection.
   Previously the full edge ids, consisting of the the referred-to collection
