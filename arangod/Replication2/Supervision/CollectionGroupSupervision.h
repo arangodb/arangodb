@@ -115,7 +115,7 @@ auto checkCollectionGroup(DatabaseID const& database,
 
 auto executeCheckCollectionGroup(
     DatabaseID const& database, std::string const& logIdString,
-    CollectionGroup const& log,
+    CollectionGroup const& group,
     replicated_log::ParticipantsHealth const& health, UniqueIdProvider& uniqid,
     arangodb::agency::envelope envelope) noexcept -> arangodb::agency::envelope;
 

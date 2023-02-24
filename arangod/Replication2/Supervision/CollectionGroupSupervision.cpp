@@ -542,6 +542,9 @@ struct TransactionBuilder {
                        "/arango/Target/ReplicatedLogs/", database, "/",
                        action.logId, "/participants/", action.participant),
                    VPackSlice::emptyObjectSlice())
+              .inc(basics::StringUtils::concatT(
+                  "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
+                  "/version"))
               .end();
   }
 
@@ -550,6 +553,9 @@ struct TransactionBuilder {
               .remove(basics::StringUtils::concatT(
                   "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
                   "/participants/", action.participant))
+              .inc(basics::StringUtils::concatT(
+                  "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
+                  "/version"))
               .end();
   }
 
