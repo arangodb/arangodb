@@ -51,6 +51,7 @@
 #include <rocksdb/memory_allocator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
