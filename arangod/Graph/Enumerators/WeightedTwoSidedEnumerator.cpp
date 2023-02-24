@@ -370,10 +370,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::ResultCache::addResult(CalculatedCandidate const& candidate)
-    -> bool {
+auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                                PathValidator>::ResultCache::
+    tryAddResult(CalculatedCandidate const& candidate) -> bool {
   auto const& [weight, first, second] = candidate;
   PathResult<ProviderType, typename ProviderType::Step> resultPathCandidate{
       _internalLeft.provider(), _internalRight.provider()};
@@ -573,7 +572,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
         // only add if non-duplicate
         bool foundNonDuplicatePath =
-            _resultsCache.addResult(potentialCandidate);
+            _resultsCache.tryAddResult(potentialCandidate);
 
         if (foundNonDuplicatePath) {
           handleCandidate(std::move(potentialCandidate));
@@ -693,7 +692,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
           if (_options.getPathType() == PathType::Type::KShortestPaths) {
-            foundShortestPath = _resultsCache.addResult(potentialCandidate);
+            foundShortestPath = _resultsCache.tryAddResult(potentialCandidate);
           } else if (_options.getPathType() == PathType::Type::ShortestPath) {
             // Performance optimization: We do not use the cache as we will
             // always calculate only one path.
@@ -808,7 +807,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
         // only add if non-duplicate
         bool foundNonDuplicatePath =
-            _resultsCache.addResult(potentialCandidate);
+            _resultsCache.tryAddResult(potentialCandidate);
 
         if (foundNonDuplicatePath) {
           // delete potentialCandidate;

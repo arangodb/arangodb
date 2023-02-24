@@ -213,7 +213,8 @@ class WeightedTwoSidedEnumerator {
     // @brief: returns whether a path could be inserted or not.
     // True: It will be inserted if this specific path has not been added yet.
     // False: Could not insert as this path has already been found.
-    auto addResult(CalculatedCandidate const& candidate) -> bool;
+    [[nodiscard]] auto tryAddResult(CalculatedCandidate const& candidate)
+        -> bool;
     auto clear() -> void;
 
    private:
