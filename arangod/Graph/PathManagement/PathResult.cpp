@@ -145,7 +145,6 @@ auto PathResult<ProviderType, Step>::isEqualEdgeRepresentation(
     }
     return true;
   }
-
   return false;
 }
 
