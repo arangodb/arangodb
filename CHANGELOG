@@ -1,3 +1,25 @@
+v3.10.5 (XXXX-XX-XX)
+--------------------
+
+* Improve memory usage of in-memory edge index cache if most of the edges in an
+  index refer to a single or mostly the same collection.
+  Previously the full edge ids, consisting of the the referred-to collection
+  name and the referred-to key of the edge were stored in full. Now, the first
+  edge inserted into an edge index' in-memory cache will determine the
+  collection name for which all corresponding edges can be prefix-compressed.
+  For example, when inserting an edge pointing to `the-collection/abc` into the
+  empty cache, the collection name `the-collection` will be noted for that cache
+  as a prefix. The edge will be stored in memory as only `/abc`. Further edges
+  that are inserted into the cache and that point to the same collection will
+  also be stored prefix-compressed.
+  The prefix compression is transparent and does not require configuration or
+  setup. Compression is done separately for each cache, i.e. a separate prefix
+  can be used for each individual edge index, and separately for the `_from` and
+  `_to` parts. Lookups from the in-memory edge cache will not return compressed
+  values but the full-length edge ids. The compressed values will also be used
+  in memory only and will not be persisted on disk.
+
+
 v3.10.4 (2023-02-19)
 --------------------
 
