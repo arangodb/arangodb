@@ -545,11 +545,14 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   };
 
-  auto checkKPathsCandidates = [&]() {
+  auto checkCandidates = [&]() {
     /*
-     * Helper method to take care of KPath related candidates
+     * Helper method to take care of multiple candidates
      */
     TRI_ASSERT(searchDone());
+    // ShortestPath not allowed because we cannot produce more than one
+    // result in total.
+    TRI_ASSERT(_options.getPathType() != PathType::Type::ShortestPath);
 
     if (!_candidatesStore.isEmpty()) {
       while (!_candidatesStore.isEmpty()) {
@@ -576,6 +579,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
     /*
      * Helper method to take care of ShortestPath related candidates
+     * Only allowed to find and return exactly one path.
      */
     bool foundPath = handleResult();
     if (!foundPath) {
@@ -609,7 +613,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     } else {
       // Check candidates list
       if (_options.getPathType() == PathType::Type::KShortestPaths) {
-        return checkKPathsCandidates();
+        return checkCandidates();
       } else {
         if (checkShortestPathCandidates()) {
           return true;
