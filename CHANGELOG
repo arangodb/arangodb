@@ -1,4 +1,4 @@
-v3.10.4 (XXXX-XX-XX)
+v3.10.5 (XXXX-XX-XX)
 --------------------
 
 * Improve memory usage of in-memory edge index cache if most of the edges in an
@@ -18,6 +18,10 @@ v3.10.4 (XXXX-XX-XX)
   and `_to` parts. Lookups from the in-memory edge cache will not return
   compressed values but the full-length edge ids. The compressed values will
   also be used in memory only and will not be persisted on disk.
+
+
+v3.10.4 (XXXX-XX-XX)
+--------------------
 
 * Updated ArangoDB Starter to 0.15.7.
 
