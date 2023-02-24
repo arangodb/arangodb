@@ -471,6 +471,7 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
+    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -878,7 +879,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
           .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
           .invalidate(*vocbase);
     }
-
+    vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
