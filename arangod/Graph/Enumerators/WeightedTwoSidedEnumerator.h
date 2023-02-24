@@ -105,16 +105,17 @@ class WeightedTwoSidedEnumerator {
 
     [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
 
-    std::vector<CalculatedCandidate> getQueue() const { return _queue; };
+    [[nodiscard]] std::vector<CalculatedCandidate> getQueue() const {
+      return _queue;
+    };
 
-    CalculatedCandidate& peek() {
+    [[nodiscard]] CalculatedCandidate& peek() {
       TRI_ASSERT(!_queue.empty());
       // will return a pointer to the step with the lowest weight amount
       // possible. The heap structure guarantees that the first element in the
       // queue is the "largest" element (in our case it is the smallest, as we
       // inverted the comparator)
-      auto& first = _queue.front();
-      return first;
+      return _queue.front();
     }
 
     CalculatedCandidate pop() {
