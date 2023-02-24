@@ -46,7 +46,7 @@ PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider,
                                            ProviderType& targetProvider)
     : _numVerticesFromSourceProvider(0),
       _numEdgesFromSourceProvider(0),
-      _pathWeight(0),
+      _pathWeight(0.0),
       _sourceProvider(sourceProvider),
       _targetProvider(targetProvider) {}
 
@@ -56,7 +56,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
-  _pathWeight = 0;
+  _pathWeight = 0.0;
 }
 
 template<class ProviderType, class Step>
