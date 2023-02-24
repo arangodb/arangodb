@@ -43,41 +43,6 @@ const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-pr
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const request = require('@arangodb/request');
-const console = require('console');
-
-/**
- * TODO this function is here temporarily and is will be removed once we have a better solution.
- * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
- * This is needed because we're using the list of participants from two places.
- */
-const syncShardsWithLogs = function(dbn) {
-  const coordinator = replicatedLogsHelper.coordinators[0];
-  let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
-  let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
-  for (const [colId, colInfo] of Object.entries(collections)) {
-    const shardsToLogs = replicatedLogsHelper.getShardsToLogsMapping(dbn, colId);
-    for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardsToLogs[shardId];
-      if (logId in logs) {
-        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
-      }
-    }
-  }
-
-  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
-  helper.agency.increaseVersion(`Plan/Version`);
-
-  replicatedLogsHelper.waitFor(() => {
-    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
-    if (currentVersion > waitForCurrent) {
-      return true;
-    }
-    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
-  }, 30, (e) => {
-    // We ignore this and continue. Most probably current was increased before we could observe it.
-    print(e.message);
-  });
-};
 
 /**
  * In this test suite we check if the DocumentState can survive modifications to the cluster participants
@@ -188,8 +153,6 @@ function transactionReplication2Recovery() {
           `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
 
-      syncShardsWithLogs(dbn);
-
       servers = Object.assign({}, ...followers.map(
         (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
 
@@ -226,7 +189,6 @@ function transactionReplication2Recovery() {
 
       // Resume the dead server. Expect to read "foo" from it.
       continueServerWait(leader);
-      syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
         replicatedStatePredicates.localKeyStatus(
           replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true), 30);
@@ -302,8 +264,6 @@ function transactionReplication2Recovery() {
             JSON.stringify(current.leader));
         }
       });
-
-      syncShardsWithLogs(dbn);
 
       // Expect to find no values on current participants.
       let servers = Object.assign({}, ...newParticipants.map(
