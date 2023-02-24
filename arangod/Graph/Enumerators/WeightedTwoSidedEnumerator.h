@@ -294,12 +294,10 @@ class WeightedTwoSidedEnumerator {
  private:
   [[nodiscard]] auto searchDone() const -> bool;
 
-  // Ensure that we have fetched all vertices
-  // in the _results list.
-  // Otherwise we will not be able to
-  // generate the resulting path
+  // Ensure that we have fetched all vertices in the _results list. Otherwise,
+  // we will not be able to generate the resulting path
   auto fetchResults() -> void;
-  auto fetchResult(double key) -> void;
+  auto fetchResult() -> void;
 
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.

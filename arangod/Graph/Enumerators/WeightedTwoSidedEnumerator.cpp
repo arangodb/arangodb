@@ -148,18 +148,17 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::fetchResult(CalculatedCandidate& candidate) -> void {
-  // TODO: Right now almost a copy of method below - optimize this.
   std::vector<Step*> looseEnds{};
-  auto& [weight, first, second] = candidate;
+  auto& [weight, leftMeetingPoint, rightMeetingPoint] = candidate;
 
   if (_direction == Direction::FORWARD) {
-    auto& step = first;
+    auto& step = leftMeetingPoint;
     if (!step.isProcessable()) {
       looseEnds.emplace_back(&step);
     }
 
   } else {
-    auto& step = second;
+    auto& step = rightMeetingPoint;
     if (!step.isProcessable()) {
       looseEnds.emplace_back(&step);
     }
@@ -180,15 +179,17 @@ auto WeightedTwoSidedEnumerator<
   std::vector<Step*> looseEnds{};
 
   if (_direction == Direction::FORWARD) {
-    for (auto& [weight, firstStep, secondStep] : candidates.getQueue()) {
-      auto& step = firstStep;
+    for (auto& [weight, leftMeetingPoint, rightMeetingPoint] :
+         candidates.getQueue()) {
+      auto& step = leftMeetingPoint;
       if (!step.isProcessable()) {
         looseEnds.emplace_back(&step);
       }
     }
   } else {
-    for (auto& [weight, firstStep, secondStep] : candidates.getQueue()) {
-      auto& step = secondStep;
+    for (auto& [weight, leftMeetingPoint, rightMeetingPoint] :
+         candidates.getQueue()) {
+      auto& step = rightMeetingPoint;
       if (!step.isProcessable()) {
         looseEnds.emplace_back(&step);
       }
@@ -199,13 +200,6 @@ auto WeightedTwoSidedEnumerator<
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
     futureEnds.get();
-    // Notes for the future:
-    // Vertices are now fetched. Think about other less-blocking and batch-wise
-    // fetching (e.g. re-fetch at some later point).
-    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
-    // fetch as fetched. This works, but we might create a batch limit here in
-    // the future. Also discuss: Do we want (re-)fetch logic here?
-    // TODO: maybe we can combine this with prefetching of paths
   }
 }
 
@@ -227,8 +221,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
         -> double {
-  // Pull next element from Queue
-  // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -716,7 +708,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   if (_options.onlyProduceOnePath() && _bestCandidateLength >= 0) {
-    fetchResult(_bestCandidateLength);
+    fetchResult();
   } else {
     fetchResults();
   }
@@ -889,8 +881,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::fetchResult(double key)
-    -> void {
+                                PathValidator>::fetchResult() -> void {
   if (!_resultsFetched && !_candidatesStore.isEmpty()) {
     _left.fetchResult(_candidatesStore.peek());
     _right.fetchResult(_candidatesStore.peek());
