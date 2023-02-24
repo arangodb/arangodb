@@ -242,13 +242,19 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     
     testKShortestPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
-      
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 }).json;
-      // no shortest path available
-      assertEqual(1024, actual.length);
-      
+
+      if (isCluster) {
+        let actual = AQL_EXECUTE(query, null, {memoryLimit: 20 * 1000 * 1000}).json;
+        // no shortest path available
+        assertEqual(1024, actual.length);
+      } else {
+        let actual = AQL_EXECUTE(query, null, {memoryLimit: 2 * 1000 * 1000}).json;
+        // no shortest path available
+        assertEqual(1024, actual.length);
+      }
+
       try {
-        AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000 });
+        AQL_EXECUTE(query, null, {memoryLimit: 1000 * 1000});
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -317,15 +323,12 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       const query = "WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v";
 
       if (isCluster) {
-        // TODO [GraphRefactor]: Refactored variant uses now more memory. Check if we can improve here.
-        // [GraphRefactor] Note: Related to #GORDO-1361
         let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 27 * 1000 * 1000 }).json;
         assertEqual(79800, actual.length);
       } else {
         let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
         assertEqual(79800, actual.length);
       }
-
       
       try {
         // run query with same depth, but lower mem limit

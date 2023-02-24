@@ -42,17 +42,24 @@ class PathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
+  enum WeightType { NONE, AMOUNT_EDGES, ACTUAL_WEIGHT };
+
   PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto addWeight(double weight) -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder,
+                    WeightType addWeight = WeightType::NONE) -> void;
+  auto isEqualEdgeRepresentation(PathResult<ProviderType, Step> const& other)
+      -> bool;
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
   auto isEmpty() const -> bool;
+  auto getWeight() const -> double { return _pathWeight; }
 
  private:
   std::vector<typename Step::Vertex> _vertices;
@@ -63,6 +70,7 @@ class PathResult {
   // For edges we need to load one edge less from here.
   size_t _numVerticesFromSourceProvider;
   size_t _numEdgesFromSourceProvider;
+  double _pathWeight;
 
   // Provider for the beginning of the path (source)
   ProviderType& _sourceProvider;
