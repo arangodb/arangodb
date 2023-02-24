@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "IResearch/AgencyMock.h"
 #include "StorageEngineMock.h"
 
 #include "Mocks/LogLevels.h"
@@ -39,6 +38,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace network {
+class ConnectionPool;
+}
 
 namespace transaction {
 class Methods;

@@ -50,7 +50,6 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"

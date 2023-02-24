@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 
 #include <fuerte/connection.h>

@@ -29,7 +29,6 @@
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Agency/Store.h"
-#include "AgencyMock.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AstNode.h"

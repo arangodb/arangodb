@@ -31,7 +31,6 @@
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/SmallVector.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -49,7 +48,6 @@ namespace arangodb {
 class LogicalView;
 namespace aql {
 struct Collection;
-class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
 template<typename T>

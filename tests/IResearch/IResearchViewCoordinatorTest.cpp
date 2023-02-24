@@ -24,7 +24,6 @@
 
 #include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
-#include "AgencyMock.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -45,6 +44,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"

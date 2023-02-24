@@ -33,7 +33,6 @@
 #endif
 
 #include "Containers/FlatHashMap.h"
-#include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchInvertedIndexMeta.h"
 #include "IResearchVPackTermAttribute.h"

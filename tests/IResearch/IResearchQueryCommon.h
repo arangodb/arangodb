@@ -37,6 +37,7 @@
 #include "Mocks/Servers.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Basics/DownCast.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
