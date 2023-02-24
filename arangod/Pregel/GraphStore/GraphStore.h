@@ -86,9 +86,6 @@ class GraphStore final {
   void loadShards(WorkerConfig* config,
                   std::function<void()> const& statusUpdateCallback,
                   std::function<void()> const& finishedLoadingCallback);
-  void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    std::string_view key);
   // ======================================================================
 
   /// Write results to database
