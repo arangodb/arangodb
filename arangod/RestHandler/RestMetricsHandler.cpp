@@ -69,7 +69,6 @@ bool isOutdated(
     GeneralRequest const& oldData,
     std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
   if (!data || !data->packed) {
-    TRI_ASSERT(!data);
     return false;
   }
   velocypack::Slice newData{data->packed->data()};
@@ -209,7 +208,7 @@ RestStatus RestMetricsHandler::execute() {
     if (isOutdated(*_request, data)) {
       _response->addPayload(VPackSlice{data->packed->data()});
     } else {
-      _response->addPayload(VPackSlice::noneSlice());
+      _response->addPayload(VPackSlice::nullSlice());
     }
     return RestStatus::DONE;
   }
