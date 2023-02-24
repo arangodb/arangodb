@@ -100,7 +100,7 @@ class WeightedTwoSidedEnumerator {
 
     [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
 
-    [[nodiscard]] std::vector<CalculatedCandidate> getQueue() const {
+    [[nodiscard]] std::vector<CalculatedCandidate> getQueue() const& {
       return _queue;
     };
 
