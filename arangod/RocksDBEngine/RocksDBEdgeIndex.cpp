@@ -59,11 +59,14 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
+#include <rocksdb/slice.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
+#include <array>
 #include <cmath>
 
 using namespace arangodb;
@@ -73,6 +76,40 @@ namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
 
 using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
+template<std::size_t N>
+class StringFromParts final : public velocypack::IStringFromParts {
+ public:
+  template<typename... Args>
+  StringFromParts(Args&&... args) noexcept
+      : _parts{std::forward<Args>(args)...} {
+    static_assert(sizeof...(Args) == N);
+  }
+
+  std::size_t size() const final { return N; }
+
+  std::size_t length() const final {
+    size_t length = 0;
+    for (size_t index = 0; index != N; ++index) {
+      length += _parts[index].length();
+    }
+    return length;
+  }
+
+  std::string_view operator()(size_t index) const final {
+    TRI_ASSERT(index < size());
+    return _parts[index];
+  }
+
+ private:
+  std::array<std::string_view, N> _parts;
+};
+
+template<typename... Args>
+auto makeStringFromParts(Args&&... args) noexcept {
+  return StringFromParts<sizeof...(Args)>{std::forward<Args>(args)...};
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -83,11 +120,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   // holds both the indexed attribute (_from/_to) and the opposite
   // attribute (_to/_from). Avoids copying the data and is thus
   // just an efficient, non-owning container for the _from/_to values
-  // of a single edge during covering edge index lookups-
+  // of a single edge during covering edge index lookups.
   class EdgeCoveringData final : public IndexIteratorCoveringData {
    public:
     explicit EdgeCoveringData(VPackSlice indexAttribute,
-                              VPackSlice otherAttribute)
+                              VPackSlice otherAttribute) noexcept
         : _indexAttribute(indexAttribute), _otherAttribute(otherAttribute) {}
 
     VPackSlice at(size_t i) const override {
@@ -203,39 +240,54 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
  private:
   void resetInplaceMemory() { _builder.clear(); }
 
-  /// internal retrieval loop
+  // internal retrieval loop
   template<typename F>
   inline bool nextImplementation(F&& cb, uint64_t limit) {
     TRI_ASSERT(_trx->state()->isRunning());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-#else
-    // Gracefully return in production code
-    // Nothing bad has happened
+    TRI_ASSERT(limit > 0);
     if (limit == 0) {
+      // gracefully return in production mode. nothing bad has happened
       return false;
     }
-#endif
+
+    std::string const* cacheKeyCollection = nullptr;
+    std::string const* cacheValueCollection = nullptr;
+
+    auto handleSingleResult = [&, this]() {
+      TRI_ASSERT(_builderIterator.value().isNumber());
+      LocalDocumentId docId{
+          _builderIterator.value().getNumericValue<uint64_t>()};
+      _builderIterator.next();
+      TRI_ASSERT(_builderIterator.valid());
+      // For now we store the complete opposite _from/_to value
+      VPackSlice fromTo = _builderIterator.value();
+      TRI_ASSERT(fromTo.isString());
+
+      std::string_view v = fromTo.stringView();
+      TRI_ASSERT(!v.empty());
+      if (v.front() == '/') {
+        // prefix-compressed value
+        cacheValueCollection =
+            _index->cachedValueCollection(cacheValueCollection);
+        TRI_ASSERT(cacheValueCollection != nullptr);
+        _idBuilder.clear();
+        // collection name  and  key including forward slash
+        _idBuilder.add(::makeStringFromParts(*cacheValueCollection, v));
+        fromTo = _idBuilder.slice();
+      }
+
+      std::forward<F>(cb)(docId, fromTo);
+    };
 
     while (limit > 0) {
       while (_builderIterator.valid()) {
-        // We still have unreturned edges in out memory.
-        // Just plainly return those.
-        TRI_ASSERT(_builderIterator.value().isNumber());
-        LocalDocumentId docId{
-            _builderIterator.value().getNumericValue<uint64_t>()};
+        // we still have unreturned edges in out memory. simply return them
+        handleSingleResult();
         _builderIterator.next();
-        TRI_ASSERT(_builderIterator.valid());
-        // For now we store the complete opposite _from/_to value
-        TRI_ASSERT(_builderIterator.value().isString());
-
-        std::forward<F>(cb)(docId, _builderIterator.value());
-
-        _builderIterator.next();
-        limit--;
+        --limit;
 
         if (limit == 0) {
-          // Limit reached bail out
+          // Limit reached. bail out
           return true;
         }
       }
@@ -249,44 +301,52 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       _lastKey = _keysIterator.value();
       TRI_ASSERT(_lastKey.isString());
       std::string_view fromTo = _lastKey.stringView();
+      std::string_view cacheKey;
 
       bool needRocksLookup = true;
       if (_cache) {
-        // Try to read from cache
-        auto finding =
-            _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
-        if (finding.found()) {
-          incrCacheHits();
-          needRocksLookup = false;
-          // We got sth. in the cache
-          VPackSlice cachedData(finding.value()->value());
-          TRI_ASSERT(cachedData.isArray());
-          if (cachedData.length() / 2 < limit) {
-            // Directly return it, no need to copy
-            _builderIterator = VPackArrayIterator(cachedData);
-            while (_builderIterator.valid()) {
-              TRI_ASSERT(_builderIterator.value().isNumber());
-              LocalDocumentId docId{
-                  _builderIterator.value().getNumericValue<uint64_t>()};
+        // try to read from cache
 
-              _builderIterator.next();
+        // build actual cache lookup key. this is either the value of fromTo,
+        // or a suffix of it in case fromTo starts with the cached collection
+        // name, and an empty string_view if the lookup value is invalid.
+        cacheKey = _index->buildCompressedCacheKey(cacheKeyCollection, fromTo);
 
-              TRI_ASSERT(_builderIterator.valid());
-              TRI_ASSERT(_builderIterator.value().isString());
-              std::forward<F>(cb)(docId, _builderIterator.value());
-
-              _builderIterator.next();
-              limit--;
+        if (!cacheKey.empty()) {
+          TRI_ASSERT(cacheKey == fromTo || fromTo.ends_with(cacheKey));
+          // only look up a key in the cache if the key is syntactially valid.
+          // this is important because we can only tell syntactically valid keys
+          // apart from prefix-compressed keys.
+          auto finding = _cache->find(cacheKey.data(),
+                                      static_cast<uint32_t>(cacheKey.size()));
+          if (finding.found()) {
+            incrCacheHits();
+            needRocksLookup = false;
+            // We got sth. in the cache
+            VPackSlice cachedData(finding.value()->value());
+            TRI_ASSERT(cachedData.isArray());
+            VPackArrayIterator cachedIterator(cachedData);
+            TRI_ASSERT(cachedIterator.size() % 2 == 0);
+            if (cachedIterator.size() / 2 < limit) {
+              // Directly return it, no need to copy
+              _builderIterator = cachedIterator;
+              while (_builderIterator.valid()) {
+                handleSingleResult();
+                _builderIterator.next();
+                TRI_ASSERT(limit > 0);
+                --limit;
+              }
+              _builderIterator =
+                  VPackArrayIterator(VPackArrayIterator::Empty{});
+            } else {
+              // We need to copy it.
+              // And then we just get back to beginning of the loop
+              resetInplaceMemory();
+              _builder.add(cachedData);
+              TRI_ASSERT(_builder.slice().isArray());
+              _builderIterator = VPackArrayIterator(_builder.slice());
+              // Do not set limit
             }
-            _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
-          } else {
-            // We need to copy it.
-            // And then we just get back to beginning of the loop
-            _builder.clear();
-            _builder.add(cachedData);
-            TRI_ASSERT(_builder.slice().isArray());
-            _builderIterator = VPackArrayIterator(_builder.slice());
-            // Do not set limit
           }
         } else {
           incrCacheMisses();
@@ -294,7 +354,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       }  // if (_cache)
 
       if (needRocksLookup) {
-        lookupInRocksDB(fromTo);
+        lookupInRocksDB(fromTo, cacheKey);
       }
 
       _keysIterator.next();
@@ -303,13 +363,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     return _builderIterator.valid() || _keysIterator.valid();
   }
 
-  void lookupInRocksDB(std::string_view fromTo) {
-    // Bad (slow) case: read from RocksDB
-
+  void lookupInRocksDB(std::string_view fromTo, std::string_view cacheKey) {
+    // slow case: read from RocksDB
     auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
 
-    // create iterator only on demand, so we save the allocation in case
-    // the reads can be satisfied from the cache
+    std::string const* cacheValueCollection = nullptr;
 
     // unfortunately we *must* create a new RocksDB iterator here for each edge
     // lookup. the problem is that if we don't and reuse an existing RocksDB
@@ -354,7 +412,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
       std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValue(vertexId));
+      // construct a potentially prefix-compressed vertex id from the original
+      // _from/_to value
+      std::string_view cacheValue =
+          _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
+      TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
+      _builder.add(VPackValue(cacheValue));
     }
     _builder.close();
 
@@ -362,12 +425,14 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     rocksutils::checkIteratorStatus(*iterator);
 
     if (_cache != nullptr) {
-      // TODO Add cache retry on next call
-      // Now we have something in _inplaceMemory.
-      // It may be an empty array or a filled one, never mind, we cache both
+      // key to store value under in the cache. we will use cacheKey if set, and
+      // fromTo otherwise.
+      std::string_view key = cacheKey.empty() ? fromTo : cacheKey;
+      // the value we store in the cache may be an empty array or a non-empty
+      // one. we don't care and cache both.
       cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-          static_cast<EdgeIndexCacheType&>(*_cache), fromTo.data(),
-          static_cast<uint32_t>(fromTo.size()), _builder.slice().start(),
+          static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
+          static_cast<uint32_t>(key.size()), _builder.slice().start(),
           static_cast<uint64_t>(_builder.slice().byteSize())};
     }
     TRI_ASSERT(_builder.slice().isArray());
@@ -381,6 +446,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   velocypack::ArrayIterator _keysIterator;
 
   RocksDBKeyBounds _bounds;
+  // used to build temporary _from/_to values from compressed values
+  velocypack::Builder _idBuilder;
 
   // the following values are required for correct batch handling
   velocypack::Builder _builder;
@@ -392,7 +459,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
 // ============================= Index ====================================
 
-uint64_t RocksDBEdgeIndex::HashForKey(rocksdb::Slice const& key) {
+uint64_t RocksDBEdgeIndex::HashForKey(rocksdb::Slice key) {
   std::hash<std::string_view> hasher{};
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
@@ -437,7 +504,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
                             .server()
                             .getFeature<RocksDBIndexCacheRefillFeature>()
                             .autoRefill()),
-      _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString
                                                    : StaticStrings::FromString),
@@ -577,8 +643,15 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
                                     std::move(keysBuilder), _cache,
                                     ReadOwnWrites::no);
 
+  std::string const* cacheKeyCollection = nullptr;
+
   for (auto const& key : keys) {
-    it.lookupInRocksDB(VPackStringRef(key.data(), key.size()));
+    std::string_view fromTo = {key.data(), key.size()};
+    std::string_view cacheKey =
+        buildCompressedCacheKey(cacheKeyCollection, fromTo);
+    TRI_ASSERT(cacheKey.empty() || cacheKey == fromTo ||
+               fromTo.ends_with(cacheKey));
+    it.lookupInRocksDB(fromTo, cacheKey);
   }
 }
 
@@ -586,14 +659,21 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
                                                OperationOptions const& options,
                                                std::string_view fromToRef) {
   // always invalidate cache entry for all edges with same _from / _to
-  invalidateCacheEntry(fromToRef);
 
-  if (_cache != nullptr &&
-      ((_forceCacheRefill &&
-        options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-       options.refillIndexCaches == RefillIndexCaches::kRefill)) {
-    RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-        _collection.id(), id(), fromToRef);
+  // adjust key for potential prefix compression
+  std::string const* cacheKeyCollection = nullptr;
+  std::string_view cacheKey =
+      buildCompressedCacheKey(cacheKeyCollection, fromToRef);
+  if (!cacheKey.empty()) {
+    invalidateCacheEntry(cacheKey);
+
+    if (_cache != nullptr &&
+        ((_forceCacheRefill &&
+          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+      RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+          _collection.id(), id(), fromToRef);
+    }
   }
 }
 
@@ -683,10 +763,10 @@ Result RocksDBEdgeIndex::warmup() {
 void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice lower,
                                       rocksdb::Slice upper) {
+  cache::Cache* cc = _cache.get();
+  TRI_ASSERT(cc != nullptr);
+
   auto rocksColl = toRocksDBCollection(_collection);
-  bool needsInsert = false;
-  std::string previous;
-  VPackBuilder builder;
 
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
@@ -701,15 +781,18 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       _engine.db()->NewIterator(options, _cf));
 
   ManagedDocumentResult mdr;
+  bool needsInsert = false;
+  std::string previous;
+  VPackBuilder builder;
+  std::string const* cacheKeyCollection = nullptr;
+  std::string_view cacheKey;
 
   size_t n = 0;
-  cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
     ++n;
-    if (n % 1024 == 0) {
-      if (collection().vocbase().server().isStopping()) {
-        return;
-      }
+    if (n % 1024 == 0 && collection().vocbase().server().isStopping()) {
+      // periodically check for server shutdown
+      return;
     }
 
     rocksdb::Slice key = it->key();
@@ -718,10 +801,16 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       // First call.
       builder.clear();
       previous = v;
+
+      // build cache lookup key (can be prefix-compressed)
+      cacheKey = buildCompressedCacheKey(cacheKeyCollection, previous);
+      // the lookup keys we get from RocksDB *must* be valid
+      TRI_ASSERT(!cacheKey.empty() && previous.ends_with(cacheKey));
+
       bool shouldTry = true;
       while (shouldTry) {
         auto finding =
-            cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
+            cc->find(cacheKey.data(), static_cast<uint32_t>(cacheKey.size()));
         if (finding.found()) {
           shouldTry = false;
           needsInsert = false;
@@ -741,16 +830,21 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         builder.close();
 
         cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-            static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
-            static_cast<uint32_t>(previous.size()), builder.slice().start(),
+            static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
+            static_cast<uint32_t>(cacheKey.size()), builder.slice().start(),
             static_cast<uint64_t>(builder.slice().byteSize())};
 
         builder.clear();
       }
       // Need to store
       previous = v;
+      // build cache lookup key (can be prefix-compressed)
+      cacheKey = buildCompressedCacheKey(cacheKeyCollection, previous);
+      // the lookup keys we get from RocksDB *must* be valid
+      TRI_ASSERT(!cacheKey.empty() && previous.ends_with(cacheKey));
+
       auto finding =
-          cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
+          cc->find(cacheKey.data(), static_cast<uint32_t>(cacheKey.size()));
       if (finding.found()) {
         needsInsert = false;
       } else {
@@ -781,11 +875,14 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     // We still have something to store
     builder.close();
 
+    TRI_ASSERT(!cacheKey.empty() && previous.ends_with(cacheKey));
+
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-        static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
-        static_cast<uint32_t>(previous.size()), builder.slice().start(),
+        static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
+        static_cast<uint32_t>(cacheKey.size()), builder.slice().start(),
         static_cast<uint64_t>(builder.slice().byteSize())};
   }
+
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }
 
@@ -909,4 +1006,87 @@ void RocksDBEdgeIndex::recalculateEstimates() {
     _estimator->insert(hash);
   }
   _estimator->setAppliedSeq(seq);
+}
+
+std::string_view RocksDBEdgeIndex::buildCompressedCacheKey(
+    std::string const*& previous, std::string_view value) const {
+  return _cacheKeyCollectionName.buildCompressedValue(previous, value);
+}
+
+std::string_view RocksDBEdgeIndex::buildCompressedCacheValue(
+    std::string const*& previous, std::string_view value) const {
+  return _cacheValueCollectionName.buildCompressedValue(previous, value);
+}
+
+std::string const* RocksDBEdgeIndex::cachedValueCollection(
+    std::string const*& previous) const noexcept {
+  if (previous == nullptr) {
+    previous = _cacheValueCollectionName.get();
+  }
+  TRI_ASSERT(previous != nullptr);
+  return previous;
+}
+
+RocksDBEdgeIndex::CachedCollectionName::CachedCollectionName() noexcept
+    : _name(nullptr) {}
+
+RocksDBEdgeIndex::CachedCollectionName::~CachedCollectionName() {
+  delete get();
+}
+
+std::string_view RocksDBEdgeIndex::CachedCollectionName::buildCompressedValue(
+    std::string const*& previous, std::string_view value) const {
+  // split lookup value to determine collection name and key parts
+  auto pos = value.find('/');
+
+  if (pos == std::string_view::npos || pos == 0 || pos + 1 == value.size() ||
+      value[pos + 1] == '/') {
+    // totally invalid lookup value
+    return {};
+  }
+
+  if (previous == nullptr) {
+    // no context yet. now try looking up cached collection name
+    previous = _name.load(std::memory_order_acquire);
+    if (previous == nullptr) {
+      // no cached collection name yet. now try to store the collection name
+      // we determined ourselves. create a string with the collection name on
+      // the heap
+      auto cn = std::make_unique<std::string const>(value.data(), pos);
+      // try to store the name. this can race with other threads.
+      if (_name.compare_exchange_strong(previous, cn.get(),
+                                        std::memory_order_release,
+                                        std::memory_order_acquire)) {
+        // we won the race and were able to store our value. now we are owning
+        // the collection name.
+        previous = cn.release();
+      }
+    }
+  }
+
+  // here we must have a collection name
+  TRI_ASSERT(previous != nullptr);
+
+  // now check if the collection name in the value we got matches the cached
+  // name.
+  TRI_ASSERT(!previous->empty());
+  // must have at least 'c/k'
+  TRI_ASSERT(value.size() > 2);
+  if (*previous == value.substr(0, pos)) {
+    // match. now return the remainder of the value, including the `/` at the
+    // front.
+    value = value.substr(pos);
+    // must have at least '/k'
+    TRI_ASSERT(value.size() > 1);
+    TRI_ASSERT(value.starts_with('/'));
+    // cannot have '//...'
+    TRI_ASSERT(value[1] != '/');
+  }
+
+  return value;
+}
+
+std::string const* RocksDBEdgeIndex::CachedCollectionName::get()
+    const noexcept {
+  return _name.load(std::memory_order_acquire);
 }
