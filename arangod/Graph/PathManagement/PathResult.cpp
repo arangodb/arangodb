@@ -89,10 +89,6 @@ auto PathResult<ProviderType, Step>::addWeight(double weight) -> void {
   _pathWeight += weight;
 }
 
-// NOTE:
-// Potential optimization: Instead of counting on each append
-// We can do a size call to the vector when switching the Provider.
-
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder, WeightType weightType) -> void {
