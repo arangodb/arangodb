@@ -117,7 +117,7 @@ TEST_F(CompactionManagerTest,
 
   EXPECT_CALL(storageManagerMock, transaction).Times(1);
 
-  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+  compactionManager->updateLowestIndexToKeep(LogIndex{20});
 
   auto const status = compactionManager->getCompactionStatus();
   ASSERT_NE(status.stop, std::nullopt);
@@ -144,7 +144,7 @@ TEST_F(CompactionManagerTest, no_compaction_because_of_threshold) {
 
   EXPECT_CALL(storageManagerMock, transaction).Times(2);
 
-  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+  compactionManager->updateLowestIndexToKeep(LogIndex{20});
   compactionManager->updateReleaseIndex(LogIndex{45});
 
   auto const status = compactionManager->getCompactionStatus();
@@ -172,7 +172,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction) {
 
   EXPECT_CALL(storageManagerMock, transaction).Times(2);
 
-  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+  compactionManager->updateLowestIndexToKeep(LogIndex{20});
 
   {
     auto const status = compactionManager->getCompactionStatus();
@@ -256,7 +256,7 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
   // compaction possible upto 40, but threshold blocks
   options->_thresholdLogCompaction = 100;
   compactionManager->updateReleaseIndex(LogIndex{40});
-  compactionManager->updateLargestIndexToKeep(LogIndex{40});
+  compactionManager->updateLowestIndexToKeep(LogIndex{40});
 
   {
     auto status = compactionManager->getCompactionStatus();
@@ -314,7 +314,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice) {
     EXPECT_CALL(*trx, getLogBounds).Times(1);
     return trx;
   });
-  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+  compactionManager->updateLowestIndexToKeep(LogIndex{20});
 
   // We expect two transactions to be started:
   // 1. see the log in range [1, 101) and calls removeFront with stop = 20
@@ -363,7 +363,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice) {
         return trx;
       });
 
-  compactionManager->updateLargestIndexToKeep(
+  compactionManager->updateLowestIndexToKeep(
       LogIndex{45});  // should start another compaction now
 }
 
@@ -377,7 +377,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice_but_delayed) {
     EXPECT_CALL(*trx, getLogBounds).Times(1);
     return trx;
   });
-  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+  compactionManager->updateLowestIndexToKeep(LogIndex{20});
 
   // We expect two transactions to be started:
   // 1. see the log in range [1, 101) and calls removeFront with stop = 20
@@ -419,7 +419,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice_but_delayed) {
         return trx;
       });
 
-  compactionManager->updateLargestIndexToKeep(
+  compactionManager->updateLowestIndexToKeep(
       LogIndex{45});  // should start another compaction now
 
   // finally resolve the future

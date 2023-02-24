@@ -48,11 +48,11 @@ void CompactionManager::updateReleaseIndex(LogIndex index) noexcept {
   triggerAsyncCompaction(std::move(guard), false);
 }
 
-void CompactionManager::updateLargestIndexToKeep(LogIndex index) noexcept {
+void CompactionManager::updateLowestIndexToKeep(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
-  LOG_CTX_IF("ff33a", TRACE, loggerContext, index > guard->largestIndexToKeep)
+  LOG_CTX_IF("ff33a", TRACE, loggerContext, index > guard->lowestIndexToKeep)
       << "updating largest index to keep to " << index;
-  guard->largestIndexToKeep = std::max(guard->largestIndexToKeep, index);
+  guard->lowestIndexToKeep = std::max(guard->lowestIndexToKeep, index);
   triggerAsyncCompaction(std::move(guard), false);
 }
 
@@ -78,12 +78,12 @@ auto CompactionManager::GuardedData::isCompactionInProgress() const noexcept
 }
 
 auto CompactionManager::calculateCompactionIndex(LogIndex releaseIndex,
-                                                 LogIndex largestIndexToKeep,
+                                                 LogIndex lowestIndexToKeep,
                                                  LogRange bounds,
                                                  std::size_t threshold)
     -> std::tuple<LogIndex, CompactionStopReason> {
   auto [first, last] = bounds;
-  auto newCompactionIndex = std::min(releaseIndex, largestIndexToKeep);
+  auto newCompactionIndex = std::min(releaseIndex, lowestIndexToKeep);
   auto nextAutomaticCompactionAt = first + threshold;
   if (nextAutomaticCompactionAt > newCompactionIndex) {
     return {first,
@@ -97,9 +97,10 @@ auto CompactionManager::calculateCompactionIndex(LogIndex releaseIndex,
     return {newCompactionIndex,
             {CompactionStopReason::NotReleasedByStateMachine{releaseIndex}}};
   } else {
-    TRI_ASSERT(newCompactionIndex == largestIndexToKeep);
-    return {newCompactionIndex,
-            {CompactionStopReason::LeaderBlocksReleaseEntry{}}};
+    TRI_ASSERT(newCompactionIndex == lowestIndexToKeep);
+    return {
+        newCompactionIndex,
+        {CompactionStopReason::LeaderBlocksReleaseEntry{lowestIndexToKeep}}};
   }
 }
 
@@ -123,7 +124,7 @@ void CompactionManager::triggerAsyncCompaction(
                            ? 0
                            : self->options->_thresholdLogCompaction;
       auto [index, reason] = calculateCompactionIndex(
-          guard->releaseIndex, guard->largestIndexToKeep, logBounds, threshold);
+          guard->releaseIndex, guard->lowestIndexToKeep, logBounds, threshold);
       guard->_fullCompactionNextRound = false;
       auto promises = std::move(guard->compactAggregator);
 
@@ -191,5 +192,5 @@ auto CompactionManager::getIndexes() const noexcept
     -> CompactionManager::Indexes {
   auto guard = guarded.getLockedGuard();
   return Indexes{.releaseIndex = guard->releaseIndex,
-                 .largestIndexToKeep = guard->largestIndexToKeep};
+                 .lowestIndexToKeep = guard->lowestIndexToKeep};
 }

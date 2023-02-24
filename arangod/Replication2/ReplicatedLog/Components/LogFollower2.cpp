@@ -141,7 +141,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
 auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   auto commitIndex = commit->getCommitIndex();
   auto log = storage->getCommittedLog();
-  auto [releaseIndex, largestIndexToKeep] = compaction->getIndexes();
+  auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   return QuickLogStatus{
       .role = ParticipantRole::kFollower,
       .localState = stateHandle->getQuickStatus(),

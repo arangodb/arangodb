@@ -81,7 +81,7 @@ FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
                                              LoggerContext const& loggerContext)
     : guardedData(storage, stateHandle),
       loggerContext(loggerContext.with<logContextKeyLogComponent>(
-          "follower-commit-man")) {}
+          "follower-commit-manager")) {}
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {

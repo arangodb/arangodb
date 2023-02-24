@@ -121,7 +121,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     }
   }
 
-  guard->compaction.updateLargestIndexToKeep(request.lowestIndexToKeep);
+  guard->compaction.updateLowestIndexToKeep(request.lowestIndexToKeep);
   auto action = guard->commit.updateCommitIndex(request.leaderCommit);
   auto hasSnapshot =
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
@@ -138,8 +138,8 @@ AppendEntriesManager::AppendEntriesManager(
     ICompactionManager& compaction, IFollowerCommitManager& commit,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     LoggerContext const& loggerContext)
-    : loggerContext(
-          loggerContext.with<logContextKeyLogComponent>("append-entries-man")),
+    : loggerContext(loggerContext.with<logContextKeyLogComponent>(
+          "append-entries-manager")),
       termInfo(std::move(termInfo)),
       metrics(std::move(metrics)),
       guarded(storage, snapshot, compaction, commit) {}
@@ -171,15 +171,6 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
   }
 
-  if (request.leaderId != termInfo.leader) {
-    LOG_CTX("d04a9", DEBUG, lctx)
-        << "rejecting append entries - wrong leader - expected "
-        << termInfo.leader.value_or("<none>") << " found " << request.leaderId;
-    return AppendEntriesResult::withRejection(
-        termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false);
-  }
-
   if (request.leaderTerm != termInfo.term) {
     LOG_CTX("8ef92", DEBUG, lctx)
         << "rejecting append entries - wrong term - expected " << termInfo.term
@@ -187,6 +178,15 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
+  }
+
+  if (request.leaderId != termInfo.leader) {
+    LOG_CTX("d04a9", DEBUG, lctx)
+        << "rejecting append entries - wrong leader - expected "
+        << termInfo.leader.value_or("<none>") << " found " << request.leaderId;
+    return AppendEntriesResult::withRejection(
+        termInfo.term, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false);
   }
 
   // It is always allowed to replace the log entirely

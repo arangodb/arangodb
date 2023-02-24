@@ -44,7 +44,7 @@ struct ICompactionManager {
 
   virtual ~ICompactionManager() = default;
   virtual void updateReleaseIndex(LogIndex) noexcept = 0;
-  virtual void updateLargestIndexToKeep(LogIndex) noexcept = 0;
+  virtual void updateLowestIndexToKeep(LogIndex) noexcept = 0;
   virtual auto compact() noexcept -> futures::Future<CompactResult> = 0;
   [[nodiscard]] virtual auto getCompactionStatus() const noexcept
       -> CompactionStatus = 0;

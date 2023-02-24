@@ -95,20 +95,22 @@ struct CompactionManager : ICompactionManager,
   auto operator=(CompactionManager&&) noexcept -> CompactionManager& = delete;
 
   void updateReleaseIndex(LogIndex index) noexcept override;
-  void updateLargestIndexToKeep(LogIndex index) noexcept override;
+  void updateLowestIndexToKeep(LogIndex index) noexcept override;
   auto compact() noexcept -> futures::Future<CompactResult> override;
 
   struct Indexes {
-    LogIndex releaseIndex, largestIndexToKeep;
+    LogIndex releaseIndex, lowestIndexToKeep;
   };
 
   [[nodiscard]] auto getIndexes() const noexcept -> Indexes;
 
   auto getCompactionStatus() const noexcept -> CompactionStatus override;
 
-  [[nodiscard]] static auto calculateCompactionIndex(
-      LogIndex releaseIndex, LogIndex largestIndexToKeep, LogRange bounds,
-      std::size_t threshold) -> std::tuple<LogIndex, CompactionStopReason>;
+  [[nodiscard]] static auto calculateCompactionIndex(LogIndex releaseIndex,
+                                                     LogIndex lowestIndexToKeep,
+                                                     LogRange bounds,
+                                                     std::size_t threshold)
+      -> std::tuple<LogIndex, CompactionStopReason>;
 
  private:
   struct GuardedData {
@@ -121,7 +123,7 @@ struct CompactionManager : ICompactionManager,
     bool _compactionInProgress{false};
     bool _fullCompactionNextRound{false};
     LogIndex releaseIndex;
-    LogIndex largestIndexToKeep;
+    LogIndex lowestIndexToKeep;
     CompactionStatus status;
     IStorageManager& storage;
   };
