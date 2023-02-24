@@ -229,45 +229,6 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig* config,
-                                    PregelShard sourceShard,
-                                    std::string_view key) {
-  // Apparently this code has not been implemented yet; find out whether it's
-  // needed at all or remove
-  TRI_ASSERT(false);
-}
-
-namespace {
-template<typename X>
-void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
-  if (dst.empty()) {
-    dst = std::move(src);
-  } else {
-    dst.reserve(dst.size() + src.size());
-    std::move(std::begin(src), std::end(src), std::back_inserter(dst));
-    src.clear();
-  }
-}
-
-template<typename M>
-std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
-                                             WorkerConfig const& config,
-                                             size_t cap) {
-  if (config.useMemoryMaps()) {
-    // prefix used for logging in TypedBuffer.h
-    std::string logPrefix = fmt::format("[job {}] ", config.executionNumber());
-
-    auto ptr = std::make_unique<MappedFileBuffer<M>>(feature.tempPath(), cap,
-                                                     logPrefix);
-    ptr->sequentialAccess();
-    return ptr;
-  }
-
-  return std::make_unique<VectorTypedBuffer<M>>(cap);
-}
-}  // namespace
-
-template<typename V, typename E>
 auto GraphStore<V, E>::loadVertices(
     ShardID const& vertexShard, std::vector<ShardID> const& edgeShards,
     std::function<void()> const& statusUpdateCallback)
