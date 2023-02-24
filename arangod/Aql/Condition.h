@@ -79,19 +79,19 @@ struct ConditionPart {
 
   ~ConditionPart();
 
-  int whichCompareOperation() const;
+  int whichCompareOperation() const noexcept;
 
   /// @brief returns the lower bound
   AstNode const* lowerBound() const;
 
   /// @brief returns if the lower bound is inclusive
-  bool isLowerInclusive() const;
+  bool isLowerInclusive() const noexcept;
 
   /// @brief returns the upper bound
   AstNode const* upperBound() const;
 
   /// @brief returns if the upper bound is inclusive
-  bool isUpperInclusive() const;
+  bool isUpperInclusive() const noexcept;
 
   /// @brief true if the condition is completely covered by the other condition
   bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
@@ -202,6 +202,12 @@ class Condition {
   typedef std::unordered_map<Variable const*, AttributeUsageType>
       VariableUsageType;
 
+  /// @brief internally transform the condition, by executing the preorder
+  /// traversal on the condition, the postorder traversal, and fixing the root
+  /// node at the end.
+  AstNode* transformCondition(AstNode* root,
+                              ConditionOptimization conditionOptimization);
+
   /// @brief internal worker function for removeIndexCondition and
   /// removeTraversalCondition
   AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
@@ -244,8 +250,8 @@ class Condition {
   static bool canRemove(ExecutionPlan const*, ConditionPart const&,
                         AstNode const*, bool isFromTraverser);
 
-  /// @brief deduplicate IN condition values
-  /// this may modify the node in place
+  /// @brief deduplicate IN condition values (and sort them).
+  /// will return either the unmodified original node or a copy.
   AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations

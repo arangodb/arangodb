@@ -57,6 +57,13 @@ using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
 namespace {
+/// @brief clears the attribute access data
+void clearAttributeAccess(
+    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
+  parts.first = nullptr;
+  parts.second.clear();
+}
+
 // sort comparisons so that > and >= come before < and <=, and that
 // != and > come before ==
 // we use this to some advantage when we check the conditions for a sparse
@@ -521,7 +528,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   return false;
 }
 
-int ConditionPart::whichCompareOperation() const {
+int ConditionPart::whichCompareOperation() const noexcept {
   switch (operatorType) {
     case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -545,6 +552,7 @@ int ConditionPart::whichCompareOperation() const {
       return 6;  // not a compare operator.
   }
 }
+
 AstNode const* ConditionPart::lowerBound() const {
   if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
       operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
@@ -562,15 +570,13 @@ AstNode const* ConditionPart::lowerBound() const {
 
   return nullptr;
 }
-bool ConditionPart::isLowerInclusive() const {
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-    return true;
-  }
 
-  return false;
+bool ConditionPart::isLowerInclusive() const noexcept {
+  return (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
+          operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+          operatorType == NODE_TYPE_OPERATOR_BINARY_IN);
 }
+
 AstNode const* ConditionPart::upperBound() const {
   if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
       operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
@@ -588,20 +594,11 @@ AstNode const* ConditionPart::upperBound() const {
 
   return nullptr;
 }
-bool ConditionPart::isUpperInclusive() const {
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-    return true;
-  }
-  return false;
-}
 
-/// @brief clears the attribute access data
-static inline void clearAttributeAccess(
-    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
-  parts.first = nullptr;
-  parts.second.clear();
+bool ConditionPart::isUpperInclusive() const noexcept {
+  return (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
+          operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+          operatorType == NODE_TYPE_OPERATOR_BINARY_IN);
 }
 
 /// @brief create the condition
@@ -738,7 +735,7 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     auto member = node->getMember(i);
 
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      clearAttributeAccess(parts);
+      ::clearAttributeAccess(parts);
 
       auto lhs = member->getMember(0);
       auto rhs = member->getMember(1);
@@ -792,7 +789,7 @@ Condition::getNonNullAttributes(Variable const* reference) const {
     if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
         member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-      clearAttributeAccess(parts);
+      ::clearAttributeAccess(parts);
 
       AstNode const* lhs = member->getMember(0);
       AstNode const* rhs = member->getMember(1);
@@ -823,6 +820,32 @@ Condition::getNonNullAttributes(Variable const* reference) const {
   return result;
 }
 
+AstNode* Condition::transformCondition(
+    AstNode* root, ConditionOptimization conditionOptimization) {
+  TRI_ASSERT(root != nullptr);
+
+  // save original root node. we may need it later
+  AstNode* orig = root;
+  try {
+    root = transformNodePreorder(root, conditionOptimization);
+    root = transformNodePostorder(root, conditionOptimization);
+    root = fixRoot(root, 0);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() != TRI_ERROR_FAILED ||
+        conditionOptimization != ConditionOptimization::Auto) {
+      // any exceptions except the one for a too complex query condition
+      // will simply be rethrown
+      throw;
+    }
+    // too complex query condition. now convert condition into
+    // OR -> AND -> NOOPT(orig), which is very simple and cheap.
+    // however, it will lead to the condition being unusable by
+    // indexes.
+    root = createSimpleCondition(orig);
+  }
+  return root;
+}
+
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
 void Condition::normalize(
@@ -835,25 +858,7 @@ void Condition::normalize(
   }
 
   if (_root != nullptr) {
-    // save original root node
-    AstNode* root = _root;
-    try {
-      _root = transformNodePreorder(_root, conditionOptimization);
-      _root = transformNodePostorder(_root, conditionOptimization);
-      _root = fixRoot(_root, 0);
-    } catch (basics::Exception const& ex) {
-      if (ex.code() != TRI_ERROR_FAILED ||
-          conditionOptimization != ConditionOptimization::Auto) {
-        // any exceptions except the one for a too complex query condition
-        // will simply be rethrown
-        throw;
-      }
-      // too complex query condition. now convert condition into
-      // OR -> AND -> NOOPT(orig), which is very simple and cheap.
-      // however, it will lead to the condition being unusable by
-      // indexes.
-      _root = createSimpleCondition(root);
-    }
+    _root = transformCondition(_root, conditionOptimization);
 
     if (conditionOptimization != ConditionOptimization::Auto) {
       // DNF conversion is skipped. So condition tree could have arbitrary depth
@@ -885,25 +890,7 @@ void Condition::normalize() {
   }
 
   if (_root != nullptr) {
-    // save original root node
-    AstNode* root = _root;
-    try {
-      _root = transformNodePreorder(_root);
-      _root = transformNodePostorder(_root);
-      _root = fixRoot(_root, 0);
-    } catch (basics::Exception const& ex) {
-      if (ex.code() != TRI_ERROR_FAILED) {
-        // any exceptions except the one for a too complex query condition
-        // will simply be rethrown
-        throw;
-      }
-
-      // too complex query condition. now convert condition into
-      // OR -> AND -> NOOPT(orig), which is very simple and cheap.
-      // however, it will lead to the condition being unusable by
-      // indexes.
-      _root = createSimpleCondition(root);
-    }
+    _root = transformCondition(_root, ConditionOptimization::Auto);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     validateAst(_root, 0);
@@ -954,7 +941,7 @@ void Condition::collectOverlappingMembers(
       lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
-      clearAttributeAccess(result);
+      ::clearAttributeAccess(result);
 
       // only remove the condition if the index is exactly on the same attribute
       // as the condition
@@ -985,7 +972,7 @@ void Condition::collectOverlappingMembers(
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-        clearAttributeAccess(result);
+        ::clearAttributeAccess(result);
 
         if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable) {
@@ -1000,7 +987,7 @@ void Condition::collectOverlappingMembers(
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        clearAttributeAccess(result);
+        ::clearAttributeAccess(result);
 
         if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable) {
@@ -1100,8 +1087,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-  auto oldRoot = _root;
-  _root = _ast->shallowCopyForModify(oldRoot);
+  _root = _ast->shallowCopyForModify(_root);
   auto sg = scopeGuard([&]() noexcept { FINALIZE_SUBTREE(_root); });
 
   bool isEmpty = false;
@@ -1180,8 +1166,7 @@ void Condition::optimizeNonDnf() {
     return;
   }
 
-  auto oldRoot = _root;
-  _root = _ast->shallowCopyForModify(oldRoot);
+  _root = _ast->shallowCopyForModify(_root);
   auto sg = scopeGuard([&, this]() noexcept { FINALIZE_SUBTREE(_root); });
   // Sorting and deduplicating all IN/AND/OR nodes
   deduplicateComparisonsRecursive(_root);
@@ -1289,8 +1274,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-  auto oldRoot = _root;
-  _root = _ast->shallowCopyForModify(oldRoot);
+  _root = _ast->shallowCopyForModify(_root);
   auto sg = scopeGuard([&]() noexcept { FINALIZE_SUBTREE(_root); });
 
   std::pair<Variable const*, std::vector<basics::AttributeName>> varAccess;
@@ -1698,7 +1682,7 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-          clearAttributeAccess(result);
+          ::clearAttributeAccess(result);
 
           if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
               result.first == me.variable) {
@@ -1724,7 +1708,7 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             rhs->type == NODE_TYPE_EXPANSION) {
-          clearAttributeAccess(result);
+          ::clearAttributeAccess(result);
 
           if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
               result.first == me.variable) {
@@ -1762,8 +1746,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
   return false;
 }
 
-/// @brief deduplicate IN condition values (and sort them)
-/// this may modify the node in place
+/// @brief deduplicate IN condition values (and sort them).
+/// will return either the unmodified original node or a copy.
 AstNode* Condition::deduplicateInOperation(AstNode* operation) {
   TRI_ASSERT(operation->numMembers() == 2);
 
@@ -1775,11 +1759,10 @@ AstNode* Condition::deduplicateInOperation(AstNode* operation) {
   auto deduplicated = _ast->deduplicateArray(rhs);
   if (deduplicated != rhs) {
     // there were duplicates
-    auto newOperation = _ast->shallowCopyForModify(operation);
-    auto sg = scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newOperation); });
+    operation = _ast->shallowCopyForModify(operation);
+    auto sg = scopeGuard([&]() noexcept { FINALIZE_SUBTREE(operation); });
 
-    newOperation->changeMember(1, const_cast<AstNode*>(deduplicated));
-    return newOperation;
+    operation->changeMember(1, const_cast<AstNode*>(deduplicated));
   }
 
   return operation;
