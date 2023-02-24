@@ -121,7 +121,7 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
   }
 
   if (weightType != WeightType::NONE) {
-    // We need to handled two different cases here. In case no weight callback
+    // We need to handle two different cases here. In case no weight callback
     // has been set, we need to write the amount of edges here. In case a weight
     // callback is set, we need to set the calculated weight.
     if (weightType == WeightType::AMOUNT_EDGES) {
