@@ -219,16 +219,6 @@ void GraphStore<V, E>::loadShards(
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig* config,
-                                    std::string const& documentID) {
-  // figure out if we got this vertex locally
-  VertexID _id = config->documentIdToPregel(documentID);
-  if (config->isLocalVertexShard(_id.shard)) {
-    loadDocument(config, _id.shard, std::string_view(_id.key));
-  }
-}
-
-template<typename V, typename E>
 auto GraphStore<V, E>::loadVertices(
     ShardID const& vertexShard, std::vector<ShardID> const& edgeShards,
     std::function<void()> const& statusUpdateCallback)
