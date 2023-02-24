@@ -834,29 +834,49 @@ void Condition::normalize(
     return;
   }
 
-  _root = transformNodePreorder(_root, conditionOptimization);
-  _root = transformNodePostorder(_root, conditionOptimization);
-  _root = fixRoot(_root, 0);
-  if (conditionOptimization != ConditionOptimization::Auto) {
-    // DNF conversion is skipped. So condition tree could have arbitrary depth
-    // and standart optimization cold not be applied. Let`s do simpler version
-    optimizeNonDnf();
-  } else {
-    optimize(plan, multivalued);
-  }
+  if (_root != nullptr) {
+    // save original root node
+    AstNode* root = _root;
+    try {
+      _root = transformNodePreorder(_root, conditionOptimization);
+      _root = transformNodePostorder(_root, conditionOptimization);
+      _root = fixRoot(_root, 0);
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_FAILED ||
+          conditionOptimization != ConditionOptimization::Auto) {
+        // any exceptions except the one for a too complex query condition
+        // will simply be rethrown
+        throw;
+      }
+      // too complex query condition. now convert condition into
+      // OR -> AND -> NOOPT(orig), which is very simple and cheap.
+      // however, it will lead to the condition being unusable by
+      // indexes.
+      _root = createSimpleCondition(root);
+    }
+
+    if (conditionOptimization != ConditionOptimization::Auto) {
+      // DNF conversion is skipped. So condition tree could have arbitrary depth
+      // and standard optimization could not be applied. Let`s do simpler
+      // version
+      optimizeNonDnf();
+    } else {
+      optimize(plan, multivalued);
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr &&
-      conditionOptimization == ConditionOptimization::Auto) {
-    // _root->dump(0);
-    validateAst(_root, 0);
-  }
+    if (conditionOptimization == ConditionOptimization::Auto) {
+      validateAst(_root, 0);
+    }
 #endif
+
+    _isNormalized = true;
+  }
 }
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-/// in this case we don't re-run the optimizer. Its expected that you
+/// in this case we don't re-run the optimizer. It's expected that you
 /// don't want to remove eventually unneccessary filters.
 void Condition::normalize() {
   if (_isNormalized) {
@@ -864,15 +884,48 @@ void Condition::normalize() {
     return;
   }
 
-  _root = transformNodePreorder(_root);
-  _root = transformNodePostorder(_root);
-  _root = fixRoot(_root, 0);
+  if (_root != nullptr) {
+    // save original root node
+    AstNode* root = _root;
+    try {
+      _root = transformNodePreorder(_root);
+      _root = transformNodePostorder(_root);
+      _root = fixRoot(_root, 0);
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_FAILED) {
+        // any exceptions except the one for a too complex query condition
+        // will simply be rethrown
+        throw;
+      }
+
+      // too complex query condition. now convert condition into
+      // OR -> AND -> NOOPT(orig), which is very simple and cheap.
+      // however, it will lead to the condition being unusable by
+      // indexes.
+      _root = createSimpleCondition(root);
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
     validateAst(_root, 0);
-  }
 #endif
+
+    _isNormalized = true;
+  }
+}
+
+AstNode* Condition::createSimpleCondition(AstNode* node) const {
+  AstNode* arrayNode = _ast->createNode(NODE_TYPE_ARRAY);
+  arrayNode->addMember(node);
+
+  AstNode* fcallNode = _ast->createNodeFunctionCall("NOOPT", arrayNode, false);
+
+  AstNode* andNode = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
+  andNode->addMember(fcallNode);
+
+  AstNode* orNode = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
+  orNode->addMember(andNode);
+
+  return orNode;
 }
 
 void Condition::collectOverlappingMembers(
@@ -1099,16 +1152,16 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
 
 /// @brief recursively deduplicates and sorts members in  IN nodes in subtree
 /// also deduplicated AND/OR  nodes
-void Condition::deduplicateComparisonsRecursive(AstNode* p) {
-  size_t const numMembers = p->numMembers();
+void Condition::deduplicateComparisonsRecursive(AstNode* node) {
+  size_t const numMembers = node->numMembers();
   for (size_t j = 0; j < numMembers; ++j) {
-    auto op = p->getMemberUnchecked(j);
+    auto op = node->getMemberUnchecked(j);
     auto newNode = _ast->shallowCopyForModify(op);
-    p->changeMember(j, newNode);
+    node->changeMember(j, newNode);
     auto sg = scopeGuard([&]() noexcept { FINALIZE_SUBTREE(newNode); });
     if (newNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto deduplicated = deduplicateInOperation(newNode);
-      p->changeMember(j, deduplicated);
+      node->changeMember(j, deduplicated);
       continue;
     }
     deduplicateComparisonsRecursive(newNode);
@@ -1123,6 +1176,10 @@ void Condition::deduplicateComparisonsRecursive(AstNode* p) {
 
 /// @brief optimize the condition expression tree which is non-DnfConverted
 void Condition::optimizeNonDnf() {
+  if (_root == nullptr) {
+    return;
+  }
+
   auto oldRoot = _root;
   _root = _ast->shallowCopyForModify(oldRoot);
   auto sg = scopeGuard([&, this]() noexcept { FINALIZE_SUBTREE(_root); });
@@ -1584,9 +1641,7 @@ void Condition::storeAttributeAccess(
 /// @brief validate the condition's AST
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Condition::validateAst(AstNode const* node, int level) {
-  if (level == 0) {
-    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
-  }
+  TRI_ASSERT(level != 0 || node->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   size_t const n = node->numMembers();
 
@@ -1934,6 +1989,17 @@ AstNode* Condition::transformNodePostorder(
         orMembers *= subMembers;
       }
       TRI_ASSERT(clauses.size() == n);
+
+      // check if there would be too many members in the DNF version of
+      // the condition. we may suffer from combinatorial explosion here.
+      if (orMembers >= maxNumberOfConditionMembers) {
+        // throw a special error about a too complex query condition.
+        // this will be handled by the callers, so that they will continue
+        // with a simplified version of the condition (which may not be
+        // usable in indexes).
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                       "too complex query condition");
+      }
 
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
       _ast->resources().reserveChildNodes(newOperator, orMembers);

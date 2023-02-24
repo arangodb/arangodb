@@ -106,12 +106,6 @@ struct ConditionPart {
 };
 
 class Condition {
- private:
-  typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
-  typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
-  typedef std::unordered_map<Variable const*, AttributeUsageType>
-      VariableUsageType;
-
  public:
   Condition(Condition const&) = delete;
   Condition& operator=(Condition const&) = delete;
@@ -123,7 +117,6 @@ class Condition {
   /// @brief destroy the condition
   ~Condition();
 
- public:
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan,
                                         Variable const* variable,
@@ -201,7 +194,14 @@ class Condition {
   containers::HashSet<std::vector<basics::AttributeName>> getNonNullAttributes(
       Variable const*) const;
 
+  static constexpr size_t maxNumberOfConditionMembers = 1048576U;
+
  private:
+  typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
+  typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
+  typedef std::unordered_map<Variable const*, AttributeUsageType>
+      VariableUsageType;
+
   /// @brief internal worker function for removeIndexCondition and
   /// removeTraversalCondition
   AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
@@ -221,6 +221,12 @@ class Condition {
   /// @brief recursively deduplicates and sorts members in  IN/AND/OR nodes in
   /// subtree
   void deduplicateComparisonsRecursive(AstNode* p);
+
+  /// @brief convert node into format
+  /// OR -> AND -> NOOPT([node])
+  /// this is very simple and cheap, however, it will lead to the condition
+  /// being unusable by indexes.
+  AstNode* createSimpleCondition(AstNode* node) const;
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable
@@ -265,7 +271,6 @@ class Condition {
   /// remove all NOP nodes.
   AstNode* fixRoot(AstNode*, int);
 
- private:
   /// @brief the AST, used for memory management
   Ast* _ast;
 
