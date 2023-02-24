@@ -22,5 +22,6 @@ target_include_directories(arango_pregel PRIVATE
 add_subdirectory(Actor)
 add_subdirectory(Algos)
 add_subdirectory(Conductor)
+add_subdirectory(GraphStore)
 add_subdirectory(REST)
 add_subdirectory(Worker)

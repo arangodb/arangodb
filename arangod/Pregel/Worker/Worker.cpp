@@ -35,7 +35,7 @@
 #include "Network/NetworkFeature.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/IncomingCache.h"
