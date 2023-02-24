@@ -24,33 +24,47 @@
 
 #include <memory>
 
+#include <thread>
+#include <vector>
+
 #include <boost/asio/io_service.hpp>
 
-#undef sleep
-#include <boost/thread/thread.hpp>
+#include "Basics/asio_ns.h"
 
 #include "MockScheduler.h"
 
 using namespace arangodb::cache;
 
+struct MockScheduler::Impl {
+  explicit Impl(std::size_t threads)
+      : _ioService(new asio_ns::io_context()),
+        _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
+    for (std::size_t i = 0; i < threads; i++) {
+      auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
+                                  &asio_ns::io_context::run),
+                              _ioService.get());
+      _group.emplace_back(new std::thread(worker));
+    }
+  }
+  ~Impl() {
+    _serviceGuard.reset();
+    for (auto g : _group) {
+      g->join();
+      delete g;
+    }
+    _ioService->stop();
+  }
+  typedef std::unique_ptr<asio_ns::io_context::work> asio_worker;
+  std::unique_ptr<asio_ns::io_context> _ioService;
+  std::unique_ptr<asio_ns::io_context::work> _serviceGuard;
+  std::vector<std::thread*> _group;
+};
+
 MockScheduler::MockScheduler(std::size_t threads)
-    : _ioService(new asio_ns::io_context()),
-      _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
-  for (std::size_t i = 0; i < threads; i++) {
-    auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
-                                &asio_ns::io_context::run),
-                            _ioService.get());
-    _group.emplace_back(new std::thread(worker));
-  }
-}
+    : _impl(std::make_unique<Impl>(threads)) {}
 
-MockScheduler::~MockScheduler() {
-  _serviceGuard.reset();
-  for (auto g : _group) {
-    g->join();
-    delete g;
-  }
-  _ioService->stop();
-}
+MockScheduler::~MockScheduler() = default;
 
-void MockScheduler::post(std::function<void()> fn) { _ioService->post(fn); }
+void MockScheduler::post(std::function<void()> fn) {
+  _impl->_ioService->post(fn);
+}
