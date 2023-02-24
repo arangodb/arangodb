@@ -332,40 +332,20 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<SingleServer>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     KShortestPathsEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     TracedKShortestPathsEnumerator<SingleServer>>;
-
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedKShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedWeightedKShortestPathsEnumerator<SingleServer>>;
-
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     KPathEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//    TracedKPathEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<SingleServer>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     KShortestPathsEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     TracedKShortestPathsEnumerator<SingleServer>>;
-
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedKShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedWeightedKShortestPathsEnumerator<SingleServer>>;
-
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//    KPathEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//    TracedKPathEnumerator<SingleServer>>;
 
 /* ClusterProvider Section */
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
@@ -373,39 +353,19 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//   KShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     TracedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedWeightedKShortestPathsEnumerator<
         ClusterProvider<ClusterProviderStep>>>;
-
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     KShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     TracedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedWeightedKShortestPathsEnumerator<
         ClusterProvider<ClusterProviderStep>>>;
-
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
