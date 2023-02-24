@@ -29,6 +29,7 @@
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
+#include "Graph/EdgeDocumentToken.h"
 
 #include <Aql/TraversalStats.h>
 #include <velocypack/Slice.h>
