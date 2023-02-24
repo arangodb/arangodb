@@ -59,7 +59,9 @@ struct DocumentFollowerState
  private:
   auto forceLocalTransaction(ShardID shardId, OperationType opType,
                              velocypack::SharedSlice slice) -> Result;
-  auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
+  auto populateLocalShard(
+      ShardID shardId, velocypack::SharedSlice slice,
+      std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler)
       -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
@@ -83,7 +85,6 @@ struct DocumentFollowerState
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;
 };

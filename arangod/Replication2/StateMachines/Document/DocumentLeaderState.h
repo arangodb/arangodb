@@ -56,7 +56,7 @@ struct DocumentLeaderState
       -> futures::Future<LogIndex>;
 
   auto createShard(ShardID shard, CollectionID collectionId,
-                   velocypack::SharedSlice properties)
+                   std::shared_ptr<VPackBuilder> properties)
       -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;

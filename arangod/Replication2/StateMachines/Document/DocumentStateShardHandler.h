@@ -39,14 +39,12 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
   virtual auto ensureShard(ShardID shard, CollectionID collection,
-                           velocypack::SharedSlice properties)
-      -> ResultT<bool> = 0;
-  virtual auto ensureShard(ShardID shard, CollectionID collection,
                            std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> = 0;
   virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
   virtual auto dropAllShards() -> Result = 0;
   virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
+  virtual auto getShardMap() -> ShardMap const = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
@@ -54,14 +52,12 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
                                      MaintenanceFeature& maintenanceFeature);
   auto ensureShard(ShardID shard, CollectionID collection,
-                   velocypack::SharedSlice properties)
-      -> ResultT<bool> override;
-  auto ensureShard(ShardID shard, CollectionID collection,
                    std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> override;
   auto dropShard(ShardID const& shard) -> ResultT<bool> override;
   auto dropAllShards() -> Result override;
   auto isShardAvailable(ShardID const& shardId) -> bool override;
+  auto getShardMap() -> ShardMap const override;
 
  private:
   auto executeCreateCollectionAction(ShardID shard, CollectionID collection,

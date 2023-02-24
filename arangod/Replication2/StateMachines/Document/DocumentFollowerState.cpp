@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
@@ -40,8 +41,6 @@ DocumentFollowerState::DocumentFollowerState(
     : loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
-      _transactionHandler(handlersFactory->createTransactionHandler(
-          core->getVocbase(), core->getGid())),
       _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
@@ -66,10 +65,12 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         }
 
         auto count = ++data.currentSnapshotVersion;
+        auto shardHandler = data.core->getShardHandler();
 
         // Drop all shards, as we're going to recreate them with the first
         // transfer
-        if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
+        if (auto dropAllRes = shardHandler->dropAllShards();
+            dropAllRes.fail()) {
           return dropAllRes;
         }
         return count;
@@ -99,6 +100,7 @@ auto DocumentFollowerState::applyEntries(
 
     return basics::catchToResultT([&]() -> std::optional<LogIndex> {
       std::optional<LogIndex> releaseIndex;
+      auto transactionHandler = data.core->getTransactionHandler();
 
       while (auto entry = ptr->next()) {
         auto doc = entry->second;
@@ -106,24 +108,23 @@ auto DocumentFollowerState::applyEntries(
         auto res = std::visit(
             [&](auto& op) -> Result {
               using T = std::decay_t<decltype(op)>;
-              if constexpr (std::is_same_v<T, ReplicatedOperation::Truncate> ||
-                            std::is_same_v<T, ReplicatedOperation::Insert> ||
-                            std::is_same_v<T, ReplicatedOperation::Update> ||
-                            std::is_same_v<T, ReplicatedOperation::Replace> ||
-                            std::is_same_v<T, ReplicatedOperation::Remove>) {
-                // Even though a shard was dropped before acquiring the
-                // snapshot, we could still see transactions referring to that
-                // shard.
-                if (!data.core->isShardAvailable(op.shard)) {
+              if constexpr (ModifiesUserTransaction<T>) {
+                if (auto res = transactionHandler->validate(doc.operation);
+                    res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  //  Even though a shard was dropped before acquiring the
+                  //  snapshot, we could still see transactions referring to
+                  //  that shard.
                   LOG_CTX("e1edb", INFO, self->loggerContext)
                       << "will not apply transaction " << op.tid
                       << " for shard " << op.shard
                       << " because it is not available";
                   return {};
+                } else if (res.fail()) {
+                  return res;
                 }
 
                 self->_activeTransactions.emplace(op.tid, entry->first);
-                return self->_transactionHandler->applyEntry(doc);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::Commit> ||
                                    std::is_same_v<T,
@@ -131,24 +132,22 @@ auto DocumentFollowerState::applyEntries(
                 self->_activeTransactions.erase(op.tid);
                 releaseIndex =
                     self->_activeTransactions.getReleaseIndex(entry->first);
-                return self->_transactionHandler->applyEntry(doc);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          IntermediateCommit>) {
-                return self->_transactionHandler->applyEntry(doc);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          AbortAllOngoingTrx>) {
                 self->_activeTransactions.clear();
                 releaseIndex =
                     self->_activeTransactions.getReleaseIndex(entry->first);
-                return self->_transactionHandler->applyEntry(doc);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::CreateShard>) {
-                return data.core->ensureShard(op.shard, op.collection,
-                                              op.properties);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::DropShard>) {
-                self->_transactionHandler->abortTransactionsForShard(op.shard);
-                return data.core->dropShard(op.shard, op.collection);
+                return transactionHandler->applyEntry(doc.operation);
               } else {
                 return Result{
                     TRI_ERROR_INTERNAL,
@@ -186,20 +185,20 @@ auto DocumentFollowerState::applyEntries(
   return {TRI_ERROR_NO_ERROR};
 }
 
-auto DocumentFollowerState::populateLocalShard(ShardID shardId,
-                                               velocypack::SharedSlice slice)
+auto DocumentFollowerState::populateLocalShard(
+    ShardID shardId, velocypack::SharedSlice slice,
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler)
     -> Result {
   auto tid = TransactionId::createFollower();
-  auto doc = DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
+  auto op = ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
-      std::move(slice))};
-  if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(tid);
+      std::move(slice));
+  if (auto applyRes = transactionHandler->applyEntry(op); applyRes.fail()) {
+    transactionHandler->removeTransaction(tid);
     return applyRes;
   }
-  auto commit =
-      DocumentLogEntry{ReplicatedOperation::buildCommitOperation(tid)};
-  return _transactionHandler->applyEntry(commit);
+  auto commit = ReplicatedOperation::buildCommitOperation(tid);
+  return transactionHandler->applyEntry(commit);
 }
 
 auto DocumentFollowerState::handleSnapshotTransfer(
@@ -248,10 +247,11 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                 "Snapshot transfer cancelled because a new one was started!"};
           }
 
+          auto transactionHandler = data.core->getTransactionHandler();
           for (auto const& [shardId, properties] : shards) {
-            auto res =
-                data.core->ensureShard(shardId, properties.collectionId,
-                                       properties.properties->sharedSlice());
+            auto res = transactionHandler->applyEntry(
+                ReplicatedOperation::buildCreateShardOperation(
+                    shardId, properties.collection, properties.properties));
             if (res.fail()) {
               LOG_CTX("bd17c", ERR, self->loggerContext)
                   << "Failed to ensure shard " << shardId << " " << res;
@@ -326,7 +326,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   TRI_ERROR_INTERNAL,
                   "Snapshot transfer cancelled because a new one was started!"};
             }
-            return self->populateLocalShard(*snapshotRes->shardId, docs);
+            return self->populateLocalShard(*snapshotRes->shardId, docs,
+                                            data.core->getTransactionHandler());
           });
           if (insertRes.fail()) {
             LOG_CTX("d8b8a", ERR, self->loggerContext)

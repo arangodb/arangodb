@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
 #include "Transaction/Options.h"
 #include "Utils/DatabaseGuard.h"
@@ -45,24 +47,31 @@ struct IDocumentStateTransactionHandler {
                          std::shared_ptr<IDocumentStateTransaction>>;
 
   virtual ~IDocumentStateTransactionHandler() = default;
-  virtual auto applyEntry(DocumentLogEntry doc) -> Result = 0;
+  [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation)
+      -> Result = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
   virtual void abortTransactionsForShard(ShardID const&) = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
+  [[nodiscard]] virtual auto validate(ReplicatedOperation operation) const
+      -> Result = 0;
 };
 
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  DocumentStateTransactionHandler(
+  explicit DocumentStateTransactionHandler(
       GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
-      std::shared_ptr<IDocumentStateHandlersFactory> factory);
-  auto applyEntry(DocumentLogEntry doc) -> Result override;
+      std::shared_ptr<IDocumentStateHandlersFactory> factory,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+  [[nodiscard]] auto applyEntry(ReplicatedOperation operation)
+      -> Result override;
   void removeTransaction(TransactionId tid) override;
   void abortTransactionsForShard(ShardID const&) override;
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
+  [[nodiscard]] auto validate(ReplicatedOperation operation) const
+      -> Result override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
@@ -72,7 +81,9 @@ class DocumentStateTransactionHandler
  private:
   GlobalLogIdentifier _gid;
   TRI_vocbase_t* _vocbase;
+  LoggerContext _logContext;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
+  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   TransactionMap _transactions;
 };
 

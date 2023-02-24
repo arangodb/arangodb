@@ -53,21 +53,10 @@ auto DocumentStateShardHandler::ensureShard(
   _shardMap.shards.emplace(
       std::move(shard),
       ShardProperties{std::move(collection), std::move(properties)});
-  lock.release();
+  lock.unlock();
 
   _maintenanceFeature.addDirty(_gid.database);
   return true;
-}
-
-auto DocumentStateShardHandler::ensureShard(ShardID shard,
-                                            CollectionID collection,
-                                            velocypack::SharedSlice properties)
-    -> ResultT<bool> {
-  // TODO remove this unnecessary copy when api is better
-  auto propertiesCopy = std::make_shared<VPackBuilder>();
-  propertiesCopy->add(properties.slice());
-  return ensureShard(std::move(shard), std::move(collection),
-                     std::move(propertiesCopy));
 }
 
 auto DocumentStateShardHandler::dropShard(ShardID const& shard)
@@ -83,7 +72,7 @@ auto DocumentStateShardHandler::dropShard(ShardID const& shard)
     return res;
   }
   _shardMap.shards.erase(shard);
-  lock.release();
+  lock.unlock();
 
   _maintenanceFeature.addDirty(_gid.database);
   return true;
@@ -141,13 +130,18 @@ auto DocumentStateShardHandler::executeDropCollectionAction(
           {maintenance::THE_LEADER, "replication2"},
       },
       maintenance::HIGHER_PRIORITY, false);
-  maintenance::DropCollection collectionDropper(_maintenanceFeature,
-                                                actionDescription);
-  bool work = collectionDropper.first();
+  maintenance::DropCollection dropCollectionAction(_maintenanceFeature,
+                                                   actionDescription);
+  bool work = dropCollectionAction.first();
   if (work) {
     return {TRI_ERROR_INTERNAL};
   }
   return {};
+}
+
+auto DocumentStateShardHandler::getShardMap() -> ShardMap const {
+  std::shared_lock lock(_shardMap.mutex);
+  return _shardMap.shards;
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

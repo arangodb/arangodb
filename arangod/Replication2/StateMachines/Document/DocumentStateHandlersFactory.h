@@ -69,8 +69,9 @@ struct IDocumentStateHandlersFactory {
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                                      GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
-  virtual auto createTransactionHandler(TRI_vocbase_t& vocbase,
-                                        GlobalLogIdentifier gid)
+  virtual auto createTransactionHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                                  ShardID const& shard,
@@ -91,7 +92,9 @@ class DocumentStateHandlersFactory
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                              GlobalLogIdentifier const& gid)
       -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
-  auto createTransactionHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+  auto createTransactionHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                          ShardID const& shard, AccessMode::Type accessType)

@@ -275,10 +275,7 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
     if (leaderState != nullptr) {
       // It is necessary to block here to prevent creation of an additional
       // action while we are waiting for the shard to be created.
-      leaderState
-          ->createShard(
-              shard, collection,
-              velocypack::SharedSlice(_description.properties()->bufferRef()))
+      leaderState->createShard(shard, collection, _description.properties())
           .get();
     } else {
       // TODO prevent busy loop and wait for log to become ready.

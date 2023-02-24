@@ -55,10 +55,11 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid), &vocbase, shared_from_this());
+      gid, &vocbase, shared_from_this(), std::move(shardHandler));
 }
 
 auto DocumentStateHandlersFactory::createTransaction(

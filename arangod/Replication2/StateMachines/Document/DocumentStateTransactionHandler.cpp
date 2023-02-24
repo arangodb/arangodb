@@ -85,8 +85,15 @@ namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
-    std::shared_ptr<IDocumentStateHandlersFactory> factory)
-    : _gid(std::move(gid)), _vocbase(vocbase), _factory(std::move(factory)) {
+    std::shared_ptr<IDocumentStateHandlersFactory> factory,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+    : _gid(std::move(gid)),
+      _vocbase(vocbase),
+      _logContext(LoggerContext(Logger::REPLICATED_STATE)
+                      .with<logContextKeyDatabaseName>(_gid.database)
+                      .with<logContextKeyLogId>(_gid.id)),
+      _factory(std::move(factory)),
+      _shardHandler(std::move(shardHandler)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_vocbase != nullptr);
 #endif
@@ -107,10 +114,10 @@ void DocumentStateTransactionHandler::setTrx(
   TRI_ASSERT(isInserted) << "Transaction " << tid << " already exists";
 }
 
-auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc) -> Result
-    try {
+auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
+    -> Result try {
   return std::visit(
-      [this, &doc](auto&& op) -> Result {
+      [this, &operation](auto&& op) -> Result {
         using T = std::decay_t<decltype(op)>;
         if constexpr (UserTransaction<T>) {
           TRI_ASSERT(op.tid.isFollowerTransactionId());
@@ -148,19 +155,16 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc) -> Result
                                                 accessType);
               setTrx(op.tid, trx);
             }
-            auto opRes = trx->apply(doc.operation);
+            auto opRes = trx->apply(operation);
             auto res = opRes.fail()
                            ? opRes.result
                            : makeResultFromOperationResult(opRes, op.tid);
             if (res.fail() && shouldIgnoreError(opRes)) {
-              LoggerContext logContext =
-                  LoggerContext(Logger::REPLICATED_STATE)
-                      .with<logContextKeyDatabaseName>(_gid.database)
-                      .with<logContextKeyLogId>(_gid.id);
-
-              LOG_CTX("0da00", INFO, logContext)
-                  << "Result ignored while applying operation " << doc.operation
-                  << ": " << res;
+              LOG_CTX("0da00", INFO, _logContext)
+                  << "Result " << res << " ignored while applying transaction "
+                  << op.tid;
+              LOG_CTX("7eecc", DEBUG, _logContext)
+                  << "Operation failure ignored for: " << operation;
               res = Result{};
             }
             return res;
@@ -173,24 +177,28 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc) -> Result
                                  T, ReplicatedOperation::AbortAllOngoingTrx>) {
           _transactions.clear();
           return Result{};
+        } else if constexpr (std::is_same_v<T,
+                                            ReplicatedOperation::CreateShard>) {
+          // TODO log something when the shard already exists
+          return _shardHandler
+              ->ensureShard(op.shard, op.collection, op.properties)
+              .result();
+        } else if constexpr (std::is_same_v<T,
+                                            ReplicatedOperation::DropShard>) {
+          abortTransactionsForShard(op.shard);
+          return _shardHandler->dropShard(op.shard).result();
         } else {
-          /*
           static_assert(always_false_v<T>,
                         "Unhandled operation type. This should never happen.");
-                        */
-          // There are the shard operations, which are not handled here.
-          TRI_ASSERT(false) << "Unhandled operation type. This should never "
-                               "happen.";
-          return Result{TRI_ERROR_INTERNAL};
         }
       },
-      doc.getInnerOperation());
+      operation.operation);
 } catch (basics::Exception& e) {
   return Result{e.code(), e.message()};
 } catch (std::exception& e) {
   return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
 } catch (...) {
-  ADB_PROD_ASSERT(false) << doc;
+  ADB_PROD_ASSERT(false) << operation;
   return Result{TRI_ERROR_TRANSACTION_INTERNAL};
 }
 
@@ -216,6 +224,19 @@ void DocumentStateTransactionHandler::abortTransactionsForShard(
       ++it;
     }
   }
+}
+
+[[nodiscard]] auto DocumentStateTransactionHandler::validate(
+    ReplicatedOperation operation) const -> Result {
+  return std::visit(
+      overload{[this](ModifiesUserTransaction auto&& op) {
+                 if (!_shardHandler->isShardAvailable(op.shard)) {
+                   return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+                 }
+                 return Result{};
+               },
+               [](auto&&) { return Result{}; }},
+      operation.operation);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -28,6 +28,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
@@ -99,8 +100,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
     }
 
-    auto transactionHandler = self->_handlersFactory->createTransactionHandler(
-        data.core->getVocbase(), self->gid);
+    auto transactionHandler = data.core->getTransactionHandler();
     ADB_PROD_ASSERT(transactionHandler != nullptr);
 
     while (auto entry = ptr->next()) {
@@ -110,30 +110,31 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           [&](auto& op) -> Result {
             using T = std::decay_t<decltype(op)>;
             if constexpr (ModifiesUserTransaction<T>) {
-              // Note that the shard could've been dropped before doing
-              // recovery.
-              if (!data.core->isShardAvailable(op.shard)) {
-                LOG_CTX("bee57", INFO, self->loggerContext)
+              if (auto res = transactionHandler->validate(doc.operation);
+                  res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                // Note that the shard could've been dropped before doing
+                // recovery.
+                LOG_CTX("e1edb", INFO, self->loggerContext)
                     << "will not apply transaction " << op.tid << " for shard "
                     << op.shard << " because it is not available";
                 return {};
+              } else if (res.fail()) {
+                return res;
               }
 
-              return transactionHandler->applyEntry(doc);
+              return transactionHandler->applyEntry(doc.operation);
             } else if constexpr (
                 std::is_same_v<T, ReplicatedOperation::Commit> ||
                 std::is_same_v<T, ReplicatedOperation::Abort> ||
                 std::is_same_v<T, ReplicatedOperation::IntermediateCommit> ||
                 std::is_same_v<T, ReplicatedOperation::AbortAllOngoingTrx>) {
-              return transactionHandler->applyEntry(doc);
+              return transactionHandler->applyEntry(doc.operation);
             } else if constexpr (std::is_same_v<
                                      T, ReplicatedOperation::CreateShard>) {
-              return data.core->ensureShard(op.shard, op.collection,
-                                            op.properties);
+              return transactionHandler->applyEntry(doc.operation);
             } else if constexpr (std::is_same_v<
                                      T, ReplicatedOperation::DropShard>) {
-              transactionHandler->abortTransactionsForShard(op.shard);
-              return data.core->dropShard(op.shard, op.collection);
+              return transactionHandler->applyEntry(doc.operation);
             } else {
               return Result{
                   TRI_ERROR_INTERNAL,
@@ -267,12 +268,12 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
 
 auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
     -> ResultT<SnapshotConfig> {
-  auto const& shardMap = _guardedData.doUnderLock([&](auto& data) {
+  auto shardMap = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
-    return data.core->getShardMap();
+    return data.core->getShardHandler()->getShardMap();
   });
 
   return executeSnapshotOperation<ResultT<SnapshotConfig>>(
@@ -316,7 +317,7 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
 }
 
 auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
-                                      velocypack::SharedSlice properties)
+                                      std::shared_ptr<VPackBuilder> properties)
     -> futures::Future<Result> {
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -344,8 +345,11 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
           if (data.didResign()) {
             return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
           }
-          return data.core->createShard(
-              std::move(shard), std::move(collectionId), std::move(properties));
+          auto transactionHandler = data.core->getTransactionHandler();
+          return transactionHandler->applyEntry(
+              ReplicatedOperation::buildCreateShardOperation(
+                  std::move(shard), std::move(collectionId),
+                  std::move(properties)));
         });
       });
 }
@@ -359,7 +363,7 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     }
 
     ReplicatedOperation op =
-        ReplicatedOperation::buildDropShardOperation(collectionId, shard);
+        ReplicatedOperation::buildDropShardOperation(shard, collectionId);
     auto entry = DocumentLogEntry{op};
 
     // TODO actually we have to block this log entry from release until the
@@ -380,8 +384,10 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
           //   very invasive and aborts all snapshot transfers. Maybe there is
           //   a better solution?
           self->_snapshotHandler.getLockedGuard().get()->clear();
-          auto result =
-              data.core->dropShard(std::move(shard), std::move(collectionId));
+          auto transactionHandler = data.core->getTransactionHandler();
+          auto result = transactionHandler->applyEntry(
+              ReplicatedOperation::buildDropShardOperation(
+                  std::move(shard), std::move(collectionId)));
           return result;
         });
       });

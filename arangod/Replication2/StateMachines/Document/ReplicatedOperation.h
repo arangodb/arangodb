@@ -29,8 +29,6 @@
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-#include <velocypack/SharedSlice.h>
-
 #include <variant>
 
 namespace arangodb::replication2::replicated_state::document {
@@ -109,7 +107,7 @@ struct ReplicatedOperation {
   struct CreateShard {
     ShardID shard;
     CollectionID collection;
-    velocypack::SharedSlice properties;
+    std::shared_ptr<VPackBuilder> properties;
 
     template<class Inspector>
     friend auto inspect(Inspector& f, CreateShard& x) {
@@ -176,10 +174,10 @@ struct ReplicatedOperation {
   static auto buildTruncateOperation(TransactionId tid, ShardID shard) noexcept
       -> ReplicatedOperation;
   static auto buildCreateShardOperation(
-      CollectionID collection, ShardID shard,
-      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
-  static auto buildDropShardOperation(CollectionID collection,
-                                      ShardID shard) noexcept
+      ShardID shard, CollectionID collection,
+      std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
+  static auto buildDropShardOperation(ShardID shard,
+                                      CollectionID collection) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
@@ -226,6 +224,10 @@ template<class T>
 concept UserTransaction =
     ModifiesUserTransaction<T> || FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
+
+template<class T>
+concept ShardOperation = std::is_same_v<T, ReplicatedOperation::CreateShard> ||
+                         std::is_same_v<T, ReplicatedOperation::DropShard>;
 
 template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
