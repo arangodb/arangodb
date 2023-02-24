@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/DownCast.h"
 #include "Basics/GlobalResourceMonitor.h"
