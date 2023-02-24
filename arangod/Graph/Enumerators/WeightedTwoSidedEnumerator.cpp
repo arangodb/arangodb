@@ -521,15 +521,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       }
 #endif
 
-      auto const& [weight, first, second] = _results.front();
-      auto const& leftVertex = first;
-      auto const& rightVertex = second;
+      auto const& [weight, leftVertex, rightVertex] = _results.front();
 
-      // Performance Optimization:
-      // It seems to be pointless to first push
-      // everything in to the _resultPath object
-      // and then iterate again to return the path
-      // we should be able to return the path in the first go.
       _resultPath.clear();
       _left.buildPath(leftVertex, _resultPath);
       _right.buildPath(rightVertex, _resultPath);
@@ -552,15 +545,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   };
 
   auto handleCandidate = [&](CalculatedCandidate&& candidate) {
-    auto const& [weight, first, second] = candidate;
-    auto const& leftVertex = first;
-    auto const& rightVertex = second;
+    auto const& [weight, leftVertex, rightVertex] = candidate;
 
-    // Performance Optimization:
-    // It seems to be pointless to first push
-    // everything in to the _resultPath object
-    // and then iterate again to return the path
-    // we should be able to return the path in the first go.
     _resultPath.clear();
     _left.buildPath(leftVertex, _resultPath);
     _right.buildPath(rightVertex, _resultPath);
