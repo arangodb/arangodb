@@ -70,9 +70,8 @@ network::Headers buildHeaders(
 bool isOutdated(
     GeneralRequest const& oldData,
     std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
-  if (!data || !data->packed) {
-    return false;
-  }
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data->packed != nullptr);
   velocypack::Slice newData{data->packed->data()};
   auto const& oldVersion = oldData.value("MetricsVersion");
   TRI_ASSERT(!oldVersion.empty());

@@ -39,10 +39,26 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
+#include <velocypack/Iterator.h>
+
 namespace arangodb::metrics {
 
+static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
+  auto data = std::make_shared<ClusterMetricsFeature::Data>();
+  velocypack::Builder builder;
+  builder.openObject();
+  // We use "0" instead of "" because we cannot parse empty string parameter
+  builder.add("ServerId", VPackValue{"0"});
+  builder.add("RebootId", VPackValue{0});
+  builder.add("Version", VPackValue{0});
+  builder.add("Data", VPackSlice::emptyArraySlice());
+  builder.close();
+  data->packed = builder.buffer();
+  return data;
+}
+
 ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this}, _data{createEmptyData()} {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
@@ -175,10 +191,8 @@ void ClusterMetricsFeature::update() {
   auto& ci = cf.clusterInfo();
   auto leader = std::move(ci.getMetricsState(true).leader);
   auto data = getData();
-  bool const isData = data && data->packed;
-  auto const oldData =
-      isData ? VPackSlice{data->packed->data()} : VPackSlice::noneSlice();
-  auto version = isData ? oldData.get("Version").getNumber<uint64_t>() : 0;
+  auto const oldData = VPackSlice{data->packed->data()};
+  auto version = oldData.get("Version").getNumber<uint64_t>();
   if (wasStop()) {
     return;
   }
@@ -201,9 +215,8 @@ void ClusterMetricsFeature::update() {
   if (leader->empty()) {
     return repeatUpdate(100);  // invalid leader, immediately retry
   }
-  auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
-  // We use `"0"` instead of `""` because we cannot parse empty string parameter
-  auto serverId = isData ? oldData.get("ServerId").copyString() : "0";
+  auto rebootId = oldData.get("RebootId").getNumber<uint64_t>();
+  auto serverId = oldData.get("ServerId").copyString();
   data.reset();
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
@@ -342,18 +355,24 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
 
 std::shared_ptr<ClusterMetricsFeature::Data> ClusterMetricsFeature::getData()
     const {
-  return std::atomic_load_explicit(&_data, std::memory_order_acquire);
+  auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data->packed != nullptr);
+  return data;
 }
 
 std::shared_ptr<ClusterMetricsFeature::Data>
 ClusterMetricsFeature::Data::fromVPack(VPackSlice slice) {
-  auto const metrics = slice.get("Data");
-  auto const size = metrics.length();
+  VPackArrayIterator metrics{slice.get("Data")};
+  auto const size = metrics.size();
   auto data = std::make_shared<Data>();
   for (size_t i = 0; i < size; i += 3) {
-    auto name = metrics.at(i).stringView();
-    auto labels = metrics.at(i + 1).stringView();
-    auto value = metrics.at(i + 2).getNumber<uint64_t>();
+    auto name = (*metrics).stringView();
+    metrics.next();
+    auto labels = (*metrics).stringView();
+    metrics.next();
+    auto value = (*metrics).getNumber<uint64_t>();
+    metrics.next();
     data->metrics.values.emplace(
         MetricKey<std::string>{std::string{name}, std::string{labels}},
         MetricValue{value});

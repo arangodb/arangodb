@@ -165,7 +165,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
   bool wasStop() const noexcept;
 
   // We don't want to update constantly empty data
-  bool _prevEmpty{false};
+  bool _prevEmpty{true};
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;
