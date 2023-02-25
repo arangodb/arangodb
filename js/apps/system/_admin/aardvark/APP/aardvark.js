@@ -1333,7 +1333,12 @@ authRouter.get('/visgraph/:name', function (req, res) {
         sizeCategory: sizeCategory || '',
         shape: "dot",
         //shape: "circle",
-        color: calculatedNodeColor
+        color: calculatedNodeColor,
+        font: {
+          strokeWidth: 2,
+          strokeColor: '#ffffff',
+          vadjust: -7
+        }
         /*
         style: {
           fill: calculatedNodeColor,
@@ -1427,10 +1432,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
             source: edge._from,
             from: edge._from,
             label: edgeLabel,
-            font: { align: 'top' },
             target: edge._to,
             to: edge._to,
             color: calculatedEdgeColor,
+            font: {
+              strokeWidth: 2,
+              strokeColor: '#ffffff',
+              align: 'top'
+            },
             length: 500,
             ...edgestyle
           };
@@ -1532,11 +1541,15 @@ authRouter.get('/visgraph/:name', function (req, res) {
       hideEdgesOnDrag: false,
       hideNodesOnDrag: false,
       hover: true,
-      hoverConnectedEdges: true,
+      hoverConnectedEdges: false,
       keyboard: {
         enabled: false,
-        speed: {x: 10, y: 10, zoom: 0.02},
-        bindToWindow: true
+        speed: {
+          x: 3,
+          y: 3,
+          zoom: 0.02
+        },
+        bindToWindow: false
       },
       multiselect: false,
       navigationButtons: true,
@@ -1551,6 +1564,9 @@ authRouter.get('/visgraph/:name', function (req, res) {
       interaction: interactionOptions,
       layout: {
           hierarchical: false
+      },
+      edges: {
+        smooth: false
       },
       physics: {
           barnesHut: {
@@ -1568,9 +1584,12 @@ authRouter.get('/visgraph/:name', function (req, res) {
         layout: {
           hierarchical: {
             levelSeparation: 150,
-            nodeSpacing: 150,
+            nodeSpacing: 300,
             direction: "UD"
           },
+        },
+        edges: {
+          smooth: false
         },
         physics: {
           barnesHut: {
@@ -1587,12 +1606,15 @@ authRouter.get('/visgraph/:name', function (req, res) {
           layout: {
               hierarchical: false
           },
-          "physics": {
-              "forceAtlas2Based": {
-                  "springLength": 100
+          edges: {
+            smooth: false
+          },
+          physics: {
+              forceAtlas2Based: {
+                  springLength: 100
               },
-              "minVelocity": 0.75,
-              "solver": "forceAtlas2Based"
+              minVelocity: 0.75,
+              solver: "forceAtlas2Based"
           }
       };
 
