@@ -26,13 +26,14 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		position: absolute;
 		left: ${(props) => props.left};
 		top: ${(props) => props.top};
-		width: 100px;
+		width: auto;
 		background: #eeeeee;
 		height: auto;
 		z-index: 99999;
-		&:hover {
-			background: red;
-		}
+		padding: 12px;
+		box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
+		-webkit-box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
+		-moz-box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
 	`;
 
 	useEffect(() => {
