@@ -335,6 +335,7 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeight;
   static std::string const GraphQueryWeights;
   static std::string const GraphQueryOrder;
   static std::string const GraphQueryOrderBFS;
