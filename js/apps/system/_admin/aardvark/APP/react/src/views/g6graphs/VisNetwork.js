@@ -146,6 +146,8 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			if (network.getNodeAt(args.pointer.DOM)) {
 				console.log("A node");
 
+				toggleEdgeContextMenu(false);
+				toggleCanvasContextMenu(false);
 				toggleNodeContextMenu(true);
 				network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 				setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
@@ -153,6 +155,8 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			} else if (network.getEdgeAt(args.pointer.DOM)) {
 				console.log("An edge");
 
+				toggleNodeContextMenu(false);
+				toggleCanvasContextMenu(false);
 				toggleEdgeContextMenu(true);
 				network.selectEdges([network.getEdgeAt(args.pointer.DOM)]);
 				setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
@@ -160,7 +164,10 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			} else {
 				console.log("The canvas");
 
+				toggleNodeContextMenu(false);
+				toggleEdgeContextMenu(false);
 				toggleCanvasContextMenu(true);
+				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
 			}
 		});
 
@@ -195,24 +202,28 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				<li title='deleteNode'
 					onClick={() => {
 						onDeleteNode(contextMenuNodeID);
+						toggleNodeContextMenu(false);
 					}}>
 					Delete node
 				</li>
 				<li title='editNode'
 					onClick={() => {
 						onEditNode(contextMenuNodeID);
+						toggleNodeContextMenu(false);
 					}}>
 					Edit node
 				</li>
 				<li title='expandNode'
 					onClick={() => {
 						onExpandNode(contextMenuNodeID);
+						toggleNodeContextMenu(false);
 					}}>
 					Expand node
 				</li>
 				<li title='setAsStartnode'
 					onClick={() => {
 						onSetStartnode(contextMenuNodeID);
+						toggleNodeContextMenu(false);
 					}}>
 					Set as startnode
 				</li>
@@ -232,14 +243,15 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			<ul id='graphViewerMenu'>
 				<li title='deleteNode'
 					onClick={() => {
-						console.log("Edge to delete: ", contextMenuEdgeID);
 						onDeleteEdge(contextMenuEdgeID);
+						toggleEdgeContextMenu(false);
 					}}>
 					Delete edge
 				</li>
 				<li title='editEdge'
 					onClick={() => {
 						onEditEdge(contextMenuEdgeID);
+						toggleEdgeContextMenu(false);
 					}}>
 					Edit edge
 				</li>
