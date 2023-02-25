@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
+import { isEqual } from "lodash";
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
@@ -11,6 +12,12 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const [contextMenuNodeID, setContextMenuNodeID] = useState();
 	const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
 	const [networkData, setNetworkData] = useState();
+
+	const [visGraphData, setVisGraphData] = useState(null);
+
+	if (!isEqual(visGraphData, graphData)) {
+		setVisGraphData(graphData);
+	};
 
 	const nodes = [
 		...graphData.nodes
@@ -127,36 +134,43 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		});
 		*/
 
-		/*
 		network.on("oncontext", (event) => {
 			console.log("ONCONTEXT: ", event);
 		});
-		*/
+
 		network.on("oncontext", (args) => {
 			console.log("args in oncontext: ", args);
 			args.event.preventDefault();
 			console.log(`network.getEdgeAt: - ${network.getEdgeAt(args.pointer.DOM)}`);
 			console.log(`network.getNodeAt: - ${network.getNodeAt(args.pointer.DOM)}`);
 			if (network.getNodeAt(args.pointer.DOM)) {
+				console.log("A node");
+
 				toggleNodeContextMenu(true);
 				network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 				setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
 				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
 			} else if (network.getEdgeAt(args.pointer.DOM)) {
+				console.log("An edge");
+
 				toggleEdgeContextMenu(true);
 				network.selectEdges([network.getEdgeAt(args.pointer.DOM)]);
 				setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
 				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
 			} else {
+				console.log("The canvas");
+
 				toggleCanvasContextMenu(true);
 			}
 		});
-		network.addEdgeMode();
+
+		// Enables the add edge mode
+		//network.addEdgeMode();
 		console.log("status of network: ", network);
 		return () => {
 			network.destroy();
 		};
-		}, [visJsRef, nodes, edges, selectedNode, layoutOptions]);
+	}, [visJsRef, visGraphData, selectedNode, layoutOptions]);
 
 	/*
 	function editEdgeWithoutDrag(data, callback) {
