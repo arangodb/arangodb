@@ -272,6 +272,12 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 					}}>
 					Add node to database
 				</li>
+				<li title='addEdgeToDb'
+					onClick={() => {
+						networkData.addEdgeMode();
+					}}>
+					Add edge to database
+				</li>
 			</ul>
 		</StyledContextComponent>
 		}
