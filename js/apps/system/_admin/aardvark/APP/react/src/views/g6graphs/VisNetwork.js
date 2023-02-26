@@ -12,7 +12,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const [contextMenuNodeID, setContextMenuNodeID] = useState();
 	const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
 	const [networkData, setNetworkData] = useState();
-
+	
 	const [visGraphData, setVisGraphData] = useState(null);
 
 	if (!isEqual(visGraphData, graphData)) {
@@ -85,12 +85,16 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		const network =
 			visJsRef.current &&
 			new Network(visJsRef.current, { nodes, edges }, layoutOptions );
-		//setNetworkData(network);
-			// Use network here to configure events, etc
+		setNetworkData(network);
+		// Use network here to configure events, etc
 		if(selectedNode && selectedNode.id){
 			console.log(selectedNode);
 			network.selectNodes([selectedNode.id])
 		}
+
+		network.on("stabilizationIterationsDone", function () {
+			network.setOptions( { physics: false } );
+		});
 
 		network.on("selectNode", (event, params) => {
 			console.log("event: ", event);
