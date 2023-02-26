@@ -32,6 +32,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"

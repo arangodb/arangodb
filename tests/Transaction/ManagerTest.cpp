@@ -26,6 +26,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
