@@ -1,5 +1,5 @@
 /* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { Checkbox } from 'antd';
@@ -84,8 +84,6 @@ export const DeleteNodeModal = ({ shouldShow, onDeleteNode, onRequestClose, node
         }
       });
     }
-
-    //onDeleteNode(deleteNodeId);
   }
 
   return shouldShow ? (

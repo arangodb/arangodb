@@ -8,6 +8,7 @@ import { data } from './data';
 import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { DeleteEdgeModal } from './DeleteEdgeModal';
+import { DeleteNodeModal } from './DeleteNodeModal';
 import { AddNodeModal } from './AddNodeModal';
 import { AddEdgeModal } from './AddEdgeModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
@@ -69,6 +70,7 @@ const G6JsGraph = () => {
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
   const [showDeleteEdgeModal, setShowDeleteEdgeModal] = useState(false);
+  const [showDeleteNodeModal, setShowDeleteNodeModal] = useState(false);
   const [vertexCollections, setVertexCollections] = useState([]);
   const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
   const [nodesSizeMinMax, setNodesSizeMinMax] = useState();
@@ -78,18 +80,23 @@ const G6JsGraph = () => {
   const [nodeToEdit, setNodeToEdit] = useState({});
   const [edgeToEdit, setEdgeToEdit] = useState({});
   const [edgeToDelete, setEdgeToDelete] = useState({});
+  const [nodeToDelete, setNodeToDelete] = useState({});
   const [nodeDataToEdit, setNodeDataToEdit] = useState();
   const [basicNodeDataToEdit, setBasicNodeDataToEdit] = useState([]);
   const [edgeDataToEdit, setEdgeDataToEdit] = useState();
   const [edgeDataToDelete, setEdgeDataToDelete] = useState();
+  const [nodeDataToDelete, setNodeDataToDelete] = useState();
   const [basicEdgeDataToEdit, setBasicEdgeDataToEdit] = useState([]);
   const [basicEdgeDataToDelete, setBasicEdgeDataToDelete] = useState([]);
+  const [basicNodeDataToDelete, setBasicNodeDataToDelete] = useState([]);
   const [nodeKey, setNodeKey] = useState('');
   const [edgeKey, setEdgeKey] = useState('');
   const [edgeToDeleteKey, setEdgeToDeleteKey] = useState('');
+  const [nodeToDeleteKey, setNodeToDeleteKey] = useState('');
   const [nodeCollection, setNodeCollection] = useState('');
   const [edgeCollection, setEdgeCollection] = useState('');
   const [edgeToDeleteCollection, setEdgeToDeleteCollection] = useState('');
+  const [nodeToDeleteCollection, setNodeToDeleteCollection] = useState('');
   const [nodeToAdd, setNodeToAdd] = useState();
   const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
@@ -348,6 +355,35 @@ const G6JsGraph = () => {
     setShowEditNodeModal(true);
   }
 
+  const openDeleteNodeModal = (nodeId) => {
+    const slashPos = nodeId.indexOf("/");
+    setNodeToDelete(nodeId);
+    setNodeToDeleteKey(nodeId.substring(slashPos + 1));
+    setNodeToDeleteCollection(nodeId.substring(0, slashPos));
+    const nodeDataObject = {
+      "keys": [
+        nodeId.substring(slashPos + 1)
+      ],
+      "collection": nodeId.substring(0, slashPos)
+    };
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(nodeDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
+      setNodeDataToDelete(allowedDocuments);
+      setBasicNodeDataToDelete(pick(data.documents[0], ['_id', '_key', '_rev']));
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this node.');
+      console.log(err);
+    });
+    setShowDeleteNodeModal(true);
+  }
+
   const openDeleteEdgeModal = (edge) => {
     const slashPos = edge.indexOf("/");
     setEdgeToDelete(edge);
@@ -553,6 +589,25 @@ const G6JsGraph = () => {
     setVisGraphData(newGraphData);
   }
 
+  const onDeleteNode = (nodeId) => {
+    setShowDeleteNodeModal(false);
+    const nodesWithoutRemovedNode = visGraphData.nodes.filter(nodes => nodes.id !== nodeId);
+    const currentEdges = visGraphData.edges;
+    const currentSettings = visGraphData.settings;
+
+    const newGraphData = {
+      nodes: [
+        ...nodesWithoutRemovedNode
+      ],
+      edges: [
+        ...currentEdges
+      ],
+      settings: currentSettings
+    };
+
+    setVisGraphData(newGraphData);
+  }
+
   return (
     <div>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
@@ -609,6 +664,23 @@ const G6JsGraph = () => {
         >
           <strong>Delete edge: {edgeToDelete}</strong>
         </DeleteEdgeModal>
+        <DeleteNodeModal
+          shouldShow={showDeleteNodeModal}
+          onRequestClose={() => {
+            setShowDeleteNodeModal(false);
+            setNodeDataToDelete(undefined);
+          }}
+          node={nodeToDelete}
+          nodeData={nodeDataToDelete}
+          basicNodeData={basicNodeDataToDelete}
+          editorContent={nodeToDelete}
+          onDeleteNode={(nodeId) => onDeleteNode(nodeId)}
+          nodeToDeleteKey={nodeToDeleteKey}
+          nodeToDeleteCollection={nodeToDeleteCollection}
+          graphName={graphName}
+        >
+          <strong>Delete node: {nodeToDelete}</strong>
+        </DeleteNodeModal>
         <FetchFullGraphModal
           shouldShow={showFetchFullGraphModal}
           onRequestClose={() => {
@@ -698,7 +770,7 @@ const G6JsGraph = () => {
               onClickDocument={(document) => lookUpDocument(document)}
               onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
               onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
-              onDeleteNode={(nodeId) => removeNodeInVis(nodeId)}
+              onDeleteNode={(nodeId) => openDeleteNodeModal(nodeId)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
                 setVisGraphData(newGraphData);
