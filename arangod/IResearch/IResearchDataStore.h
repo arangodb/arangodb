@@ -30,9 +30,7 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "StorageEngine/StorageEngine.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -45,6 +43,9 @@
 namespace arangodb {
 
 struct FlushSubscription;
+class DatabasePathFeature;
+class StorageEngine;
+class StorageSnapshot;
 
 namespace iresearch {
 

@@ -36,6 +36,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"

@@ -26,8 +26,10 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/Servers.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/IResearchLinkMock.h"
+#include "Mocks/PhysicalCollectionMock.h"
+
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"

@@ -32,6 +32,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"

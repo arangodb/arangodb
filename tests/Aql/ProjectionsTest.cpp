@@ -31,6 +31,7 @@
 #include "Aql/Projections.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
