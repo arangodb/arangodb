@@ -483,17 +483,10 @@
 
       tearDownAll: function () {
         Object.keys(plainView).forEach(key => { plainView[key].drop(); });
+        Object.keys(withView).forEach(key => { withView[key].drop(); });
         Object.keys(noIndex).forEach(key => { noIndex[key].drop(); });
         Object.keys(withIndex).forEach(key => { withIndex[key].drop(); });
-        Object.keys(withView).forEach(key => { withView[key].drop(); });
-        //Object.keys(testAnalyzers).forEach(key => { testAnalyzers[key].drop(); });
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief tear down
-      ////////////////////////////////////////////////////////////////////////////////
-
-      tearDown: function () {
+        Object.keys(testAnalyzers).forEach(key => { analyzers.remove(testAnalyzers[key].name()); });
       },
 
       ////////////////////////////////////////////////////////////////////////////////
