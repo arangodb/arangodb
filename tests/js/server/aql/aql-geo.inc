@@ -41,6 +41,16 @@
   const isEnterprise = require("internal").isEnterprise();
 
   return function (isSearchAlias, analyzerType, analyzerDefinition, isInt = false) {
+    let collWithoutIndex = null;
+    let collWithIndex = null;
+    let collWithView = null;
+    let viewName = null;
+    let analyzerName = null;
+    let noIndex = {};
+    let withIndex = {};
+    let withView = {};
+    let plainView = {};
+    let testAnalyzers = {};
 
     function makePolyInside(lon, lat) {
       // lon and lat are longitude and latitude ranges
@@ -60,15 +70,6 @@
       };
     }
 
-    let collWithoutIndex = null;
-    let collWithIndex = null;
-    let collWithView = null;
-    let viewName = null;
-    let noIndex = [];
-    let withIndex = [];
-    let withView = [];
-    let view = [];
-    let testAnalyzers = [];
 
     let keyCounter = 0;
 
@@ -77,10 +78,11 @@
         `FOR d IN ${viewName} OPTIONS { waitForSync:true } LIMIT 1 RETURN 1`);
     }
     function chooseCollectionSet(basename) {
-      collWithoutIndex = noIndex[basename].name;
-      collWithIndex = withIndex[basename].name;
-      collWithView = withIndex[basename].name;
-      viewName = view[basename].name;
+      collWithoutIndex = noIndex[basename].name();
+      collWithIndex = withIndex[basename].name();
+      collWithView = withIndex[basename].name();
+      viewName = plainView[basename].name();
+      analyzerName = testAnalyzers[basename].name();
     }
     function createCollectionSet(basename) {
       let collWithoutIndex = "UnitTestsGeoWithoutIndex";
@@ -103,13 +105,13 @@
         commonInvertedIndexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
           {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
           "name_1",
-          {"name": "geo", "analyzer": testAnalyzers[basename].name}
+          {"name": "geo", "analyzer": testAnalyzers[basename].name()}
         ]};
       } else {
         commonInvertedIndexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
           {"name": "value[*]"},
           "name_1",
-          {"name": "geo", "analyzer": testAnalyzers[basename].name}
+          {"name": "geo", "analyzer": testAnalyzers[basename].name()}
         ]};
       }
       withView[basename].ensureIndex(commonInvertedIndexMeta);
@@ -119,18 +121,18 @@
         let indexMeta = {};
         if (isEnterprise) {
           indexMeta = {type: "inverted", fields: [
-            {name: "geo", analyzer: testAnalyzers[basename].name},
+            {name: "geo", analyzer: testAnalyzers[basename].name()},
             {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
                       };
         } else {
           indexMeta = {type: "inverted", fields: [
-            {name: "geo", analyzer: testAnalyzers[basename].name},
+            {name: "geo", analyzer: testAnalyzers[basename].name()},
             {"name": "value[*]"}]
                       };
         }
         let i = withView[basename].ensureIndex(indexMeta);
-        view = db._createView(basename + '_' + viewName, "search-alias", {
-          indexes: [{collection: withView[basename].name, index: i.name}]
+        plainView[basename] = db._createView(basename + '_' + viewName, "search-alias", {
+          indexes: [{collection: withView[basename].name(), index: i.name}]
         });
       } else {
         let meta = {
@@ -139,20 +141,19 @@
         };
 
         if (isEnterprise) {
-          meta['links'][withView[basename].name] = {
-            fields: {geo: {analyzers: [testAnalyzers[basename].name]}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
+          meta['links'][withView[basename].name()] = {
+            fields: {geo: {analyzers: [testAnalyzers[basename].name()]}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
           };
         } else {
-          meta['links'][withView[basename].name] = {
-            fields: {geo: {analyzers: [testAnalyzers[basename].name]}}
+          meta['links'][withView[basename].name()] = {
+            fields: {geo: {analyzers: [testAnalyzers[basename].name()]}}
           };
         }
-        view[basename] = db._createView(basename + '_' + viewName, "arangosearch", meta);
+        plainView[basename] = db._createView(basename + '_' + viewName, "arangosearch", meta);
       }
     }
     function insertAll(name, x) {
       if (!noIndex.hasOwnProperty(name)) {
-        print(name)
         createCollectionSet(name);
       }
 
@@ -262,7 +263,6 @@
 
     function createOnePolygon() {
       insertAll('createOnePolygon', [{geo: { type: "Point", coordinates: [50, 50] } }]);
-      waitForArangoSearch();
     }
     function createTwoPolygons() {
       // Centroid will be at approx. [7,10]
@@ -272,7 +272,6 @@
         {geo:{type:"Polygon",
               coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
       ]);
-      waitForArangoSearch();
     }
     function createThreePolygons() {
       insertAll('createThreePolygons', [
@@ -284,7 +283,6 @@
               coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
                             [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
       ]);
-      waitForArangoSearch();
     }
     function createSomePolygons() {
       let name = 'createSomePolygons';
@@ -328,7 +326,6 @@
           [ 37.614, 55.7058 ],
           [ 37.614, 55.7050 ]]]
       ]}}]);
-      waitForArangoSearch();
     }
     function createNearGrid() {
       const name = 'createNearGrid';
@@ -345,7 +342,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     function createNarrowGrid() {
       const name = 'createNarrowGrid';
@@ -370,7 +366,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     function createNearSlidingObject() {
       const name = 'createNearSlidingObject';
@@ -395,7 +390,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     function createLargeGrid() {
       const name = 'createLargeGrid';
@@ -412,7 +406,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     function createSuperLargeGrid() {
       const name = 'createSuperLargeGrid';
@@ -436,7 +429,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     function createBiggestGrid() {
       const name = 'createBiggestGrid';
@@ -460,7 +452,6 @@
       if (l.length > 0) {
         insertAll(name, l);
       }
-      waitForArangoSearch();
     }
     return {
 
@@ -483,7 +474,7 @@
         createLargeGrid();
         createSuperLargeGrid();
         createBiggestGrid();
-        view.forEach(oneView => { waitForArangoSearch(viewName.name);});
+        Object.keys(plainView).forEach(key => { waitForArangoSearch(plainView[key].name()); });
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -491,12 +482,11 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       tearDownAll: function () {
-        view.forEach(oneView => { view._drop(); });
-        noIndex.forEach(coll => { coll._drop(); });
-        withIndex.forEach(coll => { coll._drop(); });
-        withView.forEach(coll => { coll._drop(); });
-        let analyzers = require("@arangodb/analyzers");
-        analyzers.remove("geo_json");
+        Object.keys(plainView).forEach(key => { plainView[key].drop(); });
+        Object.keys(noIndex).forEach(key => { noIndex[key].drop(); });
+        Object.keys(withIndex).forEach(key => { withIndex[key].drop(); });
+        Object.keys(withView).forEach(key => { withView[key].drop(); });
+        //Object.keys(testAnalyzers).forEach(key => { testAnalyzers[key].drop(); });
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +504,7 @@
         chooseCollectionSet('createOnePolygon');
         let c = compare(
           `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
-          `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -527,7 +517,7 @@
         chooseCollectionSet('createThreePolygons');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -540,7 +530,7 @@
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -555,7 +545,7 @@
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                 GEO_DISTANCE([15, 15], d.geo) >= 300000`,
           `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
-                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -568,7 +558,7 @@
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -582,7 +572,7 @@
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")
+          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "${analyzerName}")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -599,7 +589,7 @@
                 GEO_DISTANCE([15, 15], d.geo) >= 300000
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
           `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
-                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")
+                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "${analyzerName}")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -613,7 +603,7 @@
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -626,7 +616,7 @@
         chooseCollectionSet('createNarrowGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
-          `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -639,7 +629,7 @@
         chooseCollectionSet('createNearSlidingObject');
         let c = compare(
           `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
-          `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -655,7 +645,7 @@
           //print("Distance", dist);
           let c = compare(
             `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
-            `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "geo_json")`
+            `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "${analyzerName}")`
           );
           assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         }
@@ -675,7 +665,7 @@
             //print("Polygon:", JSON.stringify(p));
             let c = compare(
               `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-              `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+              `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
             );
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
           }
@@ -696,7 +686,7 @@
           //print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           if (!isInt) {
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -719,7 +709,7 @@
           //print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           if (!isInt) {
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -741,7 +731,7 @@
             //print("Polygon:", JSON.stringify(p));
             let c = compare(
               `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
-              `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+              `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
             );
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
           }
@@ -762,7 +752,7 @@
           //print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           if (!isInt) {
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -785,7 +775,7 @@
           //print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           if (!isInt) {
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -805,7 +795,7 @@
                                        [4.7873, 10.0736], [4.7873, 10.0734]]]};
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo)`,
-          `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo), "geo_json")`
+          `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -835,7 +825,7 @@
         for (let p of polys) {
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           if (!isInt) {
             assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
@@ -869,7 +859,7 @@
         for (let p of polys) {
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         }
@@ -901,7 +891,7 @@
         for (let p of polys) {
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
-            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
           );
           assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         }
@@ -920,7 +910,7 @@
         };
         let c = compare(
           `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
-          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         multiLineString = {
@@ -929,7 +919,7 @@
                            [[ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ]] ] };
         c = compare(
           `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
-          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         let multiPoint = {
@@ -938,7 +928,7 @@
                          [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] };
         c = compare(
           `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
-          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         multiPoint = {
@@ -947,7 +937,7 @@
                            [ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ] ] };
         c = compare(
           `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
-          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
+          `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
@@ -965,7 +955,7 @@
 
         let c = compare(
           `FILTER GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100)`,
-          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "geo_json")`
+          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         multiLineString = {
@@ -975,7 +965,7 @@
 
         c = compare(
           `FILTER GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100)`,
-          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "geo_json")`
+          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         let multiPoint = {
@@ -985,7 +975,7 @@
 
         c = compare(
           `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
-          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
+          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         multiPoint = {
@@ -996,7 +986,7 @@
 
         c = compare(
           `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
-          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
+          `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
