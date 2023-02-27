@@ -54,7 +54,6 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
-  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
