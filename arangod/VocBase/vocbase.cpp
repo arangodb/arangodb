@@ -462,6 +462,13 @@ struct arangodb::VocBaseLogManager {
       metrics->replicatedLogCreationNumber->count();
 
       return iter->second.state;
+    } catch (basics::Exception& ex) {
+      // If we created the state on-disk, but failed to add it to the map, we
+      // cannot continue safely.
+      LOG_TOPIC("35db0", FATAL, Logger::REPLICATION2)
+          << "Failed to create replicated state: " << ex.message()
+          << ", thrown at " << ex.location();
+      std::abort();
     } catch (std::exception& ex) {
       // If we created the state on-disk, but failed to add it to the map, we
       // cannot continue safely.
