@@ -86,16 +86,14 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
 
   if (writeRequired(_infos, inDoc.slice(), key)) {
     if (hasKeyVariable) {
-      _keyDocBuilder.clear();
-
       if (_infos._options.ignoreRevs) {
         rev.clear();
       }
 
+      _keyDocBuilder.clear();
       buildKeyAndRevDocument(_keyDocBuilder, key, rev);
 
-      // This deletes _rev if rev is empty or ignoreRevs is set in
-      // options.
+      // This deletes _rev from the result if rev is empty.
       auto merger = VPackCollection::merge(inDoc.slice(),
                                            _keyDocBuilder.slice(), false, true);
       accu.add(merger.slice());
