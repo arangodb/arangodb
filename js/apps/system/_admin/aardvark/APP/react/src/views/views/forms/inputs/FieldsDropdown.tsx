@@ -1,7 +1,7 @@
 import React from "react";
-import CreatableMultiSelect from "../../../../components/pure-css/form/MultiSelect";
-import { components, MultiValueGenericProps } from "react-select";
 import { Link, useRouteMatch } from "react-router-dom";
+import { components, MultiValueGenericProps } from "react-select";
+import CreatableMultiSelect from "../../../../components/pure-css/form/CreatableMultiSelect";
 
 const MultiValueLabel = (props: MultiValueGenericProps) => {
   const match = useRouteMatch();
