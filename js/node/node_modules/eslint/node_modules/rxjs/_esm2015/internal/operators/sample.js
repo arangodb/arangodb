@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function sample(notifier) {
     return (source) => source.lift(new SampleOperator(notifier));
 }
@@ -10,11 +9,11 @@ class SampleOperator {
     call(subscriber, source) {
         const sampleSubscriber = new SampleSubscriber(subscriber);
         const subscription = source.subscribe(sampleSubscriber);
-        subscription.add(subscribeToResult(sampleSubscriber, this.notifier));
+        subscription.add(innerSubscribe(this.notifier, new SimpleInnerSubscriber(sampleSubscriber)));
         return subscription;
     }
 }
-class SampleSubscriber extends OuterSubscriber {
+class SampleSubscriber extends SimpleOuterSubscriber {
     constructor() {
         super(...arguments);
         this.hasValue = false;
@@ -23,7 +22,7 @@ class SampleSubscriber extends OuterSubscriber {
         this.value = value;
         this.hasValue = true;
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.emitValue();
     }
     notifyComplete() {

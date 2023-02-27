@@ -1,7 +1,6 @@
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function distinct(keySelector, flushes) {
     return function (source) { return source.lift(new DistinctOperator(keySelector, flushes)); };
 }
@@ -22,14 +21,14 @@ var DistinctSubscriber = /*@__PURE__*/ (function (_super) {
         _this.keySelector = keySelector;
         _this.values = new Set();
         if (flushes) {
-            _this.add(subscribeToResult(_this, flushes));
+            _this.add(innerSubscribe(flushes, new SimpleInnerSubscriber(_this)));
         }
         return _this;
     }
-    DistinctSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    DistinctSubscriber.prototype.notifyNext = function () {
         this.values.clear();
     };
-    DistinctSubscriber.prototype.notifyError = function (error, innerSub) {
+    DistinctSubscriber.prototype.notifyError = function (error) {
         this._error(error);
     };
     DistinctSubscriber.prototype._next = function (value) {
@@ -60,6 +59,6 @@ var DistinctSubscriber = /*@__PURE__*/ (function (_super) {
         }
     };
     return DistinctSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 export { DistinctSubscriber };
 //# sourceMappingURL=distinct.js.map

@@ -16,9 +16,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var fromArray_1 = require("./fromArray");
 var isArray_1 = require("../util/isArray");
 var Subscriber_1 = require("../Subscriber");
-var OuterSubscriber_1 = require("../OuterSubscriber");
-var subscribeToResult_1 = require("../util/subscribeToResult");
 var iterator_1 = require("../../internal/symbol/iterator");
+var innerSubscribe_1 = require("../innerSubscribe");
 function zip() {
     var observables = [];
     for (var _i = 0; _i < arguments.length; _i++) {
@@ -46,10 +45,10 @@ var ZipSubscriber = (function (_super) {
     function ZipSubscriber(destination, resultSelector, values) {
         if (values === void 0) { values = Object.create(null); }
         var _this = _super.call(this, destination) || this;
+        _this.resultSelector = resultSelector;
         _this.iterators = [];
         _this.active = 0;
-        _this.resultSelector = (typeof resultSelector === 'function') ? resultSelector : null;
-        _this.values = values;
+        _this.resultSelector = (typeof resultSelector === 'function') ? resultSelector : undefined;
         return _this;
     }
     ZipSubscriber.prototype._next = function (value) {
@@ -77,7 +76,7 @@ var ZipSubscriber = (function (_super) {
             var iterator = iterators[i];
             if (iterator.stillUnsubscribed) {
                 var destination = this.destination;
-                destination.add(iterator.subscribe(iterator, i));
+                destination.add(iterator.subscribe());
             }
             else {
                 this.active--;
@@ -153,7 +152,7 @@ var StaticIterator = (function () {
     };
     StaticIterator.prototype.hasCompleted = function () {
         var nextResult = this.nextResult;
-        return nextResult && nextResult.done;
+        return Boolean(nextResult && nextResult.done);
     };
     return StaticIterator;
 }());
@@ -218,13 +217,13 @@ var ZipBufferIterator = (function (_super) {
             this.destination.complete();
         }
     };
-    ZipBufferIterator.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    ZipBufferIterator.prototype.notifyNext = function (innerValue) {
         this.buffer.push(innerValue);
         this.parent.checkIterators();
     };
-    ZipBufferIterator.prototype.subscribe = function (value, index) {
-        return subscribeToResult_1.subscribeToResult(this, this.observable, this, index);
+    ZipBufferIterator.prototype.subscribe = function () {
+        return innerSubscribe_1.innerSubscribe(this.observable, new innerSubscribe_1.SimpleInnerSubscriber(this));
     };
     return ZipBufferIterator;
-}(OuterSubscriber_1.OuterSubscriber));
+}(innerSubscribe_1.SimpleOuterSubscriber));
 //# sourceMappingURL=zip.js.map

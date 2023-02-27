@@ -1,8 +1,6 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
 import { map } from './map';
 import { from } from '../observable/from';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function switchMap(project, resultSelector) {
     if (typeof resultSelector === 'function') {
         return (source) => source.pipe(switchMap((a, i) => from(project(a, i)).pipe(map((b, ii) => resultSelector(a, b, i, ii)))));
@@ -17,7 +15,7 @@ class SwitchMapOperator {
         return source.subscribe(new SwitchMapSubscriber(subscriber, this.project));
     }
 }
-class SwitchMapSubscriber extends OuterSubscriber {
+class SwitchMapSubscriber extends SimpleOuterSubscriber {
     constructor(destination, project) {
         super(destination);
         this.project = project;
@@ -33,17 +31,20 @@ class SwitchMapSubscriber extends OuterSubscriber {
             this.destination.error(error);
             return;
         }
-        this._innerSub(result, value, index);
+        this._innerSub(result);
     }
-    _innerSub(result, value, index) {
+    _innerSub(result) {
         const innerSubscription = this.innerSubscription;
         if (innerSubscription) {
             innerSubscription.unsubscribe();
         }
-        const innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+        const innerSubscriber = new SimpleInnerSubscriber(this);
         const destination = this.destination;
         destination.add(innerSubscriber);
-        this.innerSubscription = subscribeToResult(this, result, value, index, innerSubscriber);
+        this.innerSubscription = innerSubscribe(result, innerSubscriber);
+        if (this.innerSubscription !== innerSubscriber) {
+            destination.add(this.innerSubscription);
+        }
     }
     _complete() {
         const { innerSubscription } = this;
@@ -53,17 +54,15 @@ class SwitchMapSubscriber extends OuterSubscriber {
         this.unsubscribe();
     }
     _unsubscribe() {
-        this.innerSubscription = null;
+        this.innerSubscription = undefined;
     }
-    notifyComplete(innerSub) {
-        const destination = this.destination;
-        destination.remove(innerSub);
-        this.innerSubscription = null;
+    notifyComplete() {
+        this.innerSubscription = undefined;
         if (this.isStopped) {
             super._complete();
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(innerValue) {
         this.destination.next(innerValue);
     }
 }

@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function distinct(keySelector, flushes) {
     return (source) => source.lift(new DistinctOperator(keySelector, flushes));
 }
@@ -12,19 +11,19 @@ class DistinctOperator {
         return source.subscribe(new DistinctSubscriber(subscriber, this.keySelector, this.flushes));
     }
 }
-export class DistinctSubscriber extends OuterSubscriber {
+export class DistinctSubscriber extends SimpleOuterSubscriber {
     constructor(destination, keySelector, flushes) {
         super(destination);
         this.keySelector = keySelector;
         this.values = new Set();
         if (flushes) {
-            this.add(subscribeToResult(this, flushes));
+            this.add(innerSubscribe(flushes, new SimpleInnerSubscriber(this)));
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.values.clear();
     }
-    notifyError(error, innerSub) {
+    notifyError(error) {
         this._error(error);
     }
     _next(value) {

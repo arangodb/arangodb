@@ -13,8 +13,7 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var OuterSubscriber_1 = require("../OuterSubscriber");
-var subscribeToResult_1 = require("../util/subscribeToResult");
+var innerSubscribe_1 = require("../innerSubscribe");
 function distinct(keySelector, flushes) {
     return function (source) { return source.lift(new DistinctOperator(keySelector, flushes)); };
 }
@@ -36,14 +35,14 @@ var DistinctSubscriber = (function (_super) {
         _this.keySelector = keySelector;
         _this.values = new Set();
         if (flushes) {
-            _this.add(subscribeToResult_1.subscribeToResult(_this, flushes));
+            _this.add(innerSubscribe_1.innerSubscribe(flushes, new innerSubscribe_1.SimpleInnerSubscriber(_this)));
         }
         return _this;
     }
-    DistinctSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    DistinctSubscriber.prototype.notifyNext = function () {
         this.values.clear();
     };
-    DistinctSubscriber.prototype.notifyError = function (error, innerSub) {
+    DistinctSubscriber.prototype.notifyError = function (error) {
         this._error(error);
     };
     DistinctSubscriber.prototype._next = function (value) {
@@ -74,6 +73,6 @@ var DistinctSubscriber = (function (_super) {
         }
     };
     return DistinctSubscriber;
-}(OuterSubscriber_1.OuterSubscriber));
+}(innerSubscribe_1.SimpleOuterSubscriber));
 exports.DistinctSubscriber = DistinctSubscriber;
 //# sourceMappingURL=distinct.js.map

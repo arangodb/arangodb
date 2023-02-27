@@ -1,9 +1,8 @@
-/** PURE_IMPORTS_START tslib,_scheduler_async,_util_isDate,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_scheduler_async,_util_isDate,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
 import { async } from '../scheduler/async';
 import { isDate } from '../util/isDate';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function timeoutWith(due, withObservable, scheduler) {
     if (scheduler === void 0) {
         scheduler = async;
@@ -34,14 +33,13 @@ var TimeoutWithSubscriber = /*@__PURE__*/ (function (_super) {
         _this.waitFor = waitFor;
         _this.withObservable = withObservable;
         _this.scheduler = scheduler;
-        _this.action = null;
         _this.scheduleTimeout();
         return _this;
     }
     TimeoutWithSubscriber.dispatchTimeout = function (subscriber) {
         var withObservable = subscriber.withObservable;
         subscriber._unsubscribeAndRecycle();
-        subscriber.add(subscribeToResult(subscriber, withObservable));
+        subscriber.add(innerSubscribe(withObservable, new SimpleInnerSubscriber(subscriber)));
     };
     TimeoutWithSubscriber.prototype.scheduleTimeout = function () {
         var action = this.action;
@@ -59,10 +57,10 @@ var TimeoutWithSubscriber = /*@__PURE__*/ (function (_super) {
         _super.prototype._next.call(this, value);
     };
     TimeoutWithSubscriber.prototype._unsubscribe = function () {
-        this.action = null;
+        this.action = undefined;
         this.scheduler = null;
         this.withObservable = null;
     };
     return TimeoutWithSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=timeoutWith.js.map

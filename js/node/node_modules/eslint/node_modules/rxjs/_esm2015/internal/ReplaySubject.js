@@ -21,16 +21,20 @@ export class ReplaySubject extends Subject {
         }
     }
     nextInfiniteTimeWindow(value) {
-        const _events = this._events;
-        _events.push(value);
-        if (_events.length > this._bufferSize) {
-            _events.shift();
+        if (!this.isStopped) {
+            const _events = this._events;
+            _events.push(value);
+            if (_events.length > this._bufferSize) {
+                _events.shift();
+            }
         }
         super.next(value);
     }
     nextTimeWindow(value) {
-        this._events.push(new ReplayEvent(this._getNow(), value));
-        this._trimBufferThenGetEvents();
+        if (!this.isStopped) {
+            this._events.push(new ReplayEvent(this._getNow(), value));
+            this._trimBufferThenGetEvents();
+        }
         super.next(value);
     }
     _subscribe(subscriber) {

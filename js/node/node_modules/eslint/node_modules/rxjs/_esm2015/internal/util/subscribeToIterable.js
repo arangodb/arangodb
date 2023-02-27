@@ -2,7 +2,14 @@ import { iterator as Symbol_iterator } from '../symbol/iterator';
 export const subscribeToIterable = (iterable) => (subscriber) => {
     const iterator = iterable[Symbol_iterator]();
     do {
-        const item = iterator.next();
+        let item;
+        try {
+            item = iterator.next();
+        }
+        catch (err) {
+            subscriber.error(err);
+            return subscriber;
+        }
         if (item.done) {
             subscriber.complete();
             break;

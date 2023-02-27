@@ -54,11 +54,11 @@ var WithLatestFromSubscriber = (function (_super) {
         }
         for (var i = 0; i < len; i++) {
             var observable = observables[i];
-            _this.add(subscribeToResult_1.subscribeToResult(_this, observable, observable, i));
+            _this.add(subscribeToResult_1.subscribeToResult(_this, observable, undefined, i));
         }
         return _this;
     }
-    WithLatestFromSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    WithLatestFromSubscriber.prototype.notifyNext = function (_outerValue, innerValue, outerIndex) {
         this.values[outerIndex] = innerValue;
         var toRespond = this.toRespond;
         if (toRespond.length > 0) {

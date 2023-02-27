@@ -1,10 +1,8 @@
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_InnerSubscriber,_util_subscribeToResult,_map,_observable_from PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
 import { map } from './map';
 import { from } from '../observable/from';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function switchMap(project, resultSelector) {
     if (typeof resultSelector === 'function') {
         return function (source) { return source.pipe(switchMap(function (a, i) { return from(project(a, i)).pipe(map(function (b, ii) { return resultSelector(a, b, i, ii); })); })); };
@@ -38,17 +36,20 @@ var SwitchMapSubscriber = /*@__PURE__*/ (function (_super) {
             this.destination.error(error);
             return;
         }
-        this._innerSub(result, value, index);
+        this._innerSub(result);
     };
-    SwitchMapSubscriber.prototype._innerSub = function (result, value, index) {
+    SwitchMapSubscriber.prototype._innerSub = function (result) {
         var innerSubscription = this.innerSubscription;
         if (innerSubscription) {
             innerSubscription.unsubscribe();
         }
-        var innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+        var innerSubscriber = new SimpleInnerSubscriber(this);
         var destination = this.destination;
         destination.add(innerSubscriber);
-        this.innerSubscription = subscribeToResult(this, result, value, index, innerSubscriber);
+        this.innerSubscription = innerSubscribe(result, innerSubscriber);
+        if (this.innerSubscription !== innerSubscriber) {
+            destination.add(this.innerSubscription);
+        }
     };
     SwitchMapSubscriber.prototype._complete = function () {
         var innerSubscription = this.innerSubscription;
@@ -58,19 +59,17 @@ var SwitchMapSubscriber = /*@__PURE__*/ (function (_super) {
         this.unsubscribe();
     };
     SwitchMapSubscriber.prototype._unsubscribe = function () {
-        this.innerSubscription = null;
+        this.innerSubscription = undefined;
     };
-    SwitchMapSubscriber.prototype.notifyComplete = function (innerSub) {
-        var destination = this.destination;
-        destination.remove(innerSub);
-        this.innerSubscription = null;
+    SwitchMapSubscriber.prototype.notifyComplete = function () {
+        this.innerSubscription = undefined;
         if (this.isStopped) {
             _super.prototype._complete.call(this);
         }
     };
-    SwitchMapSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    SwitchMapSubscriber.prototype.notifyNext = function (innerValue) {
         this.destination.next(innerValue);
     };
     return SwitchMapSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=switchMap.js.map

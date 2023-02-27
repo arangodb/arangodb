@@ -13,11 +13,9 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var OuterSubscriber_1 = require("../OuterSubscriber");
-var InnerSubscriber_1 = require("../InnerSubscriber");
-var subscribeToResult_1 = require("../util/subscribeToResult");
 var map_1 = require("./map");
 var from_1 = require("../observable/from");
+var innerSubscribe_1 = require("../innerSubscribe");
 function switchMap(project, resultSelector) {
     if (typeof resultSelector === 'function') {
         return function (source) { return source.pipe(switchMap(function (a, i) { return from_1.from(project(a, i)).pipe(map_1.map(function (b, ii) { return resultSelector(a, b, i, ii); })); })); };
@@ -52,17 +50,20 @@ var SwitchMapSubscriber = (function (_super) {
             this.destination.error(error);
             return;
         }
-        this._innerSub(result, value, index);
+        this._innerSub(result);
     };
-    SwitchMapSubscriber.prototype._innerSub = function (result, value, index) {
+    SwitchMapSubscriber.prototype._innerSub = function (result) {
         var innerSubscription = this.innerSubscription;
         if (innerSubscription) {
             innerSubscription.unsubscribe();
         }
-        var innerSubscriber = new InnerSubscriber_1.InnerSubscriber(this, undefined, undefined);
+        var innerSubscriber = new innerSubscribe_1.SimpleInnerSubscriber(this);
         var destination = this.destination;
         destination.add(innerSubscriber);
-        this.innerSubscription = subscribeToResult_1.subscribeToResult(this, result, value, index, innerSubscriber);
+        this.innerSubscription = innerSubscribe_1.innerSubscribe(result, innerSubscriber);
+        if (this.innerSubscription !== innerSubscriber) {
+            destination.add(this.innerSubscription);
+        }
     };
     SwitchMapSubscriber.prototype._complete = function () {
         var innerSubscription = this.innerSubscription;
@@ -72,19 +73,17 @@ var SwitchMapSubscriber = (function (_super) {
         this.unsubscribe();
     };
     SwitchMapSubscriber.prototype._unsubscribe = function () {
-        this.innerSubscription = null;
+        this.innerSubscription = undefined;
     };
-    SwitchMapSubscriber.prototype.notifyComplete = function (innerSub) {
-        var destination = this.destination;
-        destination.remove(innerSub);
-        this.innerSubscription = null;
+    SwitchMapSubscriber.prototype.notifyComplete = function () {
+        this.innerSubscription = undefined;
         if (this.isStopped) {
             _super.prototype._complete.call(this);
         }
     };
-    SwitchMapSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    SwitchMapSubscriber.prototype.notifyNext = function (innerValue) {
         this.destination.next(innerValue);
     };
     return SwitchMapSubscriber;
-}(OuterSubscriber_1.OuterSubscriber));
+}(innerSubscribe_1.SimpleOuterSubscriber));
 //# sourceMappingURL=switchMap.js.map

@@ -1,7 +1,6 @@
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function exhaust() {
     return function (source) { return source.lift(new SwitchFirstOperator()); };
 }
@@ -24,7 +23,7 @@ var SwitchFirstSubscriber = /*@__PURE__*/ (function (_super) {
     SwitchFirstSubscriber.prototype._next = function (value) {
         if (!this.hasSubscription) {
             this.hasSubscription = true;
-            this.add(subscribeToResult(this, value));
+            this.add(innerSubscribe(value, new SimpleInnerSubscriber(this)));
         }
     };
     SwitchFirstSubscriber.prototype._complete = function () {
@@ -33,13 +32,12 @@ var SwitchFirstSubscriber = /*@__PURE__*/ (function (_super) {
             this.destination.complete();
         }
     };
-    SwitchFirstSubscriber.prototype.notifyComplete = function (innerSub) {
-        this.remove(innerSub);
+    SwitchFirstSubscriber.prototype.notifyComplete = function () {
         this.hasSubscription = false;
         if (this.hasCompleted) {
             this.destination.complete();
         }
     };
     return SwitchFirstSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=exhaust.js.map

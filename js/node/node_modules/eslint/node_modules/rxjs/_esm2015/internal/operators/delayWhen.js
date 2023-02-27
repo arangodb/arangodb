@@ -25,7 +25,7 @@ class DelayWhenSubscriber extends OuterSubscriber {
         this.delayNotifierSubscriptions = [];
         this.index = 0;
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(outerValue, _innerValue, _outerIndex, _innerIndex, innerSub) {
         this.destination.next(outerValue);
         this.removeSubscription(innerSub);
         this.tryComplete();

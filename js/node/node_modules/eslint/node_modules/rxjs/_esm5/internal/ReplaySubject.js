@@ -31,16 +31,20 @@ var ReplaySubject = /*@__PURE__*/ (function (_super) {
         return _this;
     }
     ReplaySubject.prototype.nextInfiniteTimeWindow = function (value) {
-        var _events = this._events;
-        _events.push(value);
-        if (_events.length > this._bufferSize) {
-            _events.shift();
+        if (!this.isStopped) {
+            var _events = this._events;
+            _events.push(value);
+            if (_events.length > this._bufferSize) {
+                _events.shift();
+            }
         }
         _super.prototype.next.call(this, value);
     };
     ReplaySubject.prototype.nextTimeWindow = function (value) {
-        this._events.push(new ReplayEvent(this._getNow(), value));
-        this._trimBufferThenGetEvents();
+        if (!this.isStopped) {
+            this._events.push(new ReplayEvent(this._getNow(), value));
+            this._trimBufferThenGetEvents();
+        }
         _super.prototype.next.call(this, value);
     };
     ReplaySubject.prototype._subscribe = function (subscriber) {

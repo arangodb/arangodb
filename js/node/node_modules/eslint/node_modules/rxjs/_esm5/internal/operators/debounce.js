@@ -1,7 +1,6 @@
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function debounce(durationSelector) {
     return function (source) { return source.lift(new DebounceOperator(durationSelector)); };
 }
@@ -20,7 +19,6 @@ var DebounceSubscriber = /*@__PURE__*/ (function (_super) {
         var _this = _super.call(this, destination) || this;
         _this.durationSelector = durationSelector;
         _this.hasValue = false;
-        _this.durationSubscription = null;
         return _this;
     }
     DebounceSubscriber.prototype._next = function (value) {
@@ -46,12 +44,12 @@ var DebounceSubscriber = /*@__PURE__*/ (function (_super) {
             subscription.unsubscribe();
             this.remove(subscription);
         }
-        subscription = subscribeToResult(this, duration);
+        subscription = innerSubscribe(duration, new SimpleInnerSubscriber(this));
         if (subscription && !subscription.closed) {
             this.add(this.durationSubscription = subscription);
         }
     };
-    DebounceSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    DebounceSubscriber.prototype.notifyNext = function () {
         this.emitValue();
     };
     DebounceSubscriber.prototype.notifyComplete = function () {
@@ -62,15 +60,15 @@ var DebounceSubscriber = /*@__PURE__*/ (function (_super) {
             var value = this.value;
             var subscription = this.durationSubscription;
             if (subscription) {
-                this.durationSubscription = null;
+                this.durationSubscription = undefined;
                 subscription.unsubscribe();
                 this.remove(subscription);
             }
-            this.value = null;
+            this.value = undefined;
             this.hasValue = false;
             _super.prototype._next.call(this, value);
         }
     };
     return DebounceSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=debounce.js.map

@@ -1,6 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function skipUntil(notifier) {
     return (source) => source.lift(new SkipUntilOperator(notifier));
 }
@@ -12,21 +10,25 @@ class SkipUntilOperator {
         return source.subscribe(new SkipUntilSubscriber(destination, this.notifier));
     }
 }
-class SkipUntilSubscriber extends OuterSubscriber {
+class SkipUntilSubscriber extends SimpleOuterSubscriber {
     constructor(destination, notifier) {
         super(destination);
         this.hasValue = false;
-        const innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+        const innerSubscriber = new SimpleInnerSubscriber(this);
         this.add(innerSubscriber);
         this.innerSubscription = innerSubscriber;
-        subscribeToResult(this, notifier, undefined, undefined, innerSubscriber);
+        const innerSubscription = innerSubscribe(notifier, innerSubscriber);
+        if (innerSubscription !== innerSubscriber) {
+            this.add(innerSubscription);
+            this.innerSubscription = innerSubscription;
+        }
     }
     _next(value) {
         if (this.hasValue) {
             super._next(value);
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.hasValue = true;
         if (this.innerSubscription) {
             this.innerSubscription.unsubscribe();

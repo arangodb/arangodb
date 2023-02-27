@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function buffer(closingNotifier) {
     return function bufferOperatorFunction(source) {
         return source.lift(new BufferOperator(closingNotifier));
@@ -13,16 +12,16 @@ class BufferOperator {
         return source.subscribe(new BufferSubscriber(subscriber, this.closingNotifier));
     }
 }
-class BufferSubscriber extends OuterSubscriber {
+class BufferSubscriber extends SimpleOuterSubscriber {
     constructor(destination, closingNotifier) {
         super(destination);
         this.buffer = [];
-        this.add(subscribeToResult(this, closingNotifier));
+        this.add(innerSubscribe(closingNotifier, new SimpleInnerSubscriber(this)));
     }
     _next(value) {
         this.buffer.push(value);
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         const buffer = this.buffer;
         this.buffer = [];
         this.destination.next(buffer);

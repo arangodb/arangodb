@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function exhaust() {
     return (source) => source.lift(new SwitchFirstOperator());
 }
@@ -8,7 +7,7 @@ class SwitchFirstOperator {
         return source.subscribe(new SwitchFirstSubscriber(subscriber));
     }
 }
-class SwitchFirstSubscriber extends OuterSubscriber {
+class SwitchFirstSubscriber extends SimpleOuterSubscriber {
     constructor(destination) {
         super(destination);
         this.hasCompleted = false;
@@ -17,7 +16,7 @@ class SwitchFirstSubscriber extends OuterSubscriber {
     _next(value) {
         if (!this.hasSubscription) {
             this.hasSubscription = true;
-            this.add(subscribeToResult(this, value));
+            this.add(innerSubscribe(value, new SimpleInnerSubscriber(this)));
         }
     }
     _complete() {
@@ -26,8 +25,7 @@ class SwitchFirstSubscriber extends OuterSubscriber {
             this.destination.complete();
         }
     }
-    notifyComplete(innerSub) {
-        this.remove(innerSub);
+    notifyComplete() {
         this.hasSubscription = false;
         if (this.hasCompleted) {
             this.destination.complete();

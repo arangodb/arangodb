@@ -16,13 +16,13 @@ export function windowTime(windowTimeSpan) {
         scheduler = arguments[2];
     }
     else if (isNumeric(arguments[2])) {
-        maxWindowSize = arguments[2];
+        maxWindowSize = Number(arguments[2]);
     }
     if (isScheduler(arguments[1])) {
         scheduler = arguments[1];
     }
     else if (isNumeric(arguments[1])) {
-        windowCreationInterval = arguments[1];
+        windowCreationInterval = Number(arguments[1]);
     }
     return function windowTimeOperatorFunction(source) {
         return source.lift(new WindowTimeOperator(windowTimeSpan, windowCreationInterval, maxWindowSize, scheduler));
