@@ -20,11 +20,13 @@ function reduceStack(errstack) {
       line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run)/));
   lines.forEach((line, index) => {
     if (numPrinted++ >= maxLines && index !== lines.length - 1) {
+      ret += '.';
       // don't print more than x lines, but always print last line
       return;
     }
     if (last === line) {
       // don't print duplicate lines
+      ret += '.';
       return;
     }
     last = line;
