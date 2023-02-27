@@ -162,8 +162,9 @@ struct arangodb::VocBaseLogManager {
     }
   }
 
-  auto resignAll() {
+  auto resignAll() noexcept {
     auto guard = _guardedData.getLockedGuard();
+    guard->resignAllWasCalled = true;
     for (auto&& [id, val] : guard->statesAndLogs) {
       auto&& log = val.log;
       auto core = std::move(*log).resign();
@@ -332,8 +333,8 @@ struct arangodb::VocBaseLogManager {
       arangodb::replication2::replicated_log::ReplicatedLogConnection
           connection;
     };
-    absl::flat_hash_map<arangodb::replication2::LogId, StateAndLog>
-        statesAndLogs;
+    std::map<arangodb::replication2::LogId, StateAndLog> statesAndLogs;
+    bool resignAllWasCalled{false};
 
     void registerRebootTracker(
         replication2::LogId id,
@@ -372,6 +373,9 @@ struct arangodb::VocBaseLogManager {
       using namespace arangodb::replication2::replicated_state;
       // TODO Make this atomic without crashing on errors if possible
 
+      if (resignAllWasCalled) {
+        return {TRI_ERROR_SHUTTING_DOWN};
+      }
       if (auto iter = statesAndLogs.find(id); iter != std::end(statesAndLogs)) {
         return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER};
       }
@@ -2199,6 +2203,10 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 }
 
 using namespace arangodb::replication2;
+
+void TRI_vocbase_t::shutdownReplicatedLogs() noexcept {
+  _logManager->resignAll();
+}
 
 auto TRI_vocbase_t::updateReplicatedState(
     LogId id, agency::LogPlanTermSpecification const& term,
