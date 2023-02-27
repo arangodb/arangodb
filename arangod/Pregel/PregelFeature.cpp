@@ -365,8 +365,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
-  _actorRuntime->spawn<ConductorActor>(vocbase.name(), ConductorState{},
-                                       ConductorStart{});
+  _actorRuntime->spawn<ConductorActor>(
+      vocbase.name(), std::make_unique<ConductorState>(), ConductorStart{});
 
   return en;
 }
@@ -374,7 +374,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
                                SpawnMessages msg) {
   if (server == _actorRuntime->myServerID) {
-    _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{}, msg);
+    _actorRuntime->spawn<SpawnActor>(sender.database,
+                                     std::make_unique<SpawnState>(), msg);
   } else {
     _actorRuntime->dispatch(
         sender,

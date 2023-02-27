@@ -49,7 +49,8 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
   auto operator()(SpawnConductor msg) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("ed212", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn conductor actor";
-    this->template spawn<ConductorActor>(ConductorState{}, ConductorStart{});
+    this->template spawn<ConductorActor>(std::make_unique<ConductorState>(),
+                                         ConductorStart{});
     return std::move(this->state);
   }
 
@@ -57,7 +58,8 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     LOG_TOPIC("2452c", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn worker actor";
     this->template spawn<WorkerActor>(
-        WorkerState{}, WorkerStart{});  //.conductor = msg.conductor});
+        std::make_unique<WorkerState>(),
+        WorkerStart{});  //.conductor = msg.conductor});
     return std::move(this->state);
   }
 
