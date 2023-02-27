@@ -9,7 +9,7 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import ToolTip from "../../../../components/arango/tootip";
-import { FieldSelect } from "./FieldSelect";
+import { FieldsDropdown } from "./FieldsDropdown";
 import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
@@ -131,7 +131,7 @@ const LinkPropertiesInput = ({
               }}
             >
               <label>Fields</label>
-              <FieldSelect
+              <FieldsDropdown
                 fields={fields}
                 removeField={removeField}
                 addField={addField}

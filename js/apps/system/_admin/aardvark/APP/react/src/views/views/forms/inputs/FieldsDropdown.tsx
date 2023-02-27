@@ -14,7 +14,7 @@ const MultiValueLabel = (props: MultiValueGenericProps) => {
   );
 };
 
-export const FieldSelect = ({
+export const FieldsDropdown = ({
   fields,
   removeField,
   addField,
@@ -27,7 +27,6 @@ export const FieldSelect = ({
 }) => {
   return (
     <CreatableMultiSelect
-      name="linkFields"
       value={fields}
       components={{
         MultiValueLabel
