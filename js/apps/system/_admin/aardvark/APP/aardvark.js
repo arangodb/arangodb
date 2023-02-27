@@ -1554,7 +1554,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
       multiselect: false,
       navigationButtons: true,
       selectable: true,
-      selectConnectedEdges: true,
+      selectConnectedEdges: false,
       tooltipDelay: 300,
       zoomSpeed: 0.25,
       zoomView: true

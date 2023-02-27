@@ -97,11 +97,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		});
 
 		network.on("selectNode", (event, params) => {
-			console.log("event: ", event);
-			console.log("params: ", params);
 			if (event.nodes.length === 1) {
-				console.log("selectNode (event): ", event);
-				console.log("Find the node id: ", event.nodes[0]);
 				onSelectNode(event.nodes[0]);
 				console.log("selectNode (params): ", params);
 			} else {
