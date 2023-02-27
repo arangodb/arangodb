@@ -19,15 +19,15 @@ v3.10.5 (XXXX-XX-XX)
   values but the full-length edge ids. The compressed values will also be used
   in memory only and will not be persisted on disk.
 
-
-v3.10.4 (2023-02-19)
---------------------
-
 * Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
   is generated for each imported document to avoid clashes with previously
   present data. This must be created on the shard leader rather than the
   coordinator. The bug happened, when two coordinators were creating
   the same _rev value for two different documents concurrently.
+
+
+v3.10.4 (2023-02-19)
+--------------------
 
 * Updated ArangoDB Starter to 0.15.7.
 
