@@ -10,6 +10,7 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import ToolTip from "../../../../components/arango/tootip";
 import { FieldSelect } from "./FieldSelect";
+import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -74,10 +75,11 @@ const LinkPropertiesInput = ({
   };
 
   const addField = (field: string | number) => {
+    const newField = escapeFieldDot(field);
     dispatch({
       type: "setField",
       field: {
-        path: `fields[${field}]`,
+        path: `fields[${newField}]`,
         value: {}
       },
       basePath
@@ -85,10 +87,11 @@ const LinkPropertiesInput = ({
   };
 
   const removeField = (field: string | number) => {
+    const newField = escapeFieldDot(field);
     dispatch({
       type: "unsetField",
       field: {
-        path: `fields[${field}]`
+        path: `fields[${newField}]`
       },
       basePath
     });
