@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Replication2/ReplicatedLog/Components/LogFollower2.h"
+#include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Metrics/Counter.h"
 #include "Basics/VelocyPackHelper.h"
 

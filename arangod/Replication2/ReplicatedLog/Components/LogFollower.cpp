@@ -21,7 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogFollower2.h"
+#include "LogFollower.h"
 #include "Logger/LogContextKeys.h"
 
 #include "Metrics/Gauge.h"
