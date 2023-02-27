@@ -1,6 +1,12 @@
 devel
 -----
 
+* Updated arangosync to v2.15.0-preview-1.
+
+* The internal Graph code is completely converted to the new graph engine.
+  Last algorithms added to that lists are: ShortestPath, WeightedShortestPath,
+  KShortestPaths and WeightedKShortestPaths.
+
 * Improve memory usage of in-memory edge index cache if most of the edges in an
   index refer to a single or mostly the same collection.
   Previously the full edge ids, consisting of the the referred-to collection
