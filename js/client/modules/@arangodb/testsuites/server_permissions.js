@@ -65,12 +65,14 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     this.info = "runInDriverTest";
   }
   run(testList) {
+    let tmpDir = fs.getTempPath();
     let beforeStart = time();
     this.continueTesting = true;
     this.testList = testList;
     let testrunStart = time();
     this.results = {
       shutdown: true,
+      status: true,
       startupTime: testrunStart - beforeStart
     };
     let serverDead = false;
@@ -145,6 +147,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               shutdown: shutdownStatus
             };
             this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+            this.results.status = false;
             return this.results;
           }
           if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
@@ -250,6 +253,16 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
       }
+    }
+    if (this.results.status && this.options.cleanup) {
+      fs.list(tmpDir).forEach(file => {
+        let fullfile = fs.join(tmpDir, file);
+        if (fs.isDirectory(fullfile)) {
+          fs.removeDirectoryRecursive(fullfile, true);
+        } else {
+          fs.remove(fullfile);
+        }
+      });
     }
     return this.results;
   }

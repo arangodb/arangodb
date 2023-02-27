@@ -61,6 +61,8 @@ class exportRunner extends tu.runInArangoshRunner {
   shutdown (results) {
     print(CYAN + 'Shutting down...' + RESET);
     results['shutdown'] = this.instanceManager.shutdownInstance(false);
+    results.status = results.failed === 0 && results['shutdown'];
+    this.instanceManager.destructor(results.status);
     print(CYAN + 'done.' + RESET);
     print();
     return results;
