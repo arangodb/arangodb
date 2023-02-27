@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated internal JavaScript dependency @xmldom/xmldom from 0.8.0 to 0.8.6.
+
 * Upgraded OpenSSL to 3.0.8.
 
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
