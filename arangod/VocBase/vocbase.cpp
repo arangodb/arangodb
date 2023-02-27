@@ -179,9 +179,12 @@ struct arangodb::VocBaseLogManager {
       arangodb::replication2::agency::ParticipantsConfig const& config)
       -> Result {
     auto guard = _guardedData.getLockedGuard();
+    auto myself = replication2::agency::ServerInstanceReference(
+        ServerState::instance()->getId(),
+        ServerState::instance()->getRebootId());
     if (auto iter = guard->statesAndLogs.find(id);
         iter != guard->statesAndLogs.end()) {
-      iter->second.log->updateConfig(term, config)
+      iter->second.log->updateConfig(term, config, std::move(myself))
           .thenFinal([&voc = _vocbase](auto&&) {
             voc.server().getFeature<ClusterFeature>().addDirty(voc.name());
           });
@@ -261,15 +264,15 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
-  [[nodiscard]] auto getReplicatedLogsQuickStatus() const -> std::unordered_map<
-      arangodb::replication2::LogId,
-      arangodb::replication2::replicated_log::QuickLogStatus> {
+  [[nodiscard]] auto getReplicatedLogsStatusMap() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::maintenance::LogStatus> {
     std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>
+                       arangodb::replication2::maintenance::LogStatus>
         result;
     auto guard = _guardedData.getLockedGuard();
     for (auto& [id, value] : guard->statesAndLogs) {
-      result.emplace(id, value.log->getQuickStatus());
+      result.emplace(id, value.log->getMaintenanceLogStatus());
     }
     return result;
   }
@@ -335,28 +338,6 @@ struct arangodb::VocBaseLogManager {
     };
     std::map<arangodb::replication2::LogId, StateAndLog> statesAndLogs;
     bool resignAllWasCalled{false};
-
-    void registerRebootTracker(
-        replication2::LogId id,
-        replication2::agency::ServerInstanceReference myself,
-        ArangodServer& server, TRI_vocbase_t& vocbase) {
-      auto& rbt =
-          server.getFeature<ClusterFeature>().clusterInfo().rebootTracker();
-
-      if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
-        iter->second.rebootTrackerGuard = rbt.callMeOnChange(
-            {myself.serverId, myself.rebootId},
-            [log = iter->second.log, id, &vocbase, &server] {
-              auto myself = replication2::agency::ServerInstanceReference(
-                  ServerState::instance()->getId(),
-                  ServerState::instance()->getRebootId());
-              log->updateMyInstanceReference(myself);
-              vocbase._logManager->_guardedData.getLockedGuard()
-                  ->registerRebootTracker(id, myself, server, vocbase);
-            },
-            "update reboot id in replicated log");
-      }
-    }
 
     auto buildReplicatedStateWithMethods(
         replication2::LogId const id, std::string_view type,
@@ -456,7 +437,6 @@ struct arangodb::VocBaseLogManager {
       auto emplaceResult = statesAndLogs.emplace(id, std::move(stateAndLog));
       auto [iter, inserted] = emplaceResult;
       ADB_PROD_ASSERT(inserted);
-      registerRebootTracker(id, myself, server, vocbase);
       auto metrics = server.getFeature<ReplicatedLogFeature>().metrics();
       metrics->replicatedLogNumber->fetch_add(1);
       metrics->replicatedLogCreationNumber->count();
@@ -2256,9 +2236,9 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
   }
 }
 
-auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
-    -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
-  return _logManager->getReplicatedLogsQuickStatus();
+auto TRI_vocbase_t::getReplicatedLogsStatusMap() const
+    -> std::unordered_map<LogId, maintenance::LogStatus> {
+  return _logManager->getReplicatedLogsStatusMap();
 }
 
 auto TRI_vocbase_t::getReplicatedStatesStatus() const

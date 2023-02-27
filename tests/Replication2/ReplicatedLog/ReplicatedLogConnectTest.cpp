@@ -257,7 +257,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
       .setParticipant("A", {.allowedInQuorum = true})
       .setParticipant("B", {.allowedInQuorum = true});
 
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   auto connection = log->connect(recorder.createHandle());
 
   auto leader = participantsFactory->leaderInTerm(LogTerm{1});
@@ -289,7 +289,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   auto connection = log->connect(recorder.createHandle());
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
 
   auto leader = participantsFactory->leaderInTerm(LogTerm{1});
   ASSERT_NE(leader, nullptr);
@@ -322,12 +322,12 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
 
   // create initial state and connection
   auto connection = log->connect(recorder.createHandle());
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   auto leader = participantsFactory->leaderInTerm(LogTerm{1});
 
   // update term and make A leader
   term.setTerm(LogTerm{2}).setLeader("A");
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   auto follower = participantsFactory->followerInTerm(LogTerm{2});
   ASSERT_NE(follower, nullptr);
   {
@@ -355,12 +355,12 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
 
   // create initial state and connection
   auto connection = log->connect(recorder.createHandle());
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   auto follower = participantsFactory->followerInTerm(LogTerm{1});
 
   // update term and make myself leader
   term.setTerm(LogTerm{2}).setLeader(myself);
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   auto leader = participantsFactory->leaderInTerm(LogTerm{2});
   ASSERT_NE(leader, nullptr);
   {
@@ -388,12 +388,12 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   auto connection = log->connect(recorder.createHandle());
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
 
   auto leader = participantsFactory->leaderInTerm(LogTerm{1});
 
   config.setParticipant("C", {}).incGeneration();
-  log->updateConfig(term.get(), config.get());
+  log->updateConfig(term.get(), config.get(), myself);
   // should update leader, but not rebuild
   EXPECT_EQ(leader->latestConfig->generation, config.get().generation);
 }

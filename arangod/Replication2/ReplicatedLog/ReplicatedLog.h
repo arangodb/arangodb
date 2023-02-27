@@ -182,7 +182,8 @@ struct alignas(64) ReplicatedLog {
       -> std::shared_ptr<IReplicatedStateHandle>;
 
   auto updateConfig(agency::LogPlanTermSpecification term,
-                    agency::ParticipantsConfig config)
+                    agency::ParticipantsConfig config,
+                    agency::ServerInstanceReference myself)
       -> futures::Future<futures::Unit>;
 
   [[nodiscard]] auto getId() const noexcept -> LogId;
@@ -200,8 +201,10 @@ struct alignas(64) ReplicatedLog {
 
   [[nodiscard]] auto resign() && -> std::unique_ptr<LogCore>;
 
-  auto updateMyInstanceReference(agency::ServerInstanceReference)
+  [[nodiscard]] auto updateMyInstanceReference(agency::ServerInstanceReference)
       -> futures::Future<futures::Unit>;
+
+  [[nodiscard]] auto getMaintenanceLogStatus() const -> maintenance::LogStatus;
 
  private:
   struct GuardedData {
@@ -216,6 +219,8 @@ struct alignas(64) ReplicatedLog {
       agency::LogPlanTermSpecification term;
       agency::ParticipantsConfig config;
     };
+
+    [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
 
     bool resigned{false};
     std::unique_ptr<LogCore> core = nullptr;

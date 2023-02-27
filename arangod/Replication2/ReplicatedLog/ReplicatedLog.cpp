@@ -89,8 +89,8 @@ auto replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn)
 }
 
 auto replicated_log::ReplicatedLog::updateConfig(
-    agency::LogPlanTermSpecification term, agency::ParticipantsConfig config)
-    -> futures::Future<futures::Unit> {
+    agency::LogPlanTermSpecification term, agency::ParticipantsConfig config,
+    agency::ServerInstanceReference myself) -> futures::Future<futures::Unit> {
   auto guard = _guarded.getLockedGuard();
 
   if (guard->latest) {
@@ -109,12 +109,20 @@ auto replicated_log::ReplicatedLog::updateConfig(
       not guard->latest or guard->latest->term.term < term.term;
   bool const generationChanged =
       not guard->latest or guard->latest->config.generation < config.generation;
+  ADB_PROD_ASSERT(myself.serverId == guard->_myself.serverId);
+  bool const rebootIdChanged = myself.rebootId != guard->_myself.rebootId;
 
-  if (termChanged) {
+  if (rebootIdChanged) {
+    LOG_CTX("fa471", INFO, _logContext)
+        << "detected a change in reboot id, restarting participant";
+    guard->_myself = myself;
+  }
+
+  if (termChanged or rebootIdChanged) {
     resetParticipant(guard.get());
   }
 
-  if (termChanged or generationChanged) {
+  if (termChanged or generationChanged or rebootIdChanged) {
     guard->latest.emplace(std::move(term), std::move(config));
     return tryBuildParticipant(guard.get());
   } else {
@@ -281,10 +289,8 @@ auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
 
 auto ReplicatedLog::getId() const noexcept -> LogId { return _id; }
 auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
-  if (auto guard = _guarded.getLockedGuard(); guard->participant) {
-    return guard->participant->getQuickStatus();
-  }
-  return {};
+  auto guard = _guarded.getLockedGuard();
+  return guard->getQuickStatus();
 }
 auto ReplicatedLog::getStatus() const -> LogStatus {
   if (auto guard = _guarded.getLockedGuard(); guard->participant) {
@@ -309,6 +315,19 @@ auto ReplicatedLog::getFollowerState() const
     -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> {
   auto guard = _guarded.getLockedGuard();
   return guard->stateHandle->getFollower();
+}
+
+[[nodiscard]] auto ReplicatedLog::getMaintenanceLogStatus() const
+    -> maintenance::LogStatus {
+  auto guard = _guarded.getLockedGuard();
+  return maintenance::LogStatus{guard->getQuickStatus(), guard->_myself};
+}
+
+auto ReplicatedLog::GuardedData::getQuickStatus() const -> QuickLogStatus {
+  if (participant) {
+    return participant->getQuickStatus();
+  }
+  return {};
 }
 
 void ReplicatedLogConnection::disconnect() {
