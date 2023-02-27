@@ -201,9 +201,6 @@ struct alignas(64) ReplicatedLog {
 
   [[nodiscard]] auto resign() && -> std::unique_ptr<LogCore>;
 
-  [[nodiscard]] auto updateMyInstanceReference(agency::ServerInstanceReference)
-      -> futures::Future<futures::Unit>;
-
   [[nodiscard]] auto getMaintenanceLogStatus() const -> maintenance::LogStatus;
 
  private:

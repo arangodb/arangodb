@@ -131,28 +131,6 @@ auto replicated_log::ReplicatedLog::updateConfig(
   }
 }
 
-auto replicated_log::ReplicatedLog::updateMyInstanceReference(
-    agency::ServerInstanceReference newReference)
-    -> futures::Future<futures::Unit> {
-  auto guard = _guarded.getLockedGuard();
-  if (guard->resigned) {
-    LOG_CTX("c1580", TRACE, _logContext)
-        << "ignoring update of reboot id. log already resigned";
-    return {futures::Unit{}};
-  }
-  ADB_PROD_ASSERT(newReference.serverId == guard->_myself.serverId);
-  bool rebootIdChanged = guard->_myself.rebootId != newReference.rebootId;
-  if (rebootIdChanged) {
-    LOG_CTX("fa471", INFO, _logContext)
-        << "detected a change in reboot id, restarting participant";
-    guard->_myself = newReference;
-    resetParticipant(guard.get());
-    return tryBuildParticipant(guard.get());
-  } else {
-    return {futures::Unit{}};
-  }
-}
-
 auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     -> futures::Future<futures::Unit> {
   if (not data.latest or not data.stateHandle) {
