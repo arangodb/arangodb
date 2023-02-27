@@ -270,6 +270,7 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
+  RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp

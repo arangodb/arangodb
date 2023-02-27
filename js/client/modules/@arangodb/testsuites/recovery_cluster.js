@@ -155,6 +155,7 @@ function runArangodRecovery (params, useEncryption) {
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
+    params.instanceManager.nonfatalAssertSearch();
     if (!params.instanceManager.launchInstance()) {
       params.instanceManager.destructor(false);
       return {
