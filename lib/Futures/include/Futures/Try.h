@@ -71,6 +71,10 @@ class Try {
   explicit Try(std::exception_ptr e) noexcept
       : _exception(std::move(e)), _content(Content::Exception) {}
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
   // Move constructor
   Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
       : _content(t._content) {
@@ -80,6 +84,9 @@ class Try {
       new (&_exception) std::exception_ptr(std::move(t._exception));
     }
   }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
   // Move assigner
   Try& operator=(Try<T>&& t) noexcept(

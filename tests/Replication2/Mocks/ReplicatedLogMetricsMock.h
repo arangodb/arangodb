@@ -24,7 +24,10 @@
 
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
+namespace arangodb::replication2::test {
+
 struct ReplicatedLogMetricsMock
-    : arangodb::replication2::replicated_log::ReplicatedLogMetrics {
+    : replicated_log::ReplicatedLogMetricsIndirect<true> {
   ReplicatedLogMetricsMock();
 };
+}  // namespace arangodb::replication2::test

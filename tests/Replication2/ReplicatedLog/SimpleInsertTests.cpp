@@ -20,7 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 #include <Basics/IndexIter.h>
 

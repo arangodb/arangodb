@@ -32,46 +32,37 @@
 namespace arangodb::replication2::replicated_log {
 
 struct ReplicatedLogMetrics {
-  explicit ReplicatedLogMetrics(metrics::MetricsFeature& metricsFeature);
+  metrics::Gauge<uint64_t>* replicatedLogNumber;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogAppendEntriesRttUs;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogFollowerAppendEntriesRtUs;
+  metrics::Counter* replicatedLogCreationNumber;
+  metrics::Counter* replicatedLogDeletionNumber;
+  metrics::Gauge<std::uint64_t>* replicatedLogLeaderNumber;
+  metrics::Gauge<std::uint64_t>* replicatedLogFollowerNumber;
+  metrics::Gauge<std::uint64_t>* replicatedLogInactiveNumber;
+  metrics::Counter* replicatedLogLeaderTookOverNumber;
+  metrics::Counter* replicatedLogStartedFollowingNumber;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogInsertsBytes;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* replicatedLogInsertsRtt;
+
+  metrics::Counter* replicatedLogNumberAcceptedEntries;
+  metrics::Counter* replicatedLogNumberCommittedEntries;
+  metrics::Counter* replicatedLogNumberMetaEntries;
+  metrics::Counter* replicatedLogNumberCompactedEntries;
+};
+
+template<bool Mock>
+struct ReplicatedLogMetricsIndirect : ReplicatedLogMetrics {
+  explicit ReplicatedLogMetricsIndirect(
+      metrics::MetricsFeature* metricsFeature);
 
  private:
-  template<typename Builder, bool mock = false>
-  static auto createMetric(metrics::MetricsFeature* metricsFeature)
-      -> std::shared_ptr<typename Builder::MetricT>;
-
- protected:
-  template<typename MFP,
-           std::enable_if_t<std::is_same_v<metrics::MetricsFeature*, MFP> ||
-                                std::is_null_pointer_v<MFP>,
-                            int> = 0,
-           bool mock = std::is_null_pointer_v<MFP>>
-  explicit ReplicatedLogMetrics(MFP metricsFeature);
-
- public:
-  std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedLogNumber;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
-      replicatedLogAppendEntriesRttUs;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
-      replicatedLogFollowerAppendEntriesRtUs;
-  std::shared_ptr<metrics::Counter> const replicatedLogCreationNumber;
-  std::shared_ptr<metrics::Counter> const replicatedLogDeletionNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
-      replicatedLogLeaderNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
-      replicatedLogFollowerNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
-      replicatedLogInactiveNumber;
-  std::shared_ptr<metrics::Counter> const replicatedLogLeaderTookOverNumber;
-  std::shared_ptr<metrics::Counter> const replicatedLogStartedFollowingNumber;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
-      replicatedLogInsertsBytes;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
-      replicatedLogInsertsRtt;
-
-  std::shared_ptr<metrics::Counter> const replicatedLogNumberAcceptedEntries;
-  std::shared_ptr<metrics::Counter> const replicatedLogNumberCommittedEntries;
-  std::shared_ptr<metrics::Counter> const replicatedLogNumberMetaEntries;
-  std::shared_ptr<metrics::Counter> const replicatedLogNumberCompactedEntries;
+  template<typename Builder>
+  static auto createMetric(metrics::MetricsFeature* metricsFeature) ->
+      typename Builder::MetricT*;
 };
 
 }  // namespace arangodb::replication2::replicated_log
