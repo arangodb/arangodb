@@ -19,8 +19,6 @@ const SearchNodes = ({ nodes, graphData, data, onDeleteNode, onNodeSelect }) => 
               if(e.target.value.includes("/")) {
                 onNodeSelect(previousSearchedNode, e.target.value);
                 setPreviousSearchedNode(e.target.value);
-                const element = document.getElementById("graph-card");
-                element.scrollIntoView({ behavior: "smooth" });
               }
             }
           }
