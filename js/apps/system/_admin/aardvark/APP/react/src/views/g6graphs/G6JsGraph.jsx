@@ -803,7 +803,11 @@ const G6JsGraph = () => {
         />
 
         <DocumentInfo attributes={lookedUpData} />
-        <AttributesInfo attributes={lookedUpData} />
+        {
+          /*
+          <AttributesInfo attributes={lookedUpData} />
+          */
+        }
       </UrlParametersContext.Provider>
     </div>
   );
