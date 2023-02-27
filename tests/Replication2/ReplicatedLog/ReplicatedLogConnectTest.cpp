@@ -397,3 +397,5 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   // should update leader, but not rebuild
   EXPECT_EQ(leader->latestConfig->generation, config.get().generation);
 }
+
+// TODO add test where server instance reference changed
