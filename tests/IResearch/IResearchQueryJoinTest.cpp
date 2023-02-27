@@ -28,6 +28,8 @@
 
 #include "Aql/OptimizerRule.h"
 #include "IResearchQueryCommon.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb::tests {
 namespace {

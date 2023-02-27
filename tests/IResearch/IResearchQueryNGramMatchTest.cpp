@@ -30,6 +30,8 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
