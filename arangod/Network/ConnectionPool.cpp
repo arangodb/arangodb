@@ -84,8 +84,9 @@ struct ConnectionPool::Bucket {
 };
 
 struct ConnectionPool::Impl {
-  explicit Impl(ConnectionPool::Config const& config)
+  explicit Impl(ConnectionPool::Config const& config, ConnectionPool& pool)
       : _config(config),
+        _pool(pool),
         _loop(config.numIOThreads, config.name),
         _totalConnectionsInPool(_config.metricsFeature.add(
             arangodb_connection_pool_connections_current{}.withLabel(
@@ -294,7 +295,7 @@ struct ConnectionPool::Impl {
     builder.endpoint(endpoint);  // picks the socket type
 
     auto now = steady_clock::now();
-    auto c = std::make_shared<Context>(createConnection(builder), now,
+    auto c = std::make_shared<Context>(_pool.createConnection(builder), now,
                                        1 /* leases*/);
     bucket.list.push_back(c);
 
@@ -329,6 +330,7 @@ struct ConnectionPool::Impl {
   }
 
   Config const _config;
+  ConnectionPool& _pool;
 
   mutable basics::ReadWriteLock _lock;
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
@@ -345,7 +347,7 @@ struct ConnectionPool::Impl {
 };
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _impl(std::make_unique<Impl>(config)) {}
+    : _impl(std::make_unique<Impl>(config, *this)) {}
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 
@@ -374,12 +376,6 @@ size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
 /// @brief return the number of open connections
 size_t ConnectionPool::numOpenConnections() const {
   return _impl->numOpenConnections();
-}
-
-ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
-                                               ConnectionPool::Bucket& bucket,
-                                               bool& isFromPool) {
-  return _impl->selectConnection(endpoint, bucket, isFromPool);
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(

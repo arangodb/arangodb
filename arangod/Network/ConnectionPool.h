@@ -103,8 +103,6 @@ class ConnectionPool final {
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(
       fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket,
-                                 bool& isFromPool);
 
  private:
   struct Impl;
