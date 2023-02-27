@@ -171,7 +171,9 @@ PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
 void PrototypeStateMachineFeature::prepare() {
   bool const enabled = ServerState::instance()->isDBServer();
   setEnabled(enabled);
+}
 
+void PrototypeStateMachineFeature::start() {
   auto& replicatedStateFeature =
       server().getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = server().getFeature<NetworkFeature>();
@@ -181,6 +183,8 @@ void PrototypeStateMachineFeature::prepare() {
   rocksdb::TransactionDB* db = engine.db();
   TRI_ASSERT(db != nullptr);
 
+  // TODO This should better be registered during prepare already, but
+  //      engine.db() isn't available at that point.
   replicatedStateFeature.registerStateType<PrototypeState>(
       "prototype",
       std::make_shared<PrototypeNetworkInterface>(networkFeature.pool()),
