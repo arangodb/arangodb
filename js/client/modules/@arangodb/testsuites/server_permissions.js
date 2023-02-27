@@ -39,6 +39,7 @@ const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const ArangoError = require('@arangodb').ArangoError;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 const platform = internal.platform;
 
@@ -313,8 +314,7 @@ function server_secrets(options) {
     'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   };
-  let version = global.ARANGODB_CLIENT_VERSION(true);
-  if (version.hasOwnProperty('enterprise-version')) {
+  if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }

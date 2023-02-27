@@ -54,6 +54,7 @@ const hb = require("@arangodb/hotbackup");
 const sleep = require("internal").sleep;
 const db = require("internal").db;
 const platform = require("internal").platform;
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -66,11 +67,9 @@ const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
 let timeoutFactor = 1;
-if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-    (platform.substr(0, 3) === 'win')) {
+if (versionHas('asan') || versionHas('tsan') || (platform.substr(0, 3) === 'win')) {
   timeoutFactor = 8;
-} else if (process.env.hasOwnProperty('GCOV_PREFIX')) {
+} else if (versionHas('coverage')) {
     timeoutFactor = 16;
 }
 
@@ -841,15 +840,7 @@ function dumpJwt (options) {
 
 function dumpEncrypted (options) {
   // test is only meaningful in the Enterprise Edition
-  let skip = true;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      skip = false;
-    }
-  }
-
-  if (skip) {
+  if (!isEnterprise()) {
     print('skipping dump_encrypted test');
     return {
       dump_encrypted: {
@@ -885,15 +876,7 @@ function dumpEncrypted (options) {
 
 function dumpMaskings (options) {
   // test is only meaningful in the Enterprise Edition
-  let skip = true;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      skip = false;
-    }
-  }
-
-  if (skip) {
+  if (!isEnterprise()) {
     print('skipping dump_maskings test');
     return {
       dump_maskings: {
