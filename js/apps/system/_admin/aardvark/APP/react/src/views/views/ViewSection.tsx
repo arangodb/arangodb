@@ -3,7 +3,7 @@ import { Route, Switch } from "react-router-dom";
 import SplitPane from "react-split-pane";
 import { State } from "../../utils/constants";
 import AccordionView from "./Components/Accordion/Accordion";
-import LinkList from "./Components/LinkList";
+import CollectionsDropdown from "./Components/CollectionsDropdown";
 import { FormState } from "./constants";
 import ConsolidationPolicyForm from "./forms/ConsolidationPolicyForm";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
@@ -55,11 +55,11 @@ export const ViewSection = ({
                   <div>
                     <Switch>
                       <Route path={"/:link"}>
-                        <LinkList />
+                        <CollectionsDropdown />
                         <LinkPropertiesForm name={name} />
                       </Route>
                       <Route exact path={"/"}>
-                        <LinkList />
+                        <CollectionsDropdown />
                       </Route>
                     </Switch>
                   </div>

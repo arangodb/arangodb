@@ -7,8 +7,8 @@ import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompl
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { Link } from "react-router-dom";
 
-//const LinkList = ({ name }: ViewProps) => {
-const LinkList = () => {
+//const CollectionsDropdown = ({ name }: ViewProps) => {
+const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
   const { dispatch, formState: fs, isAdminUser } = viewContext;
   const formState = fs as FormState;
@@ -24,7 +24,7 @@ const LinkList = () => {
         .value();
       const collNames = map(data.body.result, 'name');
       const tempOptions = difference(collNames, linkKeys).sort();
-
+      console.log({tempOptions, collNames, results: data.body.result})
       setOptions(tempOptions);
     }
   }, [data, formState.links]);
@@ -83,4 +83,4 @@ const LinkList = () => {
   </div>;
 };
 
-export default LinkList;
+export default CollectionsDropdown;
