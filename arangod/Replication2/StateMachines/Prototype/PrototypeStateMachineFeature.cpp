@@ -171,9 +171,7 @@ PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
 void PrototypeStateMachineFeature::prepare() {
   bool const enabled = ServerState::instance()->isDBServer();
   setEnabled(enabled);
-}
 
-void PrototypeStateMachineFeature::start() {
   auto& replicatedStateFeature =
       server().getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = server().getFeature<NetworkFeature>();
