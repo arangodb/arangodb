@@ -453,13 +453,15 @@ struct arangodb::VocBaseLogManager {
 
       stateAndLog.connection = log->connect(std::move(stateHandle));
 
-      auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
+      auto emplaceResult = statesAndLogs.emplace(id, std::move(stateAndLog));
+      auto [iter, inserted] = emplaceResult;
+      ADB_PROD_ASSERT(inserted);
       registerRebootTracker(id, myself, server, vocbase);
       auto metrics = server.getFeature<ReplicatedLogFeature>().metrics();
       metrics->replicatedLogNumber->fetch_add(1);
       metrics->replicatedLogCreationNumber->count();
 
-      return iter.first->second.state;
+      return iter->second.state;
     } catch (std::exception& ex) {
       // If we created the state on-disk, but failed to add it to the map, we
       // cannot continue safely.
@@ -482,7 +484,7 @@ struct arangodb::VocBaseLogManager {
       using namespace arangodb::replication2::replicated_state;
       StorageEngine& engine =
           server.getFeature<EngineSelectorFeature>().engine();
-      statesAndLogs.reserve(1);  // make sure we have enough memory here
+
       {
         VPackBufferUInt8 buffer;
         buffer.append(parameters.start(), parameters.byteSize());
