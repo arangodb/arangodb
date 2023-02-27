@@ -1,6 +1,8 @@
 v3.9.10 (XXXX-XX-XX)
 --------------------
 
+* Updated internal JavaScript dependency @xmldom/xmldom from 0.8.0 to 0.8.6.
+
 * Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
   CVE-2020-36604 in joi.
 
