@@ -11,16 +11,24 @@
  */
 var counter; // crying
 function reduceStack(errstack) {
+  const maxLines = 5;
   let ret = '';
-  let printLine = true;
-  String(errstack).split('\n').forEach(line => {
-    if ((line.search('RunTest') >= 0) ||
-        (line.search('Object.run') >= 0)){
-      printLine = false;
+  let numPrinted = 0;
+  let last;
+  let lines = String(errstack).split('\n').filter(
+    line => line.trim() !== '').filter(
+      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run)/));
+  lines.forEach((line, index) => {
+    if (numPrinted++ >= maxLines && index !== lines.length - 1) {
+      // don't print more than x lines, but always print last line
+      return;
     }
-    if (printLine && line.search('jsunity.js') === -1) {
-      ret += line + '\n';
+    if (last === line) {
+      // don't print duplicate lines
+      return;
     }
+    last = line;
+    ret += line + '\n';
   });
   return ret;
 }
