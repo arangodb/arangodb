@@ -605,7 +605,8 @@ void PregelFeature::start() {
       ServerState::instance()->getId(), "PregelFeature",
       std::make_shared<PregelScheduler>(),
       std::make_shared<ArangoExternalDispatcher>(
-          "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool()));
+          "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool(),
+          network::Timeout{5.0 * 60}));
 }
 
 void PregelFeature::beginShutdown() {

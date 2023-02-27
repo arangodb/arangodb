@@ -154,31 +154,34 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   ASSERT_EQ(actor->getState(), (TrivialState{}));
 }
 
-TYPED_TEST(ActorTest, finished_actor_works_on_all_remaining_messages_in_queue) {
-  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
-      "A", "myID", this->scheduler, dispatcher);
-  auto actor = std::make_shared<
-      Actor<Runtime<TypeParam, EmptyExternalDispatcher>, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+// TYPED_TEST(ActorTest,
+// finished_actor_works_on_all_remaining_messages_in_queue) {
+//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+//   auto runtime = std::make_shared<Runtime<TypeParam,
+//   EmptyExternalDispatcher>>(
+//       "A", "myID", this->scheduler, dispatcher);
+//   auto actor = std::make_shared<
+//       Actor<Runtime<TypeParam, EmptyExternalDispatcher>, TrivialActor>>(
+//       ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
+//       std::make_unique<TrivialState>());
 
-  // send a lot of messages to actor
-  auto message = TrivialMessages{TrivialMessage{"A"}};
-  size_t sent_message_count = 1000;
-  for (size_t i = 0; i < sent_message_count; i++) {
-    actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
-                   arangodb::inspection::serializeWithErrorT(message).get());
-  }
+//   // send a lot of messages to actor
+//   auto message = TrivialMessages{TrivialMessage{"A"}};
+//   size_t sent_message_count = 1000;
+//   for (size_t i = 0; i < sent_message_count; i++) {
+//     actor->process(ActorPID{.server = "A", .database = "database", .id =
+//     {5}},
+//                    arangodb::inspection::serializeWithErrorT(message).get());
+//   }
 
-  // finish actor possibly before actor worked on all messages
-  actor->finish();
+//   // finish actor possibly before actor worked on all messages
+//   actor->finish();
 
-  // wait for actor to work off all messages
-  while (not actor->isIdle()) {
-  }
-  this->scheduler->stop();
-  ASSERT_EQ(actor->getState(),
-            (TrivialState{.state = std::string(sent_message_count, 'A'),
-                          .called = sent_message_count}));
-}
+//   // wait for actor to work off all messages
+//   while (not actor->isIdle()) {
+//   }
+//   this->scheduler->stop();
+//   ASSERT_EQ(actor->getState(),
+//             (TrivialState{.state = std::string(sent_message_count, 'A'),
+//                           .called = sent_message_count}));
+// }

@@ -61,7 +61,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<WorkerState> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor: Error - recieving actor {} not found", notFound.actor);
+        "Worker Actor: Error - receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 

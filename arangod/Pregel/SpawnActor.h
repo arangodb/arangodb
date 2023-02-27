@@ -71,7 +71,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("03156", INFO, Logger::PREGEL) << fmt::format(
-        "Spawn Actor: Error - recieving actor {} not found", notFound.actor);
+        "Spawn Actor: Error - receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 

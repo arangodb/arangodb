@@ -9,6 +9,12 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 
+/*
+  The ArangoExternalDispatcher sends messages from one actor to another via the
+  ArangoDB REST interface. It is used in Pregel to send messages to an actor
+  that is located on a different server.
+ */
+
 namespace arangodb::pregel {
 
 struct NetworkMessage {
@@ -24,44 +30,12 @@ auto inspect(Inspector& f, NetworkMessage& x) {
 }
 
 struct ArangoExternalDispatcher {
-  static auto errorHandling(arangodb::network::Response const& message)
-      -> arangodb::ResultT<VPackSlice> {
-    if (message.fail()) {
-      return {arangodb::Result{
-          TRI_ERROR_INTERNAL,
-          fmt::format("REST request failed: {}",
-                      arangodb::fuerte::to_string(message.error))}};
-    }
-    if (message.statusCode() >= 400) {
-      return {arangodb::Result{
-          TRI_ERROR_FAILED,
-          fmt::format("REST request returned an error code {}: {}",
-                      message.statusCode(), message.slice().toJson())}};
-    }
-    return message.slice();
-  }
-
   ArangoExternalDispatcher(std::string url,
-                           network::ConnectionPool* connectionPool)
-      : connectionPool(connectionPool), baseURL{std::move(url)} {}
-
-  auto send(actor::ActorPID sender, actor::ActorPID receiver,
-            arangodb::velocypack::SharedSlice msg) -> network::FutureRes {
-    auto networkMessage =
-        NetworkMessage{.sender = sender,
-                       .receiver = receiver,
-                       .payload = velocypack::Builder(msg.slice())};
-    auto serialized = inspection::serializeWithErrorT(networkMessage);
-    ADB_PROD_ASSERT(serialized.ok());
-    auto builder = velocypack::Builder(serialized.get().slice());
-    return network::sendRequestRetry(
-        this->connectionPool,
-        // TODO: what about "shard:"?
-        std::string{"server:"} + receiver.server, fuerte::RestVerb::Post,
-        baseURL, builder.bufferRef(),
-        network::RequestOptions{.database = receiver.database,
-                                .timeout = timeout});
-  }
+                           network::ConnectionPool* connectionPool,
+                           network::Timeout timeout)
+      : connectionPool(connectionPool),
+        baseURL{std::move(url)},
+        timeout{std::move(timeout)} {}
 
   auto operator()(actor::ActorPID sender, actor::ActorPID receiver,
                   arangodb::velocypack::SharedSlice msg) -> void {
@@ -88,9 +62,45 @@ struct ArangoExternalDispatcher {
         });
   }
 
+ private:
+  auto send(actor::ActorPID sender, actor::ActorPID receiver,
+            arangodb::velocypack::SharedSlice msg) -> network::FutureRes {
+    auto networkMessage =
+        NetworkMessage{.sender = sender,
+                       .receiver = receiver,
+                       .payload = velocypack::Builder(msg.slice())};
+    auto serialized = inspection::serializeWithErrorT(networkMessage);
+    ADB_PROD_ASSERT(serialized.ok());
+    auto builder = velocypack::Builder(serialized.get().slice());
+    return network::sendRequestRetry(
+        this->connectionPool,
+        // TODO: what about "shard:"?
+        std::string{"server:"} + receiver.server, fuerte::RestVerb::Post,
+        baseURL, builder.bufferRef(),
+        network::RequestOptions{.database = receiver.database,
+                                .timeout = timeout});
+  }
+
+  static auto errorHandling(arangodb::network::Response const& message)
+      -> arangodb::ResultT<VPackSlice> {
+    if (message.fail()) {
+      return {arangodb::Result{
+          TRI_ERROR_INTERNAL,
+          fmt::format("REST request failed: {}",
+                      arangodb::fuerte::to_string(message.error))}};
+    }
+    if (message.statusCode() >= 400) {
+      return {arangodb::Result{
+          TRI_ERROR_FAILED,
+          fmt::format("REST request returned an error code {}: {}",
+                      message.statusCode(), message.slice().toJson())}};
+    }
+    return message.slice();
+  }
+
   network::ConnectionPool* connectionPool;
   std::string baseURL;
-  network::Timeout timeout{5.0 * 60};
+  network::Timeout timeout;
 };
 
 }  // namespace arangodb::pregel

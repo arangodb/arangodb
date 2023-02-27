@@ -63,7 +63,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
   auto operator()(actor::ActorNotFound notFound)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("ea585", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Error - recieving actor {} not found",
+        << fmt::format("Conductor Actor: Error - receiving actor {} not found",
                        notFound.actor);
     return std::move(this->state);
   }
