@@ -5,9 +5,7 @@ import { isEqual } from "lodash";
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
-	const [showNodeContextMenu, toggleNodeContextMenu] = useState(false);
-	const [showEdgeContextMenu, toggleEdgeContextMenu] = useState(false);
-	const [showCanvasContextMenu, toggleCanvasContextMenu] = useState(false);
+	const [contextMenu, toggleContextMenu] = useState("");
 	const [position, setPosition] = useState({ x: 10, y:10 });
 	const [contextMenuNodeID, setContextMenuNodeID] = useState();
 	const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
@@ -33,14 +31,14 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		position: absolute;
 		left: ${(props) => props.left};
 		top: ${(props) => props.top};
-		width: auto;
-		background: #eeeeee;
-		height: auto;
+		display: flex;
+		flex-direction: column;
 		z-index: 99999;
-		padding: 12px;
-		box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
-		-webkit-box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
-		-moz-box-shadow: 4px 4px 10px 0px rgba(179,174,174,0.75);
+		background-color: rgb(85, 85, 85);
+		color: #ffffff;
+		border-radius: 10px;
+		box-shadow: 0 5px 15px rgb(85 85 85 / 50%);
+		padding: 10px 0;
 	`;
 
 	useEffect(() => {
@@ -113,10 +111,13 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			}
 		});
 
-		/*
 		network.on("click", function(params) {
-			console.log("params: ", params);
+			// close all maybe open context menus
+			toggleContextMenu("");
 
+			console.log("click (params): ", params);
+
+			/*
 			var nodeID = params['nodes']['0'];
 			console.log("nodeID: ", nodeID);
 			if (nodeID) {
@@ -129,50 +130,35 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				const nodesArr = Object.values(nodes);
 				console.log("typeof nodesArr: ", typeof nodesArr);
 			}
+			*/
 			//network.redraw();
 			//console.log("Is network redrawn?");
 		});
-		*/
-
-		network.on("oncontext", (event) => {
-			console.log("ONCONTEXT: ", event);
-		});
 
 		network.on("oncontext", (args) => {
-			console.log("args in oncontext: ", args);
 			args.event.preventDefault();
-			console.log(`network.getEdgeAt: - ${network.getEdgeAt(args.pointer.DOM)}`);
-			console.log(`network.getNodeAt: - ${network.getNodeAt(args.pointer.DOM)}`);
+			const canvasOffset = document.getElementById("visnetworkdiv");
+			setPosition({ left: `${args.pointer.DOM.x + canvasOffset.offsetLeft}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
 			if (network.getNodeAt(args.pointer.DOM)) {
 				console.log("A node");
 
-				toggleEdgeContextMenu(false);
-				toggleCanvasContextMenu(false);
-				toggleNodeContextMenu(true);
+				toggleContextMenu("node");
 				network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 				setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
-				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
 			} else if (network.getEdgeAt(args.pointer.DOM)) {
 				console.log("An edge");
 
-				toggleNodeContextMenu(false);
-				toggleCanvasContextMenu(false);
-				toggleEdgeContextMenu(true);
+				toggleContextMenu("edge");
 				network.selectEdges([network.getEdgeAt(args.pointer.DOM)]);
 				setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
-				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
+				//setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
 			} else {
 				console.log("The canvas");
 
-				toggleNodeContextMenu(false);
-				toggleEdgeContextMenu(false);
-				toggleCanvasContextMenu(true);
-				setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y}px` });
+				toggleContextMenu("canvas");
 			}
 		});
 
-		// Enables the add edge mode
-		//network.addEdgeMode();
 		console.log("status of network: ", network);
 		return () => {
 			network.destroy();
@@ -196,62 +182,55 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 
 	return <>
 		{
-		showNodeContextMenu &&
+		contextMenu === "node" &&
 		<StyledContextComponent {...position}>
 			<ul id='graphViewerMenu'>
 				<li title='deleteNode'
 					onClick={() => {
 						onDeleteNode(contextMenuNodeID);
-						toggleNodeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Delete node
 				</li>
 				<li title='editNode'
 					onClick={() => {
 						onEditNode(contextMenuNodeID);
-						toggleNodeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Edit node
 				</li>
 				<li title='expandNode'
 					onClick={() => {
 						onExpandNode(contextMenuNodeID);
-						toggleNodeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Expand node
 				</li>
 				<li title='setAsStartnode'
 					onClick={() => {
 						onSetStartnode(contextMenuNodeID);
-						toggleNodeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Set as startnode
 				</li>
-					<li title='drawEdge'
-						onClick={() => {
-							//console.log("network info: ", network);
-							//onDrawEdge(contextMenuNodeID);
-						}}>
-						Draw edge
-					</li>
 			</ul>
 		</StyledContextComponent>
 		}
 		{
-		showEdgeContextMenu &&
+		contextMenu === "edge" &&
 		<StyledContextComponent {...position}>
 			<ul id='graphViewerMenu'>
 				<li title='deleteNode'
 					onClick={() => {
 						onDeleteEdge(contextMenuEdgeID);
-						toggleEdgeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Delete edge
 				</li>
 				<li title='editEdge'
 					onClick={() => {
 						onEditEdge(contextMenuEdgeID);
-						toggleEdgeContextMenu(false);
+						toggleContextMenu("");
 					}}>
 					Edit edge
 				</li>
@@ -259,18 +238,20 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		</StyledContextComponent>
 		}
 		{
-		showCanvasContextMenu &&
+		contextMenu === "canvas" &&
 		<StyledContextComponent {...position}>
 			<ul id='graphViewerMenu'>
 				<li title='addNodeToDb'
 					onClick={() => {
 						onAddNodeToDb();
+						toggleContextMenu("");
 					}}>
 					Add node to database
 				</li>
 				<li title='addEdgeToDb'
 					onClick={() => {
 						networkData.addEdgeMode();
+						toggleContextMenu("");
 					}}>
 					Add edge to database
 				</li>
