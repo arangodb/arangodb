@@ -4,25 +4,16 @@ import { cloneDeep, isEqual, uniqueId } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import "./split-pane-styles.css";
 import "./viewsheader.css";
-import SplitPane from "react-split-pane";
 import useSWR from 'swr';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { HashRouter, Route, Switch } from 'react-router-dom';
-import LinkList from './Components/LinkList';
+import { HashRouter } from 'react-router-dom';
 import { ViewContext } from './constants';
-import LinkPropertiesForm from './forms/LinkPropertiesForm';
 import {
   getReducer, isAdminUser as userIsAdmin,
   usePermissions
 } from '../../utils/helpers';
-import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useView, useDisableNavBar } from './helpers';
-import AccordionView from './Components/Accordion/Accordion';
-import { ViewRightPane } from './ViewRightPane.tsx';
-import { GeneralContent } from './GeneralContent.tsx';
-import { StoredValuesContent } from './StoredValuesContent.tsx';
-import { PrimarySortContent, PrimarySortTitle } from './PrimarySortContent.tsx';
-import useElementSize from './useElementSize';
+import { ViewSection } from './ViewSection.tsx';
 import { ViewHeader } from './ViewHeader.tsx';
 
 const ViewSettingsReactView = ({ name }) => {
@@ -95,9 +86,6 @@ const ViewSettingsReactView = ({ name }) => {
       setViews(data.body.result);
     }
   }
-  const [sectionRef, sectionSize] = useElementSize();
-  const sectionWidth = sectionSize.width;
-  const maxSize = sectionWidth - 200;
   return <ViewContext.Provider
                   value={{
                     formState,
@@ -122,78 +110,15 @@ const ViewSettingsReactView = ({ name }) => {
           name={name}
           setChanged={setChanged}
         />
-      <section ref={sectionRef}>
-        <SplitPane
-          paneStyle={{ overflow: 'scroll' }}
-          maxSize={maxSize}
-          defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
-          onChange={(size) => localStorage.setItem('splitPos', size)}
-          style={{ paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
-          <div style={{ marginRight: '15px' }}>
-            <AccordionView
-              allowMultipleOpen
-              accordionConfig={[
-                {
-                  index: 0,
-                  content: <div>
-                    <Switch>
-                      <Route path={'/:link'}>
-                        <LinkList name={name}/>
-                        <LinkPropertiesForm name={name}/>
-                      </Route>
-                      <Route exact path={'/'}>
-                        <LinkList name={name}/>
-                      </Route>
-                    </Switch>
-                  </div>,
-                  label: "Links",
-                  testID: "accordionItem0",
-                  defaultActive: true
-                },
-                {
-                  index: 1,
-                  content: (
-                    <div>
-                      <GeneralContent
-                        formState={formState}
-                        dispatch={dispatch}
-                        isAdminUser={isAdminUser} 
-                      />
-                    </div>
-                  ),
-                  label: "General",
-                  testID: "accordionItem1"
-                },
-                {
-                  index: 2,
-                  content: (
-                    <div>
-                      <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                          disabled={!isAdminUser}/>
-                    </div>
-                  ),
-                  label: "Consolidation Policy",
-                  testID: "accordionItem2"
-                },
-                {
-                  index: 3,
-                  content: <div><PrimarySortContent  formState={formState} /></div>,
-                  label: <PrimarySortTitle formState={formState} />,
-                  testID: "accordionItem3"
-                },
-                {
-                  index: 4,
-                  content: <div><StoredValuesContent formState={formState} /></div>,
-                  label: "Stored Values",
-                  testID: "accordionItem4"
-                }
-              ]}
-            />
-          </div>
-          <ViewRightPane formState={formState} dispatch={dispatch} state={state} />
-        </SplitPane>
-      </section>
+        <ViewSection
+          name={name}
+          formState={formState}
+          dispatch={dispatch}
+          isAdminUser={isAdminUser}
+          state={state}
+        />
       </HashRouter>
       </ViewContext.Provider>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;
+

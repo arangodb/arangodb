@@ -32,7 +32,7 @@ export const PrimarySortContent = ({ formState }: { formState: FormState }) => {
   );
 };
 
-export const PrimarySortTitle = ({ formState }: { formState: FormState }) => {
+export const getPrimarySortTitle = ({ formState }: { formState: FormState }) => {
   const compressionInfo =
     formState.primarySortCompression !== "none"
       ? `(compression: ${formState.primarySortCompression})`
