@@ -1,10 +1,10 @@
-import { Box } from "@chakra-ui/react";
+import { Box, ChakraProvider } from "@chakra-ui/react";
 import { cloneDeep, isEqual, uniqueId } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
-import { State } from "../../utils/constants";
+import { FormDispatch, State } from "../../utils/constants";
 import {
   getReducer,
   isAdminUser as userIsAdmin,
@@ -112,8 +112,8 @@ export const ViewSettings = ({
       }}
     >
       <HashRouter basename={`view/${name}`} hashType={"noslash"}>
-        <Box backgroundColor="white">
-          <ViewHeader
+        <ChakraProvider>
+          <ViewSettingsInner
             editName={editName}
             formState={formState}
             handleEditName={handleEditName}
@@ -126,16 +126,66 @@ export const ViewSettings = ({
             changed={changed}
             name={name}
             setChanged={setChanged}
-          />
-          <ViewSection
-            name={name}
-            formState={formState}
-            dispatch={dispatch}
-            isAdminUser={isAdminUser}
             state={state}
           />
-        </Box>
+        </ChakraProvider>
       </HashRouter>
     </ViewContext.Provider>
+  );
+};
+
+const ViewSettingsInner = ({
+  editName,
+  formState,
+  handleEditName,
+  updateName,
+  nameEditDisabled,
+  closeEditName,
+  isAdminUser,
+  views,
+  dispatch,
+  changed,
+  name,
+  setChanged,
+  state
+}: {
+  editName: boolean;
+  formState: FormState;
+  handleEditName: () => void;
+  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  nameEditDisabled: boolean;
+  closeEditName: () => void;
+  isAdminUser: boolean;
+  views: never[];
+  dispatch: FormDispatch<FormState>;
+  changed: boolean;
+  name: string;
+  setChanged: React.Dispatch<React.SetStateAction<boolean>>;
+  state: State<FormState>;
+}) => {
+  return (
+    <Box backgroundColor="white">
+      <ViewHeader
+        editName={editName}
+        formState={formState}
+        handleEditName={handleEditName}
+        updateName={updateName}
+        nameEditDisabled={nameEditDisabled}
+        closeEditName={closeEditName}
+        isAdminUser={isAdminUser}
+        views={views}
+        dispatch={dispatch}
+        changed={changed}
+        name={name}
+        setChanged={setChanged}
+      />
+      <ViewSection
+        name={name}
+        formState={formState}
+        dispatch={dispatch}
+        isAdminUser={isAdminUser}
+        state={state}
+      />
+    </Box>
   );
 };
