@@ -6,7 +6,7 @@
 
   window.ArangoQueries = Backbone.Collection.extend({
     searchOptions: {
-      searchPhrase: null
+      searchPhrase: null,
     },
 
     getQueryPath: function () {
