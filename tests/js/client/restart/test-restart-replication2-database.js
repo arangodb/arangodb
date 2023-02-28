@@ -24,10 +24,13 @@
 
 const jsunity = require('jsunity');
 const {assertEqual, assertNotEqual, assertIdentical} = jsunity.jsUnity.assertions;
-const rh = require('@arangodb/testutils/restart-helper');
 const {db} = require('@arangodb');
-const {getCtrlDBServers} = require('@arangodb/test-helper');
 const console = require('console');
+const rh = require('@arangodb/testutils/restart-helper');
+const lh = require("@arangodb/testutils/replicated-logs-helper");
+const {getCtrlDBServers} = require('@arangodb/test-helper');
+const {dbName} = require('@arangodb/testutils/user-helper');
+const _ = require('lodash');
 
 const disableMaintenanceMode = function () {
   const response = db._connection.PUT('/_admin/cluster/maintenance', '"off"');
@@ -55,30 +58,70 @@ function testSuite () {
     setUp: function () {
       db._createDatabase(databaseName, {'replicationVersion': '2'});
       db._useDatabase(databaseName);
-      disableMaintenanceMode();
     },
 
     tearDown: function () {
+      disableMaintenanceMode();
       db._useDatabase('_system');
       rh.restartAllServers();
       assertNotEqual(-1, db._databases().indexOf(databaseName));
       db._dropDatabase(databaseName);
-      enableMaintenanceMode();
     },
 
-    testRestartDatabaseServers: function () {
-      db._createDocumentCollection(colName, {numberOfShards: 3, replicationFactor: 2});
-      const expectedKeys = ['42'];
-      db[colName].insert(expectedKeys.map(_key => ({_key})));
+    testSimpleRestartAllDatabaseServers: function () {
+      const col = db._createDocumentCollection(colName, {numberOfShards: 5, replicationFactor: 3});
+      const expectedKeys = _.range(100).map(i => `${i}`);
+      col.insert(expectedKeys.map(_key => ({_key})));
 
       const dbServers = getCtrlDBServers();
 
+      enableMaintenanceMode();
       rh.shutdownServers(dbServers);
 
       rh.restartServers(dbServers);
+      disableMaintenanceMode();
 
-      const actualKeys = db[colName].toArray().map(doc => doc._key);
-      assertEqual(expectedKeys, actualKeys);
+      const actualKeys = col.toArray().map(doc => doc._key);
+      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+    },
+
+    testRestartAllReplicationFactorOne: function () {
+      const col = db._createDocumentCollection(colName, {numberOfShards: 5, replicationFactor: 1});
+      const expectedKeys = _.range(100).map(i => `${i}`);
+      col.insert(expectedKeys.map(_key => ({_key})));
+
+      const dbServers = getCtrlDBServers();
+
+      enableMaintenanceMode();
+      rh.shutdownServers(dbServers);
+
+      rh.restartServers(dbServers);
+      disableMaintenanceMode();
+
+      const actualKeys = col.toArray().map(doc => doc._key);
+      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+    },
+
+    testRestartLeader: function () {
+      const col = db._createDocumentCollection(colName, {numberOfShards: 1, replicationFactor: 2});
+      const expectedKeys = _.range(100).map(i => `${i}`);
+      col.insert(expectedKeys.map(_key => ({_key})));
+
+      const [shardId] = col.shards();
+      const logId = lh.getShardsToLogsMapping(databaseName, col._id)[shardId];
+      const logStatus = db._replicatedLog(logId).status();
+      const leaderId = logStatus.leaderId;
+      const dbServers = getCtrlDBServers();
+      const leader = dbServers.find(server => server.id === leaderId);
+
+      enableMaintenanceMode();
+      rh.shutdownServers([leader]);
+
+      rh.restartServers([leader]);
+      disableMaintenanceMode();
+
+      const actualKeys = col.toArray().map(doc => doc._key);
+      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
     },
   };
 }

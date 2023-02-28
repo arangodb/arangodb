@@ -49,6 +49,8 @@ const {
   const shutdownServers = function (servers) {
     for (const server of servers) {
       server.shutdownArangod(false);
+    }
+    for (const server of servers) {
       server.waitForInstanceShutdown(30);
       server.exitStatus = null;
       server.pid = null;
