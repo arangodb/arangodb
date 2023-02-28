@@ -195,3 +195,9 @@ workflows:
           name: build-community-pr
           preset: community-pr
           edition: x64-community
+  enterprise-pr:
+    jobs:
+      - compile-linux:
+          name: build-enterprise-pr
+          preset: enterprise-pr
+          edition: x64-enterprise
