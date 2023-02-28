@@ -347,16 +347,17 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = options.algorithm,
-      .vertexCollections = vertexCollections,
-      .edgeCollections = edgeColls,
-      .edgeCollectionRestrictions = edgeCollectionRestrictionsPerShard,
+      .algorithm = std::move(options.algorithm),
+      .vertexCollections = std::move(vertexCollections),
+      .edgeCollections = std::move(edgeColls),
+      .edgeCollectionRestrictions =
+          std::move(edgeCollectionRestrictionsPerShard),
       .maxSuperstep = maxSuperstep,
       .useMemoryMaps = useMemoryMapsVar,
       .storeResults = storeResults,
       .ttl = ttl,
       .parallelism = parallelismVar,
-      .userParameters = options.userParameters};
+      .userParameters = std::move(options.userParameters)};
 
   // TODO needs to be part of the conductor state
   auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
@@ -365,24 +366,13 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
-  _actorRuntime->spawn<ConductorActor>(
-      vocbase.name(), std::make_unique<ConductorState>(), ConductorStart{});
+  _actorRuntime->spawn<conductor::ConductorActor>(
+      vocbase.name(),
+      std::make_unique<conductor::ConductorState>(executionSpecifications,
+                                                  vocbase),
+      conductor::ConductorStart{});
 
   return en;
-}
-
-void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
-                               SpawnMessages msg) {
-  if (server == _actorRuntime->myServerID) {
-    _actorRuntime->spawn<SpawnActor>(sender.database,
-                                     std::make_unique<SpawnState>(), msg);
-  } else {
-    _actorRuntime->dispatch(
-        sender,
-        actor::ActorPID{
-            .server = server, .database = sender.database, .id = {0}},
-        msg);
-  }
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {

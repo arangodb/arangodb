@@ -116,13 +116,13 @@ auto inspect(Inspector& f, TTL& x) {
 
 struct ExecutionSpecifications {
   ExecutionNumber executionNumber;
-  std::string const& algorithm;
-  std::vector<CollectionID> const& vertexCollections;
-  std::vector<CollectionID> const& edgeCollections;
+  std::string algorithm;
+  std::vector<CollectionID> vertexCollections;
+  std::vector<CollectionID> edgeCollections;
   // maps from vertex collection name to a list of edge collections that this
   // vertex collection is restricted to. only use for a collection if there is
   // at least one entry for the collection!
-  std::unordered_map<std::string, std::vector<std::string>> const&
+  std::unordered_map<std::string, std::vector<std::string>>
       edgeCollectionRestrictions;
   /// adjustable maximum gss for some algorithms
   /// some algorithms need several gss per iteration and it is more natural
@@ -137,7 +137,7 @@ struct ExecutionSpecifications {
   bool storeResults;
   TTL ttl;
   size_t parallelism;
-  VPackBuilder const& userParameters;
+  VPackBuilder userParameters;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ExecutionSpecifications& x) {

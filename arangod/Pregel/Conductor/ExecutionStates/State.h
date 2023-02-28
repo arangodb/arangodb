@@ -22,35 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <variant>
+#include <string>
 #include "Actor/ActorPID.h"
-#include "Inspection/Types.h"
+#include "Cluster/ClusterTypes.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/Worker/Messages.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::conductor {
 
-struct SpawnStart {};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnStart& x) {
-  return f.object(x).fields();
-}
-struct SpawnWorker {
-  actor::ActorPID conductor;
-  worker::CreateNewWorker message;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("conductor", x.conductor),
-                            f.field("message", x.message));
-}
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnMessages& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
-}
+#define LOG_PREGEL_CONDUCTOR_STATE(logId, level)              \
+  LOG_TOPIC(logId, level, Logger::PREGEL)                     \
+      << "[job " << conductor._specifications.executionNumber \
+      << "] Conductor " << name() << " state "
 
-}  // namespace arangodb::pregel
+struct ExecutionState {
+  virtual auto name() const -> std::string = 0;
+  virtual auto message() -> worker::WorkerMessages = 0;
+  virtual auto receive(actor::ActorPID sender, ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> = 0;
+  virtual ~ExecutionState() = default;
+};
+
+}  // namespace arangodb::pregel::conductor

@@ -22,35 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <variant>
-#include "Actor/ActorPID.h"
-#include "Inspection/Types.h"
-#include "Pregel/Worker/Messages.h"
+#include <unordered_map>
+#include "Pregel/Conductor/ExecutionStates/State.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::conductor {
 
-struct SpawnStart {};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnStart& x) {
-  return f.object(x).fields();
-}
-struct SpawnWorker {
-  actor::ActorPID conductor;
-  worker::CreateNewWorker message;
+struct ConductorState;
+
+/*
+  This is the initial state the conductor is in when created. It does not do
+  anything on its own and needs to be changed from outside.
+ */
+
+struct Initial : ExecutionState {
+  Initial() = default;
+  auto name() const -> std::string override { return "initial"; };
+  auto message() -> worker::WorkerMessages override {
+    return worker::WorkerMessages{};
+  };
+  auto receive(actor::ActorPID sender, ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  };
 };
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("conductor", x.conductor),
-                            f.field("message", x.message));
-}
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnMessages& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
-}
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::conductor

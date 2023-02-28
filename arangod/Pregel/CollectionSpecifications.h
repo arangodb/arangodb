@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,35 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <variant>
-#include "Actor/ActorPID.h"
-#include "Inspection/Types.h"
-#include "Pregel/Worker/Messages.h"
+#include <map>
+#include "Cluster/ClusterTypes.h"
+#include "Inspection/Format.h"
 
 namespace arangodb::pregel {
 
-struct SpawnStart {};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnStart& x) {
-  return f.object(x).fields();
-}
-struct SpawnWorker {
-  actor::ActorPID conductor;
-  worker::CreateNewWorker message;
+struct CollectionSpecifications {
+  std::map<CollectionID, std::vector<ShardID>> vertexShards;
+  std::map<CollectionID, std::vector<ShardID>> edgeShards;
+  std::unordered_map<CollectionID, std::string> collectionPlanIds;
+  std::vector<ShardID> allShards;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("conductor", x.conductor),
-                            f.field("message", x.message));
-}
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnMessages& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
+auto inspect(Inspector& f, CollectionSpecifications& x) {
+  return f.object(x).fields(f.field("vertexShards", x.vertexShards),
+                            f.field("edgeShards", x.edgeShards),
+                            f.field("collectionPlanIds", x.collectionPlanIds),
+                            f.field("shards", x.allShards));
 }
 
 }  // namespace arangodb::pregel
+
+template<>
+struct fmt::formatter<arangodb::pregel::CollectionSpecifications>
+    : arangodb::inspection::inspection_formatter {};

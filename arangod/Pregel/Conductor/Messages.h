@@ -31,6 +31,8 @@
 
 namespace arangodb::pregel {
 
+namespace conductor {
+
 struct ConductorStart {};
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorStart& x) {
@@ -50,6 +52,8 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ConductorStart>("Start"),
       arangodb::inspection::type<WorkerCreated>("WorkerCreated"));
 }
+
+}  // namespace conductor
 
 // TODO split LoadGraph off CreateWorker
 struct CreateWorker {

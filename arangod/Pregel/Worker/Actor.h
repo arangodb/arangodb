@@ -23,31 +23,20 @@
 #pragma once
 
 #include <memory>
-#include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
-#include "fmt/core.h"
 
-namespace arangodb::pregel {
-
-struct WorkerState {
-  actor::ActorPID conductor;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerState& x) {
-  return f.object(x).fields(f.field("conductor", x.conductor));
-}
+namespace arangodb::pregel::worker {
 
 template<typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
   auto operator()(WorkerStart start) -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("cd696", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} started", this->self);
-    // TODO when we get a message with a conductor PID
-    // this->state->conductor = start.conductor;
-    // this->template dispatch<ConductorMessages>(this->state->conductor,
-    //                                            WorkerCreated{});
+    LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} started with state {}", this->self, *this->state);
+    this->template dispatch<conductor::ConductorMessages>(
+        this->state->conductor, conductor::WorkerCreated{});
     return std::move(this->state);
   }
 
@@ -87,4 +76,4 @@ struct WorkerActor {
   using Handler = WorkerHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
 };
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::worker

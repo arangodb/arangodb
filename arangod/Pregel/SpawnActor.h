@@ -25,7 +25,7 @@
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
-#include "Pregel/Conductor/Actor.h"
+// #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/SpawnMessages.h"
 #include "fmt/core.h"
@@ -46,20 +46,14 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(SpawnConductor msg) -> std::unique_ptr<SpawnState> {
-    LOG_TOPIC("ed212", INFO, Logger::PREGEL)
-        << "Spawn Actor: Spawn conductor actor";
-    this->template spawn<ConductorActor>(std::make_unique<ConductorState>(),
-                                         ConductorStart{});
-    return std::move(this->state);
-  }
-
   auto operator()(SpawnWorker msg) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("2452c", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn worker actor";
-    this->template spawn<WorkerActor>(
-        std::make_unique<WorkerState>(),
-        WorkerStart{});  //.conductor = msg.conductor});
+    this->template spawn<worker::WorkerActor>(
+        std::make_unique<worker::WorkerState>(
+            msg.conductor, msg.message.executionSpecifications,
+            msg.message.collectionSpecifications),
+        worker::WorkerStart{});
     return std::move(this->state);
   }
 
