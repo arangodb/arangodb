@@ -24,9 +24,7 @@
 #include "RestServerInfoHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "Metrics/TelemetricsFeature.h"
 #include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SupportInfoBuilder.h"
@@ -45,7 +43,6 @@ RestServerInfoHandler::RestServerInfoHandler(ArangodServer& server,
 
 RestStatus RestServerInfoHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
-
   if (!gs.isTelemetricsEnabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "telemetrics is disabled. Must enable with startup parameter "

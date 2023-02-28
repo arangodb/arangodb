@@ -102,6 +102,11 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     result.add("id", VPackValue(ServerIdFeature::getId().id()));
     result.add("deployment", VPackValue(VPackValueType::Object));
     result.add("type", VPackValue("single"));
+#ifdef USE_ENTERPRISE
+    result.add("license", VPackValue("enterprise"));
+#else
+    result.add("license", VPackValue("community"));
+#endif
     result.close();  // deployment
     result.add("host", hostInfo.slice());
     result.add("date", VPackValue(timeString));
@@ -113,6 +118,11 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     if (fanout) {
       // cluster coordinator or active failover case, fan out to other servers!
       result.add("deployment", VPackValue(VPackValueType::Object));
+#ifdef USE_ENTERPRISE
+      result.add("license", VPackValue("enterprise"));
+#else
+      result.add("license", VPackValue("community"));
+#endif
       if (ServerState::instance()->hasPersistedId()) {
         result.add("persistedId",
                    VPackValue(ServerState::instance()->getPersistedId()));
@@ -123,6 +133,23 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       } else {
         TRI_ASSERT(ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("cluster"));
+      }
+
+      DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
+
+      std::vector<std::string> databases = methods::Databases::list(server, "");
+
+      containers::FlatHashMap<std::string_view, uint32_t> dbViews;
+      for (auto const& database : databases) {
+        auto vocbase = dbFeature.lookupDatabase(database);
+
+        LogicalView::enumerate(*vocbase,
+                               [&dbViews, &database = std::as_const(database)](
+                                   LogicalView::ptr const& view) -> bool {
+                                 dbViews[database]++;
+
+                                 return true;
+                               });
       }
 
       // build results for all servers
@@ -234,7 +261,25 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
             // copy results from other server
             if (slice.isObject()) {
               result.add("numDatabases", slice.get("numDatabases"));
-              result.add("databases", slice.get("databases"));
+
+              result.add("databases", VPackValue(VPackValueType::Array));
+              for (auto const it :
+                   velocypack::ArrayIterator(slice.get("databases"))) {
+                result.openObject();
+                for (auto const it : velocypack::ObjectIterator(it)) {
+                  std::string_view name = it.key.stringView();
+                  if (name == "name") {
+                    result.add("numViews",
+                               VPackValue(dbViews[it.value.stringView()]));
+                  } else {
+                    result.add(name, it.value);
+                  }
+                }
+
+                result.close();
+              }
+
+              result.close();
             }
           }
         }
@@ -272,11 +317,6 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
 
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("build", VPackValue(Version::getBuildRepository()));
-#ifdef USE_ENTERPRISE
-  result.add("license", VPackValue("enterprise"));
-#else
-  result.add("license", VPackValue("community"));
-#endif
 
   EnvironmentFeature const& ef = server.getFeature<EnvironmentFeature>();
   result.add("os", VPackValue(ef.operatingSystem()));
@@ -359,19 +399,8 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
     for (auto const& database : databases) {
       auto vocbase = dbFeature.lookupDatabase(database);
 
-      std::vector<LogicalView::ptr> views;
-
-      LogicalView::enumerate(*vocbase,
-                             [&views](LogicalView::ptr const& view) -> bool {
-                               views.emplace_back(view);
-
-                               return true;
-                             });
-
       result.openObject();
-      result.add("name", VPackValue(database));
-      auto dbViews = vocbase->views();
-      result.add("numViews", VPackValue(dbViews.size()));
+      result.add("name", database);
 
       size_t numDocColls = 0;
       size_t numGraphColls = 0;
@@ -525,7 +554,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
 
       result.close();
     }
-
     result.close();
 
   } catch (...) {

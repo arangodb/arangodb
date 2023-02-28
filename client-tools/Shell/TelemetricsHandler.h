@@ -23,51 +23,55 @@
 
 #pragma once
 
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Logger/LogMacros.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.h"
+#include "Shell/arangosh.h"
+#include <velocypack/Builder.h>
 
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 namespace arangodb {
 
+namespace httpclient {
+class SimpleHttpClient;
+class SimpleHttpResult;
+}  // namespace httpclient
+
 class TelemetricsHandler {
  public:
-  TelemetricsHandler()
-      : _printTelemetrics(false), _runCondition(true), _httpClient(nullptr) {}
-  ~TelemetricsHandler() {
-    if (_telemetricsThread.joinable()) {
-      _telemetricsThread.join();
-    }
-  }
+  TelemetricsHandler(ArangoshServer& server);
+
+  ~TelemetricsHandler();
 
   void runTelemetrics();
 
-  void disableRunCondition() { _runCondition = false; }
-  void setHttpClient(
-      std::unique_ptr<httpclient::SimpleHttpClient>& httpClient) {
-    _httpClient = std::move(httpClient);
-  }
+  void beginShutdown();
 
   void setPrintTelemetrics(bool printTemeletrics) {
     _printTelemetrics = printTemeletrics;
   }
 
+  void getTelemetricsInfo(VPackBuilder& builder);
+
  private:
   arangodb::Result checkHttpResponse(
       std::unique_ptr<httpclient::SimpleHttpResult> const& response);
-  void sendTelemetricsRequest();
+  void fetchTelemetricsFromServer();
   void SendTelemetricsToEndpoint();
   void arrangeTelemetrics();
   void printTelemetrics();
 
-  bool _printTelemetrics;
-  std::atomic<bool> _runCondition;
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
+  ArangoshServer& _server;
+  std::mutex _mtx;
+  std::condition_variable _runCondition;
   std::thread _telemetricsThread;
+  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   Result _telemetricsResponse;
   Result _response;
   VPackBuilder _telemetricsResult;
+  bool _printTelemetrics;
 };
 
 }  // namespace arangodb

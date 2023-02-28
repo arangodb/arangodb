@@ -24,11 +24,18 @@
 #pragma once
 
 #include "Shell/arangosh.h"
-#include "Shell/TelemetricsHandler.h"
 
-#include <thread>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace arangodb {
+
+class TelemetricsHandler;
+
+namespace velocypack {
+class Builder;
+}
 
 class ShellFeature final : public ArangoshFeature {
  public:
@@ -36,13 +43,18 @@ class ShellFeature final : public ArangoshFeature {
 
   ShellFeature(Server& server, int* result);
 
+  ~ShellFeature();
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
   void beginShutdown() override;
+  void getTelemetricsInfo(velocypack::Builder& builder);
 
   void setExitCode(int code) { *_result = code; }
+
+  void startTelemetrics();
 
  private:
   std::vector<std::string> _jslint;
@@ -67,8 +79,7 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _positionals;
   std::string _unitTestFilter;
   std::vector<std::string> _scriptParameters;
-  TelemetricsHandler _telemetricsHandler;
-  // bool _printTelemetrics{false};
+  std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
 };
 

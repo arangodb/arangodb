@@ -23,7 +23,6 @@
 
 #include "ShellFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -31,7 +30,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Shell/TelemetricsHandler.h"
 #include "Shell/V8ShellFeature.h"
+#include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -46,6 +47,8 @@ ShellFeature::ShellFeature(Server& server, int* result)
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
 }
+
+ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -141,33 +144,20 @@ void ShellFeature::validateOptions(
 }
 
 void ShellFeature::start() {
-  /*
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (_printTelemetrics) {
-    _telemetricsHandler.setPrintTelemetrics(true);
-  }
-#endif
-*/
-  ClientFeature& clientFeature =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
-  auto client = clientFeature.createHttpClient();
-
   *_result = EXIT_SUCCESS;
 
   V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
-  _telemetricsHandler.setHttpClient(client);
-  _telemetricsHandler.setPrintTelemetrics(true);
-  _telemetricsHandler.runTelemetrics();
+
   bool ok = false;
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
-
+        startTelemetrics();
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-
+        startTelemetrics();
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -182,8 +172,6 @@ void ShellFeature::start() {
         break;
 
       case RunMode::UNIT_TESTS:
-        _telemetricsHandler.setHttpClient(client);
-        _telemetricsHandler.runTelemetrics();
         ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
@@ -207,7 +195,20 @@ void ShellFeature::start() {
 }
 
 void ShellFeature::beginShutdown() {
-  _telemetricsHandler.disableRunCondition();
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+  }
+}
+
+void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
+  if (_telemetricsHandler != nullptr) {
+    return _telemetricsHandler->getTelemetricsInfo(builder);
+  }
+}
+
+void ShellFeature::startTelemetrics() {
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server());
+  _telemetricsHandler->runTelemetrics();
 }
 
 }  // namespace arangodb
