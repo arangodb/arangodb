@@ -1,6 +1,7 @@
 import React from "react";
 import ToolTip from "../../components/arango/tootip";
 import Textbox from "../../components/pure-css/form/Textbox";
+import { FormDispatch } from "../../utils/constants";
 import {
   getNumericFieldSetter,
   getNumericFieldValue
@@ -13,7 +14,7 @@ export const GeneralContent = ({
   isAdminUser
 }: {
   formState: FormState;
-  dispatch: () => void;
+  dispatch: FormDispatch<FormState>
   isAdminUser: boolean;
 }) => {
   return (

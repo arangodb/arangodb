@@ -13,7 +13,7 @@ export const EditableViewName = ({
   editName: boolean;
   formState: FormState;
   handleEditName: () => void;
-  updateName: (event: Event) => void;
+  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   nameEditDisabled: boolean;
   closeEditName: () => void;
 }) => {

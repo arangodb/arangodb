@@ -1,6 +1,6 @@
 import React from "react";
 import SplitPane from "react-split-pane";
-import { State } from "../../utils/constants";
+import { FormProps, State } from "../../utils/constants";
 import { FormState } from "./constants";
 import useElementSize from "./useElementSize";
 import { ViewLeftPane } from "./ViewLeftPane";
@@ -15,10 +15,9 @@ export const ViewSection = ({
 }: {
   name: string;
   formState: FormState;
-  dispatch: () => void;
   isAdminUser: boolean;
   state: State<FormState>;
-}) => {
+} & Pick<FormProps<FormState>, 'dispatch'>) => {
   const [sectionRef, sectionSize] = useElementSize();
   const sectionWidth = sectionSize.width;
   const maxSize = sectionWidth - 200;

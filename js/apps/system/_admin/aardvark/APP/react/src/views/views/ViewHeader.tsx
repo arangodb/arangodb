@@ -23,12 +23,11 @@ export const ViewHeader = ({
   editName: boolean;
   formState: FormState;
   handleEditName: () => void;
-  updateName: (event: Event) => void;
+  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   nameEditDisabled: boolean;
   closeEditName: () => void;
   isAdminUser: boolean;
   views: FormState[];
-  dispatch: () => void;
   changed: boolean;
   name: string;
   setChanged: (changed: boolean) => void;

@@ -1,84 +1,138 @@
-/* global frontendConfig */
-
-import React, { ReactNode } from "react";
+import { Box } from "@chakra-ui/react";
+import { cloneDeep, isEqual, uniqueId } from "lodash";
+import React, { useEffect, useReducer, useRef, useState } from "react";
+import { HashRouter } from "react-router-dom";
+import useSWR from "swr";
+import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { State } from "../../utils/constants";
+import {
+  getReducer,
+  isAdminUser as userIsAdmin,
+  usePermissions
+} from "../../utils/helpers";
+import { FormState, ViewContext } from "./constants";
+import { postProcessor, useDisableNavBar, useView } from "./helpers";
 import "./split-pane-styles.css";
+import { ViewHeader } from "./ViewHeader";
+import { ViewSection } from "./ViewSection";
 import "./viewsheader.css";
 
-import {
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  Box
-} from "@chakra-ui/react";
-import { LinksContent } from "./LinksContent";
+export const ViewSettings = ({
+  name,
+  isCluster
+}: {
+  name: string;
+  isCluster: boolean;
+}) => {
+  useDisableNavBar();
+  const [editName, setEditName] = useState(false);
 
-export const ViewSettings = ({ name }: { name: string }) => {
+  const handleEditName = () => {
+    setEditName(true);
+  };
+
+  const closeEditName = () => {
+    setEditName(false);
+  };
+
+  const initialState = useRef<State<FormState>>({
+    formState: { name, id: "", type: "arangosearch" },
+    formCache: { name },
+    renderKey: uniqueId("force_re-render_"),
+    show: true,
+    showJsonForm: true,
+    lockJsonForm: false
+  });
+  // workaround, because useView only exposes partial FormState by default
+  const view = (useView(name) as any) as FormState;
+  const [changed, setChanged] = useState(
+    !!window.sessionStorage.getItem(`${name}-changed`)
+  );
+  const [state, dispatch] = useReducer(
+    getReducer(initialState.current, postProcessor, setChanged, name),
+    initialState.current
+  );
+  const permissions = usePermissions();
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const { data } = useSWR(isAdminUser ? "/view" : null, path =>
+    getApiRouteForCurrentDB().get(path)
+  );
+  const [views, setViews] = useState([]);
+
+  useEffect(() => {
+    initialState.current.formCache = cloneDeep(view);
+
+    dispatch({
+      type: "initFormState",
+      formState: view
+    });
+    dispatch({
+      type: "regenRenderKey"
+    });
+  }, [view, name]);
+
+  const updateName = (event: React.ChangeEvent<HTMLInputElement>) => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: "name",
+        value: event.target && event.target.value
+      }
+    });
+  };
+
+  useEffect(() => {
+    const tempIsAdminUser = userIsAdmin(permissions);
+    if (tempIsAdminUser !== isAdminUser) {
+      setIsAdminUser(tempIsAdminUser);
+      dispatch({
+        type: "regenRenderKey"
+      });
+    }
+  }, [isAdminUser, permissions]);
+
+  const formState = state.formState;
+  const nameEditDisabled = isCluster || !isAdminUser;
+  if (data) {
+    if (!isEqual(data.body.result, views)) {
+      setViews(data.body.result);
+    }
+  }
   return (
-    <div>
-      <Header name={name} />
-      <div>
-        <ViewConfigForm name={name} />
-      </div>
-      <div>body right</div>
-    </div>
+    <ViewContext.Provider
+      value={{
+        formState,
+        dispatch,
+        isAdminUser,
+        changed,
+        setChanged
+      }}
+    >
+      <HashRouter basename={`view/${name}`} hashType={"noslash"}>
+        <Box backgroundColor="white">
+          <ViewHeader
+            editName={editName}
+            formState={formState}
+            handleEditName={handleEditName}
+            updateName={updateName}
+            nameEditDisabled={nameEditDisabled}
+            closeEditName={closeEditName}
+            isAdminUser={isAdminUser}
+            views={views}
+            dispatch={dispatch}
+            changed={changed}
+            name={name}
+            setChanged={setChanged}
+          />
+          <ViewSection
+            name={name}
+            formState={formState}
+            dispatch={dispatch}
+            isAdminUser={isAdminUser}
+            state={state}
+          />
+        </Box>
+      </HashRouter>
+    </ViewContext.Provider>
   );
 };
-
-const AccordionHeader = ({ children }: { children: ReactNode }) => {
-  return (
-    <AccordionButton>
-      <Box as="span" flex="1" textAlign="left">
-        {children}
-      </Box>
-      <AccordionIcon />
-    </AccordionButton>
-  );
-};
-
-const ViewConfigForm = ({ name }: { name: string }) => {
-  return (
-    <Accordion allowToggle allowMultiple>
-      <AccordionItem>
-        <AccordionHeader>Links</AccordionHeader>
-        <AccordionPanel pb={4}>
-          <LinksContent name={name} />
-        </AccordionPanel>
-      </AccordionItem>
-      <AccordionItem>
-        <AccordionHeader>General</AccordionHeader>
-        <AccordionPanel pb={4}>
-          <div>GeneralContent</div>
-        </AccordionPanel>
-      </AccordionItem>
-      <AccordionItem>
-        <AccordionHeader>Consolidation Policy</AccordionHeader>
-        <AccordionPanel pb={4}>
-          <div>Consolidation PolicyContent</div>
-        </AccordionPanel>
-      </AccordionItem>
-      <AccordionItem>
-        <AccordionHeader>Primary Sort</AccordionHeader>
-        <AccordionPanel pb={4}>
-          <div>Primary SortContent</div>
-        </AccordionPanel>
-      </AccordionItem>
-      <AccordionItem>
-        <AccordionHeader>Stored Values</AccordionHeader>
-        <AccordionPanel pb={4}>
-          <div>Stored ValuesContent</div>
-        </AccordionPanel>
-      </AccordionItem>
-    </Accordion>
-  );
-};
-
-function Header({ name }: { name: string }) {
-  return (
-    <div>
-      <div>{name}</div>
-      Copy mutable properties
-    </div>
-  );
-}

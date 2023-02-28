@@ -7,6 +7,7 @@ import {
   Box
 } from "@chakra-ui/react";
 import React, { ReactNode } from "react";
+import { FormDispatch } from "../../utils/constants";
 import { FormState } from "./constants";
 import ConsolidationPolicyForm from "./forms/ConsolidationPolicyForm";
 import { GeneralContent } from "./GeneralContent";
@@ -33,11 +34,16 @@ const ViewConfigForm = ({
 }: {
   name: string;
   formState: FormState;
-  dispatch: () => void;
+  dispatch: FormDispatch<FormState>
   isAdminUser: boolean;
 }) => {
   return (
-    <Accordion backgroundColor={"white"} allowToggle allowMultiple defaultIndex={[0]}>
+    <Accordion
+      backgroundColor="white"
+      allowToggle
+      allowMultiple
+      defaultIndex={[0]}
+    >
       <AccordionItem>
         <AccordionHeader>Links</AccordionHeader>
         <AccordionPanel pb={4}>
@@ -97,7 +103,7 @@ export const ViewLeftPane = ({
 }: {
   name: string;
   formState: FormState;
-  dispatch: () => void;
+  dispatch: FormDispatch<FormState>;
   isAdminUser: boolean;
 }) => {
   return (

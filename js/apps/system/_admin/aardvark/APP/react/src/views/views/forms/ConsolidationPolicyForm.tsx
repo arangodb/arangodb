@@ -1,5 +1,5 @@
-import { FormProps } from "../../../utils/constants";
-import { BytesAccumConsolidationPolicy, TierConsolidationPolicy, ViewProperties } from "../constants";
+import { FormDispatch, FormProps } from "../../../utils/constants";
+import { BytesAccumConsolidationPolicy, FormState, TierConsolidationPolicy, ViewProperties } from "../constants";
 import React, { ChangeEvent } from "react";
 import { get } from "lodash";
 import Select from "../../../components/pure-css/form/Select";
@@ -7,11 +7,14 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter } from "../../../utils/helpers";
 import ToolTip from "../../../components/arango/tootip";
 
+
 const BytesAccumConsolidationPolicyForm = ({
-                                             formState,
-                                             dispatch,
-                                             disabled
-                                           }: FormProps<BytesAccumConsolidationPolicy>) => {
+  formState,
+  dispatch,
+  disabled
+}: Omit<FormProps<BytesAccumConsolidationPolicy>, "dispatch"> & {
+  dispatch: FormDispatch<FormState>;
+}) => {
   const threshold = get(formState, ['consolidationPolicy', 'threshold'], '');
 
   return <tr className="tableRow" id="row_change-view-threshold">
@@ -34,10 +37,12 @@ const BytesAccumConsolidationPolicyForm = ({
 };
 
 const TierConsolidationPolicyForm = ({
-                                       formState,
-                                       dispatch,
-                                       disabled
-                                     }: FormProps<TierConsolidationPolicy>) => {
+  formState,
+  dispatch,
+  disabled
+}: Omit<FormProps<TierConsolidationPolicy>, "dispatch"> & {
+  dispatch: FormDispatch<FormState>;
+}) => {
   const segmentsMin = get(formState, ['consolidationPolicy', 'segmentsMin'], '');
   const segmentsMax = get(formState, ['consolidationPolicy', 'segmentsMax'], '');
   const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax'], '');
@@ -117,7 +122,13 @@ const TierConsolidationPolicyForm = ({
   </>;
 };
 
-const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<ViewProperties>) => {
+const ConsolidationPolicyForm = ({
+  formState,
+  dispatch,
+  disabled
+}: Omit<FormProps<ViewProperties>, "dispatch"> & {
+  dispatch: FormDispatch<FormState>;
+}) => {
   const updateConsolidationPolicyType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',

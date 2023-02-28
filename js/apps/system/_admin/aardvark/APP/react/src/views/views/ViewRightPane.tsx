@@ -1,6 +1,6 @@
 import React from "react";
 import { Cell, Grid } from "../../components/pure-css/grid";
-import { State } from "../../utils/constants";
+import { FormDispatch, State } from "../../utils/constants";
 import { FormState } from "./constants";
 import JsonForm from "./forms/JsonForm";
 
@@ -10,7 +10,7 @@ export const ViewRightPane = ({
   state
 }: {
   formState: FormState;
-  dispatch: () => void;
+  dispatch: FormDispatch<FormState>
   state: State<FormState>;
 }) => {
   return (
