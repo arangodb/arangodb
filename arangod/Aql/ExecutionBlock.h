@@ -25,10 +25,11 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
-#include "Aql/QueryOptions.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
+#include <atomic>
 #include <cstdint>
 #include <utility>
 #include <vector>

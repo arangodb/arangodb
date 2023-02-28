@@ -137,13 +137,13 @@ function MaxNumberOfConditionsSuite () {
       internal.debugSetFailAt("Condition::failIfTooComplex");
 
       try {
-        // with this many condition nodes, we will exceed memory
-        [1, 8, 64, 512, 4096, 32768].forEach((maxDNFConditionMembers) => {
+        // always trigger the failure point we just set above
+        [1, 2, 4, 8, 16, 32, 64, 512, 4096].forEach((maxDNFConditionMembers) => {
           try {
             AQL_EXPLAIN(query, null, { maxDNFConditionMembers });
             fail();
           } catch (err) {
-            assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);
+            assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum, {maxDNFConditionMembers});
           }
         });
       } finally {

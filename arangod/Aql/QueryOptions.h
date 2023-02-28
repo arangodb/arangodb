@@ -27,6 +27,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
@@ -38,26 +39,6 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-
-enum class ProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// Output timing for query stages
-  Basic = 1,
-  /// Enable instrumentation for execute calls
-  Blocks = 2,
-  /// Log tracing info for execute calls
-  TraceOne = 3,
-  /// Log tracing information including execute results
-  TraceTwo = 4
-};
-
-enum class TraversalProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// include traversal tracing
-  Basic = 1
-};
 
 struct QueryOptions {
   QueryOptions();
@@ -133,7 +114,7 @@ struct QueryOptions {
   static size_t defaultMaxNodesPerCallstack;
   static size_t defaultSpillOverThresholdNumRows;
   static size_t defaultSpillOverThresholdMemoryUsage;
-  static size_t defaultMaxConditionMembers;
+  static size_t defaultMaxDNFConditionMembers;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

@@ -4,15 +4,19 @@ devel
 * Partial fix for PRESUPP-539: account for memory used during AQL condition
   transformation to disjunctive normal form (DNF). This transformation can use
   a lot of memory for complex filter conditions, which was previously not
-  accounted for. Now if the transformation uses a lot of memory and hits the
+  accounted for. Now, if the transformation uses a lot of memory and hits the
   configured query memory limit, the query will rather be aborted with a 
   proper error message than overuse memory.
   For very complex conditions that would use massive amounts of memory when
-  transformed into DNF, the DNF conversion is aborted at some hard-coded
-  threshold value and the query is continued with a simplified representation
-  of the condition, which will not be usable in indexes. However, this should
-  still be better than overusing memory or taking a very long time to compute
-  the DNF version.
+  transformed into DNF, the DNF conversion is also aborted at some threshold
+  complexity value. If the threshold is hit, the query continues with a 
+  simplified representation of the condition, which will not be usable in 
+  index lookups. However, this should still be better than overusing memory 
+  or taking a very long time to compute the DNF version.
+  The complexity threshold value can be configured per query by setting the
+  new `maxDNFConditionMembers` query option. There is also a new startup
+  option `--query.max-dnf-condition-members` for coordinators and single
+  servers to adjust the threshold value globally.
 
 * Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
   is generated for each imported document to avoid clashes with previously

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
