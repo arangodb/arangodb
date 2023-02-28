@@ -329,17 +329,28 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 Result Databases::create(ArangodServer& server, ExecContext const& exec,
                          std::string const& dbName, VPackSlice const& users,
                          VPackSlice const& options) {
+  Result res;
+
+  // audit-log the result upon method exit, no matter what
+  auto guard = scopeGuard([&dbName, &res, &exec]() noexcept {
+    try {
+      events::CreateDatabase(dbName, res, exec);
+    } catch (...) {
+    }
+  });
+
   // Only admin users are permitted to create databases
-  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
-    events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return Result(TRI_ERROR_FORBIDDEN);
+  if (!exec.isAdminUser()) {
+    return res.reset(TRI_ERROR_FORBIDDEN);
+  }
+  if (ServerState::readOnly() && !exec.isSuperuser()) {
+    return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
   }
 
   CreateDatabaseInfo createInfo(server, exec);
-  Result res = createInfo.load(dbName, options, users);
+  res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
-    events::CreateDatabase(dbName, res, exec);
     return res;
   }
 
@@ -347,7 +358,6 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
     // check if name after normalization will change
     res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
               "database name is not properly UTF-8 NFC-normalized");
-    events::CreateDatabase(dbName, res, exec);
     return res;
   }
 
@@ -398,8 +408,6 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
           << "Could not create database: " << res.errorMessage();
     }
   }
-
-  events::CreateDatabase(dbName, res, exec);
 
   return res;
 }
@@ -478,7 +486,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       TRI_ClearObjectCacheV8(isolate);
 
       if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave differently:
+        // If we are a coordinator in a cluster, we have to behave
+        // differently:
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {
