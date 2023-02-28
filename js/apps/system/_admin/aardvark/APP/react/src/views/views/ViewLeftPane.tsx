@@ -39,7 +39,7 @@ const ViewConfigForm = ({
 }) => {
   return (
     <Accordion
-      backgroundColor="white"
+      backgroundColor="#f9f9f9"
       allowToggle
       allowMultiple
       defaultIndex={[0]}
@@ -107,8 +107,8 @@ export const ViewLeftPane = ({
   isAdminUser: boolean;
 }) => {
   return (
-    <Box padding="4" display="flex">
-      <Box maxW="90%" margin="auto" flexGrow={1}>
+    <Box paddingY="4" display="flex" height="full" backgroundColor="#eeeee">
+      <Box maxW="calc(100% - 48px)" marginX="auto" flexGrow={1}>
         <ViewConfigForm
           formState={formState}
           dispatch={dispatch}
