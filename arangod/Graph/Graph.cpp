@@ -831,26 +831,35 @@ auto Graph::prepareCreateCollectionBodyEdge(
     std::string_view name,
     std::optional<std::string_view> const& leadingCollection) const noexcept
     -> CreateCollectionBody {
-  return prepareCreateCollectionBody(name, TRI_col_type_e::TRI_COL_TYPE_EDGE,
-                                     leadingCollection);
+  CreateCollectionBody body;
+  body.name = name;
+  body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+  injectShardingToCollectionBody(body, leadingCollection);
+  return body;
 }
 
 auto Graph::prepareCreateCollectionBodyVertex(
     std::string_view name,
     std::optional<std::string_view> const& leadingCollection) const noexcept
     -> CreateCollectionBody {
-  return prepareCreateCollectionBody(
-      name, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, leadingCollection);
-}
-
-auto Graph::prepareCreateCollectionBody(
-    std::string_view name, TRI_col_type_e type,
-    std::optional<std::string_view> const&) const noexcept
-    -> CreateCollectionBody {
-  // Only specialized enterprise Graphs make use of the leadingCollection.
   CreateCollectionBody body;
   body.name = name;
-  body.type = type;
-  // Inject all attributes required for a collection
+  body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
+  injectShardingToCollectionBody(body, leadingCollection);
   return body;
+}
+
+auto Graph::injectShardingToCollectionBody(
+    CreateCollectionBody& body,
+    std::optional<std::string_view> const&) const noexcept -> void {
+  // Only specialized enterprise Graphs make use of the leadingCollection.
+  // Inject all attributes required for a collection
+  body.numberOfShards = numberOfShards();
+  if (!isSatellite()) {
+    body.writeConcern = writeConcern();
+    TRI_ASSERT(replicationFactor() > 0);
+  } else {
+    TRI_ASSERT(replicationFactor() == 0);
+  }
+  body.replicationFactor = replicationFactor();
 }
