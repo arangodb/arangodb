@@ -722,8 +722,8 @@ class IResearchInvertedIndexMergeIterator final
     bool operator()(size_t lhs, size_t rhs) const {
       assert(lhs < _segments->size());
       assert(rhs < _segments->size());
-      return _less(refFromSlice((*_segments)[rhs].sortValue),
-                   refFromSlice((*_segments)[lhs].sortValue));
+      return _less.Compare(refFromSlice((*_segments)[rhs].sortValue),
+                           refFromSlice((*_segments)[lhs].sortValue)) < 0;
     }
 
     VPackComparer<IResearchInvertedIndexSort> _less;

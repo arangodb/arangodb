@@ -1677,8 +1677,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
     size_t const lhs, size_t const rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
-  return _less((*_segments)[rhs].sortValue->value,
-               (*_segments)[lhs].sortValue->value);
+  return _less.Compare((*_segments)[rhs].sortValue->value,
+                       (*_segments)[lhs].sortValue->value) < 0;
 }
 
 template<typename ExecutionTraits>
