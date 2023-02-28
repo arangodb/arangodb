@@ -1,0 +1,60 @@
+diff --git a/node_modules/node-netstat/node_modules/is-wsl/index.js b/node_modules/node-netstat/node_modules/is-wsl/index.js
+index ade6cda..b8d54a8 100644
+--- a/node_modules/node-netstat/node_modules/is-wsl/index.js
++++ b/node_modules/node-netstat/node_modules/is-wsl/index.js
+@@ -1,21 +1,6 @@
+ 'use strict';
+-const os = require('os');
+-const fs = require('fs');
+-
+ const isWsl = () => {
+-	if (process.platform !== 'linux') {
+-		return false;
+-	}
+-
+-	if (os.release().includes('Microsoft')) {
+-		return true;
+-	}
+-
+-	try {
+-		return fs.readFileSync('/proc/version', 'utf8').includes('Microsoft');
+-	} catch (err) {
+ 		return false;
+-	}
+ };
+ 
+ if (process.env.__IS_WSL_TEST__) {
+diff --git a/node_modules/node-netstat/node_modules/is-wsl/readme.md b/node_modules/node-netstat/node_modules/is-wsl/readme.md
+deleted file mode 100644
+index 7ab40c5..0000000
+--- a/node_modules/node-netstat/node_modules/is-wsl/readme.md
++++ /dev/null
+@@ -1,28 +0,0 @@
+-# is-wsl [![Build Status](https://travis-ci.org/sindresorhus/is-wsl.svg?branch=master)](https://travis-ci.org/sindresorhus/is-wsl)
+-
+-> Check if the process is running inside [Windows Subsystem for Linux](https://msdn.microsoft.com/commandline/wsl/about) (Bash on Windows)
+-
+-Can be useful if you need to work around unimplemented or buggy features in WSL.
+-
+-
+-## Install
+-
+-```
+-$ npm install --save is-wsl
+-```
+-
+-
+-## Usage
+-
+-```js
+-const isWsl = require('is-wsl');
+-
+-// When running inside Windows Subsystem for Linux
+-console.log(isWsl);
+-//=> true
+-```
+-
+-
+-## License
+-
+-MIT © [Sindre Sorhus](https://sindresorhus.com)
