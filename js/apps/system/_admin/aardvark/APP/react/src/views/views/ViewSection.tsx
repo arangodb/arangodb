@@ -29,7 +29,7 @@ export const ViewSection = ({
   const [sectionRef, sectionSize] = useElementSize();
   const sectionWidth = sectionSize.width;
   const maxSize = sectionWidth - 200;
-  const localStorageSplitPos = localStorage.getItem("splitPos") || "0";
+  const localStorageSplitPos = localStorage.getItem("splitPos") || "400";
   const splitPos = parseInt(localStorageSplitPos, 10);
   return (
     <section ref={sectionRef}>
