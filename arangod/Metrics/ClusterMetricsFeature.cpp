@@ -204,7 +204,7 @@ void ClusterMetricsFeature::update() {
         });
   }
   if (leader->empty()) {
-    return repeatUpdate(100);  // invalid leader, immediately retry
+    return repeatUpdate(1000);  // invalid leader, retry
   }
   auto rebootId = oldData.get("RebootId").getNumber<uint64_t>();
   auto serverId = oldData.get("ServerId").copyString();
@@ -214,7 +214,7 @@ void ClusterMetricsFeature::update() {
         if (wasStop()) {
           return;
         }
-        uint32_t timeoutMs = 100;  // invalid leader, immediately retry
+        uint32_t timeoutMs = 1000;  // invalid leader, retry
         try {
           if (readData(std::move(raw))) {
             timeoutMs = 0;  // success
