@@ -8,9 +8,9 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { FormState, ViewContext } from "../constants";
 
 type OptionType = {
-  value: string,
-  label: string
-}
+  value: string;
+  label: string;
+};
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const match = useRouteMatch();
   const to =
@@ -34,10 +34,9 @@ const Option = (props: OptionProps<OptionType>) => {
   return (
     <div title={props.data.value}>
       <components.Option {...props} />
-      </div>
+    </div>
   );
 };
-
 
 const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
@@ -111,6 +110,8 @@ const CollectionsDropdown = () => {
     <MultiSelect<OptionType>
       value={validLinks}
       options={options}
+      placeholder="Enter a collection name"
+      noOptionsMessage={() => "No collections found"}
       styles={{
         option: baseStyles => ({
           ...baseStyles,
