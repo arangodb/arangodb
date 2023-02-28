@@ -9,6 +9,36 @@ devel
   sent to gather telemetrics from `_admin/server-info`. Only users that are 
   admin might get a successful http response with the telemetrics object.
 
+* ES-1428: make the maximum number of V8 contexts depend on the maximum number
+  of server threads, if `--javascript.v8-contexts` is not set explicitly. 
+  Previously the maximum number of V8 contexts was hard-coded to 16 when the
+  option `--javascript.v8-contexts` option was not set explicitly.
+  Now the maximum number defaults to 7/8 of the value of the startup option
+  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  the default value is used. Only 7/8 are used to leave some headroom for other
+  important maintenance tasks.
+  A server with default configuration should now not block waiting for V8 
+  contexts to become available, but it may use more memory for the additional V8 
+  contexts if there are many concurrent requests that invoke JavaScript actions 
+  (e.g. requests using the web UI or Foxx).
+
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating
+  the same _rev value for two different documents concurrently.
+
+* BTS-1249: Add startup option `--foxx.enable`.
+  This startup option determines whether access to user-defined Foxx services
+  is possible for the instance. It defaults to `true`.
+  If the option is set to `false`, access to Foxx services is forbidden and
+  will be responded with an HTTP 403 Forbidden error. Access to ArangoDB's
+  built-in web interface, which is also a Foxx service, is still possible even
+  with the option set to `false`.
+  When setting the option to `false`, access to the management APIs for Foxx
+  services will also be disabled. This is the same as manually setting the
+  option `--foxx.api false`.
+
 * Updated arangosync to v2.15.0-preview-1.
 
 * The internal Graph code is completely converted to the new graph engine.
