@@ -217,8 +217,9 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       const opType = "Commit";
 
       collection.insert({_key: "abcd"});
-      let commitEntries = getDocumentEntries(mergeLogs(logs), opType);
-      let insertEntries = getDocumentEntries(mergeLogs(logs), "Insert");
+      const mergedLogs = mergeLogs(logs);
+      let commitEntries = getDocumentEntries(mergedLogs, opType);
+      let insertEntries = getDocumentEntries(mergedLogs, "Insert");
       assertEqual(commitEntries.length, 1,
           `Found more commitEntries than expected: ${commitEntries}. Insert entries: ${insertEntries}`);
       assertEqual(insertEntries.length, commitEntries.length,

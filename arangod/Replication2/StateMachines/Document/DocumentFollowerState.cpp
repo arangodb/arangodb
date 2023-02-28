@@ -123,15 +123,26 @@ auto DocumentFollowerState::applyEntries(
                   return res;
                 }
 
-                self->_activeTransactions.emplace(op.tid, entry->first);
+                self->_activeTransactions.markAsActive(op.tid, entry->first);
                 return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::Commit> ||
                                    std::is_same_v<T,
                                                   ReplicatedOperation::Abort>) {
-                self->_activeTransactions.erase(op.tid);
+                if (!self->_activeTransactions.getTransactions().contains(
+                        op.tid)) {
+                  // TODO [CINFRA-694]
+                  //  There are two cases where we can end up here:
+                  //  1. After a snapshot transfer, we did not get the beginning
+                  //  of the transaction
+                  //  2. We ignored all other operations for this transaction
+                  //  because the shard was dropped
+                  return Result{};
+                }
+                self->_activeTransactions.markAsInactive(op.tid);
                 releaseIndex =
-                    self->_activeTransactions.getReleaseIndex(entry->first);
+                    self->_activeTransactions.getReleaseIndex().value_or(
+                        entry->first);
                 return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          IntermediateCommit>) {
@@ -140,7 +151,8 @@ auto DocumentFollowerState::applyEntries(
                                                          AbortAllOngoingTrx>) {
                 self->_activeTransactions.clear();
                 releaseIndex =
-                    self->_activeTransactions.getReleaseIndex(entry->first);
+                    self->_activeTransactions.getReleaseIndex().value_or(
+                        entry->first);
                 return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<
                                        T, ReplicatedOperation::CreateShard>) {

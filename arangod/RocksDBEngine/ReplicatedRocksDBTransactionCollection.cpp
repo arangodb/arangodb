@@ -227,23 +227,27 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
 futures::Future<Result>
 ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
   if (_rocksMethods->isIntermediateCommitNeeded()) {
+    // TODO due to distributeShardsLike, it is possible that we'll replicate
+    // this multiple times in the same replicated log. This is not a serious
+    // problem for intermediate commits, but we should avoid it.
     auto leader = leaderState();
     auto operation =
         replication2::replicated_state::document::ReplicatedOperation::
             buildIntermediateCommitOperation(_transaction->id());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
-    try {
-      return leader->replicateOperation(operation, options)
-          .thenValue([state = _transaction->shared_from_this(),
-                      this](auto&& res) -> Result {
-            return _rocksMethods->triggerIntermediateCommit();
-          });
-    } catch (basics::Exception const& e) {
-      return Result{e.code(), e.what()};
-    } catch (std::exception const& e) {
-      return Result{TRI_ERROR_INTERNAL, e.what()};
-    }
+    return leader->replicateOperation(operation, options)
+        .thenValue([leader, state = _transaction->shared_from_this(),
+                    this](auto&& res) -> Result {
+          if (res.fail()) {
+            return res.result();
+          }
+          if (auto localCommitRes = _rocksMethods->triggerIntermediateCommit();
+              localCommitRes.fail()) {
+            return localCommitRes;
+          }
+          return Result{};
+        });
   }
   return Result{};
 }

@@ -229,13 +229,17 @@ void DocumentStateTransactionHandler::abortTransactionsForShard(
 [[nodiscard]] auto DocumentStateTransactionHandler::validate(
     ReplicatedOperation operation) const -> Result {
   return std::visit(
-      overload{[this](ModifiesUserTransaction auto&& op) {
-                 if (!_shardHandler->isShardAvailable(op.shard)) {
-                   return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-                 }
-                 return Result{};
-               },
-               [](auto&&) { return Result{}; }},
+      [&](auto&& op) -> Result {
+        using T = std::decay_t<decltype(op)>;
+        if constexpr (ModifiesUserTransaction<T>) {
+          if (!_shardHandler->isShardAvailable(op.shard)) {
+            return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+          }
+          return Result{};
+        } else {
+          return Result{};
+        }
+      },
       operation.operation);
 }
 

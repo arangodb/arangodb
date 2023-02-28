@@ -101,29 +101,53 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     }
   }};
 
-  try {
-    allCollections([&](TransactionCollection& tc) {
-      auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
-      if (rtc.accessType() != AccessMode::Type::READ) {
-        // We have to write to the log and wait for the log entry to be
-        // committed (in the log sense), before we can commit locally.
-        auto leader = rtc.leaderState();
-        commits.emplace_back(leader->replicateOperation(operation, options)
-                                 .thenValue([&rtc](auto&& res) -> Result {
-                                   return rtc.commitTransaction();
-                                 }));
-      } else {
-        // For read-only transactions the commit is a no-op, but we still have
-        // to call it to ensure cleanup.
-        rtc.commitTransaction();
-      }
-      return true;
-    });
-  } catch (basics::Exception const& e) {
-    return Result{e.code(), e.what()};
-  } catch (std::exception const& e) {
-    return Result{TRI_ERROR_INTERNAL, e.what()};
-  }
+  // Due to distributeShardsLike, multiple collections can have the same log
+  // leader. We need to make sure that we only commit once per log.
+  std::unordered_set<replication2::LogId> logs;
+
+  allCollections([&](TransactionCollection& tc) {
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    // We have to write to the log and wait for the log entry to be
+    // committed (in the log sense), before we can commit locally.
+    auto leader = rtc.leaderState();
+    if ((rtc.accessType() != AccessMode::Type::READ ||
+         !logs.contains(leader->gid.id)) &&
+        leader->needsReplication(operation)) {
+      logs.insert(leader->gid.id);
+
+      commits.emplace_back(
+          leader->replicateOperation(operation, options)
+              .thenValue([&rtc](auto&& res) -> ResultT<replication2::LogIndex> {
+                if (res.fail()) {
+                  return res.result();
+                }
+                if (auto localCommitRes = rtc.commitTransaction();
+                    localCommitRes.fail()) {
+                  return localCommitRes;
+                }
+                return res;
+              })
+              .thenValue([leader, tid = id()](auto&& res) -> Result {
+                if (res.fail()) {
+                  return res.result();
+                }
+                auto logIndex = res.get();
+                if (auto releaseRes = leader->release(tid, logIndex);
+                    releaseRes.fail()) {
+                  LOG_CTX("4a744", ERR, leader->loggerContext)
+                      << "Failed to call release: " << releaseRes;
+                }
+                return Result{};
+              }));
+    } else {
+      // For read-only transactions the commit is a no-op, but we still have
+      // to call it to ensure cleanup.
+      // For transactions that have been already committed in the log, we only
+      // have to commit locally.
+      rtc.commitTransaction();
+    }
+    return true;
+  });
 
   guard.cancel();
 
@@ -135,6 +159,11 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
+            if (result.is(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+              // In case the leader resigned, a fatal exit would be overkill.
+              return result;
+            }
             LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
                 << "Failed to commit replicated transaction locally: "
                 << result;
@@ -171,21 +200,28 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
 
   // The following code has been simplified based on this assertion.
   TRI_ASSERT(options.waitForCommit == false);
+
+  std::unordered_set<replication2::LogId> logs;
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
-    if (rtc.accessType() != AccessMode::Type::READ) {
-      auto leader = rtc.leaderState();
-      try {
-        leader->replicateOperation(operation, options);
-      } catch (basics::Exception const& e) {
-        return Result{e.code(), e.what()};
-      } catch (std::exception const& e) {
-        return Result{TRI_ERROR_INTERNAL, e.what()};
+    auto leader = rtc.leaderState();
+    replication2::LogIndex logIndex;
+    if ((rtc.accessType() != AccessMode::Type::READ ||
+         !logs.contains(leader->gid.id)) &&
+        leader->needsReplication(operation)) {
+      logs.insert(leader->gid.id);
+      auto res = leader->replicateOperation(operation, options).get();
+      if (res.fail()) {
+        return res.result();
       }
+      logIndex = res.get();
     }
-    auto r = rtc.abortTransaction();
-    if (r.fail()) {
+    if (auto r = rtc.abortTransaction(); r.fail()) {
       return r;
+    }
+    if (auto releaseRes = leader->release(id(), logIndex); releaseRes.fail()) {
+      LOG_CTX("4a744", ERR, leader->loggerContext)
+          << "Failed to call release: " << releaseRes;
     }
   }
 

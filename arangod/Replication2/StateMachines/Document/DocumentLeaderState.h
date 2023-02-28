@@ -52,8 +52,13 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
+  auto needsReplication(ReplicatedOperation const& op) -> bool;
+
   auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
-      -> futures::Future<LogIndex>;
+      -> futures::Future<ResultT<LogIndex>>;
+
+  auto release(LogIndex index) -> Result;
+  auto release(TransactionId tid, LogIndex index) -> Result;
 
   auto createShard(ShardID shard, CollectionID collectionId,
                    std::shared_ptr<VPackBuilder> properties)
@@ -63,7 +68,7 @@ struct DocumentLeaderState
   auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   std::size_t getActiveTransactionsCount() const noexcept {
-    return _activeTransactions.getLockedGuard()->size();
+    return _activeTransactions.getLockedGuard()->getTransactions().size();
   }
 
   auto snapshotStart(SnapshotParams::Start const& params)
@@ -97,6 +102,5 @@ struct DocumentLeaderState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
-  std::atomic_bool _isResigning;
 };
 }  // namespace arangodb::replication2::replicated_state::document
