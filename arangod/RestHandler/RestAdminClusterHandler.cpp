@@ -1509,7 +1509,7 @@ RestAdminClusterHandler::waitForSupervisionState(
                           std::string{"timed out while waiting for supervision "
                                       "maintenance mode change"});
           } else {
-            auto msg = !state
+            auto msg = state
                            ? std::string(
                                  "Cluster supervision deactivated. It will be "
                                  "reactivated automatically on ") +
