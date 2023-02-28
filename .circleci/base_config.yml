@@ -8,9 +8,6 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout
           command: |
@@ -70,6 +67,8 @@ jobs:
         type: string
       edition:
         type: string
+      enterprise:
+        type: boolean
     docker:
       - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1t
     resource_class: xlarge
@@ -78,11 +77,22 @@ jobs:
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
-          name: Checkout
+          name: Checkout ArangoDB
           command: |
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
             git reset --hard "$CIRCLE_SHA1"
+      - run:
+          name: Checkout Enterprise
+          command: |
+            if [ << parameters.enterprise >> = true ]; then
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
+              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "devel" /root/project/enterprise
+              git reset --hard "$CIRCLE_SHA1"
+            fi
       - run:
           name: Print SCCache Settings
           command: sccache -s
