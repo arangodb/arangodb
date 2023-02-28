@@ -33,17 +33,19 @@
 
 using namespace arangodb::aql;
 
-size_t QueryOptions::defaultMemoryLimit = 0;
-size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+size_t QueryOptions::defaultMemoryLimit = 0U;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
 #ifdef __APPLE__
 // On OSX the default stack size for worker threads (non-main thread) is 512kb
 // which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 150U;
 #else
-size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
 #endif
-size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000;
-size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 128 * 1024 * 1024;
+size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
+size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
+    134217728ULL;                                             // 128 MB
+size_t QueryOptions::defaultMaxConditionMembers = 786432ULL;  // 768K
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -57,6 +59,7 @@ QueryOptions::QueryOptions()
       spillOverThresholdNumRows(QueryOptions::defaultSpillOverThresholdNumRows),
       spillOverThresholdMemoryUsage(
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
+      maxConditionMembers(QueryOptions::defaultMaxConditionMembers),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -100,8 +103,7 @@ QueryOptions::QueryOptions()
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice)
-    : QueryOptions() {
+QueryOptions::QueryOptions(velocypack::Slice slice) : QueryOptions() {
   this->fromVelocyPack(slice);
 }
 
@@ -156,6 +158,11 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("spillOverThresholdMemoryUsage");
   if (value.isNumber()) {
     spillOverThresholdMemoryUsage = value.getNumber<size_t>();
+  }
+
+  value = slice.get("maxConditionMembers");
+  if (value.isNumber()) {
+    maxConditionMembers = value.getNumber<size_t>();
   }
 
   value = slice.get("maxRuntime");
@@ -286,6 +293,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdNumRows));
   builder.add("spillOverThresholdMemoryUsage",
               VPackValue(spillOverThresholdMemoryUsage));
+  builder.add("maxConditionMembers", VPackValue(maxConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));

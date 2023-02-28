@@ -31,12 +31,14 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -54,9 +56,18 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using CompareResult = ConditionPartCompareResult;
 
 namespace {
+enum ConditionPartCompareResult {
+  IMPOSSIBLE = 0,
+  SELF_CONTAINED_IN_OTHER = 1,
+  OTHER_CONTAINED_IN_SELF = 2,
+  DISJOINT = 3,
+  CONVERT_EQUAL = 4,
+  UNKNOWN = 5
+};
+using CompareResult = ConditionPartCompareResult;
+
 /// @brief clears the attribute access data
 void clearAttributeAccess(
     std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
@@ -241,7 +252,7 @@ struct PermutationState {
 // larger than that of B
 //  -> A can be dropped.
 
-ConditionPartCompareResult const ResultsTable[3][7][7] = {
+CompareResult const ResultsTable[3][7][7] = {
     {// X < Y
      {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
       OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
@@ -329,7 +340,7 @@ ConditionPartCompareResult const ResultsTable[3][7][7] = {
 // larger than that of B
 //  -> A can be dropped.
 
-ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
+CompareResult const ResultsTableMultiValued[3][7][7] = {
     {// X < Y
      {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
       DISJOINT, DISJOINT, DISJOINT},
@@ -449,12 +460,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           for (size_t j = 0; j < n2; ++j) {
             auto w = other.valueNode->getMemberUnchecked(j);
 
-            ConditionPartCompareResult res =
+            ::CompareResult res =
                 ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
 
-            if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
-                res != CompareResult::CONVERT_EQUAL &&
-                res != CompareResult::IMPOSSIBLE) {
+            if (res != ::CompareResult::OTHER_CONTAINED_IN_SELF &&
+                res != ::CompareResult::CONVERT_EQUAL &&
+                res != ::CompareResult::IMPOSSIBLE) {
               return false;
             }
           }
@@ -516,12 +527,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  ConditionPartCompareResult res =
+  ::CompareResult res =
       ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
                   [other.whichCompareOperation()][whichCompareOperation()];
 
-  if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {
+  if (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
+      res == ::CompareResult::CONVERT_EQUAL ||
+      res == ::CompareResult::IMPOSSIBLE) {
     return true;
   }
 
@@ -832,11 +844,13 @@ AstNode* Condition::transformCondition(
     root = fixRoot(root, 0);
   } catch (basics::Exception const& ex) {
     if (ex.code() != TRI_ERROR_FAILED ||
-        conditionOptimization != ConditionOptimization::Auto) {
+        conditionOptimization != ConditionOptimization::kAuto) {
       // any exceptions except the one for a too complex query condition
       // will simply be rethrown
       throw;
     }
+
+    TRI_IF_FAILURE("Condition::failIfTooComplex") { throw; }
     // too complex query condition. now convert condition into
     // OR -> AND -> NOOPT(orig), which is very simple and cheap.
     // however, it will lead to the condition being unusable by
@@ -851,7 +865,7 @@ AstNode* Condition::transformCondition(
 void Condition::normalize(
     ExecutionPlan* plan, bool multivalued /*= false*/,
     ConditionOptimization
-        conditionOptimization /*= ConditionOptimization::Auto*/) {
+        conditionOptimization /*= ConditionOptimization::kAuto*/) {
   if (_isNormalized) {
     // already normalized
     return;
@@ -860,7 +874,7 @@ void Condition::normalize(
   if (_root != nullptr) {
     _root = transformCondition(_root, conditionOptimization);
 
-    if (conditionOptimization != ConditionOptimization::Auto) {
+    if (conditionOptimization != ConditionOptimization::kAuto) {
       // DNF conversion is skipped. So condition tree could have arbitrary depth
       // and standard optimization could not be applied. Let`s do simpler
       // version
@@ -870,7 +884,7 @@ void Condition::normalize(
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (conditionOptimization == ConditionOptimization::Auto) {
+    if (conditionOptimization == ConditionOptimization::kAuto) {
       validateAst(_root, 0);
     }
 #endif
@@ -890,7 +904,7 @@ void Condition::normalize() {
   }
 
   if (_root != nullptr) {
-    _root = transformCondition(_root, ConditionOptimization::Auto);
+    _root = transformCondition(_root, ConditionOptimization::kAuto);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     validateAst(_root, 0);
@@ -1483,15 +1497,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  ConditionPartCompareResult res =
+                  ::CompareResult res =
                       ResultsTable[compareAstNodes(value, other.valueNode,
                                                    true) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
                   bool const keep =
-                      (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
-                       res == CompareResult::CONVERT_EQUAL);
+                      (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
+                       res == ::CompareResult::CONVERT_EQUAL);
 
                   if (keep) {
                     inNode->addMember(value);
@@ -1516,14 +1530,14 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            ConditionPartCompareResult res =
+            ::CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
                                              true) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
             switch (res) {
-              case CompareResult::IMPOSSIBLE: {
+              case ::CompareResult::IMPOSSIBLE: {
                 // impossible condition
                 // j = positions.size();
                 // we remove this one, so fast forward the loops to their end:
@@ -1531,19 +1545,20 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
-              case CompareResult::SELF_CONTAINED_IN_OTHER: {
+              case ::CompareResult::SELF_CONTAINED_IN_OTHER: {
                 TRI_ASSERT(!positions.empty());
                 andNode->removeMemberUncheckedUnordered(positions.at(l).first);
                 goto restartThisOrItem;
               }
-              case CompareResult::OTHER_CONTAINED_IN_SELF: {
+              case ::CompareResult::OTHER_CONTAINED_IN_SELF: {
                 TRI_ASSERT(j < positions.size());
                 andNode->removeMemberUncheckedUnordered(positions.at(j).first);
                 goto restartThisOrItem;
               }
-              case CompareResult::CONVERT_EQUAL: {  // both ok, now transform to
-                                                    // a
-                                                    // == x (== y)
+              case ::CompareResult::CONVERT_EQUAL: {  // both ok, now transform
+                                                      // to
+                                                      // a
+                                                      // == x (== y)
                 TRI_ASSERT(!positions.empty());
                 TRI_ASSERT(j < positions.size());
                 TRI_ASSERT(positions.at(j).first >
@@ -1568,10 +1583,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 andNode->changeMember(positions.at(l).first, newNode);
                 goto restartThisOrItem;
               }
-              case CompareResult::DISJOINT: {
+              case ::CompareResult::DISJOINT: {
                 break;
               }
-              case CompareResult::UNKNOWN: {
+              case ::CompareResult::UNKNOWN: {
                 break;
               }
             }
@@ -1836,7 +1851,7 @@ AstNode* Condition::collapse(AstNode const* node) {
 AstNode* Condition::transformNodePreorder(
     AstNode* node,
     ConditionOptimization
-        conditionOptimization /*= ConditionOptimization::Auto*/) {
+        conditionOptimization /*= ConditionOptimization::kAuto*/) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1862,8 +1877,8 @@ AstNode* Condition::transformNodePreorder(
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
     bool const negationConversion =
-        conditionOptimization != ConditionOptimization::None &&
-        conditionOptimization != ConditionOptimization::NoNegation;
+        conditionOptimization != ConditionOptimization::kNone &&
+        conditionOptimization != ConditionOptimization::kNoNegation;
     if (negationConversion && (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
                                sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
                                sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
@@ -1913,7 +1928,7 @@ AstNode* Condition::transformNodePreorder(
 AstNode* Condition::transformNodePostorder(
     AstNode* node,
     ConditionOptimization
-        conditionOptimization /*= ConditionOptimization::Auto*/) {
+        conditionOptimization /*= ConditionOptimization::kAuto*/) {
   if (node == nullptr) {
     return node;
   }
@@ -1947,7 +1962,7 @@ AstNode* Condition::transformNodePostorder(
     }
 
     if (distributeOverChildren &&
-        conditionOptimization == ConditionOptimization::Auto) {
+        conditionOptimization == ConditionOptimization::kAuto) {
       // we found an AND with at least one OR child, e.g.
       //        AND
       //   OR          c
@@ -1973,13 +1988,17 @@ AstNode* Condition::transformNodePostorder(
       }
       TRI_ASSERT(clauses.size() == n);
 
+      // fetch maximum number of condition members from query options
+      size_t maxNumberOfConditionMembers =
+          _ast->query().queryOptions().maxConditionMembers;
+
       // check if there would be too many members in the DNF version of
       // the condition. we may suffer from combinatorial explosion here.
       if (orMembers >= maxNumberOfConditionMembers) {
         // throw a special error about a too complex query condition.
         // this will be handled by the callers, so that they will continue
         // with a simplified version of the condition (which may not be
-        // usable in indexes).
+        // usable for index lookups).
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                        "too complex query condition");
       }
@@ -2132,10 +2151,10 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
   return node;
 }
 
-AstNode* Condition::root() const { return _root; }
+AstNode* Condition::root() const noexcept { return _root; }
 
-bool Condition::isEmpty() const {
+bool Condition::isEmpty() const noexcept {
   return (_root == nullptr || _root->numMembers() == 0);
 }
 
-bool Condition::isSorted() const { return _isSorted; }
+bool Condition::isSorted() const noexcept { return _isSorted; }

@@ -61,13 +61,13 @@ enum class TraversalProfileLevel : uint8_t {
 
 struct QueryOptions {
   QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice);
+  explicit QueryOptions(velocypack::Slice);
   QueryOptions(QueryOptions&&) noexcept = default;
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice slice);
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
+  void fromVelocyPack(velocypack::Slice slice);
+  void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
   TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
@@ -80,6 +80,7 @@ struct QueryOptions {
   size_t maxNodesPerCallstack;
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
+  size_t maxConditionMembers;
   double maxRuntime;  // query has to execute within the given time or will be
                       // killed
   double satelliteSyncWait;
@@ -132,6 +133,7 @@ struct QueryOptions {
   static size_t defaultMaxNodesPerCallstack;
   static size_t defaultSpillOverThresholdNumRows;
   static size_t defaultSpillOverThresholdMemoryUsage;
+  static size_t defaultMaxConditionMembers;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

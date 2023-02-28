@@ -86,7 +86,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
     // Condition optimization
     //  Auto - condition will be transformed to DNF.
     aql::ConditionOptimization conditionOptimization{
-        aql::ConditionOptimization::Auto};
+        aql::ConditionOptimization::kAuto};
 
     // `skipAll` method for view
     CountApproximate countApproximate{CountApproximate::Exact};

@@ -47,22 +47,13 @@ struct Variable;
 // note to maintainers:
 //
 enum class ConditionOptimization {
-  None,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
-         // and deduplicating IN nodes )
-  NoNegation,  // no conversions to negation normal form. Implies NoDNF and no
-               // optimization.
-  NoDNF,       // no conversions to DNF are made and no condition optimization
-  Auto,        // all existing condition optimizations are applied
+  kNone,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
+          // and deduplicating IN nodes )
+  kNoNegation,  // no conversions to negation normal form. Implies NoDNF and no
+                // optimization.
+  kNoDNF,       // no conversions to DNF are made and no condition optimization
+  kAuto,        // all existing condition optimizations are applied
 
-};
-
-enum ConditionPartCompareResult {
-  IMPOSSIBLE = 0,
-  SELF_CONTAINED_IN_OTHER = 1,
-  OTHER_CONTAINED_IN_SELF = 2,
-  DISJOINT = 3,
-  CONVERT_EQUAL = 4,
-  UNKNOWN = 5
 };
 
 /// @brief side on which an attribute occurs in a condition
@@ -127,14 +118,14 @@ class Condition {
                                         bool isFromTraverser);
 
   /// @brief return the condition root
-  AstNode* root() const;
+  AstNode* root() const noexcept;
 
   /// @brief whether or not the condition is empty
-  bool isEmpty() const;
+  bool isEmpty() const noexcept;
 
   /// @brief whether or not the condition results will be sorted (this is only
   /// relevant if the condition consists of multiple ORs)
-  bool isSorted() const;
+  bool isSorted() const noexcept;
 
   /// @brief export the condition as VelocyPack
   void toVelocyPack(velocypack::Builder&, bool verbose) const;
@@ -157,7 +148,7 @@ class Condition {
   /// @param conditionOptimization  allowed condition optimizations
   void normalize(ExecutionPlan*, bool multivalued = false,
                  ConditionOptimization conditionOptimization =
-                     ConditionOptimization::Auto);
+                     ConditionOptimization::kAuto);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -193,8 +184,6 @@ class Condition {
   /// @brief get the attributes for a sub-condition that are not-null
   containers::HashSet<std::vector<basics::AttributeName>> getNonNullAttributes(
       Variable const*) const;
-
-  static constexpr size_t maxNumberOfConditionMembers = 1048576U;
 
  private:
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
@@ -264,12 +253,12 @@ class Condition {
   /// form
   AstNode* transformNodePreorder(AstNode*,
                                  ConditionOptimization conditionOptimization =
-                                     ConditionOptimization::Auto);
+                                     ConditionOptimization::kAuto);
 
   /// @brief converts from negation normal to disjunctive normal form
   AstNode* transformNodePostorder(AstNode*,
                                   ConditionOptimization conditionOptimization =
-                                      ConditionOptimization::Auto);
+                                      ConditionOptimization::kAuto);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
