@@ -139,7 +139,7 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
       <th className="collectionTh">
         <Select disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
           <option key={'tier'} value={'tier'}>Tier</option>
-          <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
+          <option disabled key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
         </Select>
       </th>
       <th className="collectionTh">
