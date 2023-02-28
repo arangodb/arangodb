@@ -225,10 +225,6 @@ concept UserTransaction =
     ModifiesUserTransaction<T> || FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
-template<class T>
-concept ShardOperation = std::is_same_v<T, ReplicatedOperation::CreateShard> ||
-                         std::is_same_v<T, ReplicatedOperation::DropShard>;
-
 template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 

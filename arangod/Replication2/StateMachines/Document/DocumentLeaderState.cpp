@@ -110,7 +110,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
               if (auto res = transactionHandler->validate(doc.operation);
                   res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
                 // The shard might've been dropped before doing recovery.
-                LOG_CTX("e1edb", INFO, self->loggerContext)
+                LOG_CTX("e76f8", INFO, self->loggerContext)
                     << "will not apply transaction " << op.tid << " for shard "
                     << op.shard << " because it is not available";
                 return {};
