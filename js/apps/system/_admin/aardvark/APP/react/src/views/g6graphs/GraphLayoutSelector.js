@@ -1,5 +1,4 @@
 import React, { useContext, useState } from 'react';
-import { Select } from 'antd';
 import ToolTip from '../../components/arango/tootip';
 import { UrlParametersContext } from "./url-parameters-context";
 
@@ -8,8 +7,6 @@ const GraphLayoutSelector = () => {
   const [layout, setLayout] = useState(urlParameters.layout);
 
   const newUrlParameters = { ...urlParameters };
-
-  const SelectOption = Select.Option;
 
   const layouts = [
     {
@@ -23,59 +20,39 @@ const GraphLayoutSelector = () => {
     }
   ];
 
-  const handleChange = layout => {
+  const handleChange = (event) => {
+    const layout = event.target.value;
     setLayout(layout);
     newUrlParameters.layout = layout;
     setUrlParameters(newUrlParameters);
   };
 
-  return <>
-    <form>
+  return (
     <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Layout</label>
-        <Select
-          name="graphlayout"
-          value={layout}
-          className="graphReactViewContainer"
-          dropdownClassName="graphReactViewContainer"
-          onChange={handleChange}
-          style={{
-            'width': '200px',
-            'height': 'auto',
-            'margin-right': '8px',
-            'color': '#555555',
-            'border': '2px solid rgba(140, 138, 137, 0.25)',
-            'border-radius': '4px',
-            'background-color': '#fff !important',
-            'box-shadow': 'none',
-            'outline': 'none',
-            'outline-color': 'transparent',
-            'outline-style': 'none'
-          }}
-        >
-          {layouts.map(style => {
+      <label for="graphlayout" style={{ 'color': '#ffffff', 'width': '150px' }}>Layout</label>
+      <select
+        name="graphlayout"
+        value={layout}
+        onChange={handleChange}
+        style={{ width: "200px", 'marginRight': '8px' }}
+      >
+        {
+          layouts.map(style => {
             const { layout } = style;
             return (
-              <SelectOption 
-                key={layout} 
-                value={layout} 
-                className='graphReactViewContainer' 
-                dropdownClassName="graphReactViewContainer"
-              >
-                {layout}
-              </SelectOption>
+              <option key={layout} value={layout}>{layout}</option>
             );
-          })}
-        </Select>
-        <ToolTip
-          title={"Graph layouts are the algorithms arranging the node positions."}
-          setArrow={true}
-        >
-          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-        </ToolTip>
-      </div>
-    </form>
-  </>;
+          })
+        }
+      </select>
+      <ToolTip
+        title={"Graph layouts are the algorithms arranging the node positions."}
+        setArrow={true}
+      >
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+      </ToolTip>
+    </div>
+  );
 }
 
 export default GraphLayoutSelector;

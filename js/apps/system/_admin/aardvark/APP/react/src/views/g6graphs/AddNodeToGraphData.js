@@ -1,7 +1,5 @@
 /* global arangoHelper, arangoFetch, frontendConfig */
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { DeleteNodeModal } from './DeleteNodeModal';
-import { message } from 'antd';
+import React, { useState } from 'react';
 
 export const AddNodeToGraphData = ({ graphData, onAddNode }) => {
   const clearData = {
@@ -34,7 +32,6 @@ export const AddNodeToGraphData = ({ graphData, onAddNode }) => {
     };
     setFormData(clearData);
     onAddNode(mergedGraphData);
-    message.info(`Node "${formData.collection}/${formData.nodeId}" added`);
   }
 
   return (

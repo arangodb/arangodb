@@ -2,8 +2,7 @@
 
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Button, Tooltip } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
+import { IconButton } from "../../components/arango/buttons";
 
 const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
   const urlParameters = useContext(UrlParametersContext);
@@ -44,23 +43,17 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
   };
   
   return (
-    <>
-      <Tooltip placement="left" title={"Use current settings to receive data"} overlayClassName="graphReactViewContainer">    
-        <Button
-          type="primary"
-          style={{ background: "#2ecc71", borderColor: "#2ecc71", marginLeft: 'auto' }}
-          className="graphReactViewContainer"
-          overlayClassName="graphReactViewContainer"
-          icon={<SaveOutlined />}
-          onClick={() => {
-            callApi();
-          }}
-          disabled={isLoadingData}
-        >
-          Run
-        </Button>
-      </Tooltip>
-    </>
+    <IconButton icon={'floppy-o'} onClick={() => {
+      callApi();
+    }}
+      style={{
+      background: '#2ECC71',
+      color: 'white',
+      paddingLeft: '14px',
+      marginLeft: 'auto'
+    }}>
+      Run
+    </IconButton>
   );
 };
 

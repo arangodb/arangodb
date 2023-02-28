@@ -559,7 +559,6 @@ const G6JsGraph = () => {
           edge={edgeToDelete}
           edgeData={edgeDataToDelete}
           basicEdgeData={basicEdgeDataToDelete}
-          editorContent={edgeToDelete}
           onDeleteEdge={(edgeId) => onDeleteEdge(edgeId)}
           edgeToDeleteKey={edgeToDeleteKey}
           edgeToDeleteCollection={edgeToDeleteCollection}

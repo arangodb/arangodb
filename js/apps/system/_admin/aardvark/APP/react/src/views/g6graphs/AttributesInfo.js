@@ -1,4 +1,4 @@
-import { Tag } from 'antd';
+import Tag from "../../components/pure-css/form/Tag";
 
 export const AttributesInfo = ({ attributes }) => {
   return (
@@ -6,7 +6,7 @@ export const AttributesInfo = ({ attributes }) => {
       {
         Object.keys(attributes)
         .map((key, i) => (
-            <Tag color="cyan" key={key.toString()}><strong>{key}:</strong> {JSON.stringify(attributes[key])}</Tag>
+            <Tag label={`${key}: ${JSON.stringify(attributes[key])}`} />
         ))
       }
     </div>

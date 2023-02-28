@@ -2,7 +2,6 @@
 import React, { useState, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import { notification } from 'antd';
 import { AttributesInfo } from './AttributesInfo';
 
 const ModalBackground = styled.div`

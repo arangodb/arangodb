@@ -1,8 +1,6 @@
 /* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import styled from "styled-components";
-import { JsonEditor as Editor } from 'jsoneditor-react';
-import { notification } from 'antd';
 import { AttributesInfo } from './AttributesInfo';
 
 const ModalBackground = styled.div`
@@ -28,7 +26,7 @@ const StyledButton = styled.button`
   color: white !important;
 `;
 
-export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge, edgeData, basicEdgeData, editorContent, children, edgeKey, edgeCollection }) => {
+export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge, edgeData, basicEdgeData, children, edgeKey, edgeCollection }) => {
 
   const openNotificationWithIcon = type => {
     arangoHelper.arangoNotification(`The edge ${edge} was successfully deleted`);

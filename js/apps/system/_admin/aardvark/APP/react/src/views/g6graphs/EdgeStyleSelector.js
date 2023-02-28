@@ -1,6 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Select, Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
+import ToolTip from '../../components/arango/tootip';
 import { UrlParametersContext } from "./url-parameters-context";
 
 const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
@@ -8,8 +7,6 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   const [type, setType] = useState(urlParameters.edgeType);
 
   const newUrlParameters = { ...urlParameters };
-
-  const SelectOption = Select.Option;
 
   const styles = [
     {
@@ -23,7 +20,8 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
     }
   ];
 
-  const handleChange = type => {
+  const handleChange = (event) => {
+    const type = event.target.value;
     const typeModelMerged = {
       type: type
     };
@@ -36,36 +34,26 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   return (
     <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Type</label>
-      <Select
-        name="edgeType"
+      <select
+        name="edgetype"
         value={type}
         onChange={handleChange}
-        style={{
-          'width': '200px',
-          'height': 'auto',
-          'margin-right': '8px',
-          'color': '#555555',
-          'border': '2px solid rgba(140, 138, 137, 0.25)',
-          'border-radius': '4px',
-          'background-color': '#fff !important',
-          'box-shadow': 'none',
-          'outline': 'none',
-          'outline-color': 'transparent',
-          'outline-style': 'none'
-        }}
+        style={{ width: "200px", 'marginRight': '8px' }}
       >
-        {styles.map(style => {
+        {
+          styles.map(style => {
           const { type } = style;
           return (
-            <SelectOption key={type} value={type}>
-              {type}
-            </SelectOption>
+            <option key={type} value={type}>{type}</option>
           );
         })}
-      </Select>
-      <Tooltip placement="bottom" title={"The type of the edge."} overlayClassName="graph-border-box">
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
+      </select>
+      <ToolTip
+        title={"The type of the edge."}
+        setArrow={true}
+      >
+        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+      </ToolTip>
     </div>
   );
 }
