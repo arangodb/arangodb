@@ -5,9 +5,9 @@ import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
 import MultiSelect, {
   OptionType
-} from "../../../components/pure-css/form/MultiSelect";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { FormState, ViewContext } from "../constants";
+} from "../../../../components/pure-css/form/MultiSelect";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { FormState, ViewContext } from "../../constants";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const match = useRouteMatch();

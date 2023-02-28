@@ -3,7 +3,7 @@ import { Route, Switch } from "react-router-dom";
 import SplitPane from "react-split-pane";
 import { State } from "../../utils/constants";
 import AccordionView from "./Components/Accordion/Accordion";
-import CollectionsDropdown from "./Components/CollectionsDropdown";
+import CollectionsDropdown from "./forms/inputs/CollectionsDropdown";
 import { FormState } from "./constants";
 import ConsolidationPolicyForm from "./forms/ConsolidationPolicyForm";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
