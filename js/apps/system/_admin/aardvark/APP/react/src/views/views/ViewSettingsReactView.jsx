@@ -13,7 +13,6 @@ import LinkList from './Components/LinkList';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
 import CopyFromInput from './forms/inputs/CopyFromInput';
-import Textbox from '../../components/pure-css/form/Textbox';
 import {
   getReducer, isAdminUser as userIsAdmin,
   usePermissions
@@ -27,6 +26,7 @@ import { GeneralContent } from './GeneralContent.tsx';
 import { StoredValuesContent } from './StoredValuesContent.tsx';
 import { PrimarySortContent, PrimarySortTitle } from './PrimarySortContent.tsx';
 import useElementSize from './useElementSize';
+import { EditableViewName } from './EditableViewName';
 
 const ViewSettingsReactView = ({ name }) => {
   useDisableNavBar();
@@ -38,33 +38,6 @@ const ViewSettingsReactView = ({ name }) => {
 
   const closeEditName = () => {
     setEditName(false);
-  };
-
-  const EditableViewName = () => {
-    return (<div>
-      {!editName ? (
-        <>
-          <div style={{
-            color: '#717d90',
-            fontWeight: 600,
-            fontSize: '12.5pt',
-            padding: 10,
-            float: 'left'
-          }}>
-            {formState.name}
-          </div>
-          {!frontendConfig.isCluster ?
-            <i className="fa fa-edit" onClick={handleEditName} style={{paddingTop: '14px'}}></i> :
-            null}
-          </>
-      ) : (
-        <>
-          <Textbox type={'text'} value={formState.name} onChange={updateName}
-              required={true} disabled={nameEditDisabled}/> <i className="fa fa-check" onClick={closeEditName} style={{paddingTop: '14px'}}></i>
-        </>
-      )}
-      </div>
-    )
   };
 
 
@@ -139,7 +112,15 @@ const ViewSettingsReactView = ({ name }) => {
                 >
       <HashRouter basename={`view/${name}`} hashType={'noslash'}>
       <div className="viewsstickyheader">
-        <EditableViewName />
+        <EditableViewName
+          editName={editName}
+          formState={formState}
+          handleEditName={handleEditName}
+          updateName={updateName}
+          nameEditDisabled={nameEditDisabled}
+          closeEditName={closeEditName}
+          isCluster={frontendConfig.isCluster}
+         />
         {
           isAdminUser && views.length
             ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
