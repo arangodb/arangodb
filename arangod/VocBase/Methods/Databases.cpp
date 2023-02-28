@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -361,8 +362,15 @@ arangodb::Result Databases::create(ArangodServer& server,
       createInfo.sharding("single");
     }
 
-    res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
+    try {
+      res = ShardingInfo::validateShardsAndReplicationFactor(options, server,
+                                                             true);
+    } catch (basics::Exception const& ex) {
+      res = {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      res = {TRI_ERROR_INTERNAL, ex.what()};
+    }
+
     if (res.ok()) {
       res = createCoordinator(createInfo);
     }
