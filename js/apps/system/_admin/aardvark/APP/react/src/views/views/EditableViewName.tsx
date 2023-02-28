@@ -17,45 +17,44 @@ export const EditableViewName = ({
   nameEditDisabled: boolean;
   closeEditName: () => void;
 }) => {
-  return (
-    <div>
-      {!editName ? (
-        <>
-          <div
-            style={{
-              color: "#717d90",
-              fontWeight: 600,
-              fontSize: "12.5pt",
-              padding: 10,
-              float: "left"
-            }}
-          >
-            {formState.name}
-          </div>
-          {!nameEditDisabled ? (
-            <i
-              className="fa fa-edit"
-              onClick={handleEditName}
-              style={{ paddingTop: "14px" }}
-            ></i>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <Textbox
-            type={"text"}
-            value={formState.name}
-            onChange={updateName}
-            required={true}
-            disabled={nameEditDisabled}
-          />{" "}
+  if (!editName) {
+    return (
+      <>
+        <div
+          style={{
+            color: "#717d90",
+            fontWeight: 600,
+            fontSize: "12.5pt",
+            padding: 10,
+            float: "left"
+          }}
+        >
+          {formState.name}{nameEditDisabled?' (read only)' : ''}
+        </div>
+        {!nameEditDisabled ? (
           <i
-            className="fa fa-check"
-            onClick={closeEditName}
+            className="fa fa-edit"
+            onClick={handleEditName}
             style={{ paddingTop: "14px" }}
           ></i>
-        </>
-      )}
-    </div>
-  );
+        ) : null}
+      </>
+    );
+  }
+  return <div>
+      <>
+        <Textbox
+          type={"text"}
+          value={formState.name}
+          onChange={updateName}
+          required={true}
+          disabled={nameEditDisabled}
+        />{" "}
+        <i
+          className="fa fa-check"
+          onClick={closeEditName}
+          style={{ paddingTop: "14px" }}
+        ></i>
+      </>
+  </div>;
 };
