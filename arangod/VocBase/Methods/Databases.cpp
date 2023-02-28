@@ -344,7 +344,6 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
     res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
-      LOG_DEVEL << "OUR RES: IS: " << res.errorMessage();
       return res;
     }
 
