@@ -1,16 +1,21 @@
 import React from "react";
 import CreatableMultiSelect from "../../../../components/pure-css/form/MultiSelect";
-import {components, MultiValueGenericProps } from 'react-select';
+import { components, MultiValueGenericProps } from "react-select";
 import { Link, useRouteMatch } from "react-router-dom";
 
 const MultiValueLabel = (props: MultiValueGenericProps) => {
   const match = useRouteMatch();
   return (
-    <Link to={`${match.url}/${props.data.value}`} style={{
-      textDecoration: 'underline'
-    }}>
+    <Link
+      to={`${match.url}/${props.data.value}`}
+      style={{
+        textDecoration: "underline",
+        minWidth: 0 // because parent is flex
+      }}
+      title={props.data.label}
+    >
       <components.MultiValueLabel {...props} />
-      </Link>
+    </Link>
   );
 };
 
