@@ -6,18 +6,15 @@ import "./split-pane-styles.css";
 import "./viewsheader.css";
 import SplitPane from "react-split-pane";
 import useSWR from 'swr';
-import { Cell } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { HashRouter, Route, Switch } from 'react-router-dom';
 import LinkList from './Components/LinkList';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
-import CopyFromInput from './forms/inputs/CopyFromInput';
 import {
   getReducer, isAdminUser as userIsAdmin,
   usePermissions
 } from '../../utils/helpers';
-import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useView, useDisableNavBar } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
@@ -26,7 +23,7 @@ import { GeneralContent } from './GeneralContent.tsx';
 import { StoredValuesContent } from './StoredValuesContent.tsx';
 import { PrimarySortContent, PrimarySortTitle } from './PrimarySortContent.tsx';
 import useElementSize from './useElementSize';
-import { EditableViewName } from './EditableViewName';
+import { ViewHeader } from './ViewHeader.tsx';
 
 const ViewSettingsReactView = ({ name }) => {
   useDisableNavBar();
@@ -111,38 +108,20 @@ const ViewSettingsReactView = ({ name }) => {
                   }}
                 >
       <HashRouter basename={`view/${name}`} hashType={'noslash'}>
-      <div className="viewsstickyheader">
-        <EditableViewName
+        <ViewHeader
           editName={editName}
           formState={formState}
           handleEditName={handleEditName}
           updateName={updateName}
           nameEditDisabled={nameEditDisabled}
           closeEditName={closeEditName}
-          isCluster={frontendConfig.isCluster}
-         />
-        {
-          isAdminUser && views.length
-            ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                <div style={{display: 'flex'}}>
-                  <div style={{flex: 1, padding: '10'}}>
-                    <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-                  </div>
-                  <div style={{flex: 1, padding: '10'}}>
-                    {
-                      isAdminUser && changed
-                      ?
-                        <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-                      : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
-                    }
-                    <DeleteButton view={formState}
-                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-                  </div>
-                </div>
-            </Cell>
-            : null
-        }
-      </div>
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+        />
       <section ref={sectionRef}>
         <SplitPane
           paneStyle={{ overflow: 'scroll' }}
@@ -218,5 +197,3 @@ const ViewSettingsReactView = ({ name }) => {
       </ViewContext.Provider>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;
-
-
