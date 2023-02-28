@@ -132,7 +132,6 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   void cloneCommon(ModificationNode*) const;
 
- protected:
   /// @brief modification operation options
   ModificationOptions _options;
 
