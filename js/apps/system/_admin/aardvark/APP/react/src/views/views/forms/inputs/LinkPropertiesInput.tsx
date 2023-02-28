@@ -69,12 +69,19 @@ const LinkPropertiesInput = ({
       <Cell size={"1-2"}>
         <Grid>
           <Cell size={"1"} style={{ marginBottom: 24 }}>
-            <label>Analyzers</label>
-            <AnalyzersDropdown
-              basePath={basePath}
-              isDisabled={!!disabled}
-              formState={formState}
-            />
+          <span
+              style={{
+                float: "left",
+                width: "84%"
+              }}
+            >
+              <label>Analyzers</label>
+              <AnalyzersDropdown
+                basePath={basePath}
+                isDisabled={!!disabled}
+                formState={formState}
+              />
+            </span>
           </Cell>
 
           <Cell size={"1"}>
