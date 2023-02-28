@@ -1637,9 +1637,9 @@
         if (!b.modified_at) {
           return -1;
         }
-        if (a.modified_at < b.modified_at) {
+        if (a.modified_at > b.modified_at) {
           return -1;
-        } else if (a.modified_at > b.modified_at) {
+        } else if (a.modified_at < b.modified_at) {
           return 1;
         }
         return 0;
@@ -1652,9 +1652,9 @@
         if (!b.modified_at) {
           return -1;
         }
-        if (a.modified_at > b.modified_at) {
+        if (a.modified_at < b.modified_at) {
           return -1;
-        } else if (a.modified_at < b.modified_at) {
+        } else if (a.modified_at > b.modified_at) {
           return 1;
         }
         return 0;
