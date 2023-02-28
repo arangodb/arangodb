@@ -67,6 +67,15 @@
     initialize: function () {
       this.refreshAQL();
     },
+    initSorting: function() {
+      if (!localStorage.getItem('queryViewSortOrder')) {
+        localStorage.setItem('queryViewSortOrder', 1);
+      }
+      if (!localStorage.getItem('queryViewSortBy')) {
+        localStorage.setItem('queryViewSortBy', 'name');
+      }
+      this.initQuerySortCheckboxes();
+    },
     initQuerySortCheckboxes: function() {
       var sortBy = localStorage.getItem("queryViewSortBy");
       var sortOrder = localStorage.getItem("queryViewSortOrder");
@@ -1020,7 +1029,7 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      this.initQuerySortCheckboxes();
+      this.initSorting();
 
       // set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
