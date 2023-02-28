@@ -76,6 +76,45 @@ network::Headers buildHeaders() {
 }
 }  // namespace
 
+void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
+                                         VPackSlice infoSlice,
+                                         ArangodServer& server) {
+  DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
+
+  std::vector<std::string> databases = methods::Databases::list(server, "");
+
+  containers::FlatHashMap<std::string_view, uint32_t> dbViews;
+  for (auto const& database : databases) {
+    auto vocbase = dbFeature.lookupDatabase(database);
+
+    LogicalView::enumerate(*vocbase,
+                           [&dbViews, &database = std::as_const(database)](
+                               LogicalView::ptr const& view) -> bool {
+                             dbViews[database]++;
+
+                             return true;
+                           });
+  }
+  result.add("numDatabases", infoSlice.get("numDatabases"));
+
+  result.add("databases", VPackValue(VPackValueType::Array));
+  for (auto const it : velocypack::ArrayIterator(infoSlice.get("databases"))) {
+    result.openObject();
+    for (auto const it : velocypack::ObjectIterator(it)) {
+      std::string_view name = it.key.stringView();
+      if (name == "name") {
+        result.add("numViews", VPackValue(dbViews[it.value.stringView()]));
+      } else {
+        result.add(name, it.value);
+      }
+    }
+
+    result.close();
+  }
+
+  result.close();
+}
+
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                                           std::string const& dbName,
                                           ArangodServer& server, bool isLocal) {
@@ -99,6 +138,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   result.openObject();
 
   if (isSingleServer && !isActiveFailover) {
+    LOG_DEVEL << "single server";
     result.add("id", VPackValue(ServerIdFeature::getId().id()));
     result.add("deployment", VPackValue(VPackValueType::Object));
     result.add("type", VPackValue("single"));
@@ -112,7 +152,13 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     result.add("date", VPackValue(timeString));
     VPackBuilder serverInfo;
     buildDbServerInfo(serverInfo, server);
-    result.add("databases", serverInfo.slice().get("databases"));
+    try {
+      addDatabaseInfo(result, serverInfo.slice(), server);
+      result.add("databases", serverInfo.slice().get("databases"));
+    } catch (std::exception const& err) {
+      LOG_DEVEL << err.what();
+    }
+    LOG_DEVEL << "after databases";
   } else {
     // cluster or active failover
     if (fanout) {
@@ -133,23 +179,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       } else {
         TRI_ASSERT(ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("cluster"));
-      }
-
-      DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
-
-      std::vector<std::string> databases = methods::Databases::list(server, "");
-
-      containers::FlatHashMap<std::string_view, uint32_t> dbViews;
-      for (auto const& database : databases) {
-        auto vocbase = dbFeature.lookupDatabase(database);
-
-        LogicalView::enumerate(*vocbase,
-                               [&dbViews, &database = std::as_const(database)](
-                                   LogicalView::ptr const& view) -> bool {
-                                 dbViews[database]++;
-
-                                 return true;
-                               });
       }
 
       // build results for all servers
@@ -260,26 +289,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
             auto slice = resp.slice();
             // copy results from other server
             if (slice.isObject()) {
-              result.add("numDatabases", slice.get("numDatabases"));
-
-              result.add("databases", VPackValue(VPackValueType::Array));
-              for (auto const it :
-                   velocypack::ArrayIterator(slice.get("databases"))) {
-                result.openObject();
-                for (auto const it : velocypack::ObjectIterator(it)) {
-                  std::string_view name = it.key.stringView();
-                  if (name == "name") {
-                    result.add("numViews",
-                               VPackValue(dbViews[it.value.stringView()]));
-                  } else {
-                    result.add(name, it.value);
-                  }
-                }
-
-                result.close();
-              }
-
-              result.close();
+              addDatabaseInfo(result, slice, server);
             }
           }
         }
@@ -293,6 +303,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("databases", serverInfo.slice().get("databases"));
     }
   }
+  LOG_DEVEL << "will close builder";
   result.close();
 }
 

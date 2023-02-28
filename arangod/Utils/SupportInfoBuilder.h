@@ -29,7 +29,8 @@ namespace arangodb {
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 class SupportInfoBuilder {
  public:
@@ -41,6 +42,9 @@ class SupportInfoBuilder {
                                 ArangodServer& server);
 
  private:
+  static void addDatabaseInfo(velocypack::Builder& result,
+                              velocypack::Slice infoSlice,
+                              ArangodServer& server);
   static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);
 };
 
