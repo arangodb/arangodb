@@ -34,6 +34,11 @@ struct ReplicationMaintenanceTest : ::testing::Test {
   containers::FlatHashSet<DatabaseID> dirtyset;
   bool callNotify = false;
   std::vector<std::shared_ptr<ActionDescription>> actions;
+  // Note that diffReplicatedLogs() in Maintenance.cpp looks in
+  // ServerState::instance()->getRebootId() for comparison. We assume that this
+  // is 1 in the tests.
+  // The serverId is currently unused in the tests.
+  agency::ServerInstanceReference myself{{}, RebootId{1}};
 };
 
 /*
@@ -118,7 +123,7 @@ TEST_F(ReplicationMaintenanceTest,
        replication2::maintenance::LogStatus{
            replicated_log::QuickLogStatus{
                replicated_log::ParticipantRole::kUnconfigured},
-           agency::ServerInstanceReference{}}},
+           myself}},
   };
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -162,7 +167,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
        arangodb::replication2::maintenance::LogStatus{
            replicated_log::QuickLogStatus{
                replicated_log::ParticipantRole::kUnconfigured},
-           agency::ServerInstanceReference{}}},
+           myself}},
   };
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -208,7 +213,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
               .role = replicated_log::ParticipantRole::kFollower,
               .term = LogTerm{4},
               .local = {}},
-          agency::ServerInstanceReference{}},
+          myself},
   }};
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -274,8 +279,7 @@ TEST_F(ReplicationMaintenanceTest,
   auto localLogs = ReplicatedLogStatusMap{
       {logId,
        replication2::maintenance::LogStatus{
-           replicated_log::QuickLogStatus{std::move(leaderStatus)},
-           agency::ServerInstanceReference{}}},
+           replicated_log::QuickLogStatus{std::move(leaderStatus)}, myself}},
   };
 
   // Modify generation to trigger an update
@@ -308,7 +312,7 @@ TEST_F(ReplicationMaintenanceTest,
                       .role = replicated_log::ParticipantRole::kFollower,
                       .term = LogTerm{3},
                       .local = {}},
-                  agency::ServerInstanceReference{}}}};
+                  myself}}};
 
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
@@ -326,7 +330,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_no_longer_in_plan) {
                       .role = replicated_log::ParticipantRole::kFollower,
                       .term = LogTerm{3},
                       .local = {}},
-                  agency::ServerInstanceReference{}}}};
+                  myself}}};
 
   auto const planLogs = ReplicatedLogSpecMap{};
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
