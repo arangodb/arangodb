@@ -11,7 +11,8 @@ import {
   usePermissions
 } from "../../utils/helpers";
 import { FormState, ViewContext } from "./constants";
-import { postProcessor, useDisableNavBar, useView } from "./helpers";
+import { postProcessor, useView } from "./helpers";
+import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import "./split-pane-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
