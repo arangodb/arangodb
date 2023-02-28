@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,7 @@ std::vector<geo::Interval> CoveringUtils::intervals() {
   TRI_ASSERT(!isDone());
 
   std::vector<geo::Interval> intervals;
-  std::vector<S2CellId> cover = _params.filterShape.covering(&_coverer);
+  auto cover = _params.filterShape.covering(_coverer);
   geo::utils::scanIntervals(_params, cover, intervals);
   _allIntervalsCovered = true;
   return intervals;

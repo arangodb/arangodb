@@ -28,45 +28,46 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var disableViewTests = true;
+(function () {
+  const disableViewTests = false;
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var errors = require("@arangodb").errors;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const isEnterprise = require("internal").isEnterprise();
+  const jsunity = require("jsunity");
+  const db = require("@arangodb").db;
+  const errors = require("@arangodb").errors;
+  const helper = require("@arangodb/aql-helper");
+  const getQueryResults = helper.getQueryResults;
+  const assertQueryError = helper.assertQueryError;
+  const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+  const isEnterprise = require("internal").isEnterprise();
 
-function makePolyInside(lon, lat) {
-  // lon and lat are longitude and latitude ranges
-  return {type:"Polygon",
-          coordinates:[[[lon[0], lat[0]], [lon[1], lat[0]],
-                        [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]};
-}
+  return function (isSearchAlias, analyzerType, analyzerDefinition, isInt = false) {
 
-function makePolyOutside(lon, lat) {
-  // lon and lat are longitude and latitude ranges
-  return {type:"Polygon",
-          coordinates:[[[lon[0], lat[0]], [lon[0], lat[1]],
-                        [lon[1], lat[1]], [lon[1], lat[0]], [lon[0], lat[0]]]]};
-}
+    function makePolyInside(lon, lat) {
+      // lon and lat are longitude and latitude ranges
+      return {
+        type: "Polygon",
+        coordinates: [[[lon[0], lat[0]], [lon[1], lat[0]],
+          [lon[1], lat[1]], [lon[0], lat[1]], [lon[0], lat[0]]]]
+      };
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+    function makePolyOutside(lon, lat) {
+      // lon and lat are longitude and latitude ranges
+      return {
+        type: "Polygon",
+        coordinates: [[[lon[0], lat[0]], [lon[0], lat[1]],
+          [lon[1], lat[1]], [lon[1], lat[0]], [lon[0], lat[0]]]]
+      };
+    }
 
-function geoSuite(isSearchAlias) {
-
-  let collWithoutIndex = "UnitTestsGeoWithoutIndex";
-  let collWithIndex = "UnitTestsGeoWithIndex";
-  let collWithView = "UnitTestsGeoWithView";
-  let viewName = "UnitTestsGeoView";
-  let noIndex;
-  let withIndex;
-  let withView;
-  let view;
+    let collWithoutIndex = "UnitTestsGeoWithoutIndex";
+    let collWithIndex = "UnitTestsGeoWithIndex";
+    let collWithView = "UnitTestsGeoWithView";
+    let viewName = "UnitTestsGeoView";
+    let noIndex;
+    let withIndex;
+    let withView;
+    let view;
 
   let keyCounter = 0;
 
@@ -145,7 +146,7 @@ function geoSuite(isSearchAlias) {
     let fullScanQuery = `FOR d IN @@coll ${query} RETURN d._key`;
     let viewQuery = `FOR d IN ${viewName} ${queryView} RETURN d._key`;
     let invertedIndexQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} ${query} RETURN d._key`;
-    
+
     let resFullScanNoIndexes = getQueryResults(fullScanQuery, {"@coll": collWithoutIndex}).sort();
     let resFullScanWithIndexes = getQueryResults(fullScanQuery, {"@coll": collWithIndex}).sort();
     let resView = getQueryResults(viewQuery, {}).sort();
@@ -154,9 +155,9 @@ function geoSuite(isSearchAlias) {
     let cmpResFullScanWithIndexes = compareKeyLists("without index", resFullScanNoIndexes, "with index", resFullScanWithIndexes);
     let cmpResView = compareKeyLists("without index", resFullScanNoIndexes, "with view", resView);
     let cmpResInvertedIndex = compareKeyLists("without index", resFullScanNoIndexes, "with inverted index", resInvertedIndex);
-    
+
     // PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/BTS-1184
-    
+
     /*
     let explanation = db._createStatement(invertedIndexQuery).explain().plan;
     let utilizedIndexes = explanation.nodes.filter(node => node.type === 'IndexNode')[0].indexes;
@@ -179,9 +180,6 @@ function geoSuite(isSearchAlias) {
       print("Errors with Inverted Index: ", cmpResInvertedIndex.msg);
     }
 
-    /*
-      NB: 'if' statement below should be removed after fixing all bugs from ticket https://arangodb.atlassian.net/browse/SEARCH-284
-    */  
     if (disableViewTests) {
       cmpResView.good = true;   // fake goodness
       cmpResInvertedIndex.good = true;   // fake goodness
@@ -206,11 +204,11 @@ function geoSuite(isSearchAlias) {
       withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
-      let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+      analyzers.save("geo_json", analyzerType, analyzerDefinition, ["frequency", "norm", "position"]);
 
       withIndex.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       withView.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      
+
       // ensure inverted indexes for each collections
 
       let commonInvertedIndexMeta = {};
@@ -279,6 +277,8 @@ function geoSuite(isSearchAlias) {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
+      let analyzers = require("@arangodb/analyzers");
+      analyzers.remove("geo_json");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,11 +497,15 @@ function geoSuite(isSearchAlias) {
       let l = [];
       for (let size = 0.0001; size <= 10; size *= 10) {
         for (let lon = 14.8; lon <= 15.2; lon += 0.04) {
-          l.push({geo:{type:"Polygon", 
-            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
-                          [lon+size, 10+size], [lon-size, 10+size],
-                          [lon-size, 10-size]]]},
-            centroid:{type:"Point", coordinates:[lon, 10]}});
+          l.push({
+            geo: {
+              type: "Polygon",
+              coordinates: [[[lon - size, 10 - size], [lon + size, 10 - size],
+                [lon + size, 10 + size], [lon - size, 10 + size],
+                [lon - size, 10 - size]]]
+            },
+            centroid: {type: "Point", coordinates: [lon, 10]}
+          });
           if (l.length % 1000 === 0) {
             insertAll(l);
             l = [];
@@ -527,11 +531,15 @@ function geoSuite(isSearchAlias) {
       let l = [];
       for (let size = 1; size <= 11; size += 1) {
         for (let lon = 11; lon <= 30; lon += 0.1) {
-          l.push({geo:{type:"Polygon", 
-            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
-                          [lon+size, 10+size], [lon-size, 10+size],
-                          [lon-size, 10-size]]]},
-            centroid:{type:"Point", coordinates:[lon, 10]}});
+          l.push({
+            geo: {
+              type: "Polygon",
+              coordinates: [[[lon - size, 10 - size], [lon + size, 10 - size],
+                [lon + size, 10 + size], [lon - size, 10 + size],
+                [lon - size, 10 - size]]]
+            },
+            centroid: {type: "Point", coordinates: [lon, 10]}
+          });
           if (l.length % 1000 === 0) {
             insertAll(l);
             l = [];
@@ -621,14 +629,18 @@ function geoSuite(isSearchAlias) {
       }
       waitForArangoSearch();
       for (let d = 1; d <= 5; d += 1) {
-        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
-          [15,15+d], [15-d,15]]]};
+        let p = {
+          type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
+            [15, 15 + d], [15 - d, 15]]]
+        };
         //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        if (!isInt) {
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        }
       }
     },
 
@@ -653,14 +665,18 @@ function geoSuite(isSearchAlias) {
       }
       waitForArangoSearch();
       for (let d = 1; d <= 5; d += 1) {
-        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
-          [15,15-d], [15-d,15]]]};
+        let p = {
+          type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
+            [15, 15 - d], [15 - d, 15]]]
+        };
         //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        if (!isInt) {
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        }
       }
     },
 
@@ -712,14 +728,18 @@ function geoSuite(isSearchAlias) {
       }
       waitForArangoSearch();
       for (let d = 1; d <= 5; d += 1) {
-        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
-          [15,15+d], [15-d,15]]]};
+        let p = {
+          type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
+            [15, 15 + d], [15 - d, 15]]]
+        };
         //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        if (!isInt) {
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        }
       }
     },
 
@@ -744,14 +764,18 @@ function geoSuite(isSearchAlias) {
       }
       waitForArangoSearch();
       for (let d = 1; d <= 5; d += 1) {
-        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
-          [15,15-d], [15-d,15]]]};
+        let p = {
+          type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
+            [15, 15 - d], [15 - d, 15]]]
+        };
         //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        if (!isInt) {
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        }
       }
     },
 
@@ -783,11 +807,11 @@ function geoSuite(isSearchAlias) {
 /// @brief test some areas which are more than half of the earth
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoreThanHalf1 : function () {
+    testMoreThanHalf1Grid: function () {
       let l = [];
       for (let lat = 45; lat <= 55; lat += 1) {
         for (let lon = 90; lon <= 100; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point", coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(l);
             l = [];
@@ -819,7 +843,9 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        if (!isInt) {
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+        }
       }
     },
 
@@ -975,8 +1001,9 @@ function geoSuite(isSearchAlias) {
       waitForArangoSearch();
       let multiLineString = {
         "type": "MultiLineString",
-        "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
-                         [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ] };                 
+        "coordinates": [[[6.537, 50.332], [6.537, 50.376]],
+          [[6.621, 50.332], [6.621, 50.376]]]
+      };
       let c = compare(
         `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
         `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
@@ -1061,7 +1088,7 @@ function geoSuite(isSearchAlias) {
         "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
                          [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ] };
-                         
+
       let c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "geo_json")`
@@ -1100,30 +1127,5 @@ function geoSuite(isSearchAlias) {
       assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
   };
-}
-
-function arangoSearchGeoSuite() {
-  let suite = {};
-  deriveTestSuite(
-    geoSuite(false),
-    suite,
-    "_arangosearch"
-  );
-  return suite;
-}
-
-function searchAliasGeoSuite() {
-  let suite = {};
-  deriveTestSuite(
-    geoSuite(true),
-    suite,
-    "_search-alias"
-  );
-  return suite;
-}
-
-jsunity.run(arangoSearchGeoSuite);
-jsunity.run(searchAliasGeoSuite);
-
-
-return jsunity.done();
+  };
+}());

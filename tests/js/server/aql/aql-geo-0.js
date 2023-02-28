@@ -1,8 +1,10 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,27 +20,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Valery Mironov
+/// @author Copyright 2023, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ellipsoid.h"
+const jsunity = require("jsunity");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const base = require("fs").join(require('internal').pathForTesting('server'),
+  'aql', 'aql-geo.inc');
+const geoSuite = require("internal").load(base);
+const isEnterprise = require("internal").isEnterprise();
 
-#include <cstring>
-
-namespace arangodb {
-namespace geo {
-namespace utils {
-
-Ellipsoid const& ellipsoidFromString(const char* ptr, size_t len) {
-  if (len == 5 && memcmp(ptr, "wgs84", 5) == 0) {
-    return WGS84_ELLIPSOID;
-  }
-  if (len == 6 && memcmp(ptr, "sphere", 6) == 0) {
-    return SPHERE;
-  }
-  return SPHERE;
+function testGeo() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false, "geojson", {}),
+    suite,
+    "_vpack_arangosearch"
+  );
+  return suite;
 }
 
-}  // namespace utils
-}  // namespace geo
-}  // namespace arangodb
+jsunity.run(testGeo);
+
+return jsunity.done();

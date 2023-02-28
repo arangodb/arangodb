@@ -611,15 +611,11 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       _value._name = _nameBuffer;
     } break;
   }
-  auto* storeFunc = pool->storeFunc();
-  if (storeFunc) {
-    auto const valueSlice =
-        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
-                                        : _value._analyzer.get(),
-                  value, _buffer);
-
-    if (!valueSlice.isNone()) {
-      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+  if (auto* storeFunc = pool->storeFunc(); storeFunc) {
+    TRI_ASSERT(_currentTypedAnalyzer == nullptr);
+    auto const bytes = storeFunc(_value._analyzer.get(), value);
+    if (!bytes.null()) {
+      _value._value = bytes;
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
   }

@@ -3542,15 +3542,15 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "geo_field", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "keys2", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer, false>(
             server, *it, "keys2", "my_geo");
       },
       [](auto& server, auto const& it) {
@@ -3578,7 +3578,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleNumeric("array[*].id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
@@ -3594,11 +3594,11 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+        assertField<arangodb::iresearch::GeoVPackAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,6 @@ class Slice;
 }
 
 namespace geo {
-struct Coordinate;
 struct QueryParams;
 class ShapeContainer;
 }  // namespace geo
@@ -71,10 +70,10 @@ struct Index {
 
  public:
   /// @brief Parse document and return cells for indexing
-  Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
+  Result indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                     S2Point& centroid) const;
 
-  Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
+  Result shape(velocypack::Slice doc, geo::ShapeContainer& shape) const;
 
   /// @brief Parse AQL condition into query parameters
   /// Public to allow usage by legacy geo indexes.

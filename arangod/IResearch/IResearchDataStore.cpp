@@ -1308,7 +1308,7 @@ Result IResearchDataStore::initDataStore(
   if (pathExists) {
     try {
       _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
-                                                       nullptr, readerOptions);
+                                                       _format, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,

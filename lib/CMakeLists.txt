@@ -291,28 +291,7 @@ target_link_libraries(arango_greenspun date_interface)
 ## LIB_ARANGO_GEO
 ################################################################################
 
-add_library(arango_geo STATIC
-  Geo/Ellipsoid.cpp
-  Geo/GeoJson.cpp
-  Geo/GeoParams.cpp
-  Geo/ShapeContainer.cpp
-  Geo/Shapes.cpp
-  Geo/Utils.cpp
-  Geo/karney/geodesic.c
-  Geo/S2/S2MultiPointRegion.cpp
-  Geo/S2/S2MultiPolyline.cpp
-)
-
-target_link_libraries(arango_geo
-  arango
-  boost_system
-  boost_boost
-  s2
-)
-
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif()
+add_subdirectory(Geo)
 
 # Enterprise
 if (USE_ENTERPRISE)

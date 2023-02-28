@@ -26,25 +26,32 @@
 #include "Geo/Coding.h"
 
 #include <s2/s2region.h>
-#include <s2/s2point.h>
-#include <s2/s2shape.h>
+#include <s2/s2polyline.h>
 
-#include <exception>
 #include <vector>
 
 namespace arangodb::geo {
+namespace rect {
 
-class S2MultiPointRegion final : public S2Region {
+bool intersects(S2LatLngRect const& rect, S2Polyline const& polyline);
+
+}  // namespace rect
+
+class S2MultiPolylineRegion final : public S2Region {
  public:
-  ~S2MultiPointRegion() final = default;
+  ~S2MultiPolylineRegion() final = default;
 
   // The result is not unit length, so you may want to normalize it.
   S2Point GetCentroid() const noexcept;
 
   template<typename Region>
   bool Intersects(Region const& other) const noexcept {
-    for (auto const& point : _impl) {
-      if (other.Contains(point)) {
+    for (auto const& line : _impl) {
+      if constexpr (std::is_same_v<Region, S2LatLngRect>) {
+        if (rect::intersects(other, line)) {
+          return true;
+        }
+      } else if (other.Intersects(line)) {
         return true;
       }
     }
@@ -59,13 +66,13 @@ class S2MultiPointRegion final : public S2Region {
   bool Contains(S2Point const& p) const final;
 
   void Encode(Encoder& encoder, coding::Options options) const;
-  bool Decode(Decoder& decoder, uint8_t tag);
+  bool Decode(Decoder& decoder, uint8_t tag, std::vector<S2Point>& cache);
 
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }
 
  private:
-  std::vector<S2Point> _impl;
+  std::vector<S2Polyline> _impl;
 };
 
 }  // namespace arangodb::geo
