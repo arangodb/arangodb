@@ -49,6 +49,9 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/FoxxFeature.h"
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,9 +59,11 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-std::string const AdminAardvark("/_admin/aardvark/");
-std::string const ApiUser("/_api/user/");
-std::string const Open("/_open/");
+constexpr std::string_view pathPrefixApi("/_api/");
+constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixAdmin("/_admin/");
+constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
+constexpr std::string_view pathPrefixOpen("/_open/");
 
 TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
                                          GeneralRequest& req) {
@@ -254,7 +259,7 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
-      // the following paths are allowed on followers
+      // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
           !path.starts_with("/_admin/cluster/maintenance") &&
@@ -332,6 +337,20 @@ CommTask::Flow CommTask::prepareExecution(
                       TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
+  }
+
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    auto& ff = _server.server().getFeature<FoxxFeature>();
+    if (!ff.foxxEnabled() &&
+        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+          path.starts_with(::pathPrefixApi) ||
+          path.starts_with(::pathPrefixOpen))) {
+      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_FORBIDDEN,
+                        "access to Foxx apps is turned off on this instance");
+      return Flow::Abort;
+    }
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
@@ -823,8 +842,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || path.starts_with(Open) ||
-          path.starts_with(AdminAardvark) ||
+      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -835,12 +854,13 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(ApiUser + username + '/')) {
+                 path.starts_with(std::string{::pathPrefixApiUser} + username +
+                                  '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
         result = Flow::Continue;
       }
     }

@@ -84,19 +84,23 @@ void ServerSecurityFeature::collectOptions(
       .setIntroducedIn(30805);
 }
 
-bool ServerSecurityFeature::isFoxxApiDisabled() const {
+void ServerSecurityFeature::disableFoxxApi() noexcept {
+  _enableFoxxApi = false;
+}
+
+bool ServerSecurityFeature::isFoxxApiDisabled() const noexcept {
   return !_enableFoxxApi;
 }
 
-bool ServerSecurityFeature::isFoxxStoreDisabled() const {
+bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
   return !_enableFoxxStore || !_enableFoxxApi;
 }
 
-bool ServerSecurityFeature::isRestApiHardened() const {
+bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _hardenedRestApi;
 }
 
-bool ServerSecurityFeature::canAccessHardenedApi() const {
+bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
@@ -110,6 +114,6 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
   return allowAccess;
 }
 
-bool ServerSecurityFeature::foxxAllowInstallFromRemote() const {
+bool ServerSecurityFeature::foxxAllowInstallFromRemote() const noexcept {
   return _foxxAllowInstallFromRemote;
 }
