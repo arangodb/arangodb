@@ -1,6 +1,5 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
-import 'react-autocomplete-input/dist/bundle.css';
 import ReactDOM from 'react-dom';
 
 const jsoneditor = require('jsoneditor');
