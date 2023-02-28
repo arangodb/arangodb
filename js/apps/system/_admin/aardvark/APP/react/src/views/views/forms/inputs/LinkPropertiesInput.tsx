@@ -1,15 +1,13 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { chain, get, without } from "lodash";
+import React, { ChangeEvent } from "react";
+import { get } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { getBooleanFieldSetter } from "../../../../utils/helpers";
-import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
-import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import ToolTip from "../../../../components/arango/tootip";
 import { FieldsDropdown } from "./FieldsDropdown";
+import { AnalyzersDropdown } from "./AnalyzersDropdown";
 import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
@@ -22,47 +20,7 @@ const LinkPropertiesInput = ({
                                disabled,
                                basePath
                              }: LinkPropertiesInputProps) => {
-  const { data } = useSWR("/analyzer", path =>
-    getApiRouteForCurrentDB().get(path)
-  );
-  const [options, setOptions] = useState<string[]>([]);
-  const analyzers = useMemo(() => get(formState, 'analyzers', [] as string[]), [formState]);
-
-  useEffect(() => {
-    if (data) {
-      const tempOptions = chain(data.body.result)
-        .map("name")
-        .difference(analyzers)
-        .value();
-
-      setOptions(tempOptions);
-    }
-  }, [analyzers, data]);
-
-  const addAnalyzer = (analyzer: string | number) => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: "analyzers",
-        value: analyzers.concat([analyzer as string])
-      },
-      basePath
-    });
-    setOptions(without(options, analyzer as string));
-  };
-
-  const removeAnalyzer = (analyzer: string | number) => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: "analyzers",
-        value: without(analyzers, analyzer)
-      },
-      basePath
-    });
-    setOptions(options.concat([analyzer as string]).sort());
-  };
-
+  
   const updateStoreValues = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: "setField",
@@ -111,15 +69,11 @@ const LinkPropertiesInput = ({
       <Cell size={"1-2"}>
         <Grid>
           <Cell size={"1"} style={{ marginBottom: 24 }}>
-            <AutoCompleteMultiSelect
-              values={analyzers}
-              onRemove={removeAnalyzer}
-              onSelect={addAnalyzer}
-              options={options}
-              label={"Analyzers"}
-              disabled={disabled}
-              errorMsg={'Analyzer does not exist.'}
-              placeholder={'Start typing for suggestions.'}
+            <label>Analyzers</label>
+            <AnalyzersDropdown
+              basePath={basePath}
+              isDisabled={!!disabled}
+              formState={formState}
             />
           </Cell>
 
