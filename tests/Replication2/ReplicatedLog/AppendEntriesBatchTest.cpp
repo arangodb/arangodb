@@ -22,7 +22,7 @@
 
 #include "Replication2/Mocks/FakeReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 #include <Containers/Enumerate.h>
 #include <gtest/gtest.h>

@@ -66,6 +66,9 @@ class Error final {
   template<typename Inspector>
   friend auto inspect(Inspector& f, Error& x);
 
+  friend auto operator==(Error const& left, Error const& right) noexcept
+      -> bool = default;
+
  private:
   ErrorCode _errorNumber;
   std::string _errorMessage;

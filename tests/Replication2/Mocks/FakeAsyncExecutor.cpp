@@ -64,3 +64,31 @@ void ThreadAsyncExecutor::operator()(ThreadAsyncExecutor::Func fn) {
   queue.emplace_back(std::move(fn));
   cv.notify_one();
 }
+
+void SyncExecutor::operator()(
+    fu2::unique_function<void() noexcept> f) noexcept {
+  std::move(f).operator()();
+}
+
+DelayedExecutor::~DelayedExecutor() = default;
+
+DelayedExecutor::DelayedExecutor() = default;
+
+void DelayedExecutor::operator()(DelayedExecutor::Func fn) {
+  queue.emplace_back(std::move(fn));
+}
+
+void DelayedExecutor::runOnce() noexcept {
+  auto f = std::invoke([this] {
+    auto f = std::move(queue.front());
+    queue.pop_front();
+    return f;
+  });
+  f.operator()();
+}
+
+void DelayedExecutor::runAll() noexcept {
+  while (not queue.empty()) {
+    runOnce();
+  }
+}

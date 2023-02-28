@@ -233,7 +233,7 @@ struct FollowerStateManager
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::shared_ptr<StreamImpl> stream);
-  void acquireSnapshot(ServerID leader, LogIndex index);
+  void acquireSnapshot(ServerID leader, LogIndex index, std::uint64_t);
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
@@ -253,9 +253,11 @@ struct FollowerStateManager
   auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
   void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
-    [[nodiscard]] auto updateCommitIndex(LogIndex index)
+    [[nodiscard]] auto updateCommitIndex(
+        LogIndex index, std::shared_ptr<ReplicatedStateMetrics> const& metrics)
         -> std::optional<futures::Future<Result>>;
-    [[nodiscard]] auto maybeScheduleApplyEntries()
+    [[nodiscard]] auto maybeScheduleApplyEntries(
+        std::shared_ptr<ReplicatedStateMetrics> const& metrics)
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
@@ -316,7 +318,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
                          std::unique_ptr<CoreType> logCore,
                          std::shared_ptr<Factory> factory);
 
-  void acquireSnapshot(ServerID leader, LogIndex index) override;
+  void acquireSnapshot(ServerID leader, LogIndex index,
+                       std::uint64_t version) override;
 
   void updateCommitIndex(LogIndex index) override;
 
@@ -336,14 +339,14 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus override;
-  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
+  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus>;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
   // the stunts for covariance here.
   [[nodiscard]] auto getFollower() const
-      -> std::shared_ptr<IReplicatedFollowerStateBase> override;
+      -> std::shared_ptr<IReplicatedFollowerStateBase>;
   [[nodiscard]] auto getLeader() const
-      -> std::shared_ptr<IReplicatedLeaderStateBase> override;
+      -> std::shared_ptr<IReplicatedLeaderStateBase>;
 
  private:
   LoggerContext const _loggerContext;
@@ -410,6 +413,8 @@ struct ReplicatedState final
       -> std::shared_ptr<IReplicatedFollowerStateBase> final {
     return getFollower();
   }
+
+  std::optional<ReplicatedStateManager<S>> manager;
 
   std::shared_ptr<Factory> const factory;
   GlobalLogIdentifier const gid;
