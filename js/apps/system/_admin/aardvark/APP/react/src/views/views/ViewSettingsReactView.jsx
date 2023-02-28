@@ -26,6 +26,7 @@ import { ViewRightPane } from './ViewRightPane.tsx';
 import { GeneralContent } from './GeneralContent.tsx';
 import { StoredValuesContent } from './StoredValuesContent.tsx';
 import { PrimarySortContent, PrimarySortTitle } from './PrimarySortContent.tsx';
+import useElementSize from './useElementSize';
 
 const ViewSettingsReactView = ({ name }) => {
   useDisableNavBar();
@@ -124,8 +125,9 @@ const ViewSettingsReactView = ({ name }) => {
       setViews(data.body.result);
     }
   }
-
- 
+  const [sectionRef, sectionSize] = useElementSize();
+  const sectionWidth = sectionSize.width;
+  const maxSize = sectionWidth - 200;
   return <ViewContext.Provider
                   value={{
                     formState,
@@ -160,10 +162,10 @@ const ViewSettingsReactView = ({ name }) => {
             : null
         }
       </div>
-      <section>
+      <section ref={sectionRef}>
         <SplitPane
           paneStyle={{ overflow: 'scroll' }}
-          maxSize={800}
+          maxSize={maxSize}
           defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
           onChange={(size) => localStorage.setItem('splitPos', size)}
           style={{ paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
