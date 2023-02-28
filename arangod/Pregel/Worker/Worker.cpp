@@ -85,7 +85,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
-      _algorithm(algo) {
+      _algorithm(algo),
+      _quiver(nullptr) {
   _config.updateConfig(_feature, parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
@@ -191,8 +192,12 @@ void Worker<V, E, M>::setupWorker() {
                     statusUpdateCallback = std::move(_makeStatusCallback()),
                     finishedCallback = std::move(finishedCallback)] {
                      try {
-                       _graphStore->loadShards(&_config, statusUpdateCallback,
-                                               finishedCallback);
+                       ADB_PROD_ASSERT(_quiver == nullptr);
+                       auto loader = Loader();
+                       _quiver = std::move(loader.load());
+                       /*
+                        _graphStore->loadShards(&_config, statusUpdateCallback,
+                                                finishedCallback); */
                      } catch (std::exception const& ex) {
                        LOG_PREGEL("a47c4", WARN)
                            << "caught exception in loadShards: " << ex.what();
@@ -531,7 +536,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
 
   VPackBuilder results;
   results.openArray(/*unindexed*/ true);
-  for (auto& vertex : _graphStore->quiver()) {
+  for (auto& vertex : *_quiver) {
     TRI_ASSERT(vertex.shard().value < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardID(vertex.shard());
 
