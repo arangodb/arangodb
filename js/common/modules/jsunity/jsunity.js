@@ -594,31 +594,32 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 break;
               } catch (e) {
+                let ex = e;
                 let arangodb = require("@arangodb");
-                if ( typeof e === "string" ) {
-                  e = new Error(e);
-                } else if (e instanceof arangodb.ArangoError && (
-                           (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
-                           (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                if ( typeof ex === "string" ) {
+                  ex = new Error(ex);
+                } else if (ex instanceof arangodb.ArangoError && (
+                           (ex.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
+                           (ex.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
                 )) {
                   skipTest = true;
                 }
                 if (!didSetUp) {
                   this.results.endSetUp(suite.scope, test.name);
                   didSetUp = true;
-                  messages.push(reduceStack(e.stack) + " - setUp failed");
+                  messages.push(reduceStack(ex.stack) + " - setUp failed");
                   skipTest = true;
                   continue;
                 }
                 if (!didTest && !skipTest) {
                   didTest = true;
-                  messages.push(reduceStack(e.stack) + " - test failed");
+                  messages.push(reduceStack(ex.stack) + " - test failed");
                   continue;
                 }
                 if (!didTearDown) {
                   this.results.endTeardown(suite.scope, test.name);
                   didTearDown = true;
-                  messages.push(reduceStack(e.stack) + " - tearDown failed");
+                  messages.push(reduceStack(ex.stack) + " - tearDown failed");
                   continue;
                 }
               }
@@ -631,6 +632,7 @@ var jsUnity = exports.jsUnity = (function () {
           tearDownAll(suite.suiteName);
           this.results.endTeardownAll(suite.scope);
         } catch (tearDownAllError) {
+          results.total += 1;
           if (tearDownAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,
                               tearDownAllError + " - " + reduceStack(tearDownAllError.stack) + 
