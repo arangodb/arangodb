@@ -67,7 +67,23 @@
     initialize: function () {
       this.refreshAQL();
     },
+    initQuerySortCheckboxes: function() {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var sortOrder = localStorage.getItem("queryViewSortOrder");
+      if (sortOrder === "-1") {
+        $("#querySortOrder").prop("checked", true);
+      }
 
+      if (sortBy === 'dateAdded') {
+        $("#sortDateAdded").prop("checked", true);
+      }
+      if (sortBy === 'dateModified') {
+        $("#sortDateModified").prop("checked", true);
+      }
+      if (sortBy === 'name') {
+        $("#sortName").prop("checked", true);
+      }
+    },
     allowParamToggle: true,
 
     events: {
@@ -174,38 +190,38 @@
     },
 
     sortName: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.sortBy;
-      searchOptions.sortBy = (($('#sortName').is(':checked') === true) ? 'name' : 'dateAdded');
-      if (oldValue !== searchOptions.sortBy) {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortName').is(':checked') === true) ? 'name' : 'dateAdded');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
         this.updateQueryTable();
         this.resize();
       }
     },
     sortDateModified: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.sortBy;
-      searchOptions.sortBy = (($('#sortDateModified').is(':checked') === true) ? 'dateModified' : 'name');
-      if (oldValue !== searchOptions.sortBy) {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortDateModified').is(':checked') === true) ? 'dateModified' : 'name');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
         this.updateQueryTable();
         this.resize();
       }
     },
     sortDateAdded: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.sortBy;
-      searchOptions.sortBy = (($('#sortDateAdded').is(':checked') === true) ? 'dateAdded' : 'name');
-      if (oldValue !== searchOptions.sortBy) {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortDateAdded').is(':checked') === true) ? 'dateAdded' : 'name');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
         this.updateQueryTable();
         this.resize();
       }
     },
     sortOrder: function () {
-      var searchOptions = this.collection.searchOptions;
-      var oldValue = searchOptions.sortOrder;
+      var sortOrder = localStorage.getItem("queryViewSortOrder");
 
-      searchOptions.sortOrder = (($('#querySortOrder').is(':checked') === true) ? -1 : 1);
-      if (oldValue !== searchOptions.sortOrder) {
+      const newSortOrder = (($('#querySortOrder').is(':checked') === true) ? -1 : 1);
+      if (sortOrder !== newSortOrder) {
+        localStorage.setItem("queryViewSortOrder", newSortOrder);
         this.updateQueryTable();
         this.resize();
       }
@@ -1004,6 +1020,7 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
+      this.initQuerySortCheckboxes();
 
       // set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -1642,28 +1659,30 @@
         }
         return 0;
       }
-      if (this.collection.searchOptions.sortBy === 'dateModified') {
-        if (this.collection.searchOptions.sortOrder === 1) {
+      const sortBy = localStorage.getItem("queryViewSortBy") || "name";
+      const sortOrder = localStorage.getItem("queryViewSortOrder") || "-1";
+      if (sortBy === 'dateModified') {
+        if (sortOrder === "1") {
           // can't just do 'reverse()' because we need to handle missing data
           return rows.sort(sortByModifiedAtReverse);
         }
-        if (this.collection.searchOptions.sortOrder === -1) {
+        if (sortOrder === "-1") {
           return rows.sort(sortByModifiedAt);
         }
       }
-      if (this.collection.searchOptions.sortBy === 'dateAdded') {
-        if (this.collection.searchOptions.sortOrder === 1) {
+      if (sortBy === 'dateAdded') {
+        if (sortOrder === "1") {
           // Reverse order: Last added query shall be displayed first
           return rows;
         }
-        if (this.collection.searchOptions.sortOrder === -1) {
+        if (sortOrder === "-1") {
           return rows.reverse();
         }
       }
-      if (this.collection.searchOptions.sortOrder === 1) {
+      if (sortOrder === "1") {
         return rows.sort(compare);
       }
-      if (this.collection.searchOptions.sortOrder === -1) {
+      if (sortOrder === "-1") {
         return rows.sort(compare).reverse();
       }
       return rows.sort(compare);
