@@ -10,12 +10,19 @@ import { FormState, ViewContext } from "../constants";
 
 const MultiValueLabel = (props: MultiValueGenericProps) => {
   const match = useRouteMatch();
+  const to =
+    match && match.url === "/"
+      ? props.data.value
+      : `${match.url}/${props.data.value}`;
   return (
-    <Link to={`${match.url}/${props.data.value}`} style={{
-      textDecoration: 'underline'
-    }}>
+    <Link
+      to={to}
+      style={{
+        textDecoration: "underline"
+      }}
+    >
       <components.MultiValueLabel {...props} />
-      </Link>
+    </Link>
   );
 };
 
