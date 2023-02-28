@@ -14,6 +14,12 @@ devel
   still be better than overusing memory or taking a very long time to compute
   the DNF version.
 
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating
+  the same _rev value for two different documents concurrently.
+
 * BTS-1249: Add startup option `--foxx.enable`.
   This startup option determines whether access to user-defined Foxx services
   is possible for the instance. It defaults to `true`.
