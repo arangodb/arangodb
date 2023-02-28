@@ -5,12 +5,10 @@ import { FormState } from "./constants";
 import JsonForm from "./forms/JsonForm";
 
 export const ViewRightPane = ({
-  isAdminUser,
   formState,
   dispatch,
   state
 }: {
-  isAdminUser: boolean;
   formState: FormState;
   dispatch: () => void;
   state: State<FormState>;
@@ -38,7 +36,7 @@ export const ViewRightPane = ({
                     formState={formState}
                     dispatch={dispatch}
                     renderKey={state.renderKey}
-                    mode={isAdminUser ? "code" : "view"}
+                    mode={"code"}
                   />
                 </Cell>
               </Grid>

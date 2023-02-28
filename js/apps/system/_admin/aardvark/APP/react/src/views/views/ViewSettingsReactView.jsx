@@ -228,7 +228,7 @@ const ViewSettingsReactView = ({ name }) => {
               ]}
             />
           </div>
-          <ViewRightPane isAdminUser={isAdminUser} formState={formState} dispatch={dispatch} state={state} />
+          <ViewRightPane formState={formState} dispatch={dispatch} state={state} />
         </SplitPane>
       </section>
       </HashRouter>
