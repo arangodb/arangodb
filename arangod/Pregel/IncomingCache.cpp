@@ -42,6 +42,7 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)

@@ -25,7 +25,7 @@
 
 #include "Pregel/GraphStore/VertexID.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::algos {
 
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
@@ -41,4 +41,4 @@ auto inspect(Inspector& f, DMIDValue& v) {
                             f.field("disCol", v.disCol));
 }
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::algos

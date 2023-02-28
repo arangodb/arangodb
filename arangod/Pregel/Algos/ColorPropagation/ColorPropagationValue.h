@@ -26,7 +26,7 @@
 #include "Pregel/SenderMessage.h"
 #include "Pregel/SenderMessageFormat.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::algos {
 
 using CollectionIdType = uint16_t;
 using ColorType = uint16_t;
@@ -106,4 +106,4 @@ struct ColorPropagationValueMessageFormat
     arangodb::velocypack::serialize(arrayBuilder, value);
   }
 };
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::algos

@@ -690,9 +690,9 @@ template class arangodb::pregel::Worker<algos::HITSValue, int8_t,
                                         SenderMessage<double>>;
 template class arangodb::pregel::Worker<algos::HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<algos::ECValue, int8_t, HLLCounter>;
+template class arangodb::pregel::Worker<algos::DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<algos::LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<algos::SLPAValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
-                                        ColorPropagationMessageValue>;
+template class arangodb::pregel::Worker<algos::ColorPropagationValue, int8_t,
+                                        algos::ColorPropagationMessageValue>;

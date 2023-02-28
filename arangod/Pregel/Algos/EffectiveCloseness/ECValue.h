@@ -25,7 +25,7 @@
 
 #include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::algos {
 /// Effective closeness value
 struct ECValue {
   HLLCounter counter;
@@ -38,4 +38,4 @@ auto inspect(Inspector& f, ECValue& v) {
                             f.field("shortestPaths", v.shortestPaths));
 }
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::algos

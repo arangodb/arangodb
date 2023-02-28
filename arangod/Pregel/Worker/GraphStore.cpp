@@ -821,10 +821,11 @@ template class arangodb::pregel::GraphStore<float, uint8_t>;
 // specific algo combos
 template class arangodb::pregel::GraphStore<algos::WCCValue, uint64_t>;
 template class arangodb::pregel::GraphStore<algos::SCCValue, int8_t>;
-template class arangodb::pregel::GraphStore<ECValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::ECValue, int8_t>;
 template class arangodb::pregel::GraphStore<algos::HITSValue, int8_t>;
 template class arangodb::pregel::GraphStore<algos::HITSKleinbergValue, int8_t>;
-template class arangodb::pregel::GraphStore<DMIDValue, float>;
+template class arangodb::pregel::GraphStore<algos::DMIDValue, float>;
 template class arangodb::pregel::GraphStore<algos::LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<algos::SLPAValue, int8_t>;
-template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::ColorPropagationValue,
+                                            int8_t>;

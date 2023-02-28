@@ -25,9 +25,7 @@
 
 #include "Pregel/Algorithm.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
@@ -54,6 +52,4 @@ struct ConnectedComponents
   VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
       WorkerConfig const*) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos
