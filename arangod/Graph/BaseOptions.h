@@ -219,10 +219,6 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
-  void setRefactor(bool r) noexcept { _refactor = r; }
-
-  bool refactor() const { return _refactor; }
-
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
@@ -327,11 +323,6 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data
   aql::Projections _edgeProjections;
-
-  /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release - (is currently needed for the
-  /// refactoring)
-  bool _refactor;
 };
 
 }  // namespace graph

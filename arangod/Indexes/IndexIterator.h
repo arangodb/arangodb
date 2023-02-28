@@ -82,7 +82,7 @@ class IndexIteratorCoveringData {
   virtual VPackSlice value() const {
     // Only some "projections" are not accessed by index, but directly by value.
     // Like edge or primaryKey index. In general this method should not be
-    // called for indicies providing projections as "array-like" structure.
+    // called for indexes providing projections as "array-like" structure.
     TRI_ASSERT(false);
     return VPackSlice::noneSlice();
   }
