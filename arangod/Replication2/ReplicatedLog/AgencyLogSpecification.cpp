@@ -68,6 +68,12 @@ auto agency::operator<<(std::ostream& os, LogPlanTermSpecification const& term)
   return os << builder.toJson();
 }
 
+auto agency::operator<<(std::ostream& os,
+                        ServerInstanceReference const& sir) noexcept
+    -> std::ostream& {
+  return os << sir.serverId << ":" << sir.rebootId;
+}
+
 auto agency::operator<<(std::ostream& os, ParticipantsConfig const& config)
     -> std::ostream& {
   VPackBuilder builder;
@@ -133,7 +139,10 @@ auto agency::operator==(ImplementationSpec const& s,
       s.parameters.has_value() != s2.parameters.has_value()) {
     return false;
   }
-  return !s.parameters.has_value() ||
-         basics::VelocyPackHelper::equal(s.parameters->slice(),
-                                         s2.parameters->slice(), true);
+  return !s.parameters.has_value();
+  // To compare two velocypacks ICU is required. For unittests we don't want
+  // to have that dependency and unless we build a non-icu variant,
+  // comparing here is not possible.
+  /*         basics::VelocyPackHelper::equal(s.parameters->slice(),
+                                           s2.parameters->slice(), true);*/
 }

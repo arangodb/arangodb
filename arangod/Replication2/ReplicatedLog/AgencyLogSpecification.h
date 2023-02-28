@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <iosfwd>
+#include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -120,6 +122,9 @@ struct ServerInstanceReference {
                          ServerInstanceReference const&) noexcept
       -> bool = default;
 };
+
+auto operator<<(std::ostream&, ServerInstanceReference const&) noexcept
+    -> std::ostream&;
 
 struct LogPlanTermSpecification {
   LogTerm term;

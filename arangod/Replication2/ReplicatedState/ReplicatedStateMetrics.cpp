@@ -83,6 +83,9 @@ DECLARE_COUNTER(
     arangodb_replication2_replicated_state_apply_entries_errors_total,
     "Number of errors during an apply entries operation");
 
+DECLARE_GAUGE(arangodb_replication2_replicated_state_follower_apply_debt,
+              std::uint64_t, "Number of log entries that need to be applied");
+
 }  // namespace arangodb
 
 using namespace arangodb::replication2::replicated_state;
@@ -164,7 +167,11 @@ ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature,
       replicatedStateNumberApplyEntriesErrors(
           createMetric<
               arangodb_replication2_replicated_state_apply_entries_errors_total,
-              mock>(metricsFeature, impl)) {}
+              mock>(metricsFeature, impl)),
+      replicatedStateApplyDebt(
+          createMetric<
+              arangodb_replication2_replicated_state_follower_apply_debt, mock>(
+              metricsFeature, impl)) {}
 
 template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
     ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*,

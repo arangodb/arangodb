@@ -64,7 +64,8 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
 
 template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
-                                                LogIndex commitIndex) {
+                                                LogIndex commitIndex,
+                                                std::uint64_t version) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
@@ -72,7 +73,7 @@ void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
                    LOG_CTX("52a11", DEBUG, _loggerContext)
                        << "try to acquire a new snapshot, starting at "
                        << commitIndex;
-                   manager->acquireSnapshot(leader, commitIndex);
+                   manager->acquireSnapshot(leader, commitIndex, version);
                  },
                  [](auto&) {
                    ADB_PROD_ASSERT(false)
@@ -88,18 +89,7 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [index](auto& manager) {
-                   // temporary hack: post on the scheduler to avoid deadlocks
-                   // with the log
-                   auto& scheduler = *SchedulerFeature::SCHEDULER;
-                   scheduler.queue(
-                       RequestLane::CLUSTER_INTERNAL,
-                       [weak = manager->weak_from_this(), index]() mutable {
-                         if (auto manager = weak.lock(); manager != nullptr) {
-                           manager->updateCommitIndex(index);
-                         }
-                       });
-                 },
+                 [index](auto& manager) { manager->updateCommitIndex(index); },
                  [](std::shared_ptr<UnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";
@@ -202,9 +192,9 @@ template<typename S>
 auto ReplicatedStateManager<S>::getStatus() const
     -> std::optional<StateStatus> {
   auto guard = _guarded.getLockedGuard();
-  auto status = std::visit(
-      overload{[](auto const& manager) { return manager->getStatus(); }},
-      guard->_currentManager);
+  auto status =
+      std::visit([](auto const& manager) { return manager->getStatus(); },
+                 guard->_currentManager);
 
   return status;
 }
@@ -409,7 +399,7 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
-  MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
+  MeasureTimeGuard timeGuard(*_metrics.replicatedStateRecoverEntriesRtt);
   auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
                  .then([guard = std::move(timeGuard)](auto&& res) mutable {
                    guard.fire();
@@ -479,7 +469,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
 template<typename S>
 void FollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto maybeFuture =
-      _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
+      _guardedData.getLockedGuard()->updateCommitIndex(commitIndex, _metrics);
   // note that we release the lock before calling "then"
 
   // we get a future iff applyEntries was called
@@ -503,6 +493,9 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      _metrics->replicatedStateApplyDebt->operator-=(
+          guard->_applyEntriesIndexInFlight->value -
+          guard->_lastAppliedIndex.value);
       auto const index = guard->_lastAppliedIndex =
           *guard->_applyEntriesIndexInFlight;
       // TODO
@@ -539,7 +532,7 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         << " Unexpected error returned by apply entries: " << res;
 
     if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-      return guard->maybeScheduleApplyEntries();
+      return guard->maybeScheduleApplyEntries(_metrics);
     }
     return std::nullopt;
   }();
@@ -558,34 +551,62 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
 
 template<typename S>
 auto FollowerStateManager<S>::GuardedData::updateCommitIndex(
-    LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
+    LogIndex commitIndex,
+    std::shared_ptr<ReplicatedStateMetrics> const& metrics)
+    -> std::optional<futures::Future<Result>> {
   LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
                       << commitIndex;
   if (_stream == nullptr) {
     return std::nullopt;
   }
+  ADB_PROD_ASSERT(commitIndex > _commitIndex);
+  metrics->replicatedStateApplyDebt->operator+=(commitIndex.value -
+                                                _commitIndex.value);
   _commitIndex = std::max(_commitIndex, commitIndex);
-  return maybeScheduleApplyEntries();
+  return maybeScheduleApplyEntries(metrics);
 }
 
 template<typename S>
-auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries()
+auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
+    std::shared_ptr<ReplicatedStateMetrics> const& metrics)
     -> std::optional<futures::Future<Result>> {
   if (_stream == nullptr) {
     return std::nullopt;
   }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
-    // TODO MeasureTimeGuard rttGuard(_metrics->replicatedStateApplyEntriesRtt);
-    auto log = _stream->methods().getLogSnapshot();
-    _applyEntriesIndexInFlight = _commitIndex;
+    // Apply at most 1000 entries at once, so we have a smoother progression.
+    _applyEntriesIndexInFlight =
+        std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
-                                        *_applyEntriesIndexInFlight + 1);
+    auto logIter = _stream->methods().getLogIterator(
+        {_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1});
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
-    return _followerState->applyEntries(std::move(deserializedIter));
+    auto promise = futures::Promise<Result>();
+    auto future = promise.getFuture();
+    auto& scheduler = *SchedulerFeature::SCHEDULER;
+    auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
+    // As applyEntries is currently synchronous, we have to post it on the
+    // scheduler to avoid blocking the current appendEntries request from
+    // returning. By using _applyEntriesIndexInFlight we make sure not to call
+    // it multiple time in parallel.
+    scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                    [promise = std::move(promise),
+                     deserializedIter = std::move(deserializedIter),
+                     followerState = _followerState,
+                     rttGuard = std::move(rttGuard)]() mutable {
+                      followerState->applyEntries(std::move(deserializedIter))
+                          .thenFinal([promise = std::move(promise),
+                                      rttGuard = std::move(rttGuard)](
+                                         auto&& tryResult) mutable {
+                            rttGuard.fire();
+                            promise.setTry(std::move(tryResult));
+                          });
+                    });
+
+    return future;
   } else {
     return std::nullopt;
   }
@@ -704,11 +725,12 @@ void FollowerStateManager<S>::GuardedData::clearSnapshotErrors() noexcept {
 }
 
 template<typename S>
-void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
+void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
+                                              std::uint64_t version) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
-  MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
+  MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
-      _metrics->replicatedStateNumberWaitingForSnapshot);
+      *_metrics->replicatedStateNumberWaitingForSnapshot);
   auto fut = _guardedData.doUnderLock([&](auto& self) {
     return self._followerState->acquireSnapshot(leader, index);
   });
@@ -723,13 +745,13 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
                                                   snapshotCounter = std::move(
                                                       snapshotCounter),
                                                   leader = std::move(leader),
-                                                  index]() mutable {
+                                                  index, version]() mutable {
     std::move(fut).thenFinal([weak = std::move(weak),
                               rttGuard = std::move(rttGuard),
                               snapshotCounter = std::move(snapshotCounter),
-                              leader = std::move(leader),
-                              index](futures::Try<Result>&&
-                                         tryResult) mutable noexcept {
+                              leader = std::move(leader), index,
+                              version](futures::Try<Result>&&
+                                           tryResult) mutable noexcept {
       rttGuard.fire();
       snapshotCounter.fire();
       if (auto self = weak.lock(); self != nullptr) {
@@ -745,7 +767,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
           auto res =
               basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
                   guard->_stream->methods())
-                  .snapshotCompleted();
+                  .snapshotCompleted(version);
           // TODO (How) can we handle this more gracefully?
           ADB_PROD_ASSERT(res.ok());
         } else {
@@ -754,14 +776,15 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
               << " - retry scheduled";
           self->registerSnapshotError(std::move(result));
           self->backOffSnapshotRetry().thenFinal(
-              [weak = std::move(weak), leader = std::move(leader), index](
+              [weak = std::move(weak), leader = std::move(leader), index,
+               version](
                   futures::Try<futures::Unit>&& x) mutable noexcept -> void {
                 auto const result = basics::catchVoidToResult([&] { x.get(); });
                 ADB_PROD_ASSERT(result.ok())
                     << "Unexpected error when backing off snapshot retry: "
                     << result;
                 if (auto self = weak.lock(); self != nullptr) {
-                  self->acquireSnapshot(std::move(leader), index);
+                  self->acquireSnapshot(std::move(leader), index, version);
                 }
               });
         }
@@ -914,19 +937,20 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
-  auto followerState = log->getFollowerState();
-  return basics::downCast<FollowerType>(followerState);
+  ADB_PROD_ASSERT(manager.has_value());
+  return basics::downCast<FollowerType>(manager->getFollower());
 }
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  auto leaderState = log->getLeaderState();
-  return basics::downCast<LeaderType>(leaderState);
+  ADB_PROD_ASSERT(manager.has_value());
+  return basics::downCast<LeaderType>(manager->getLeader());
 }
 
 template<typename S>
 auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
-  return log->getStateStatus();
+  ADB_PROD_ASSERT(manager.has_value());
+  return manager->getStatus();
 }
 
 template<typename S>
@@ -967,10 +991,8 @@ template<typename S>
 void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
-
-  auto stateManager = basics::downCast<ReplicatedStateManager<S>>(stateHandle);
-  ADB_PROD_ASSERT(stateManager != nullptr);
-  auto core = std::move(*stateManager).resign();
+  ADB_PROD_ASSERT(manager.has_value());
+  auto core = std::move(*manager).resign();
   ADB_PROD_ASSERT(core != nullptr);
 
   using CleanupHandler = typename ReplicatedStateTraits<S>::CleanupHandlerType;
@@ -992,10 +1014,44 @@ auto ReplicatedState<S>::createStateHandle(
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
   auto core = buildCore(vocbase, coreParameter);
-  auto handle = std::make_unique<ReplicatedStateManager<S>>(
-      loggerContext, metrics, std::move(core), factory);
+  ADB_PROD_ASSERT(not manager.has_value());
+  manager.emplace(loggerContext, metrics, std::move(core), factory);
 
-  return handle;
+  struct Wrapper : replicated_log::IReplicatedStateHandle {
+    explicit Wrapper(ReplicatedStateManager<S>& manager) : manager(manager) {}
+    // MSVC chokes on trailing return type notation here
+    [[nodiscard]] std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>
+    resignCurrentState() noexcept override {
+      return manager.resignCurrentState();
+    }
+    void leadershipEstablished(
+        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> ptr)
+        override {
+      return manager.leadershipEstablished(std::move(ptr));
+    }
+    void becomeFollower(
+        std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> ptr)
+        override {
+      return manager.becomeFollower(std::move(ptr));
+    }
+    void acquireSnapshot(ServerID leader, LogIndex index,
+                         std::uint64_t version) override {
+      return manager.acquireSnapshot(std::move(leader), index, version);
+    }
+    void updateCommitIndex(LogIndex index) override {
+      return manager.updateCommitIndex(index);
+    }
+    void dropEntries() override { return manager.dropEntries(); }
+    // MSVC chokes on trailing return type notation here
+    [[nodiscard]] replicated_log::LocalStateMachineStatus getQuickStatus()
+        const override {
+      return manager.getQuickStatus();
+    }
+
+    ReplicatedStateManager<S>& manager;
+  };
+
+  return std::make_unique<Wrapper>(*manager);
 }
 
 }  // namespace arangodb::replication2::replicated_state

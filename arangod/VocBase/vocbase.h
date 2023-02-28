@@ -73,8 +73,8 @@ namespace maintenance {
 struct LogStatus;
 }
 namespace replicated_log {
-class LogLeader;
-class LogFollower;
+struct ILogLeader;
+struct ILogFollower;
 struct ILogParticipant;
 struct LogStatus;
 struct QuickLogStatus;
@@ -213,9 +213,9 @@ struct TRI_vocbase_t {
   auto getReplicatedLogById(arangodb::replication2::LogId id)
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
   auto getReplicatedLogLeaderById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader>;
   auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogFollower>;
 
   void shutdownReplicatedLogs() noexcept;
 

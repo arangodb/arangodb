@@ -75,8 +75,6 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
@@ -204,19 +202,18 @@ struct arangodb::VocBaseLogManager {
           iter != data.statesAndLogs.end()) {
         auto& state = iter->second.state;
         auto& log = iter->second.log;
-        auto& storage = iter->second.storage;
-
-        auto metadata = storage->readMetadata();
-        if (metadata.fail()) {
-          return std::move(metadata).result();  // state untouched after this
-        }
 
         // Get the state handle so we can drop the state later
         auto stateHandle = log->disconnect(std::move(iter->second.connection));
 
         // resign the log now, before we update the metadata to avoid races
         // on the storage.
-        auto core = std::move(*log).resign();
+        auto storage = std::move(*log).resign();
+
+        auto metadata = storage->readMetadata();
+        if (metadata.fail()) {
+          return std::move(metadata).result();  // state untouched after this
+        }
 
         // Invalidate the snapshot in persistent storage.
         metadata->snapshot.updateStatus(
@@ -257,7 +254,6 @@ struct arangodb::VocBaseLogManager {
 
     if (result.ok()) {
       auto& feature = _server.getFeature<ReplicatedLogFeature>();
-      feature.metrics()->replicatedLogNumber->fetch_sub(1);
       feature.metrics()->replicatedLogDeletionNumber->count();
     }
 
@@ -330,9 +326,6 @@ struct arangodb::VocBaseLogManager {
       std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>
           state;
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>
-          storage;
       arangodb::replication2::replicated_log::ReplicatedLogConnection
           connection;
     };
@@ -375,7 +368,6 @@ struct arangodb::VocBaseLogManager {
 
       // prepare map
       auto stateAndLog = StateAndLog{};
-      stateAndLog.storage = std::move(storage);
 
       struct NetworkFollowerFactory
           : replication2::replicated_log::IAbstractFollowerFactory {
@@ -408,27 +400,52 @@ struct arangodb::VocBaseLogManager {
           ServerState::instance()->getId(),
           ServerState::instance()->getRebootId());
 
+      struct MyScheduler : replicated_log::IScheduler {
+        auto delayedFuture(std::chrono::steady_clock::duration duration)
+            -> futures::Future<futures::Unit> override {
+          return SchedulerFeature::SCHEDULER->delay("replication-2", duration);
+        }
+
+        auto queueDelayed(
+            std::string_view name, std::chrono::steady_clock::duration delay,
+            fu2::unique_function<void(bool canceled)> handler) noexcept
+            -> WorkItemHandle override {
+          auto handle = SchedulerFeature::SCHEDULER->queueDelayed(
+              name, RequestLane::CLUSTER_INTERNAL, delay, std::move(handler));
+          struct MyWorkItem : WorkItem {
+            explicit MyWorkItem(Scheduler::WorkHandle handle)
+                : handle(handle) {}
+            Scheduler::WorkHandle handle;
+          };
+          return std::make_shared<MyWorkItem>(std::move(handle));
+        }
+
+        void queue(fu2::unique_function<void()> cb) noexcept override {
+          SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                             std::move(cb));
+        }
+      };
+
+      auto sched = std::make_shared<MyScheduler>();
+      auto maybeMetadata = storage->readMetadata();
+      if (!maybeMetadata) {
+        throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
+      }
+
       auto& log = stateAndLog.log = std::invoke([&]() {
-        auto&& logCore =
-            std::make_unique<replication2::replicated_log::LogCore>(
-                *stateAndLog.storage);
         return std::make_shared<
             arangodb::replication2::replicated_log::ReplicatedLog>(
-            std::move(logCore),
+            std::move(storage),
             server.getFeature<ReplicatedLogFeature>().metrics(),
             server.getFeature<ReplicatedLogFeature>().options(),
             std::make_shared<replicated_log::DefaultParticipantsFactory>(
-                std::make_shared<NetworkFollowerFactory>(vocbase, id)),
+                std::make_shared<NetworkFollowerFactory>(vocbase, id), sched),
             logContext, myself);
       });
 
       auto& state = stateAndLog.state = feature.createReplicatedState(
           type, vocbase.name(), id, log, logContext);
 
-      auto maybeMetadata = stateAndLog.storage->readMetadata();
-      if (!maybeMetadata) {
-        throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
-      }
       auto const& stateParams = maybeMetadata->specification.parameters;
       auto&& stateHandle = state->createStateHandle(vocbase, stateParams);
 
@@ -2204,9 +2221,9 @@ auto TRI_vocbase_t::updateReplicatedState(
 }
 
 auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
-    -> std::shared_ptr<replicated_log::LogLeader> {
+    -> std::shared_ptr<replicated_log::ILogLeader> {
   auto log = getReplicatedLogById(id);
-  auto participant = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+  auto participant = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
       log->getParticipant());
   if (participant == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
@@ -2215,9 +2232,9 @@ auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
 }
 
 auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
-    -> std::shared_ptr<replicated_log::LogFollower> {
+    -> std::shared_ptr<replicated_log::ILogFollower> {
   auto log = getReplicatedLogById(id);
-  auto participant = std::dynamic_pointer_cast<replicated_log::LogFollower>(
+  auto participant = std::dynamic_pointer_cast<replicated_log::ILogFollower>(
       log->getParticipant());
   if (participant == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER);
