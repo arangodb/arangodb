@@ -87,10 +87,10 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
   while (!_server.isStopping()) {
     ClientManager clientManager(
         _server.getFeature<HttpEndpointProvider, ClientFeature>(),
-        Logger::STATISTICS);
+        Logger::FIXME);
     std::unique_lock lk(_mtx);
-    _httpClient = clientManager.getConnectedClient(true, true, true, 0);
-    if (_httpClient != nullptr) {
+    _httpClient = clientManager.getConnectedClient(true, false, false, 0);
+    if (_httpClient != nullptr && _httpClient->isConnected()) {
       auto& clientParams = _httpClient->params();
       clientParams.setRequestTimeout(30);
       lk.unlock();
@@ -103,32 +103,29 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
         break;
       }
     }
-    {
-      std::unique_lock lk(_mtx);
-      _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                             [this] { return _server.isStopping(); });
-    }
+    _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
+                           [this] { return _server.isStopping(); });
     timeoutInSecs *= 2;
     timeoutInSecs = std::min<uint32_t>(100, timeoutInSecs);
   }
 }
 
 void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
-  builder.add(_telemetricsResult.slice());
-}
-
-void TelemetricsHandler::printTelemetrics() {
-  LOG_TOPIC("dcd06", WARN, Logger::STATISTICS)
-      << _telemetricsResponse.errorNumber() << " "
-      << _telemetricsResponse.errorMessage();
+  // as this is for printing the telemetrics result in the tests, we send the
+  // telemetrics object if the request returned ok and the error if not to parse
+  // the error in the tests
+  std::unique_lock lk(_mtx);
+  if (_telemetricsResponse.ok()) {
+    builder.add(_telemetricsResult.slice());
+  } else {
+    builder.add("errorNum", _telemetricsResponse.errorNumber());
+    builder.add("errorMessage", _telemetricsResponse.errorMessage());
+  }
 }
 
 void TelemetricsHandler::arrangeTelemetrics() {
   try {
     this->fetchTelemetricsFromServer();
-    if (_printTelemetrics) {
-      this->printTelemetrics();
-    }
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
         << "Exception on fetching telemetrics " << err.what();

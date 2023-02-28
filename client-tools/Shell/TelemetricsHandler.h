@@ -61,7 +61,6 @@ class TelemetricsHandler {
   void fetchTelemetricsFromServer();
   void SendTelemetricsToEndpoint();
   void arrangeTelemetrics();
-  void printTelemetrics();
 
   ArangoshServer& _server;
   std::mutex _mtx;
