@@ -27,6 +27,7 @@ build-presets
 *.swp
 *.diff
 *.patch
+!js/node/patches/*.patch
 *.lnk
 Thumbs.db
 

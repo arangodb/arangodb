@@ -44,5 +44,8 @@
     "joi": {
       "hoek": "npm:@hapi/hoek@8.5.1"
     }
+  },
+  "scripts": {
+    "postinstall": "npx patch-package"
   }
 }
