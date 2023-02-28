@@ -12,7 +12,7 @@ declare var window: { [key: string]: any };
 
 type ButtonProps = {
   view: FormState;
-  modalCid: string;
+  modalCid?: string;
 };
 
 type NavButtonProps = {
