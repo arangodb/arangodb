@@ -1990,7 +1990,7 @@ AstNode* Condition::transformNodePostorder(
 
       // fetch maximum number of condition members from query options
       size_t maxNumberOfConditionMembers =
-          _ast->query().queryOptions().maxConditionMembers;
+          _ast->query().queryOptions().maxDNFConditionMembers;
 
       // check if there would be too many members in the DNF version of
       // the condition. we may suffer from combinatorial explosion here.

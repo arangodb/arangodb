@@ -44,8 +44,8 @@ size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
 #endif
 size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
 size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
-    134217728ULL;                                             // 128 MB
-size_t QueryOptions::defaultMaxConditionMembers = 786432ULL;  // 768K
+    134217728ULL;                                                // 128 MB
+size_t QueryOptions::defaultMaxDNFConditionMembers = 786432ULL;  // 768K
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -59,7 +59,7 @@ QueryOptions::QueryOptions()
       spillOverThresholdNumRows(QueryOptions::defaultSpillOverThresholdNumRows),
       spillOverThresholdMemoryUsage(
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
-      maxConditionMembers(QueryOptions::defaultMaxConditionMembers),
+      maxDNFConditionMembers(QueryOptions::defaultMaxDNFConditionMembers),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -160,9 +160,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     spillOverThresholdMemoryUsage = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxConditionMembers");
+  value = slice.get("maxDNFConditionMembers");
   if (value.isNumber()) {
-    maxConditionMembers = value.getNumber<size_t>();
+    maxDNFConditionMembers = value.getNumber<size_t>();
   }
 
   value = slice.get("maxRuntime");
@@ -293,7 +293,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdNumRows));
   builder.add("spillOverThresholdMemoryUsage",
               VPackValue(spillOverThresholdMemoryUsage));
-  builder.add("maxConditionMembers", VPackValue(maxConditionMembers));
+  builder.add("maxDNFConditionMembers", VPackValue(maxDNFConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));

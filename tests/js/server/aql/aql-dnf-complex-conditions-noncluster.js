@@ -107,14 +107,14 @@ function MaxNumberOfConditionsSuite () {
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
 
       // with this few condition nodes, we won't exceed memory
-      [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxConditionMembers) => {
-        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxConditionMembers });
+      [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxDNFConditionMembers) => {
+        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
       });
       
       // with this many condition nodes, we will exceed memory
-      [8192, 16384, 32768].forEach((maxConditionMembers) => {
+      [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
         try {
-          AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxConditionMembers });
+          AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -138,9 +138,9 @@ function MaxNumberOfConditionsSuite () {
 
       try {
         // with this many condition nodes, we will exceed memory
-        [1, 2, 4, 8].forEach((maxConditionMembers) => {
+        [1, 8, 64, 512, 4096, 32768].forEach((maxDNFConditionMembers) => {
           try {
-            AQL_EXPLAIN(query, null, { maxConditionMembers });
+            AQL_EXPLAIN(query, null, { maxDNFConditionMembers });
             fail();
           } catch (err) {
             assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);

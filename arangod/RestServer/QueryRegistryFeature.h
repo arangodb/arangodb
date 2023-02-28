@@ -110,7 +110,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t _peakMemoryUsageThreshold;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
-  size_t _maxConditionMembers;
+  size_t _maxDNFConditionMembers;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
   uint64_t _maxNodesPerCallstack;

@@ -186,7 +186,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
-      _maxConditionMembers(aql::QueryOptions::defaultMaxConditionMembers),
+      _maxDNFConditionMembers(aql::QueryOptions::defaultMaxDNFConditionMembers),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
@@ -671,10 +671,10 @@ catch unexpected failed queries in production.)");
 
   options
       ->addOption(
-          "--query.max-condition-members",
+          "--query.max-dnf-condition-members",
           "Maximum number of OR sub-nodes in internal representation of "
           "an AQL FILTER condition.",
-          new SizeTParameter(&_maxConditionMembers),
+          new SizeTParameter(&_maxDNFConditionMembers),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
@@ -723,7 +723,7 @@ void QueryRegistryFeature::validateOptions(
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
   aql::QueryOptions::defaultMaxNodesPerCallstack = _maxNodesPerCallstack;
-  aql::QueryOptions::defaultMaxConditionMembers = _maxConditionMembers;
+  aql::QueryOptions::defaultMaxDNFConditionMembers = _maxDNFConditionMembers;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;

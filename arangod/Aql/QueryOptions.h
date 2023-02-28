@@ -80,7 +80,7 @@ struct QueryOptions {
   size_t maxNodesPerCallstack;
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
-  size_t maxConditionMembers;
+  size_t maxDNFConditionMembers;
   double maxRuntime;  // query has to execute within the given time or will be
                       // killed
   double satelliteSyncWait;
