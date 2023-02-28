@@ -10,9 +10,10 @@ import {
   isAdminUser as userIsAdmin,
   usePermissions
 } from "../../utils/helpers";
+import { useDisableNavBar } from "../../utils/useDisableNavBar";
+import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
-import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import "./split-pane-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
@@ -26,6 +27,7 @@ export const ViewSettings = ({
   isCluster: boolean;
 }) => {
   useDisableNavBar();
+  useGlobalStyleReset();
   const [editName, setEditName] = useState(false);
 
   const handleEditName = () => {
