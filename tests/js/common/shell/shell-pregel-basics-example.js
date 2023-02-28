@@ -88,8 +88,6 @@ function basicTestSuite() {
       db._create(vColl, { numberOfShards: 4 });
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
-        numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
