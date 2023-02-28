@@ -138,7 +138,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   result.openObject();
 
   if (isSingleServer && !isActiveFailover) {
-    LOG_DEVEL << "single server";
     result.add("id", VPackValue(ServerIdFeature::getId().id()));
     result.add("deployment", VPackValue(VPackValueType::Object));
     result.add("type", VPackValue("single"));
@@ -152,13 +151,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     result.add("date", VPackValue(timeString));
     VPackBuilder serverInfo;
     buildDbServerInfo(serverInfo, server);
-    try {
-      addDatabaseInfo(result, serverInfo.slice(), server);
-      result.add("databases", serverInfo.slice().get("databases"));
-    } catch (std::exception const& err) {
-      LOG_DEVEL << err.what();
-    }
-    LOG_DEVEL << "after databases";
+    addDatabaseInfo(result, serverInfo.slice(), server);
+    result.add("databases", serverInfo.slice().get("databases"));
+
   } else {
     // cluster or active failover
     if (fanout) {
@@ -303,7 +298,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("databases", serverInfo.slice().get("databases"));
     }
   }
-  LOG_DEVEL << "will close builder";
   result.close();
 }
 
