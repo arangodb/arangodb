@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Basics/application-exit.h"
 
 using namespace arangodb::replication2::replicated_state::document;
@@ -35,15 +36,13 @@ DocumentCore::DocumentCore(
     DocumentCoreParameters coreParameters,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
     LoggerContext loggerContext)
-    : loggerContext(std::move(loggerContext)),
+    : gid(std::move(gid)),
+      loggerContext(std::move(loggerContext)),
       _vocbase(vocbase),
-      _gid(std::move(gid)),
       _params(std::move(coreParameters)),
-      _shardHandler(handlersFactory->createShardHandler(_gid)),
+      _shardHandler(handlersFactory->createShardHandler(this->gid)),
       _transactionHandler(handlersFactory->createTransactionHandler(
-          _vocbase, _gid, _shardHandler)) {}
-
-auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
+          _vocbase, this->gid, _shardHandler)) {}
 
 void DocumentCore::drop() {
   if (auto res = _transactionHandler->applyEntry(

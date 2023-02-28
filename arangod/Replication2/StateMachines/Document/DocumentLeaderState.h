@@ -26,7 +26,8 @@
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -38,6 +39,9 @@ struct IManager;
 }
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateSnapshotHandler;
+
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState>,
       std::enable_shared_from_this<DocumentLeaderState> {

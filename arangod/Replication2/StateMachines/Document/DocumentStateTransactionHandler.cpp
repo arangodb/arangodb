@@ -26,10 +26,10 @@
 #include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/LoggerContext.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
-#include "Transaction/ReplicatedContext.h"
-#include "DocumentStateHandlersFactory.h"
+#include "VocBase/AccessMode.h"
 
 namespace {
 
@@ -125,11 +125,7 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
           auto trx = getTrx(op.tid);
           if constexpr (FinishesUserTransaction<T>) {
             auto res = Result{};
-            if (trx == nullptr) {
-              // TODO find why this happens
-              // Transaction with no impact
-              return res;
-            }
+            ADB_PROD_ASSERT(trx != nullptr);
             if constexpr (std::is_same_v<T, ReplicatedOperation::Commit>) {
               res = trx->commit();
             } else if constexpr (std::is_same_v<T,
@@ -141,10 +137,7 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
           } else if constexpr (std::is_same_v<
                                    T,
                                    ReplicatedOperation::IntermediateCommit>) {
-            if (trx == nullptr) {
-              // Transaction with no impact
-              return Result{};
-            }
+            ADB_PROD_ASSERT(trx != nullptr);
             return trx->intermediateCommit();
           } else if constexpr (ModifiesUserTransaction<T>) {
             if (trx == nullptr) {
@@ -179,10 +172,16 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
           return Result{};
         } else if constexpr (std::is_same_v<T,
                                             ReplicatedOperation::CreateShard>) {
-          // TODO log something when the shard already exists
-          return _shardHandler
-              ->ensureShard(op.shard, op.collection, op.properties)
-              .result();
+          auto shardRes = _shardHandler->ensureShard(op.shard, op.collection,
+                                                     op.properties);
+          if (shardRes.fail()) {
+            return shardRes.result();
+          }
+          if (!shardRes.get()) {
+            LOG_CTX("c98e9", INFO, _logContext)
+                << "Shard " << op.shard << " already exists";
+          }
+          return Result{};
         } else if constexpr (std::is_same_v<T,
                                             ReplicatedOperation::DropShard>) {
           abortTransactionsForShard(op.shard);
@@ -198,8 +197,9 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
 } catch (std::exception& e) {
   return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
 } catch (...) {
-  ADB_PROD_ASSERT(false) << operation;
-  return Result{TRI_ERROR_TRANSACTION_INTERNAL};
+  LOG_CTX("01202", FATAL, _logContext)
+      << "Caught unknown exception while applying operation " << operation;
+  FATAL_ERROR_EXIT();
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
@@ -235,10 +235,8 @@ void DocumentStateTransactionHandler::abortTransactionsForShard(
           if (!_shardHandler->isShardAvailable(op.shard)) {
             return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
           }
-          return Result{};
-        } else {
-          return Result{};
         }
+        return Result{};
       },
       operation.operation);
 }

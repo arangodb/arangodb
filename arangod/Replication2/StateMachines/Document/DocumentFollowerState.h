@@ -25,8 +25,6 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -34,6 +32,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
+struct IDocumentStateTransactionHandler;
 enum class OperationType;
 struct SnapshotConfig;
 struct SnapshotBatch;
@@ -57,12 +56,10 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
-  auto forceLocalTransaction(ShardID shardId, OperationType opType,
-                             velocypack::SharedSlice slice) -> Result;
-  auto populateLocalShard(
+  static auto populateLocalShard(
       ShardID shardId, velocypack::SharedSlice slice,
-      std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler)
-      -> Result;
+      std::shared_ptr<IDocumentStateTransactionHandler> const&
+          transactionHandler) -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,

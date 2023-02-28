@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-
 #include "Basics/Result.h"
+#include "Cluster/ClusterTypes.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "Utils/OperationResult.h"
 
 #include <memory>
-#include "Cluster/ClusterTypes.h"
 
 namespace arangodb::transaction {
 class Methods;

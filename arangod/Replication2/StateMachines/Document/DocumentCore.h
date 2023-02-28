@@ -23,10 +23,7 @@
 
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
-#include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -36,6 +33,7 @@ struct TRI_vocbase_t;
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateShardHandler;
+struct IDocumentStateTransactionHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
@@ -44,11 +42,11 @@ struct DocumentCore {
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
 
+  GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
 
   auto getVocbase() -> TRI_vocbase_t&;
   auto getVocbase() const -> TRI_vocbase_t const&;
-  auto getGid() -> GlobalLogIdentifier;
   void drop();
   auto getTransactionHandler()
       -> std::shared_ptr<IDocumentStateTransactionHandler>;
@@ -56,7 +54,6 @@ struct DocumentCore {
 
  private:
   TRI_vocbase_t& _vocbase;
-  GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   std::shared_ptr<IDocumentStateTransactionHandler> _transactionHandler;

@@ -25,10 +25,10 @@
 
 #include "Basics/application-exit.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
@@ -40,26 +40,21 @@ DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
-    : gid(core->getGid()),
+    : gid(core->gid),
       loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
       _guardedData(std::move(core)),
-      _transactionManager(transactionManager) {
-  ADB_PROD_ASSERT(_snapshotHandler.getLockedGuard().get() != nullptr);
-}
+      _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   auto core = _guardedData.doUnderLock([&](auto& data) {
-    TRI_ASSERT(!data.didResign());
-    if (data.didResign()) {
-      LOG_CTX("f9c79", ERR, loggerContext)
-          << "resigning leader " << gid
-          << " is not possible because it is already resigned";
-    }
+    ADB_PROD_ASSERT(!data.didResign())
+        << "resigning leader " << gid
+        << " is not possible because it is already resigned";
     return std::move(data.core);
   });
 
@@ -100,6 +95,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     auto transactionHandler = data.core->getTransactionHandler();
     ADB_PROD_ASSERT(transactionHandler != nullptr);
 
+    std::unordered_set<TransactionId> activeTransactions;
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
 
@@ -117,15 +113,27 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
               } else if (res.fail()) {
                 return res;
               }
-              return transactionHandler->applyEntry(doc.operation);
-            } else {
-              return transactionHandler->applyEntry(doc.operation);
+              activeTransactions.insert(op.tid);
+            } else if constexpr (FinishesUserTransaction<T> ||
+                                 std::is_same_v<
+                                     T,
+                                     ReplicatedOperation::IntermediateCommit>) {
+              // TODO [CINFRA-694]
+              //  There are two cases where we can end up here:
+              //  1. After a snapshot transfer, we did not get the
+              //  beginning of the transaction
+              //  2. We ignored all other operations for this
+              //  transaction because the shard was dropped
+              if (!activeTransactions.contains(op.tid)) {
+                return Result{};
+              }
             }
+            return transactionHandler->applyEntry(doc.operation);
           },
           doc.getInnerOperation());
 
       if (res.fail()) {
-        LOG_CTX("0aa2e", FATAL, self->loggerContext)
+        LOG_CTX("cbc5b", FATAL, self->loggerContext)
             << "failed to apply entry " << doc << " during recovery: " << res;
         FATAL_ERROR_EXIT();
       }
@@ -355,8 +363,8 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
 
 auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     -> futures::Future<Result> {
-  ReplicatedOperation op =
-      ReplicatedOperation::buildDropShardOperation(shard, collectionId);
+  ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(
+      std::move(shard), std::move(collectionId));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -413,8 +421,7 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
           return Result{
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
               fmt::format(
-                  "Could not get snapshot statuses of {}, state resigned.",
-                  gid)};
+                  "Could not get snapshot status of {}, state resigned.", gid)};
         }
         return getSnapshot(handler);
       });

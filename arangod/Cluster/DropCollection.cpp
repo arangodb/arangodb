@@ -69,12 +69,12 @@ bool DropCollection::dropReplication2Shard(ShardID const& shard,
   std::shared_ptr<LogicalCollection> coll;
   Result found = methods::Collections::lookup(vocbase, shard, coll);
   if (found.ok()) {
-    // TODO make sure the leader is not resigned
     auto result = coll->getDocumentStateLeader()
                       ->dropShard(shard, std::to_string(coll->planId().id()))
                       .get();
     if (result.fail()) {
-      LOG_DEVEL << "failed to drop shard: " << result.errorMessage();
+      LOG_TOPIC("2e981", ERR, Logger::MAINTENANCE)
+          << "failed to drop shard " << result;
     }
   }
 

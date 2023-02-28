@@ -40,5 +40,5 @@ struct ShardProperties {
   }
 };
 
-using ShardMap = containers::FlatHashMap<ShardID, ShardProperties>;
+using ShardMap = std::unordered_map<ShardID, ShardProperties>;
 }  // namespace arangodb::replication2::replicated_state::document

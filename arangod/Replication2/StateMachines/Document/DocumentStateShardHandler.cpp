@@ -139,7 +139,7 @@ auto DocumentStateShardHandler::executeDropCollectionAction(
   return {};
 }
 
-auto DocumentStateShardHandler::getShardMap() -> ShardMap const {
+auto DocumentStateShardHandler::getShardMap() -> ShardMap {
   std::shared_lock lock(_shardMap.mutex);
   return _shardMap.shards;
 }

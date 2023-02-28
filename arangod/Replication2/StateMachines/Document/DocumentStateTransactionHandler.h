@@ -24,11 +24,9 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Transaction/Options.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <memory>
@@ -39,6 +37,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
 struct IDocumentStateHandlersFactory;
+struct IDocumentStateShardHandler;
 class DocumentStateTransaction;
 
 struct IDocumentStateTransactionHandler {

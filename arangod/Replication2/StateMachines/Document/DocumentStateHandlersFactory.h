@@ -37,9 +37,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class MaintenanceFeature;
 
-template<typename T>
-class ResultT;
-
 namespace network {
 class ConnectionPool;
 }
@@ -49,9 +46,6 @@ struct GlobalLogIdentifier;
 class LogId;
 }  // namespace replication2
 
-namespace velocypack {
-class Builder;
-}
 }  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
