@@ -800,7 +800,7 @@ auto FollowerStateManager<S>::resign() && noexcept
   auto guard = _guardedData.getLockedGuard();
   auto core = std::move(*guard->_followerState).resign();
   auto methods = std::move(*guard->_stream).resign();
-  guard->_followerState = NULL;
+  guard->_followerState = nullptr;
   guard->_stream.reset();
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
@@ -830,7 +830,7 @@ template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->_followerState == NULL) {
+  if (guard->_followerState == nullptr) {
     // already resigned
     return replicated_log::LocalStateMachineStatus::kUnconfigured;
   }
@@ -840,7 +840,15 @@ auto FollowerStateManager<S>::getQuickStatus() const
 template<typename S>
 auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-  return _guardedData.getLockedGuard()->_followerState;
+  auto guard = _guardedData.getLockedGuard();
+
+  // Disallow access unless we have a snapshot and are sure the log won't be
+  // truncated (and thus the snapshot invalidated) in this term.
+  if (guard->_logMethods->followerEstablished()) {
+    return guard->_followerState;
+  } else {
+    return nullptr;
+  }
 }
 
 template<typename S>

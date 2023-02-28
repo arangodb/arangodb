@@ -68,6 +68,28 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
         follower.appendEntriesManager->getLastReceivedMessageId(), version);
   }
 
+  [[nodiscard]] auto followerEstablished() const -> bool override {
+    // Having a commit index means we've got at least one append entries request
+    // which was also applied *successfully*
+    auto const leaderConnectionEstablished =
+        follower.commit->getCommitIndex() > LogIndex{0};
+    // Check whether a snapshot is available.
+    auto const snapshotAvailable =
+        follower.snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
+
+    // It is essential that, in the lines above this comment, the snapshot state
+    // is checked *after* the commit index to prevent races.
+    // Note that a log truncate will set the snapshot to missing. After a
+    // successful append entries, the log won't be truncated again -- during the
+    // current term at least, and append entries requests from other terms will
+    // be rejected.
+    // So the snapshot state can toggle from AVAILABLE to MISSING and back to
+    // AVAILABLE, but only once; and the commit index will be updated only after
+    // the (possible) switch from AVAILABLE to MISSING.
+
+    return leaderConnectionEstablished and snapshotAvailable;
+  }
+
  private:
   FollowerManager& follower;
 };

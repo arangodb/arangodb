@@ -77,7 +77,12 @@ struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
-  virtual auto snapshotCompleted(std::uint64_t version) -> Result = 0;
+  [[nodiscard]] virtual auto snapshotCompleted(std::uint64_t version)
+      -> Result = 0;
+  // A follower counts as established if it
+  //  a) has a snapshot, and
+  //  b) knows the snapshot won't be invalidated in the current term.
+  [[nodiscard]] virtual auto followerEstablished() const -> bool = 0;
 };
 
 // TODO Move to namespace replicated_state (and different file?)
