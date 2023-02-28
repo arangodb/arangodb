@@ -38,9 +38,13 @@ export const ViewSettings = ({
     setEditName(false);
   };
 
+  // if we try to fix this by using inital values for id, type,
+  // it causes the navigation to break
+  const initFormState = { name } as any; 
+
   const initialState = useRef<State<FormState>>({
-    formState: { name, id: "", type: "arangosearch" },
-    formCache: { name },
+    formState: initFormState,
+    formCache: initFormState,
     renderKey: uniqueId("force_re-render_"),
     show: true,
     showJsonForm: true,
