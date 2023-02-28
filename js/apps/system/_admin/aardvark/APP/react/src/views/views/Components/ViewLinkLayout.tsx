@@ -68,7 +68,9 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
                       textOverflow: 'ellipsis',
                       overflow: 'hidden',
                       verticalAlign: 'middle'
-                    }}>{fragments[fragments.length - 1]}</li>
+                    }}
+                    title={fragments[fragments.length - 1]}
+                    >{fragments[fragments.length - 1]}</li>
                   </ul>
                 </ArangoTH>
               </tr>
