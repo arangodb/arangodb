@@ -3,7 +3,6 @@ import React from "react";
 import CreatableSelect from "react-select/creatable";
 import { components, OptionProps, Props } from "react-select";
 
-
 export type OptionType = {
   value: string;
   label: string;
@@ -24,11 +23,17 @@ const CreatableMultiSelect = (props: Props<OptionType>) => (
         ...baseStyles,
         overflow: "hidden",
         textOverflow: "ellipsis"
+      }),
+      input: baseStyles => ({
+        ...baseStyles,
+        "> input": {
+          background: "transparent !important"
+        }
       })
     }}
     components={{
       Option,
-      ...props.components,
+      ...props.components
     }}
     {...props}
   />
