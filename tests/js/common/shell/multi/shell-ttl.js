@@ -34,11 +34,12 @@ const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const globalProperties = internal.ttlProperties();
+const versionHas = require("@arangodb/test-helper").versionHas;
 
 function TtlSuite () {
   'use strict';
   const cn = "UnitTestsTtl";
-      
+
   const waitForNextRun = function(collection, oldStats, tries) {
     const oldRuns = oldStats.runs;
     let numServers;
@@ -618,6 +619,12 @@ function TtlSuite () {
     },
     
     testRemovalsAllBiggerDate : function () {
+      let timeout = 20;
+      let divisor = 1;
+      if (versionHas('coverage')) {
+        timeout *= 10;
+        divisor = 10;
+      }
       internal.ttlProperties({ active: false });
 
       let c = db._create(cn, { numberOfShards: 2 });
@@ -628,7 +635,7 @@ function TtlSuite () {
       assertTrue(dt >= "2019-01-");
 
       let docs = [];
-      for (let i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000 / divisor; ++i) {
         docs.push({ dateCreated: dt, value: i });
       }
       c.insert(docs);
@@ -636,13 +643,13 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20);
+      let stats = waitForNextRun(c, oldStats, timeout);
       
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 10000, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 10000 / divisor, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
