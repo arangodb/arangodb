@@ -35,25 +35,50 @@ const ERRORS = arangodb.errors;
 const { debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers } = require("@arangodb/test-helper");  
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
+const internal = require("internal");
+const isServer = typeof internal.arango === 'undefined';
 
 const cn = "UnitTestsKeyGen";
 
+let endpoints;
+if (isServer) {
+  // e.g. shell server environment (v8)
+  if (typeof arango === "undefined") {
+    arango = internal.arango;
+  }
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  endpoints = instanceInfo.endpoints;
+} else {
+  // e.g. shell client environment (http)
+  endpoints = [arango.getEndpoint()];
+  if (cluster) {
+    endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
+  }
+}
+
 // in single server case, this is the single server.
 // in cluster case, this is the coordinator.
-let endpoints = [arango.getEndpoint()];
-if (cluster) {
-  endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
-}
+
 
 let debugSetFailAtAll = (fp) => {
   endpoints.forEach((ep) => {
-    debugSetFailAt(ep, fp);
+    if (isServer) {
+      internal.debugSetFailAt(fp);
+    } else {
+      debugSetFailAt(ep, fp);
+    }
   });
 };
 
 let debugClearFailAtAll = () => {
   endpoints.forEach((ep) => {
-    debugClearFailAt(ep);
+    if (isServer) {
+      // in server mode this call actually does not support the clear of a single failure
+      // point. In comparison to the client module, it removes all failure points at once.
+     internal.debugClearFailAt();
+    } else {
+      debugClearFailAt(ep);
+    }
   });
 };
 
@@ -1436,11 +1461,21 @@ jsunity.run(TraditionalSuite);
 jsunity.run(AutoIncrementSuite);
 jsunity.run(AllowUserKeysSuite);
 jsunity.run(PersistedLastValueSuite);
-if (debugCanUseFailAt(arango.getEndpoint())) {
-  jsunity.run(KeyGenerationLocationSuite);
-}
-if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
-  jsunity.run(KeyGenerationLocationSmartGraphSuite);
+
+if (isServer) {
+  if (internal.debugCanUseFailAt()) {
+    jsunity.run(KeyGenerationLocationSuite);
+  }
+  if (isEnterprise && internal.debugCanUseFailAt()) {
+    jsunity.run(KeyGenerationLocationSmartGraphSuite);
+  }
+} else {
+  if (debugCanUseFailAt(arango.getEndpoint())) {
+    jsunity.run(KeyGenerationLocationSuite);
+  }
+  if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
+    jsunity.run(KeyGenerationLocationSmartGraphSuite);
+  }
 }
 
 return jsunity.done();
