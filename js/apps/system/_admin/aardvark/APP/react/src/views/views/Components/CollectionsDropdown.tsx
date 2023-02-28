@@ -1,13 +1,17 @@
 import { chain, map, without } from "lodash";
 import React, { useContext, useEffect, useState } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
-import { components, MultiValueGenericProps } from "react-select";
+import { components, MultiValueGenericProps, OptionProps } from "react-select";
 import useSWR from "swr";
 import MultiSelect from "../../../components/pure-css/form/MultiSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { FormState, ViewContext } from "../constants";
 
-const MultiValueLabel = (props: MultiValueGenericProps) => {
+type OptionType = {
+  value: string,
+  label: string
+}
+const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const match = useRouteMatch();
   const to =
     match && match.url === "/"
@@ -17,13 +21,23 @@ const MultiValueLabel = (props: MultiValueGenericProps) => {
     <Link
       to={to}
       style={{
-        textDecoration: "underline"
+        textDecoration: "underline",
+        minWidth: 0 // because parent is flex
       }}
     >
       <components.MultiValueLabel {...props} />
     </Link>
   );
 };
+
+const Option = (props: OptionProps<OptionType>) => {
+  return (
+    <div title={props.data.value}>
+      <components.Option {...props} />
+      </div>
+  );
+};
+
 
 const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
@@ -94,18 +108,27 @@ const CollectionsDropdown = () => {
     .value();
 
   return (
-    <MultiSelect
+    <MultiSelect<OptionType>
       value={validLinks}
       options={options}
-      components={{
-        MultiValueLabel
+      styles={{
+        option: baseStyles => ({
+          ...baseStyles,
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        })
       }}
+      components={{
+        MultiValueLabel,
+        Option
+      }}
+      isDisabled={!isAdminUser}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
           removeLink((action.removedValue as any).value as string);
           return;
         }
-        if (action.action === "create-option") {
+        if (action.action === "select-option") {
           addLink((action.option as any).value as string);
         }
       }}
