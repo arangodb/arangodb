@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import { FormDispatch, State } from "../../utils/constants";
@@ -14,7 +15,7 @@ export const ViewRightPane = ({
   state: State<FormState>;
 }) => {
   return (
-    <div style={{ marginLeft: "15px" }}>
+    <Box padding="4">
       <div
         id={"modal-dialog"}
         className={"createModalDialog"}
@@ -44,6 +45,6 @@ export const ViewRightPane = ({
           </div>
         </div>
       </div>
-    </div>
+    </Box>
   );
 };

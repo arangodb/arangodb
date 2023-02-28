@@ -26,16 +26,10 @@ export const ViewSection = ({
   return (
     <section ref={sectionRef}>
       <SplitPane
-        paneStyle={{ overflow: "scroll" }}
+        paneStyle={{ overflow: "auto" }}
         maxSize={maxSize}
         defaultSize={splitPos}
         onChange={size => localStorage.setItem("splitPos", size.toString())}
-        style={{
-          paddingTop: "15px",
-          marginTop: "10px",
-          marginLeft: "15px",
-          marginRight: "15px"
-        }}
       >
         <ViewLeftPane
           name={name}

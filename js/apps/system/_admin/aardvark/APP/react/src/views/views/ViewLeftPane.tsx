@@ -34,7 +34,7 @@ const ViewConfigForm = ({
 }: {
   name: string;
   formState: FormState;
-  dispatch: FormDispatch<FormState>
+  dispatch: FormDispatch<FormState>;
   isAdminUser: boolean;
 }) => {
   return (
@@ -107,13 +107,15 @@ export const ViewLeftPane = ({
   isAdminUser: boolean;
 }) => {
   return (
-    <div style={{ marginRight: "15px" }}>
-      <ViewConfigForm
-        formState={formState}
-        dispatch={dispatch}
-        isAdminUser={isAdminUser}
-        name={name}
-      />
-    </div>
+    <Box padding="4" display="flex">
+      <Box maxW="90%" margin="auto" flexGrow={1}>
+        <ViewConfigForm
+          formState={formState}
+          dispatch={dispatch}
+          isAdminUser={isAdminUser}
+          name={name}
+        />
+      </Box>
+    </Box>
   );
 };
