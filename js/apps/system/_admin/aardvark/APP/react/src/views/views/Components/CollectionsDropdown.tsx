@@ -1,16 +1,14 @@
 import { chain, map, without } from "lodash";
 import React, { useContext, useEffect, useState } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
-import { components, MultiValueGenericProps, OptionProps } from "react-select";
+import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
-import MultiSelect from "../../../components/pure-css/form/MultiSelect";
+import MultiSelect, {
+  OptionType
+} from "../../../components/pure-css/form/MultiSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { FormState, ViewContext } from "../constants";
 
-type OptionType = {
-  value: string;
-  label: string;
-};
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const match = useRouteMatch();
   const to =
@@ -27,14 +25,6 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
     >
       <components.MultiValueLabel {...props} />
     </Link>
-  );
-};
-
-const Option = (props: OptionProps<OptionType>) => {
-  return (
-    <div title={props.data.value}>
-      <components.Option {...props} />
-    </div>
   );
 };
 
@@ -107,7 +97,7 @@ const CollectionsDropdown = () => {
     .value();
 
   return (
-    <MultiSelect<OptionType>
+    <MultiSelect
       value={validLinks}
       options={options}
       placeholder="Enter a collection name"
@@ -120,8 +110,7 @@ const CollectionsDropdown = () => {
         })
       }}
       components={{
-        MultiValueLabel,
-        Option
+        MultiValueLabel
       }}
       isDisabled={!isAdminUser}
       onChange={(_, action) => {

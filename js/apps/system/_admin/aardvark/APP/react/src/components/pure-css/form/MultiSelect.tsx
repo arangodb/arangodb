@@ -1,8 +1,24 @@
 import React from "react";
 
-import Select, { Props } from "react-select";
+import Select, { components, OptionProps, Props } from "react-select";
 
-const MultiSelect = <T extends unknown>(props: Props<T>) => (
-  <Select isMulti {...props} />
+
+export type OptionType = {
+  value: string;
+  label: string;
+};
+
+const Option = (props: OptionProps<OptionType>) => {
+  return (
+    <div title={props.data.value}>
+      <components.Option {...props} />
+    </div>
+  );
+};
+const MultiSelect = (props: Props<OptionType>) => (
+  <Select isMulti components={{
+    ...props.components,
+    Option
+  }} {...props} />
 );
 export default MultiSelect;
