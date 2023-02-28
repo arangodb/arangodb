@@ -102,13 +102,6 @@ const CollectionsDropdown = () => {
       options={options}
       placeholder="Enter a collection name"
       noOptionsMessage={() => "No collections found"}
-      styles={{
-        option: baseStyles => ({
-          ...baseStyles,
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        })
-      }}
       components={{
         MultiValueLabel
       }}
