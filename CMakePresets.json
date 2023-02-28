@@ -124,6 +124,15 @@
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
+      "name": "enterprise-pr",
+      "inherits": [
+        "pr",
+        "maintainer",
+        "enterprise"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition"
+    },
+    {
       "name": "community-pr-arm",
       "inherits": [
         "pr-arm",
@@ -196,6 +205,10 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
+    },
+    {
       "name": "community-pr-arm",
       "configurePreset": "community-pr-arm"
     },
@@ -236,6 +249,10 @@
     {
       "name": "community-pr",
       "configurePreset": "community-pr"
+    },
+    {
+      "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
     }
   ]
 }
