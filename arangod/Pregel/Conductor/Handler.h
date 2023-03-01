@@ -39,7 +39,9 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
   void spawnActorOnServer(actor::ServerID server,
                           pregel::message::SpawnMessages msg) {
     if (server == this->self.server) {
-      this->template spawn<SpawnActor>(std::make_unique<SpawnState>(), msg);
+      this->template spawn<SpawnActor>(
+          std::make_unique<SpawnState>(this->state->_vocbaseGuard.database()),
+          msg);
     } else {
       this->dispatch(
           actor::ActorPID{

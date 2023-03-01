@@ -335,12 +335,15 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto ttl = TTL{.duration = std::chrono::seconds(
                      basics::VelocyPackHelper::getNumericValue(
                          options.userParameters.slice(), "ttl", 600))};
+  auto algorithm = std::move(options.algorithm);
+  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
+                 ::tolower);
 
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = std::move(options.algorithm),
+      .algorithm = std::move(algorithm),
       .vertexCollections = std::move(vertexCollections),
       .edgeCollections = std::move(edgeColls),
       .edgeCollectionRestrictions =
