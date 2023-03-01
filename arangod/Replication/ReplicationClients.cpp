@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Gauge.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 
@@ -138,8 +139,10 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId,
       }));
 
   if (inserted) {
-    // increase clients metric
-    _feature.clientsMetric().fetch_add(1);
+    if (_feature != nullptr) {
+      // increase clients metric
+      _feature->clientsMetric().fetch_add(1);
+    }
 
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
         << "inserting replication client entry for " << SyncerInfo{it->second}
@@ -223,9 +226,9 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
     }
   }
 
-  if (removed > 0) {
+  if (removed > 0 && _feature != nullptr) {
     // adjust metric
-    _feature.clientsMetric().fetch_sub(removed);
+    _feature->clientsMetric().fetch_sub(removed);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -273,9 +276,9 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
       << SyncerInfo{syncerId, clientId, clientInfo};
 
   WRITE_LOCKER(writeLocker, _lock);
-  if (_clients.erase(key) > 0) {
+  if (_clients.erase(key) > 0 && _feature != nullptr) {
     // possible that key does not exist (anymore)
-    _feature.clientsMetric().fetch_sub(1);
+    _feature->clientsMetric().fetch_sub(1);
   }
 }
 
@@ -293,7 +296,7 @@ double ReplicationClientProgress::steadyClockToSystemClock(
 }
 
 ReplicationClientsProgressTracker::ReplicationClientsProgressTracker(
-    ReplicationFeature& rf)
+    ReplicationFeature* rf)
     : _feature(rf) {}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

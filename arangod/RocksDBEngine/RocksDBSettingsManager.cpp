@@ -187,7 +187,8 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       }
 
       LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
-          << "syncing metadata for collection '" << coll->name() << "'";
+          << "syncing metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr;
 
       // clear our scratch buffers for this round
       _scratch.clear();
@@ -210,9 +211,23 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
       if (res.fail()) {
         LOG_TOPIC("afa17", WARN, Logger::ENGINES)
-            << "could not sync metadata for collection '" << coll->name()
-            << "'";
+            << "could not sync metadata for collection '" << vocbase->name()
+            << "/" << coll->name() << "'";
         return res;
+      }
+
+      // always log in TRACE mode
+      LOG_TOPIC("1d419", TRACE, Logger::ENGINES)
+          << "synced metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr
+          << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
+
+      if (appliedSeq < minSeqNr) {
+        // in DEBUG mode only log _relevant_ information
+        LOG_TOPIC("31dc8", DEBUG, Logger::ENGINES)
+            << "synced metadata for collection '" << vocbase->name() << "/"
+            << coll->name() << "', maxSeqNr: " << maxSeqNr
+            << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
       }
 
       minSeqNr = std::min(minSeqNr, appliedSeq);
