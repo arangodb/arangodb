@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import SplitPane from "react-split-pane";
 import { FormProps, State } from "../../utils/constants";
@@ -27,7 +28,7 @@ export const ViewSection = ({
     splitPos = sectionWidth - 200;
   }
   return (
-    <section ref={sectionRef}>
+    <Box as="section" width="full" height="100vh" ref={sectionRef}>
       <SplitPane
         paneStyle={{ overflow: "auto" }}
         maxSize={maxSize}
@@ -46,6 +47,6 @@ export const ViewSection = ({
           state={state}
         />
       </SplitPane>
-    </section>
+    </Box>
   );
 };

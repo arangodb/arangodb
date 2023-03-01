@@ -5,6 +5,7 @@ import { DeleteButton, SaveButton } from "./Actions";
 import { EditableViewName } from "./EditableViewName";
 import { FormState } from "./constants";
 import { FormProps } from "../../utils/constants";
+import { Box } from "@chakra-ui/react";
 
 export const ViewHeader = ({
   editName,
@@ -31,10 +32,11 @@ export const ViewHeader = ({
   changed: boolean;
   name: string;
   setChanged: (changed: boolean) => void;
-} & Pick<FormProps<FormState>, 'dispatch'>) => {
+} & Pick<FormProps<FormState>, "dispatch">) => {
   return (
-    <div className="viewsstickyheader">
+    <Box position="sticky" top="0" backgroundColor={"white"} borderBottom="2px solid" borderColor={"gray.300"} padding="4">
       <EditableViewName
+        isAdminUser={isAdminUser}
         editName={editName}
         formState={formState}
         handleEditName={handleEditName}
@@ -69,13 +71,11 @@ export const ViewHeader = ({
                   disabled
                 />
               )}
-              <DeleteButton
-                view={formState}
-              />
+              <DeleteButton view={formState} />
             </div>
           </div>
         </Cell>
       ) : null}
-    </div>
+    </Box>
   );
 };

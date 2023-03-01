@@ -3,6 +3,7 @@ import { cloneDeep, isEqual, uniqueId } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
+import { theme } from "../../theme/theme";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
 import {
@@ -17,7 +18,6 @@ import { postProcessor, useView } from "./helpers";
 import "./split-pane-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
-import "./viewsheader.css";
 
 export const ViewSettings = ({
   name,
@@ -118,7 +118,7 @@ export const ViewSettings = ({
       }}
     >
       <HashRouter basename={`view/${name}`} hashType={"noslash"}>
-        <ChakraProvider>
+        <ChakraProvider theme={theme}>
           <ViewSettingsInner
             editName={editName}
             formState={formState}
