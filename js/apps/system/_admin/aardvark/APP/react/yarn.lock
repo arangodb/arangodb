@@ -7332,11 +7332,6 @@ hosted-git-info@^2.1.4:
   resolved "https://registry.npmjs.org/hosted-git-info/-/hosted-git-info-2.8.9.tgz"
   integrity sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw==
 
-houseform@^1.2.2:
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/houseform/-/houseform-1.2.2.tgz#9a8a47bde819108eb6fe12d8844d604f6b30e8a1"
-  integrity sha512-skhY5qLsZpZQRizc4vaeNzwOlPo6Jq+LJG+3Eabibu9H6TL+0j1U3Nqdpj0C9XT8KwLKVBu9GxnqNfMDDYzciA==
-
 hpack.js@^2.1.6:
   version "2.1.6"
   resolved "https://registry.npmjs.org/hpack.js/-/hpack.js-2.1.6.tgz"

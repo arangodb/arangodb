@@ -25,7 +25,6 @@
     "framer-motion": "^4",
     "fs-extra": "7.0.0",
     "highlight.js": "^9.18.1",
-    "houseform": "^1.2.2",
     "html-loader": "^0.5.5",
     "http-proxy-middleware": "^0.20.0",
     "identity-obj-proxy": "3.0.0",
