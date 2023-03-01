@@ -18,34 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Pregel/GraphStore/VertexID.h"
 
-#include "Pregel/Algorithm.h"
-#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
-#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
+namespace arangodb::pregel {
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+struct DMIDMessage {
+  DMIDMessage() {}
+  DMIDMessage(VertexID const& pid, float val) : senderId(pid), weight(val) {}
 
-/// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
+  DMIDMessage(VertexID const& sender, VertexID const& leader)
+      : senderId(sender), leaderId(leader) {}
 
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
-  MessageFormat<HLLCounter>* messageFormat() const override;
-  MessageCombiner<HLLCounter>* messageCombiner() const override;
-
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+  VertexID senderId;
+  VertexID leaderId;
+  float weight = 0;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+
+template<typename Inspector>
+auto inspect(Inspector& f, DMIDMessage& v) {
+  return f.object(v).fields(f.field("senderId", v.senderId),
+                            f.field("leaderId", v.leaderId),
+                            f.field("weight", v.weight));
+}
+
+}  // namespace arangodb::pregel
