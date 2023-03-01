@@ -51,6 +51,7 @@ let endpoints;
 if (isServer) {
   // e.g. shell server environment (v8)
   if (typeof arango === "undefined") {
+    // eslint-disable-next-line no-native-reassign
     arango = internal.arango;
   }
   const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
@@ -219,7 +220,7 @@ const insertInvalidSmartVertices = (vn) => {
   // batch insert, using document API
   const batch = [];
   invalidKeys.forEach(invalidKey => {
-    batch.push({_key: invalidKey, value: "iAmSoSmart"})
+    batch.push({_key: invalidKey, value: "iAmSoSmart"});
   });
 
   try {
