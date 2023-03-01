@@ -124,14 +124,6 @@ void GraphStore<V, E>::loadShards(
       _config->edgeCollectionShards();
   size_t numShards = SIZE_MAX;
 
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                              std::move(fn));
-  };
-  auto queue = std::make_shared<basics::LocalTaskQueue>(
-      _vocbaseGuard.database().server(), poster);
-  queue->setConcurrency(_config->parallelism());
-
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     if (numShards == SIZE_MAX) {
@@ -169,48 +161,22 @@ void GraphStore<V, E>::loadShards(
         if (!_loadedShards.emplace(vertexShard).second) {
           continue;
         }
-        auto task = std::make_shared<basics::LambdaTask>(
-            queue,
-            [this, vertexShard, edges, statusUpdateCallback]() -> Result {
-              if (_vocbaseGuard.database().server().isStopping()) {
-                LOG_PREGEL("4355b", WARN) << "Aborting graph loading";
-                return {TRI_ERROR_SHUTTING_DOWN};
-              }
-              try {
-                loadVertices(vertexShard, edges, statusUpdateCallback);
-                return Result();
-              } catch (basics::Exception const& ex) {
-                LOG_PREGEL("8682a", WARN)
-                    << "caught exception while loading pregel graph: "
-                    << ex.what();
-                return Result(ex.code(), ex.what());
-              } catch (std::exception const& ex) {
-                LOG_PREGEL("c87c9", WARN)
-                    << "caught exception while loading pregel graph: "
-                    << ex.what();
-                return Result(TRI_ERROR_INTERNAL, ex.what());
-              } catch (...) {
-                LOG_PREGEL("c7240", WARN)
-                    << "caught unknown exception while loading pregel graph";
-                return Result(TRI_ERROR_INTERNAL,
-                              "unknown exception while loading pregel graph");
-              }
-            });
-        queue->enqueue(task);
+        if (_vocbaseGuard.database().server().isStopping()) {
+          LOG_PREGEL("4355b", WARN) << "Aborting graph loading";
+        }
+        loadVertices(vertexShard, edges, statusUpdateCallback);
       } catch (basics::Exception const& ex) {
-        LOG_PREGEL("3f283", WARN) << "unhandled exception while "
-                                  << "loading pregel graph: " << ex.what();
+        LOG_PREGEL("8682a", WARN)
+            << "caught exception while loading pregel graph: " << ex.what();
+      } catch (std::exception const& ex) {
+        LOG_PREGEL("c87c9", WARN)
+            << "caught exception while loading pregel graph: " << ex.what();
       } catch (...) {
-        LOG_PREGEL("3f282", WARN) << "unhandled exception while "
-                                  << "loading pregel graph";
+        LOG_PREGEL("c7240", WARN)
+            << "caught unknown exception while loading pregel graph";
       }
     }
   }
-  queue->dispatchAndWait();
-  if (queue->status().fail() && !queue->status().is(TRI_ERROR_SHUTTING_DOWN)) {
-    THROW_ARANGO_EXCEPTION(queue->status());
-  }
-
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                      statusUpdateCallback);
 
