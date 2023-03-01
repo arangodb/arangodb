@@ -157,7 +157,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     auto abortAllRes =
         self->replicateOperation(abortAll, ReplicationOptions{}).get();
     if (abortAllRes.fail()) {
-      LOG_CTX("e1edb", FATAL, self->loggerContext)
+      LOG_CTX("b4217", FATAL, self->loggerContext)
           << "failed to replicate AbortAllOngoingTrx operation during "
              "recovery: "
           << abortAllRes.result();

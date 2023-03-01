@@ -210,7 +210,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
       return r;
     }
     if (auto releaseRes = leader->release(id(), logIndex); releaseRes.fail()) {
-      LOG_CTX("4a744", ERR, leader->loggerContext)
+      LOG_CTX("0279d", ERR, leader->loggerContext)
           << "Failed to call release: " << releaseRes;
     }
   }
