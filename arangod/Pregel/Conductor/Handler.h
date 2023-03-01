@@ -74,7 +74,8 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(WorkerCreated start) -> std::unique_ptr<ConductorState> {
+  auto operator()(ResultT<WorkerCreated> start)
+      -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("17915", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Worker {} was created", this->sender);
     auto newExecutionState =

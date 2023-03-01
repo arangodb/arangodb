@@ -36,7 +36,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
     this->template dispatch<conductor::ConductorMessages>(
-        this->state->conductor, conductor::WorkerCreated{});
+        this->state->conductor, ResultT<conductor::WorkerCreated>{});
     return std::move(this->state);
   }
 

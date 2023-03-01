@@ -31,7 +31,12 @@ auto CreateWorkers::messages()
 auto CreateWorkers::receive(actor::ActorPID sender, ConductorMessages message)
     -> std::optional<std::unique_ptr<ExecutionState>> {
   if (not sentServers.contains(sender.server) or
-      not std::holds_alternative<WorkerCreated>(message)) {
+      not std::holds_alternative<ResultT<WorkerCreated>>(message)) {
+    // TODO return error state (GORDO-1553)
+    return std::nullopt;
+  }
+  auto workerCreated = std::get<ResultT<WorkerCreated>>(message);
+  if (not workerCreated.ok()) {
     // TODO return error state (GORDO-1553)
     return std::nullopt;
   }
