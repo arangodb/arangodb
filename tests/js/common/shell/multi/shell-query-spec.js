@@ -11,8 +11,8 @@ const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
 const taskInfo = {
   offset: 0,
   command: function () {
-    var taskQuery = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-    require('internal').db._query(taskQuery, { value: 1 }, {profile: true});
+    var query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
+    require('internal').db._query(query, { value: 1 }, {profile: true});
   }
 };
 
@@ -184,6 +184,8 @@ describe('AQL query analyzer', function () {
       expect(q[0]).to.have.property('runTime');
       expect(q[0].runTime).to.be.greaterThan(0.0);
       expect(q[0].runTime).to.be.lessThan(60.0);
+      expect(q[0]).to.have.property('peakMemoryUsage');
+      expect(q[0].peakMemoryUsage).to.be.lessThan(100 * 1024);
       expect(q[0]).to.have.property('state', 'executing');
       expect(q[0]).to.have.property('stream', false);
     });
@@ -215,6 +217,8 @@ describe('AQL query analyzer', function () {
       expect(q[0]).to.have.property('runTime');
       expect(q[0].runTime).to.be.greaterThan(0.0);
       expect(q[0].runTime).to.be.lessThan(60.0);
+      expect(q[0]).to.have.property('peakMemoryUsage');
+      expect(q[0].peakMemoryUsage).to.be.lessThan(100 * 1024);
       expect(q[0]).to.have.property('state', 'executing');
       expect(q[0]).to.have.property('stream', false);
     });
@@ -272,6 +276,38 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0].runTime).to.be.greaterThan(0.0);
       expect(queries[0].runTime).to.be.lessThan(60.0);
+      expect(queries[0]).to.have.property('peakMemoryUsage');
+      expect(queries[0].peakMemoryUsage).to.be.lessThan(100 * 1024);
+      expect(queries[0]).to.have.property('state', 'finished');
+      expect(queries[0]).to.have.property('stream', false);
+    });
+    
+    it('should track peak memory usage', function () {
+      const query = 'RETURN (FOR x IN 1..@amount FILTER SLEEP(0.0001) RETURN CONCAT("testmann", x))';
+      const filterQueries = (q) => q.query === query;
+      
+      testee.properties({
+        slowQueryThreshold: 2
+      });
+
+      let now = (new Date()).toISOString();
+      internal.db._query(query, { amount: 20000 });
+      expect(testee.current().filter(filterQueries).length).to.equal(0);
+      let queries = testee.slow().filter(filterQueries);
+      expect(queries.length).to.equal(1);
+      expect(queries[0]).to.have.property('id');
+      expect(queries[0]).to.have.property('database', '_system');
+      expect(queries[0]).to.have.property('user', 'root');
+      expect(queries[0]).to.have.property('query', query);
+      expect(queries[0]).to.have.property('bindVars');
+      expect(queries[0].bindVars).to.eql({ amount: 20000 });
+      expect(queries[0]).to.have.property('started');
+      expect(queries[0].started).to.be.greaterThan(now);
+      expect(queries[0]).to.have.property('runTime');
+      expect(queries[0].runTime).to.be.greaterThan(0.0);
+      expect(queries[0].runTime).to.be.lessThan(60.0);
+      expect(queries[0]).to.have.property('peakMemoryUsage');
+      expect(queries[0].peakMemoryUsage).to.be.lessThan(100 * 1024);
       expect(queries[0]).to.have.property('state', 'finished');
       expect(queries[0]).to.have.property('stream', false);
     });

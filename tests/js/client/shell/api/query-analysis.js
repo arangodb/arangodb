@@ -143,6 +143,8 @@ function queryAnalysisSuite () {
       assertEqual(found["bindVars"], {});
       assertTrue(found.hasOwnProperty("runTime"));
       assertEqual(typeof found["runTime"], 'number');
+      assertTrue(found.hasOwnProperty("peakMemoryUsage"));
+      assertEqual(typeof found["peakMemoryUsage"], 'number');
       assertTrue(found.hasOwnProperty("started"));
       assertTrue(found.hasOwnProperty("state"));
       assertEqual(typeof found["state"], 'string');
@@ -160,6 +162,8 @@ function queryAnalysisSuite () {
       assertEqual(found["bindVars"], {"value": 4});
       assertTrue(found.hasOwnProperty("runTime"));
       assertEqual(typeof found["runTime"], 'number');
+      assertTrue(found.hasOwnProperty("peakMemoryUsage"));
+      assertEqual(typeof found["peakMemoryUsage"], 'number');
       assertTrue(found.hasOwnProperty("started"));
       assertTrue(found.hasOwnProperty("state"));
       assertEqual(typeof found["state"], 'string');
@@ -182,6 +186,8 @@ function queryAnalysisSuite () {
       assertEqual(found["bindVars"], {});
       assertTrue(found.hasOwnProperty("runTime"));
       assertEqual(typeof found["runTime"], 'number');
+      assertTrue(found.hasOwnProperty("peakMemoryUsage"));
+      assertEqual(typeof found["peakMemoryUsage"], 'number');
       assertTrue(found.hasOwnProperty("started"));
       assertEqual(found["state"], "finished");
     },

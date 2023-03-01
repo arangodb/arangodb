@@ -28,6 +28,8 @@ Each query is a JSON object with the following attributes:
 
 - *runTime*: the query's total run time
 
+- *peakMemoryUsage*: the query's peak memory usage in bytes (in increments of 32KB)
+
 - *state*: the query's current execution state (will always be "finished"
   for the list of slow queries)
 

@@ -55,7 +55,7 @@ QueryEntryCopy::QueryEntryCopy(
     std::string&& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
     std::vector<std::string> dataSources, double started, double runTime,
-    QueryExecutionState::ValueType state, bool stream,
+    size_t peakMemoryUsage, QueryExecutionState::ValueType state, bool stream,
     std::optional<ErrorCode> resultCode)
     : id(id),
       database(database),
@@ -65,6 +65,7 @@ QueryEntryCopy::QueryEntryCopy(
       dataSources(std::move(dataSources)),
       started(started),
       runTime(runTime),
+      peakMemoryUsage(peakMemoryUsage),
       state(state),
       resultCode(resultCode),
       stream(stream) {}
@@ -91,6 +92,7 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   }
   out.add("started", VPackValue(timeString));
   out.add("runTime", VPackValue(runTime));
+  out.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
   out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
   out.add("stream", VPackValue(stream));
   if (resultCode.has_value()) {
@@ -230,7 +232,7 @@ void QueryList::remove(Query& query) {
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed, /* start timestamp */
-          elapsed /* run time */,
+          elapsed /* run time */, query.resourceMonitor().peak(),
           query.killed() ? QueryExecutionState::ValueType::KILLED
                          : QueryExecutionState::ValueType::FINISHED,
           isStreaming, resultCode);
@@ -338,6 +340,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed /* start timestamp */, elapsed /* run time */,
+          query.resourceMonitor().peak(),
           query.killed() ? QueryExecutionState::ValueType::KILLED
                          : query.state(),
           query.queryOptions().stream,

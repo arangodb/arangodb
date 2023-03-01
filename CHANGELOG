@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add peak memory usage to the query object details for queries in the slow
+  query history and in the list of currently running queries. The peak memory
+  usage is also returned via REST APIs as `peakMemoryUsage`.
+
 * ES-1428: make the maximum number of V8 contexts depend on the maximum number
   of server threads, if `--javascript.v8-contexts` is not set explicitly. 
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
