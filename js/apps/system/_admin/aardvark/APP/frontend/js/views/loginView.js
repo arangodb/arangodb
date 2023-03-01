@@ -94,11 +94,15 @@
     },
 
     setVersion: function () {
+      $('#ArangoDBLogoVersion').hide();
       if (window.frontendConfig && window.frontendConfig.isEnterprise) {
-        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-enterprise-edition-Web-UI.png');
+        $('#ArangoDBLogoVersion').text('Enterprise Edition');
+        $('#ArangoDBLogoVersion').removeClass('enterprise');
       } else {
-        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-community-edition-Web-UI.png');
+        $('#ArangoDBLogoVersion').text('Community Edition');
+        $('#ArangoDBLogoVersion').removeClass('community');
       }
+      $('#ArangoDBLogoVersion').fadeIn("slow");
     },
 
     sortDatabases: function (obj) {
