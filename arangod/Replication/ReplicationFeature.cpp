@@ -31,14 +31,17 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Counter.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -77,6 +80,8 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
                 "(DC-2-DC only) Number of times the database and collection "
                 "overviews have been requested.");
+DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
+              "Number of replication clients connected");
 
 namespace arangodb {
 
@@ -96,7 +101,9 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_cluster_inventory_requests_total{})) {
+          arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_replication_clients{})) {
   static_assert(
       Server::isCreatedAfter<ReplicationFeature,
                              application_features::CommunicationFeaturePhase,
@@ -282,6 +289,10 @@ void ReplicationFeature::trackTailingStart() {
 /// must only be called after a successful call to trackTailingstart
 void ReplicationFeature::trackTailingEnd() noexcept {
   --_parallelTailingInvocations;
+}
+
+void ReplicationFeature::trackInventoryRequest() noexcept {
+  ++_inventoryRequests;
 }
 
 double ReplicationFeature::checkConnectTimeout(double value) const {

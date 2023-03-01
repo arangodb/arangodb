@@ -70,6 +70,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1583,8 +1584,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _queries = std::make_unique<arangodb::aql::QueryList>(feature);
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
+
+  auto& rf = _info.server().getFeature<ReplicationFeature>();
   _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>();
+      std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
 
   // init collections
   _collections.reserve(32);

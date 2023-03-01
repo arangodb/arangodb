@@ -141,22 +141,44 @@ void RocksDBBackgroundThread::run() {
         }
       }
 
-      uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
-      auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
+      uint64_t const latestSeqNo = _engine.db()->GetLatestSequenceNumber();
+      auto const earliestSeqNeeded =
+          _engine.settingsManager()->earliestSeqNeeded();
 
-      if (cmTick < minTick) {
-        minTick = cmTick;
+      uint64_t minTick = latestSeqNo;
+
+      if (earliestSeqNeeded < minTick) {
+        minTick = earliestSeqNeeded;
       }
 
+      uint64_t minTickForReplication = minTick;
       if (_engine.server().hasFeature<DatabaseFeature>()) {
         _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
-            [&minTick](TRI_vocbase_t& vocbase) -> void {
+            [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
               // lowestServedValue will return the lowest of the lastServedTick
               // values stored, or UINT64_MAX if no clients are registered
-              minTick = std::min(
-                  minTick, vocbase.replicationClients().lowestServedValue());
+              TRI_voc_tick_t lowestServedValue =
+                  vocbase.replicationClients().lowestServedValue();
+
+              if (lowestServedValue != UINT64_MAX) {
+                // only log noteworthy things
+                LOG_TOPIC("e979f", DEBUG, Logger::ENGINES)
+                    << "lowest served tick for database '" << vocbase.name()
+                    << "': " << lowestServedValue << ", minTick: " << minTick
+                    << ", minTickForReplication: " << minTickForReplication;
+              }
+
+              minTickForReplication =
+                  std::min(minTickForReplication, lowestServedValue);
             });
+
+        minTick = std::min(minTick, minTickForReplication);
       }
+
+      LOG_TOPIC("cfe65", DEBUG, Logger::ENGINES)
+          << "latest seq number: " << latestSeqNo
+          << ", earliest seq needed: " << earliestSeqNeeded
+          << ", min tick for replication: " << minTickForReplication;
 
       bool canPrune =
           TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
