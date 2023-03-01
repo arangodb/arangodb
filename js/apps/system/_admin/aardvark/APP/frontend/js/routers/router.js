@@ -327,9 +327,6 @@
           cache: false
         });
 
-        this.footerView = new window.FooterView({
-          collection: self.coordinatorCollection
-        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -349,8 +346,6 @@
         });
 
         this.queryCollection = new window.ArangoQueries();
-
-        this.footerView.render();
 
         window.checkVersion();
 

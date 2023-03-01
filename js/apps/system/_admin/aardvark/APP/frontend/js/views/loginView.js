@@ -6,8 +6,6 @@
   'use strict';
   window.LoginView = Backbone.View.extend({
     el: '#content',
-    el2: '.header',
-    el3: '.footer',
     loggedIn: false,
     loginCounter: 0,
 
@@ -25,8 +23,6 @@
     render: function (loggedIn) {
       var self = this;
       $(this.el).html(this.template.render({}));
-      $(this.el2).hide();
-      $(this.el3).hide();
 
       var continueRender = function (user, errCallback, debug) {
         var url;
@@ -288,8 +284,6 @@
         window.location.href = path;
 
         // show hidden divs
-        $(this.el2).show();
-        $(this.el3).show();
         $('.bodyWrapper').show();
         $('.navbar').show();
 
