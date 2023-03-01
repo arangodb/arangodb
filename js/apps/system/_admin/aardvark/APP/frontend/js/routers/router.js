@@ -272,15 +272,6 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      if (frontendConfig.foxxStoreEnabled) {
-        this.foxxRepo.fetch({
-          success: function () {
-            if (self.serviceInstallView) {
-              self.serviceInstallView.collection = self.foxxRepo;
-            }
-          }
-        });
-      }
 
       window.progressView = new window.ProgressView();
 
@@ -361,6 +352,16 @@
         });
 
         arangoHelper.initSigma();
+
+        if (frontendConfig.foxxStoreEnabled) {
+          this.foxxRepo.fetch({
+            success: function () {
+              if (self.serviceInstallView) {
+                self.serviceInstallView.collection = self.foxxRepo;
+              }
+            }
+          });
+        }
       }).bind(this);
 
       $(window).on('resize', function () {
