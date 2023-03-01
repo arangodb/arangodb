@@ -87,77 +87,74 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  auto applyResult = _guardedData.doUnderLock(
-      [self = shared_from_this(),
-       ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
-        if (data.didResign()) {
-          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+  auto applyResult = _guardedData.doUnderLock([self = shared_from_this(),
+                                               ptr = std::move(ptr)](auto& data)
+                                                  -> ResultT<
+                                                      std::optional<LogIndex>> {
+    if (data.didResign()) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+    }
+
+    return basics::catchToResultT([&]() -> std::optional<LogIndex> {
+      std::optional<LogIndex> releaseIndex;
+      auto const& transactionHandler = data.core->getTransactionHandler();
+
+      while (auto entry = ptr->next()) {
+        auto doc = entry->second;
+
+        auto res = std::visit(
+            [&](auto& op) -> Result {
+              using T = std::decay_t<decltype(op)>;
+              if constexpr (ModifiesUserTransaction<T>) {
+                if (auto validationRes =
+                        transactionHandler->validate(doc.operation);
+                    validationRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  //  Even though a shard was dropped before acquiring the
+                  //  snapshot, we could still see transactions referring to
+                  //  that shard.
+                  LOG_CTX("e1edb", INFO, self->loggerContext)
+                      << "will not apply transaction " << op.tid
+                      << " for shard " << op.shard
+                      << " because it is not available";
+                  return {};
+                } else if (validationRes.fail()) {
+                  return validationRes;
+                }
+
+                self->_activeTransactions.markAsActive(op.tid, entry->first);
+              } else if constexpr (std::is_same_v<T, ReplicatedOperation::
+                                                         IntermediateCommit>) {
+                if (!self->_activeTransactions.getTransactions().contains(
+                        op.tid)) {
+                  return Result{};
+                }
+              } else if constexpr (FinishesUserTransaction<T>) {
+                if (!self->_activeTransactions.getTransactions().contains(
+                        op.tid)) {
+                  // Single commit/abort operations are possible.
+                  return Result{};
+                }
+                self->_activeTransactions.markAsInactive(op.tid);
+                releaseIndex =
+                    self->_activeTransactions.getReleaseIndex().value_or(
+                        entry->first);
+              } else if constexpr (std::is_same_v<T, ReplicatedOperation::
+                                                         AbortAllOngoingTrx>) {
+                self->_activeTransactions.clear();
+                releaseIndex = entry->first;
+              }
+              return transactionHandler->applyEntry(doc.operation);
+            },
+            doc.getInnerOperation());
+        if (res.fail()) {
+          LOG_CTX("0aa2e", FATAL, self->loggerContext)
+              << "failed to apply entry " << doc << " on follower: " << res;
         }
+      }
 
-        return basics::catchToResultT([&]() -> std::optional<LogIndex> {
-          std::optional<LogIndex> releaseIndex;
-          auto const& transactionHandler = data.core->getTransactionHandler();
-
-          while (auto entry = ptr->next()) {
-            auto doc = entry->second;
-
-            auto res = std::visit(
-                [&](auto& op) -> Result {
-                  using T = std::decay_t<decltype(op)>;
-                  if constexpr (ModifiesUserTransaction<T>) {
-                    if (auto validationRes =
-                            transactionHandler->validate(doc.operation);
-                        validationRes.is(
-                            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-                      //  Even though a shard was dropped before acquiring the
-                      //  snapshot, we could still see transactions referring to
-                      //  that shard.
-                      LOG_CTX("e1edb", INFO, self->loggerContext)
-                          << "will not apply transaction " << op.tid
-                          << " for shard " << op.shard
-                          << " because it is not available";
-                      return {};
-                    } else if (validationRes.fail()) {
-                      return validationRes;
-                    }
-
-                    self->_activeTransactions.markAsActive(op.tid,
-                                                           entry->first);
-                  } else if constexpr (FinishesUserTransaction<T>) {
-                    if (!self->_activeTransactions.getTransactions().contains(
-                            op.tid)) {
-                      // TODO [CINFRA-694]
-                      //  There are two cases where we can end up here:
-                      //  1. After a snapshot transfer, we did not get the
-                      //  beginning of the transaction
-                      //  2. We ignored all other operations for this
-                      //  transaction because the shard was dropped
-                      return Result{};
-                    }
-                    self->_activeTransactions.markAsInactive(op.tid);
-                    releaseIndex =
-                        self->_activeTransactions.getReleaseIndex().value_or(
-                            entry->first);
-                  } else if constexpr (std::is_same_v<T,
-                                                      ReplicatedOperation::
-                                                          AbortAllOngoingTrx>) {
-                    self->_activeTransactions.clear();
-                    releaseIndex =
-                        self->_activeTransactions.getReleaseIndex().value_or(
-                            entry->first);
-                  }
-                  return transactionHandler->applyEntry(doc.operation);
-                },
-                doc.getInnerOperation());
-            if (res.fail()) {
-              LOG_CTX("0aa2e", FATAL, self->loggerContext)
-                  << "failed to apply entry " << doc << " on follower: " << res;
-            }
-          }
-
-          return releaseIndex;
-        });
-      });
+      return releaseIndex;
+    });
+  });
 
   if (applyResult.fail()) {
     return applyResult.result();

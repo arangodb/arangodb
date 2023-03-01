@@ -118,12 +118,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                                  std::is_same_v<
                                      T,
                                      ReplicatedOperation::IntermediateCommit>) {
-              // TODO [CINFRA-694]
-              //  There are two cases where we can end up here:
-              //  1. After a snapshot transfer, we did not get the
-              //  beginning of the transaction
-              //  2. We ignored all other operations for this
-              //  transaction because the shard was dropped
+              // There are two cases where we can end up here:
+              // 1. After recovery, we did not get the beginning of the
+              // transaction.
+              // 2. We ignored all other operations for this transaction because
+              // the shard was dropped.
               if (!activeTransactions.contains(op.tid)) {
                 return Result{};
               }
