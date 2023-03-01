@@ -1,6 +1,9 @@
 devel
 -----
 
+* GORDO-1554: Fixes invalid document insertion with invalid user-specified
+  keys (e.g. numeric values) into EnterpriseGraph related vertices.
+
 * ES-1428: make the maximum number of V8 contexts depend on the maximum number
   of server threads, if `--javascript.v8-contexts` is not set explicitly. 
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
