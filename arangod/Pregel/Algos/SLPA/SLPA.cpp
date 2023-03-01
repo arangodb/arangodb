@@ -145,7 +145,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
         threshold(thr),
         maxCommunities(mc) {}
 
-  size_t estimatedVertexSize() const override { return sizeof(LPValue); }
+  size_t estimatedVertexSize() const override { return sizeof(SLPAValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
