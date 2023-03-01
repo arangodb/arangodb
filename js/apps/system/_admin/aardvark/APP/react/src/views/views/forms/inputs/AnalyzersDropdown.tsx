@@ -25,7 +25,6 @@ export const AnalyzersDropdown = ({
   const analyzers = useMemo(() => get(formState, "analyzers", [] as string[]), [
     formState
   ]);
-
   useEffect(() => {
     if (data) {
       const tempOptions = (data.body.result as { name: string }[]).map(
@@ -50,11 +49,6 @@ export const AnalyzersDropdown = ({
       },
       basePath
     });
-    setOptions(
-      options.filter(option => {
-        return option.value === analyzer;
-      })
-    );
   };
 
   const removeAnalyzer = (analyzer: string | number) => {
@@ -66,11 +60,6 @@ export const AnalyzersDropdown = ({
       },
       basePath
     });
-    setOptions(
-      options
-        .concat([{ value: analyzer.toString(), label: analyzer.toString() }])
-        .sort()
-    );
   };
   const newAnalyzers = analyzers.map(analyzer => {
     return { value: analyzer, label: analyzer };
