@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect, { OptionType } from "../../../../components/pure-css/form/CreatableMultiSelect";
+import CreatableMultiSelect, {
+  OptionType
+} from "../../../../components/pure-css/form/CreatableMultiSelect";
+import { escapeFieldDot } from "../../../../utils/fieldHelpers";
+import { LinkProperties, ViewContext } from "../../constants";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const match = useRouteMatch();
@@ -20,16 +24,47 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
 };
 
 export const FieldsDropdown = ({
-  fields,
-  removeField,
-  addField,
-  disabled
+  isDisabled,
+  basePath,
+  formState
 }: {
-  fields: { label: string; value: string }[];
-  removeField: (field: string | number) => void;
-  addField: (field: string | number) => void;
-  disabled: boolean | undefined;
+  basePath: string;
+  isDisabled: boolean;
+  formState: LinkProperties;
 }) => {
+  const viewContext = useContext(ViewContext);
+  const { dispatch } = viewContext;
+  const addField = (field: string | number) => {
+    const newField = escapeFieldDot(field);
+    dispatch({
+      type: "setField",
+      field: {
+        path: `fields[${newField}]`,
+        value: {}
+      },
+      basePath
+    });
+  };
+
+  const removeField = (field: string | number) => {
+    const newField = escapeFieldDot(field);
+    dispatch({
+      type: "unsetField",
+      field: {
+        path: `fields[${newField}]`
+      },
+      basePath
+    });
+  };
+
+  const fieldKeys = Object.keys(formState.fields || {});
+  const fields = fieldKeys.map(key => {
+    return {
+      label: key,
+      value: key
+    };
+  });
+
   return (
     <CreatableMultiSelect
       value={fields}
@@ -45,7 +80,7 @@ export const FieldsDropdown = ({
           addField((action.option as any).value as string);
         }
       }}
-      isDisabled={disabled}
+      isDisabled={isDisabled}
       placeholder={"Start typing to add a field."}
     />
   );

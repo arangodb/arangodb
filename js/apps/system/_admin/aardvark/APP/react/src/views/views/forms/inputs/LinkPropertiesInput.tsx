@@ -8,7 +8,6 @@ import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import ToolTip from "../../../../components/arango/tootip";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
-import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -32,44 +31,16 @@ const LinkPropertiesInput = ({
     });
   };
 
-  const addField = (field: string | number) => {
-    const newField = escapeFieldDot(field);
-    dispatch({
-      type: "setField",
-      field: {
-        path: `fields[${newField}]`,
-        value: {}
-      },
-      basePath
-    });
-  };
-
-  const removeField = (field: string | number) => {
-    const newField = escapeFieldDot(field);
-    dispatch({
-      type: "unsetField",
-      field: {
-        path: `fields[${newField}]`
-      },
-      basePath
-    });
-  };
 
   const storeIdValues = get(formState, 'storeValues') === 'id';
   const hideInBackgroundField = disabled || basePath.includes(".fields");
-  const fieldKeys = Object.keys(formState.fields || {});
-  const fields = fieldKeys.map(key => {
-    return {
-      label: key,
-      value: key
-    };
-  });
+
   return (
     <Grid>
       <Cell size={"1-2"}>
         <Grid>
           <Cell size={"1"} style={{ marginBottom: 24 }}>
-          <span
+            <span
               style={{
                 float: "left",
                 width: "84%"
@@ -93,10 +64,9 @@ const LinkPropertiesInput = ({
             >
               <label>Fields</label>
               <FieldsDropdown
-                fields={fields}
-                removeField={removeField}
-                addField={addField}
-                disabled={disabled}
+                basePath={basePath}
+                isDisabled={!!disabled}
+                formState={formState}
               />
             </span>
           </Cell>
