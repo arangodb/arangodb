@@ -29,13 +29,8 @@
 #include <numeric>
 
 #include "Futures/Utilities.h"
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
-#include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
-#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -159,11 +154,6 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
-            if (result.is(
-                    TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-              // In case the leader resigned, a fatal exit would be overkill.
-              return result;
-            }
             LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
                 << "Failed to commit replicated transaction locally: "
                 << result;
