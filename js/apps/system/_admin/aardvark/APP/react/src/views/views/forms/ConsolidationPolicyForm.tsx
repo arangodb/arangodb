@@ -148,7 +148,9 @@ const ConsolidationPolicyForm = ({
         Policy Type:
       </th>
       <th className="collectionTh">
-        <Select disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
+        <Select style={{
+          marginBottom: '10px'
+        }} disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
           <option key={'tier'} value={'tier'}>Tier</option>
           <option disabled key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
         </Select>

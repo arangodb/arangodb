@@ -17,12 +17,15 @@ export const ViewSection = ({
   formState: FormState;
   isAdminUser: boolean;
   state: State<FormState>;
-} & Pick<FormProps<FormState>, 'dispatch'>) => {
+} & Pick<FormProps<FormState>, "dispatch">) => {
   const [sectionRef, sectionSize] = useElementSize();
   const sectionWidth = sectionSize.width;
   const maxSize = sectionWidth - 200;
   const localStorageSplitPos = localStorage.getItem("splitPos") || "400";
-  const splitPos = parseInt(localStorageSplitPos, 10);
+  let splitPos = parseInt(localStorageSplitPos, 10);
+  if (splitPos > (sectionWidth - 200)) {
+    splitPos = sectionWidth - 200;
+  }
   return (
     <section ref={sectionRef}>
       <SplitPane
