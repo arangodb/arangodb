@@ -143,7 +143,7 @@ function MaxNumberOfConditionsSuite () {
             AQL_EXPLAIN(query, null, { maxDNFConditionMembers });
             fail();
           } catch (err) {
-            assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum, {maxDNFConditionMembers});
+            assertEqual(ERRORS.ERROR_QUERY_DNF_COMPLEXITY.code, err.errorNum, {maxDNFConditionMembers});
           }
         });
       } finally {

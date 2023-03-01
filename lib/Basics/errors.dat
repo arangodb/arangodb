@@ -32,13 +32,13 @@ ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detecte
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an Enterprise Edition feature is requested from the Community Edition."
 ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
-ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations failed"
+ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if ICU operations failed."
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
 ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 ERROR_STARTING_UP,38,"startup ongoing","Will be raised when a call cannot succeed because the server startup phase is still in progress."
-ERROR_DESERIALIZE,39,"error during deserialization","Will be raised when a data structure cannot be deserialized, e.g. because the input is invalid"
+ERROR_DESERIALIZE,39,"error during deserialization","Will be raised when a data structure cannot be deserialized, e.g. because the input is invalid."
 
 ################################################################################
 ## HTTP error status codes
@@ -252,6 +252,7 @@ ERROR_QUERY_INVALID_DATE_VALUE,1572,"invalid date value","Will be raised when a 
 ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL query contains more than one data-modifying operation."
 ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time","Will be raised when an AQL query contains OPTIONS that cannot be figured out at query compile time."
+ERROR_QUERY_DNF_COMPLEXITY,1576,"FILTER/PRUNE condition complexity is too high","Will be raised internally when a too complex FILTER/PRUNE condition is encountered during the DNF conversion of the condition."
 ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,1577,"could not use forced index hint","Will be raised when forceIndexHint is specified, and the hint cannot be used to serve the query."
 ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."

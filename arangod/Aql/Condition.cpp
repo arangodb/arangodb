@@ -843,7 +843,7 @@ AstNode* Condition::transformCondition(
     root = transformNodePostorder(root, conditionOptimization);
     root = fixRoot(root, 0);
   } catch (basics::Exception const& ex) {
-    if (ex.code() != TRI_ERROR_FAILED ||
+    if (ex.code() != TRI_ERROR_QUERY_DNF_COMPLEXITY ||
         conditionOptimization != ConditionOptimization::kAuto) {
       // any exceptions except the one for a too complex query condition
       // will simply be rethrown
@@ -1999,7 +1999,7 @@ AstNode* Condition::transformNodePostorder(
         // this will be handled by the callers, so that they will continue
         // with a simplified version of the condition (which may not be
         // usable for index lookups).
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_DNF_COMPLEXITY,
                                        "too complex query condition");
       }
 
