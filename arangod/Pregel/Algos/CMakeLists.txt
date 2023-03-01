@@ -1,22 +1,19 @@
-target_sources(arango_pregel PRIVATE
-  ConnectedComponents.cpp
-  HITS.cpp
-  HITSKleinberg.cpp
-  LabelPropagation.cpp
-  LineRank.cpp
-  PageRank.cpp
-  RecoveringPageRank.cpp
-  SCC.cpp
-  SLPA.cpp
-  SSSP.cpp
-  ShortestPath.cpp
-  WCC.cpp
-  ColorPropagation.cpp)
-
 if (USE_MAINTAINER_MODE)
-  target_sources(arango_pregel PRIVATE
-    ReadWrite.cpp)
+  add_subdirectory(ReadWrite)
 endif()
 
+add_subdirectory(ColorPropagation)
+add_subdirectory(ConnectedComponents)
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
+add_subdirectory(HITS)
+add_subdirectory(HITSKleinberg)
+add_subdirectory(LabelPropagation)
+add_subdirectory(LineRank)
+add_subdirectory(PageRank)
+add_subdirectory(RecoveringPageRank)
+add_subdirectory(SCC)
+add_subdirectory(ShortestPath)
+add_subdirectory(SLPA)
+add_subdirectory(SSSP)
+add_subdirectory(WCC)
