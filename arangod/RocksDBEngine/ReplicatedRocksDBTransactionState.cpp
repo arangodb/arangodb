@@ -196,9 +196,10 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
     auto leader = rtc.leaderState();
     replication2::LogIndex logIndex;
+    auto needsReplication = leader->needsReplication(operation);
     if ((rtc.accessType() != AccessMode::Type::READ ||
          !logs.contains(leader->gid.id)) &&
-        leader->needsReplication(operation)) {
+        needsReplication) {
       logs.insert(leader->gid.id);
       auto res = leader->replicateOperation(operation, options).get();
       if (res.fail()) {
@@ -209,9 +210,11 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     if (auto r = rtc.abortTransaction(); r.fail()) {
       return r;
     }
-    if (auto releaseRes = leader->release(id(), logIndex); releaseRes.fail()) {
-      LOG_CTX("0279d", ERR, leader->loggerContext)
-          << "Failed to call release: " << releaseRes;
+    if (needsReplication) {
+      if (auto releaseRes = leader->release(id(), logIndex); releaseRes.fail()) {
+        LOG_CTX("0279d", ERR, leader->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
     }
   }
 
