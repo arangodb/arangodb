@@ -12,7 +12,6 @@ declare var window: { [key: string]: any };
 
 type ButtonProps = {
   view: FormState;
-  modalCid?: string;
 };
 
 type NavButtonProps = {
@@ -126,8 +125,9 @@ export const SaveButton = ({
   </IconButton>;
 };
 
-export const DeleteButton = ({ view, modalCid }: ButtonProps) => {
+export const DeleteButton = ({ view }: ButtonProps) => {
   const [show, setShow] = useState(false);
+
 
   const handleDelete = async () => {
     try {
@@ -170,7 +170,7 @@ export const DeleteButton = ({ view, modalCid }: ButtonProps) => {
       <Modal
         show={show}
         setShow={setShow}
-        cid={modalCid}
+        cid={`modal-content-delete-${view.name}`}
       >
         <ModalHeader title={`Delete View ${view.name}?`}/>
         <ModalBody>

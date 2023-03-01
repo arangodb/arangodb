@@ -71,7 +71,6 @@ export const ViewHeader = ({
               )}
               <DeleteButton
                 view={formState}
-                modalCid={`modal-content-delete-${formState.globallyUniqueId}`}
               />
             </div>
           </div>
