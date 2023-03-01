@@ -17,7 +17,9 @@ const Option = (props: OptionProps<OptionType>) => {
 };
 const CreatableMultiSelect = (props: Props<OptionType>) => (
   <CreatableSelect
+    {...props}
     isMulti
+    menuPortalTarget={document.body}
     styles={{
       option: baseStyles => ({
         ...baseStyles,
@@ -35,7 +37,6 @@ const CreatableMultiSelect = (props: Props<OptionType>) => (
       Option,
       ...props.components
     }}
-    {...props}
   />
 );
 export default CreatableMultiSelect;

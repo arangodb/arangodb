@@ -88,7 +88,6 @@ export const AnalyzersDropdown = ({
           textOverflow: "ellipsis"
         })
       }}
-      menuPortalTarget={document.body}
       isDisabled={isDisabled}
       onChange={(_, action) => {
         if (action.action === "remove-value") {

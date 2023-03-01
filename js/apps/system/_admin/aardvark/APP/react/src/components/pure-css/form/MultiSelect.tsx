@@ -16,7 +16,9 @@ const Option = (props: OptionProps<OptionType>) => {
 };
 const MultiSelect = (props: Props<OptionType>) => (
   <Select
+    {...props}
     isMulti
+    menuPortalTarget={document.body}
     components={{
       ...props.components,
       Option
@@ -35,7 +37,6 @@ const MultiSelect = (props: Props<OptionType>) => (
         }
       })
     }}
-    {...props}
   />
 );
 export default MultiSelect;
