@@ -62,7 +62,6 @@ devel
   and `_to` parts. Lookups from the in-memory edge cache will not return
   compressed values but the full-length edge ids. The compressed values will
   also be used in memory only and will not be persisted on disk.
->>>>>>> aff4448a4f54c9e197f3616f683db9d0bfc31ca3
 
 * Updated ArangoDB Starter to 0.15.7.
 
