@@ -26,9 +26,7 @@
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// LineRank from "Centralities in Large Networks: Algorithms and Observations"
 /// 2011:
@@ -94,6 +92,4 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
 
   IAggregator* aggregator(std::string const& name) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos

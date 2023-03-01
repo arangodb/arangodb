@@ -23,7 +23,7 @@
 
 #include <cmath>
 #include "Basics/fasthash.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 #include "Pregel/GraphStore/Graph.h"
 
 using namespace arangodb::pregel;
