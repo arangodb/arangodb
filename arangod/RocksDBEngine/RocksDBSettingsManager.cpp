@@ -176,11 +176,15 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       // Collections which are marked as isAStub are not allowed to have
       // physicalCollections. Therefore, we cannot continue serializing in that
       // case.
-      if (!coll || coll->isAStub()) {
+      if (!coll) {
         continue;
       }
       auto sg2 = arangodb::scopeGuard(
           [&]() noexcept { vocbase->releaseCollection(coll.get()); });
+
+      if (coll->isAStub()) {
+        continue;
+      }
 
       LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
           << "syncing metadata for collection '" << coll->name() << "'";

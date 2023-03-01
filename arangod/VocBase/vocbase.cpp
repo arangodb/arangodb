@@ -1584,7 +1584,8 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
   _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>();
+      std::make_unique<arangodb::ReplicationClientsProgressTracker>(
+          _info.server().getFeature<ReplicationFeature>());
 
   // init collections
   _collections.reserve(32);

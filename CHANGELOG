@@ -1,6 +1,9 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Added metric `arangodb_replication_clients` showing the number of currently
+  active/connected replication clients for a server.
+
 * Improve memory usage of in-memory edge index cache if most of the edges in an
   index refer to a single or mostly the same collection.
   Previously the full edge ids, consisting of the the referred-to collection

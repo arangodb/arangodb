@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/debugging.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/SyncerId.h"
 #include "VocBase/Identifiers/ServerId.h"
 
@@ -67,7 +68,8 @@ struct ReplicationClientProgress {
 /// for a particular database
 class ReplicationClientsProgressTracker {
  public:
-  ReplicationClientsProgressTracker() = default;
+  explicit ReplicationClientsProgressTracker(ReplicationFeature& rf);
+
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   ~ReplicationClientsProgressTracker() = default;
 #else
@@ -189,6 +191,8 @@ class ReplicationClientsProgressTracker {
   }
 
  private:
+  ReplicationFeature& _feature;
+
   mutable basics::ReadWriteLock _lock;
 
   /// @brief mapping from (SyncerId | ClientServerId) -> progress
