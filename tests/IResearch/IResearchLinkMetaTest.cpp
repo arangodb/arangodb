@@ -727,15 +727,15 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   meta._analyzers.emplace_back(empty);
 
   // copy from meta
-  meta._fields["a"] = meta;
+  *meta._fields["a"] = meta;
   // do not inherit fields to match jSon inheritance
   meta._fields["a"]->_fields.clear();
   // copy from meta
-  meta._fields["b"] = meta;
+  *meta._fields["b"] = meta;
   // do not inherit fields to match jSon inheritance
   meta._fields["b"]->_fields.clear();
   // copy from meta
-  meta._fields["c"] = meta;
+  *meta._fields["c"] = meta;
   // do not inherit fields to match jSon inheritance
   meta._fields["c"]->_fields.clear();
   meta._fields["c"]->_fields["default"]->_analyzers.emplace_back(identity);
@@ -743,9 +743,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   auto& overrideAll = *meta._fields["c"]->_fields["all"];
 
   // initialize with parent, override below
-  auto& overrideSome = *(meta._fields["c"]->_fields["some"] = meta._fields["c"]);
+  auto& overrideSome = (*meta._fields["c"]->_fields["some"] = *meta._fields["c"]);
   // initialize with parent
-  auto& overrideNone = *(meta._fields["c"]->_fields["none"] = meta._fields["c"]);
+  auto& overrideNone = (*meta._fields["c"]->_fields["none"] = *meta._fields["c"]);
   meta._sort.emplace_back(
       {arangodb::basics::AttributeName(std::string_view("_key"), false)}, true);
   meta._sort.emplace_back(

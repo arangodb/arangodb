@@ -61,7 +61,7 @@ enum class ValueStorage : uint32_t {
 struct FieldMeta {
   // can't use FieldMeta as value type since it's incomplete type so far
   using Fields =
-      absl::flat_hash_map<std::string, UniqueHeapInstance<FieldMeta>>;
+      absl::flat_hash_map<std::string, std::unique_ptr<FieldMeta>>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)
