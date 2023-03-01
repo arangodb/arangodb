@@ -112,8 +112,9 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
   auto receiving_actor_id =
       runtimes[receiving_server]->template spawn<TrivialActor>(
           "database", TrivialState{.state = "foo"}, TrivialStart{});
-  auto receiving_actor =
-      ActorPID{.server = receiving_server, .id = receiving_actor_id};
+  auto receiving_actor = ActorPID{.server = receiving_server,
+                                  .database = "database",
+                                  .id = receiving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(

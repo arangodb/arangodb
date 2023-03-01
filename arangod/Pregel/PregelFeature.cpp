@@ -301,11 +301,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
                                SpawnMessages msg) {
   if (server == _actorRuntime->myServerID) {
-    std::visit(overloaded{[this, sender](auto&& arg) {
-                 _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{},
-                                                  arg);
-               }},
-               msg);
+    _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{}, msg);
   } else {
     _actorRuntime->dispatch(
         sender,

@@ -298,9 +298,12 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       "database", FinishingState{}, FinishingStart{});
 
-  runtime->dispatch(ActorPID{.server = serverID, .id = finishing_actor},
-                    ActorPID{.server = serverID, .id = finishing_actor},
-                    FinishingActor::Message{FinishingFinish{}});
+  runtime->dispatch(
+      ActorPID{
+          .server = serverID, .database = "database", .id = finishing_actor},
+      ActorPID{
+          .server = serverID, .database = "database", .id = finishing_actor},
+      FinishingActor::Message{FinishingFinish{}});
   // wait for actor to work off all messages
   while (not runtime->areAllActorsIdle()) {
   }
@@ -329,13 +332,20 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
   runtime->template spawn<FinishingActor>("database", FinishingState{},
                                           FinishingStart{});
 
-  runtime->dispatch(ActorPID{.server = serverID, .id = actor_to_be_finished},
-                    ActorPID{.server = serverID, .id = actor_to_be_finished},
+  runtime->dispatch(ActorPID{.server = serverID,
+                             .database = "database",
+                             .id = actor_to_be_finished},
+                    ActorPID{.server = serverID,
+                             .database = "database",
+                             .id = actor_to_be_finished},
                     FinishingActor::Message{FinishingFinish{}});
-  runtime->dispatch(
-      ActorPID{.server = serverID, .id = another_actor_to_be_finished},
-      ActorPID{.server = serverID, .id = another_actor_to_be_finished},
-      FinishingActor::Message{FinishingFinish{}});
+  runtime->dispatch(ActorPID{.server = serverID,
+                             .database = "database",
+                             .id = another_actor_to_be_finished},
+                    ActorPID{.server = serverID,
+                             .database = "database",
+                             .id = another_actor_to_be_finished},
+                    FinishingActor::Message{FinishingFinish{}});
   // wait for actor to work off all messages
   while (not runtime->areAllActorsIdle()) {
   }

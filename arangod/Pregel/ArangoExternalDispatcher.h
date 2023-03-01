@@ -72,13 +72,14 @@ struct ArangoExternalDispatcher {
     auto serialized = inspection::serializeWithErrorT(networkMessage);
     ADB_PROD_ASSERT(serialized.ok());
     auto builder = velocypack::Builder(serialized.get().slice());
-    return network::sendRequestRetry(
-        this->connectionPool,
-        // TODO: what about "shard:"?
-        std::string{"server:"} + receiver.server, fuerte::RestVerb::Post,
-        baseURL, builder.bufferRef(),
-        network::RequestOptions{.database = receiver.database,
-                                .timeout = timeout});
+    auto options = network::RequestOptions{};
+    options.database = receiver.database;
+    options.timeout = timeout;
+    return network::sendRequestRetry(this->connectionPool,
+                                     // TODO: what about "shard:"?
+                                     std::string{"server:"} + receiver.server,
+                                     fuerte::RestVerb::Post, baseURL,
+                                     builder.bufferRef(), options);
   }
 
   static auto errorHandling(arangodb::network::Response const& message)
