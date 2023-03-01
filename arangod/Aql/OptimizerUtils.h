@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
+#include "Aql/VarInfoMap.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
-#include "Aql/VarInfoMap.h"
 
 #include <cstdint>
 #include <memory>
