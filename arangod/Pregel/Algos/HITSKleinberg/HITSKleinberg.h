@@ -18,46 +18,46 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/SenderMessageFormat.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+/// The version of the algorithm according to
+/// J. Kleinberg, Authoritative sources in a hyperlinked environment,
+/// Journal of the ACM. 46 (5): 604–632, 1999,
+/// http://www.cs.cornell.edu/home/kleinber/auth.pdf.
 
-/// Finds strongly connected components of the graph.
-///
-/// 1. Each vertex starts with its vertex id as its "color".
-/// 2. Remove vertices which cannot be in a SCC (no incoming or no outgoing
-/// edges)
-/// 3. Propagate the color forward from each vertex, accept a neighbor's color
-/// if it's smaller than yours.
-///    At convergence, vertices with the same color represents all nodes that
-///    are visitable from the root of that color.
-/// 4. Reverse the graph.
-/// 5. Start at all roots, walk the graph. Visit a neighbor if it has the same
-/// color as you.
-///    All nodes visited belongs to the SCC identified by the root color.
+namespace arangodb::pregel::algos {
 
-struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
+struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
+                                              SenderMessage<double>> {
  public:
-  explicit HITS(application_features::ApplicationServer& server,
+  HITSKleinberg(application_features::ApplicationServer& server,
                 VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
-            server, "hits", userParams) {}
+      : SimpleAlgorithm<HITSKleinbergValue, int8_t, SenderMessage<double>>(
+            server, "HITSKleinberg", userParams) {
+    if (userParams.hasKey(Utils::maxNumIterations)) {
+      numIterations = userParams.get(Utils::maxNumIterations).getInt();
+    }
+    if (userParams.hasKey(Utils::maxGSS)) {
+      maxGSS = userParams.get(Utils::maxGSS).getInt();
+    }
+  }
 
-  [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] GraphFormat<HITSKleinbergValue, int8_t>* inputFormat()
+      const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
       const override {
     return new SenderMessageFormat<double>();
   }
 
-  VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
+  VertexComputation<HITSKleinbergValue, int8_t, SenderMessage<double>>*
   createComputation(WorkerConfig const*) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
@@ -66,7 +66,8 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
       VPackSlice userParams) const override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
+
+  size_t numIterations = 0;
+  size_t maxGSS = 0;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos

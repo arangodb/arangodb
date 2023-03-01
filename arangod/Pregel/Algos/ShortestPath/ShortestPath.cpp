@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Algos/ShortestPath.h"
+#include "Pregel/Algos/ShortestPath/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Worker/GraphStore.h"
