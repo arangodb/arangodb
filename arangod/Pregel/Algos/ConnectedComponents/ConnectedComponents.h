@@ -24,34 +24,32 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
-struct WCC
-    : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
+/// doesn't necessarily leads to a correct result on unidirected graphs
+struct ConnectedComponents
+    : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
-  explicit WCC(application_features::ApplicationServer& server,
-               VPackSlice userParams)
-      : SimpleAlgorithm(server, "wcc", userParams) {}
+  explicit ConnectedComponents(application_features::ApplicationServer& server,
+                               VPackSlice userParams)
+      : SimpleAlgorithm(server, "connectedcomponents", userParams) {}
 
-  GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
+  GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 
-  MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
-    return new SenderMessageFormat<uint64_t>();
+  MessageFormat<uint64_t>* messageFormat() const override {
+    return new IntegerMessageFormat<uint64_t>();
   }
-  MessageCombiner<SenderMessage<uint64_t>>* messageCombiner() const override {
-    return nullptr;
+  MessageCombiner<uint64_t>* messageCombiner() const override {
+    return new MinCombiner<uint64_t>();
   }
-  VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+  VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
+      WorkerConfig const*) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos

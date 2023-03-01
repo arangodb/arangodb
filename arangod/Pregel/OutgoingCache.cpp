@@ -24,11 +24,16 @@
 #include "Pregel/OutgoingCache.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPackWithErrorT.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
@@ -44,6 +49,7 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
