@@ -123,8 +123,32 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
               // transaction.
               // 2. We ignored all other operations for this transaction because
               // the shard was dropped.
-              if (!activeTransactions.contains(op.tid)) {
+              if (activeTransactions.erase(op.tid) == 0) {
                 return Result{};
+              }
+            } else if constexpr (std::is_same_v<
+                                     T, ReplicatedOperation::DropShard>) {
+              // Abort all transactions for this shard.
+              for (auto const& tid :
+                   transactionHandler->getTransactionsForShard(op.shard)) {
+                activeTransactions.erase(tid);
+                auto abortRes = transactionHandler->applyEntry(
+                    ReplicatedOperation::buildAbortOperation(tid));
+                if (abortRes.fail()) {
+                  LOG_CTX("3eb75", INFO, self->loggerContext)
+                      << "failed to abort transaction " << tid << " for shard "
+                      << op.shard << " during recovery: " << abortRes;
+                  return abortRes;
+                }
+                abortRes = basics::catchToResult([&]() {
+                  return self->_transactionManager.abortManagedTrx(
+                      tid.asLeaderTransactionId(), self->gid.database);
+                });
+                if (abortRes.fail()) {
+                  LOG_CTX("df8ad", INFO, self->loggerContext)
+                      << "failed to abort transaction " << tid << " for shard "
+                      << op.shard << " during recovery: " << abortRes;
+                }
               }
             }
             return transactionHandler->applyEntry(doc.operation);
@@ -319,7 +343,7 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
                                       std::shared_ptr<VPackBuilder> properties)
     -> futures::Future<Result> {
   auto op = ReplicatedOperation::buildCreateShardOperation(
-      std::move(shard), std::move(collectionId), std::move(properties));
+      shard, std::move(collectionId), std::move(properties));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -363,7 +387,7 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
 auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     -> futures::Future<Result> {
   ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(
-      std::move(shard), std::move(collectionId));
+      shard, std::move(collectionId));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -374,40 +398,47 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
   });
 
-  return std::move(fut).thenValue(
-      [self = shared_from_this(), op = std::move(op)](auto&& result) mutable {
-        if (result.fail()) {
-          return result.result();
+  return std::move(fut).thenValue([self = shared_from_this(),
+                                   shard = std::move(shard),
+                                   op = std::move(op)](auto&& result) mutable {
+    if (result.fail()) {
+      return result.result();
+    }
+    auto logIndex = result.get();
+
+    return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+
+      // TODO we clear snapshot here, to release the shard lock. This is
+      //   very invasive and aborts all snapshot transfers. Maybe there is
+      //   a better solution?
+      self->_snapshotHandler.getLockedGuard().get()->clear();
+
+      auto transactionHandler = data.core->getTransactionHandler();
+      self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
+        for (auto const& tid :
+             transactionHandler->getTransactionsForShard(shard)) {
+          activeTransactions.markAsInactive(tid);
         }
-        auto logIndex = result.get();
-
-        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
-          if (data.didResign()) {
-            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-          }
-
-          // TODO we clear snapshot here, to release the shard lock. This is
-          //   very invasive and aborts all snapshot transfers. Maybe there is
-          //   a better solution?
-          self->_snapshotHandler.getLockedGuard().get()->clear();
-
-          auto transactionHandler = data.core->getTransactionHandler();
-          auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
-          if (applyEntryRes.fail()) {
-            LOG_CTX("6865f", FATAL, self->loggerContext)
-                << "DropShard operation failed on the leader, after being "
-                   "replicated to followers: "
-                << applyEntryRes;
-            FATAL_ERROR_EXIT();
-          }
-
-          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-            LOG_CTX("6856b", ERR, self->loggerContext)
-                << "Failed to call release: " << releaseRes;
-          }
-          return {};
-        });
       });
+      auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
+      if (applyEntryRes.fail()) {
+        LOG_CTX("6865f", FATAL, self->loggerContext)
+            << "DropShard operation failed on the leader, after being "
+               "replicated to followers: "
+            << applyEntryRes;
+        FATAL_ERROR_EXIT();
+      }
+
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("6856b", ERR, self->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
+      return {};
+    });
+  });
 }
 
 template<class ResultType, class GetFunc, class ProcessFunc>

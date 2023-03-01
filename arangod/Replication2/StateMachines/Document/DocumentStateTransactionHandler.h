@@ -49,7 +49,8 @@ struct IDocumentStateTransactionHandler {
   [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation)
       -> Result = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
-  virtual void abortTransactionsForShard(ShardID const&) = 0;
+  virtual auto getTransactionsForShard(ShardID const&)
+      -> std::vector<TransactionId> = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
   [[nodiscard]] virtual auto validate(ReplicatedOperation operation) const
@@ -66,7 +67,8 @@ class DocumentStateTransactionHandler
   [[nodiscard]] auto applyEntry(ReplicatedOperation operation)
       -> Result override;
   void removeTransaction(TransactionId tid) override;
-  void abortTransactionsForShard(ShardID const&) override;
+  auto getTransactionsForShard(ShardID const&)
+      -> std::vector<TransactionId> override;
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
   [[nodiscard]] auto validate(ReplicatedOperation operation) const

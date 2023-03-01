@@ -184,7 +184,10 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
           return Result{};
         } else if constexpr (std::is_same_v<T,
                                             ReplicatedOperation::DropShard>) {
-          abortTransactionsForShard(op.shard);
+          auto transactions = getTransactionsForShard(op.shard);
+          TRI_ASSERT(transactions.empty())
+              << "Some transactions were not aborted before dropping shard "
+              << op.shard << ": " << transactions;
           return _shardHandler->dropShard(op.shard).result();
         } else {
           static_assert(always_false_v<T>,
@@ -211,19 +214,15 @@ auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
   return _transactions;
 }
 
-void DocumentStateTransactionHandler::abortTransactionsForShard(
-    ShardID const& sid) {
-  for (auto it = _transactions.begin(); it != _transactions.end();) {
-    auto const& [tid, trx] = *it;
-    if (it->second->containsShard(sid)) {
-      auto result = trx->abort();
-      ADB_PROD_ASSERT(result.ok())
-          << result.errorMessage();  // TODO error handling
-      it = _transactions.erase(it);
-    } else {
-      ++it;
+auto DocumentStateTransactionHandler::getTransactionsForShard(
+    ShardID const& sid) -> std::vector<TransactionId> {
+  std::vector<TransactionId> result;
+  for (auto const& [tid, trx] : _transactions) {
+    if (trx->containsShard(sid)) {
+      result.emplace_back(tid);
     }
   }
+  return result;
 }
 
 [[nodiscard]] auto DocumentStateTransactionHandler::validate(
