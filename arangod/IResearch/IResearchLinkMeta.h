@@ -33,6 +33,7 @@
 #include "utils/object_pool.hpp"
 
 #include "Containers.h"
+#include "Containers/NodeHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
@@ -59,9 +60,8 @@ enum class ValueStorage : uint32_t {
 };
 
 struct FieldMeta {
-  // can't use FieldMeta as value type since it's incomplete type so far
   using Fields =
-      absl::flat_hash_map<std::string, std::unique_ptr<FieldMeta>>;
+      containers::NodeHashMap<std::string, FieldMeta>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)
