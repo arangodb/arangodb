@@ -2894,6 +2894,12 @@ DECLARE_GAUGE(rocksdb_block_cache_capacity, uint64_t,
 DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
+#ifdef ARANGODB_ROCKSDB8
+DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
+              "rocksdb_block_cache_entries");
+DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
+              "rocksdb_block_cache_charge_per_entry");
+#endif
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
               "rocksdb_compaction_pending");
 DECLARE_GAUGE(rocksdb_compression_ratio_at_level0, uint64_t,
@@ -3102,6 +3108,25 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
+#ifdef ARANGODB_ROCKSDB8
+  auto const& tableOptions = _optionsProvider.getTableOptions();
+  if (tableOptions.block_cache != nullptr) {
+    auto const& cache = tableOptions.block_cache;
+    auto usage = cache->GetUsage();
+    auto entries = cache->GetOccupancyCount();
+    if (entries > 0) {
+      builder.add("rocksdb.block-cache-charge-per-entry",
+                  VPackValue(static_cast<uint64_t>(usage / entries)));
+    } else {
+      builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
+    }
+    builder.add("rocksdb.block-cache-entries", VPackValue(entries));
+  } else {
+    builder.add("rocksdb.block-cache-entries", VPackValue(0));
+    builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
+  }
+#endif
 
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
