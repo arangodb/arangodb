@@ -16,8 +16,6 @@ devel
     column family (in bytes).
   - `--rocksdb.blob-compression-type`: Compression algorithm to use for blob
     data in the documents column family.
-  - `--rocksdb.enable-blob-cache`: Enable caching of blobs in the block cache
-    for the documents column family.
   - `--rocksdb.enable-blob-garbage-collection`: Enable blob garbage collection
     during compaction in the documents column family. 
   - `--rocksdb.blob-garbage-collection-age-cutoff`: Age cutoff for garbage 
