@@ -1,5 +1,11 @@
 import { useEffect } from "react";
 
+/**
+ * This resets extra margin and padding present in these divs:
+ * - .resizeobserver.contentWrapper
+ * - #content
+ * Adds it back on unmount.
+ */
 export const useGlobalStyleReset = () => {
   useEffect(() => {
     const contentWrapper = document.querySelector(".contentWrapper");
