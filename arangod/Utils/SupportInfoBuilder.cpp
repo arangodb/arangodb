@@ -96,7 +96,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            });
   }
 
-  //  result.add("databases", VPackValue(VPackValueType::Array));
   for (auto const it : velocypack::ArrayIterator(infoSlice.get("databases"))) {
     result.openObject();
     for (auto const it : velocypack::ObjectIterator(it)) {
@@ -113,8 +112,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
 
     result.close();
   }
-
-  //  result.close();
 }
 
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
