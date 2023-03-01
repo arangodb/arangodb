@@ -27,7 +27,7 @@
 #include "Inspection/Types.h"
 #include "Pregel/Worker/Messages.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::message {
 
 struct SpawnStart {};
 template<typename Inspector>
@@ -36,7 +36,7 @@ auto inspect(Inspector& f, SpawnStart& x) {
 }
 struct SpawnWorker {
   actor::ActorPID conductor;
-  worker::CreateNewWorker message;
+  worker::message::CreateNewWorker message;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnWorker& x) {
@@ -53,4 +53,4 @@ auto inspect(Inspector& f, SpawnMessages& x) {
       arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
 }
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::message

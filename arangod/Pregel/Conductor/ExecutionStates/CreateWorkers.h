@@ -49,11 +49,12 @@ struct CreateWorkers : ExecutionState {
     function that needs to be used instead of the message function of the state
     interface.
    */
-  auto messages() -> std::unordered_map<ServerID, worker::CreateNewWorker>;
-  auto message() -> worker::WorkerMessages override {
-    return worker::WorkerMessages{};
+  auto messages()
+      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
   };
-  auto receive(actor::ActorPID sender, ConductorMessages message)
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 
   ConductorState& conductor;
@@ -61,7 +62,7 @@ struct CreateWorkers : ExecutionState {
   std::set<ServerID> respondedServers;
   uint64_t responseCount = 0;
   auto _workerSpecifications() const
-      -> std::unordered_map<ServerID, worker::CreateNewWorker>;
+      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
 };
 
 }  // namespace arangodb::pregel::conductor

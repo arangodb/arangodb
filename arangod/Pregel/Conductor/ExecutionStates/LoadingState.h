@@ -45,10 +45,10 @@ struct Loading : ExecutionState {
     // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
   }
   auto name() const -> std::string override { return "loading"; };
-  auto message() -> worker::WorkerMessages override {
-    return worker::WorkerMessages{};
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
   };
-  auto receive(actor::ActorPID sender, ConductorMessages message)
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override {
     return std::nullopt;
   };

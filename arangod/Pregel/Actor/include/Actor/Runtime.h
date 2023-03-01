@@ -133,7 +133,8 @@ struct Runtime
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto error =
+          message::ActorError{message::ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -196,7 +197,8 @@ struct Runtime
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else {
-      dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
+      dispatch(receiver, sender,
+               message::ActorError{message::ActorNotFound{.actor = receiver}});
     }
   }
 

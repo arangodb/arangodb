@@ -36,7 +36,7 @@
 
 namespace arangodb::pregel {
 
-namespace worker {
+namespace worker::message {
 
 struct CreateNewWorker {
   ExecutionSpecifications executionSpecifications;
@@ -65,7 +65,7 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<CreateNewWorker>("CreateWorker"));
 }
 
-}  // namespace worker
+}  // namespace worker::message
 
 struct GraphLoaded {
   ExecutionNumber executionNumber;
@@ -169,5 +169,5 @@ template<>
 struct fmt::formatter<arangodb::pregel::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::worker::CreateNewWorker>
+struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
     : arangodb::inspection::inspection_formatter {};

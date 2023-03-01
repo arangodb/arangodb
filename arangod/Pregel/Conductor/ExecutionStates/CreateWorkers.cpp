@@ -15,7 +15,7 @@ CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
 }
 
 auto CreateWorkers::messages()
-    -> std::unordered_map<ServerID, worker::CreateNewWorker> {
+    -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
   auto workerSpecifications = _workerSpecifications();
 
   auto servers = std::vector<ServerID>{};
@@ -28,14 +28,15 @@ auto CreateWorkers::messages()
   return workerSpecifications;
 }
 
-auto CreateWorkers::receive(actor::ActorPID sender, ConductorMessages message)
+auto CreateWorkers::receive(actor::ActorPID sender,
+                            message::ConductorMessages message)
     -> std::optional<std::unique_ptr<ExecutionState>> {
   if (not sentServers.contains(sender.server) or
-      not std::holds_alternative<ResultT<WorkerCreated>>(message)) {
+      not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
     // TODO return error state (GORDO-1553)
     return std::nullopt;
   }
-  auto workerCreated = std::get<ResultT<WorkerCreated>>(message);
+  auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
     // TODO return error state (GORDO-1553)
     return std::nullopt;
@@ -99,7 +100,7 @@ static void resolveInfo(
 }
 
 auto CreateWorkers::_workerSpecifications() const
-    -> std::unordered_map<ServerID, worker::CreateNewWorker> {
+    -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
   std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
@@ -116,11 +117,12 @@ auto CreateWorkers::_workerSpecifications() const
                 collectionPlanIdMap, edgeMap, shardList);
   }
 
-  auto createWorkers = std::unordered_map<ServerID, worker::CreateNewWorker>{};
+  auto createWorkers =
+      std::unordered_map<ServerID, worker::message::CreateNewWorker>{};
   for (auto const& [server, vertexShards] : vertexMap) {
     auto const& edgeShards = edgeMap[server];
     createWorkers.emplace(
-        server, worker::CreateNewWorker{
+        server, worker::message::CreateNewWorker{
                     .executionSpecifications = conductor._specifications,
                     .collectionSpecifications = CollectionSpecifications{
                         .vertexShards = std::move(vertexShards),

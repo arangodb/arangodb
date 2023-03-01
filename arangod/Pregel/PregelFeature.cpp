@@ -370,7 +370,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       vocbase.name(),
       std::make_unique<conductor::ConductorState>(executionSpecifications,
                                                   vocbase),
-      conductor::ConductorStart{});
+      conductor::message::ConductorStart{});
 
   return en;
 }

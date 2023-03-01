@@ -37,10 +37,10 @@ struct ConductorState;
 struct Initial : ExecutionState {
   Initial() = default;
   auto name() const -> std::string override { return "initial"; };
-  auto message() -> worker::WorkerMessages override {
-    return worker::WorkerMessages{};
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
   };
-  auto receive(actor::ActorPID sender, ConductorMessages message)
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override {
     return std::nullopt;
   };

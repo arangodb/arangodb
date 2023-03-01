@@ -36,7 +36,8 @@ namespace arangodb::pregel::conductor {
 
 template<typename Runtime>
 struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
-  void spawnActorOnServer(actor::ServerID server, SpawnMessages msg) {
+  void spawnActorOnServer(actor::ServerID server,
+                          pregel::message::SpawnMessages msg) {
     if (server == this->self.server) {
       std::visit(
           [this](auto&& arg) {
@@ -52,7 +53,8 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     }
   }
 
-  auto operator()(ConductorStart start) -> std::unique_ptr<ConductorState> {
+  auto operator()(message::ConductorStart start)
+      -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("5adb0", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor {} started with state {}", this->self, *this->state);
     this->state->_executionState =
@@ -67,14 +69,14 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         static_cast<CreateWorkers*>(this->state->_executionState.get());
     auto messages = createWorkers->messages();
     for (auto& [server, message] : messages) {
-      spawnActorOnServer(server,
-                         SpawnMessages{SpawnWorker{.conductor = this->self,
-                                                   .message = message}});
+      spawnActorOnServer(
+          server, pregel::message::SpawnMessages{pregel::message::SpawnWorker{
+                      .conductor = this->self, .message = message}});
     }
     return std::move(this->state);
   }
 
-  auto operator()(ResultT<WorkerCreated> start)
+  auto operator()(ResultT<message::WorkerCreated> start)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("17915", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Worker {} was created", this->sender);
@@ -87,7 +89,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Error - sent unknown message to {}",
@@ -95,7 +97,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound notFound)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("ea585", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Error - receiving actor {} not found",
@@ -103,7 +105,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::NetworkError notFound)
+  auto operator()(actor::message::NetworkError notFound)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("866d8", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Error - network error {}", notFound.message);

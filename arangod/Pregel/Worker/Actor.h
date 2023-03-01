@@ -30,7 +30,7 @@ namespace arangodb::pregel::worker {
 
 struct WorkerActor {
   using State = WorkerState;
-  using Message = WorkerMessages;
+  using Message = message::WorkerMessages;
   template<typename Runtime>
   using Handler = WorkerHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }

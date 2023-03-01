@@ -32,29 +32,29 @@ namespace arangodb::pregel::worker {
 
 template<typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
-  auto operator()(WorkerStart start) -> std::unique_ptr<WorkerState> {
+  auto operator()(message::WorkerStart start) -> std::unique_ptr<WorkerState> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
-    this->template dispatch<conductor::ConductorMessages>(
-        this->state->conductor, ResultT<conductor::WorkerCreated>{});
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
     return std::move(this->state);
   }
 
-  auto operator()(actor::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<WorkerState> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound notFound)
       -> std::unique_ptr<WorkerState> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
-  auto operator()(actor::NetworkError notFound)
+  auto operator()(actor::message::NetworkError notFound)
       -> std::unique_ptr<WorkerState> {
     LOG_TOPIC("1c3d9", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - network error {}", notFound.message);

@@ -30,7 +30,7 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorActor {
   using State = ConductorState;
-  using Message = ConductorMessages;
+  using Message = message::ConductorMessages;
   template<typename Runtime>
   using Handler = ConductorHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
