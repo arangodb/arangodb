@@ -606,7 +606,7 @@ auto document::supervision::executeCheckCollectionGroup(
     return envelope;
   } else if (std::holds_alternative<NoActionPossible>(action)) {
     // TODO remove logging later?
-    LOG_TOPIC("33547", WARN, Logger::SUPERVISION)
+    LOG_TOPIC("33547", DEBUG, Logger::SUPERVISION)
         << "no progress possible for collection group " << database << "/"
         << group.target.id << ": " << std::get<NoActionPossible>(action).reason;
     return envelope;

@@ -101,8 +101,8 @@ Result DBServerAgencySync::getLocalCollections(
     }
 
     {
-      auto [it, created] = replLogs.try_emplace(
-          dbname, vocbase.getReplicatedStatesQuickStatus());
+      auto [it, created] =
+          replLogs.try_emplace(dbname, vocbase.getReplicatedLogsStatusMap());
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";

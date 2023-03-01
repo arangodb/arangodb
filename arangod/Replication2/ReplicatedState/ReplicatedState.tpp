@@ -983,10 +983,6 @@ auto ReplicatedState<S>::buildCore(
           << gid << ". " << ex.what() << " json = " << coreParameter->toJson();
       throw;
     }
-    PersistedStateInfo info;
-    info.stateId = gid.id;
-    info.specification.type = S::NAME;
-    info.specification.parameters = *coreParameter;
     return factory->constructCore(vocbase, gid, std::move(params));
   }
 }

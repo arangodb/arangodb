@@ -99,6 +99,8 @@ auto DocumentStateShardHandler::isShardAvailable(const ShardID& shard) -> bool {
 auto DocumentStateShardHandler::executeCreateCollectionAction(
     ShardID shard, CollectionID collection,
     std::shared_ptr<VPackBuilder> properties) -> Result {
+  namespace maintenance = arangodb::maintenance;
+
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
           {maintenance::NAME, maintenance::CREATE_COLLECTION},
@@ -120,6 +122,8 @@ auto DocumentStateShardHandler::executeCreateCollectionAction(
 
 auto DocumentStateShardHandler::executeDropCollectionAction(
     ShardID shard, CollectionID collection) -> Result {
+  namespace maintenance = arangodb::maintenance;
+
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
           {maintenance::NAME, maintenance::DROP_COLLECTION},

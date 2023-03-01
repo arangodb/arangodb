@@ -139,9 +139,25 @@ struct arangodb::VocBaseLogManager {
   void registerReplicatedState(
       replication2::LogId id,
       std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>) {
-    ADB_PROD_ASSERT(false) << "register not yet implemented";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          arangodb::replication2::replicated_state::IStorageEngineMethods>
+          methods) {
+    auto meta = methods->readMetadata();
+    if (meta.fail()) {
+      THROW_ARANGO_EXCEPTION(meta.result());
+    }
+
+    auto& feature = _server.getFeature<
+        replication2::replicated_state::ReplicatedStateAppFeature>();
+
+    auto result =
+        _guardedData.getLockedGuard()->buildReplicatedStateWithMethods(
+            id, meta->specification.type,
+            meta->specification.parameters->slice(), feature,
+            _logContext.withTopic(Logger::REPLICATED_STATE), _server, _vocbase,
+            std::move(methods));
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
   }
 
   auto resignAll() noexcept {
@@ -161,9 +177,12 @@ struct arangodb::VocBaseLogManager {
       arangodb::replication2::agency::ParticipantsConfig const& config)
       -> Result {
     auto guard = _guardedData.getLockedGuard();
+    auto myself = replication2::agency::ServerInstanceReference(
+        ServerState::instance()->getId(),
+        ServerState::instance()->getRebootId());
     if (auto iter = guard->statesAndLogs.find(id);
         iter != guard->statesAndLogs.end()) {
-      iter->second.log->updateConfig(term, config)
+      iter->second.log->updateConfig(term, config, std::move(myself))
           .thenFinal([&voc = _vocbase](auto&&) {
             voc.server().getFeature<ClusterFeature>().addDirty(voc.name());
           });
@@ -241,15 +260,15 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
-  [[nodiscard]] auto getReplicatedLogsQuickStatus() const -> std::unordered_map<
-      arangodb::replication2::LogId,
-      arangodb::replication2::replicated_log::QuickLogStatus> {
+  [[nodiscard]] auto getReplicatedLogsStatusMap() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::maintenance::LogStatus> {
     std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>
+                       arangodb::replication2::maintenance::LogStatus>
         result;
     auto guard = _guardedData.getLockedGuard();
     for (auto& [id, value] : guard->statesAndLogs) {
-      result.emplace(id, value.log->getQuickStatus());
+      result.emplace(id, value.log->getMaintenanceLogStatus());
     }
     return result;
   }
@@ -313,39 +332,21 @@ struct arangodb::VocBaseLogManager {
     std::map<arangodb::replication2::LogId, StateAndLog> statesAndLogs;
     bool resignAllWasCalled{false};
 
-    void registerRebootTracker(
-        replication2::LogId id,
-        replication2::agency::ServerInstanceReference myself,
-        ArangodServer& server, TRI_vocbase_t& vocbase) {
-      auto& rbt =
-          server.getFeature<ClusterFeature>().clusterInfo().rebootTracker();
-
-      if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
-        iter->second.rebootTrackerGuard = rbt.callMeOnChange(
-            {myself.serverId, myself.rebootId},
-            [log = iter->second.log, id, &vocbase, &server] {
-              auto myself = replication2::agency::ServerInstanceReference(
-                  ServerState::instance()->getId(),
-                  ServerState::instance()->getRebootId());
-              log->updateMyInstanceReference(myself);
-              vocbase._logManager->_guardedData.getLockedGuard()
-                  ->registerRebootTracker(id, myself, server, vocbase);
-            },
-            "update reboot id in replicated log");
-      }
-    }
-
-    auto buildReplicatedState(
+    auto buildReplicatedStateWithMethods(
         replication2::LogId const id, std::string_view type,
         VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase)
+        TRI_vocbase_t& vocbase,
+        std::unique_ptr<
+            arangodb::replication2::replicated_state::IStorageEngineMethods>
+            storage)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>> try {
-      // TODO Make this atomic without crashing on errors if possible
       using namespace arangodb::replication2;
       using namespace arangodb::replication2::replicated_state;
+      // TODO Make this atomic without crashing on errors if possible
+
       if (resignAllWasCalled) {
         return {TRI_ERROR_SHUTTING_DOWN};
       }
@@ -361,36 +362,12 @@ struct arangodb::VocBaseLogManager {
       // ---- from now on no errors are allowed
       // 3. forward storage interface to replicated state
       // 4. start up with initial configuration
-      StorageEngine& engine =
-          server.getFeature<EngineSelectorFeature>().engine();
 
       LOG_CTX("ef73d", DEBUG, logContext)
           << "building new replicated state " << id << " impl = " << type;
 
       // prepare map
       auto stateAndLog = StateAndLog{};
-      std::unique_ptr<replicated_state::IStorageEngineMethods> storage;
-      {
-        VPackBufferUInt8 buffer;
-        buffer.append(parameters.start(), parameters.byteSize());
-        auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
-
-        auto metadata = PersistedStateInfo{
-            .stateId = id,
-            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
-                         .timestamp = {},
-                         .error = {}},
-            .generation = {},
-            .specification = {.type = std::string(type),
-                              .parameters = std::move(parametersCopy)},
-        };
-        auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
-
-        if (maybeStorage.fail()) {
-          return std::move(maybeStorage).result();
-        }
-        storage = std::move(*maybeStorage);
-      }
 
       struct NetworkFollowerFactory
           : replication2::replicated_log::IAbstractFollowerFactory {
@@ -474,16 +451,21 @@ struct arangodb::VocBaseLogManager {
 
       stateAndLog.connection = log->connect(std::move(stateHandle));
 
-      auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
-      server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogCreationNumber->count();
-      registerRebootTracker(id, myself, server, vocbase);
+      auto emplaceResult = statesAndLogs.emplace(id, std::move(stateAndLog));
+      auto [iter, inserted] = emplaceResult;
+      ADB_PROD_ASSERT(inserted);
       auto metrics = server.getFeature<ReplicatedLogFeature>().metrics();
       metrics->replicatedLogNumber->fetch_add(1);
       metrics->replicatedLogCreationNumber->count();
 
-      return iter.first->second.state;
+      return iter->second.state;
+    } catch (basics::Exception& ex) {
+      // If we created the state on-disk, but failed to add it to the map, we
+      // cannot continue safely.
+      LOG_TOPIC("35db0", FATAL, Logger::REPLICATION2)
+          << "Failed to create replicated state: " << ex.message()
+          << ", thrown at " << ex.location();
+      std::abort();
     } catch (std::exception& ex) {
       // If we created the state on-disk, but failed to add it to the map, we
       // cannot continue safely.
@@ -492,6 +474,45 @@ struct arangodb::VocBaseLogManager {
       std::abort();
     } catch (...) {
       std::abort();
+    }
+
+    auto buildReplicatedState(
+        replication2::LogId const id, std::string_view type,
+        VPackSlice parameters,
+        replication2::replicated_state::ReplicatedStateAppFeature& feature,
+        LoggerContext const& logContext, ArangodServer& server,
+        TRI_vocbase_t& vocbase)
+        -> ResultT<std::shared_ptr<
+            replication2::replicated_state::ReplicatedStateBase>> {
+      using namespace arangodb::replication2;
+      using namespace arangodb::replication2::replicated_state;
+      StorageEngine& engine =
+          server.getFeature<EngineSelectorFeature>().engine();
+
+      {
+        VPackBufferUInt8 buffer;
+        buffer.append(parameters.start(), parameters.byteSize());
+        auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
+
+        auto metadata = PersistedStateInfo{
+            .stateId = id,
+            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
+                         .timestamp = {},
+                         .error = {}},
+            .generation = {},
+            .specification = {.type = std::string(type),
+                              .parameters = std::move(parametersCopy)},
+        };
+        auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
+
+        if (maybeStorage.fail()) {
+          return std::move(maybeStorage).result();
+        }
+
+        return buildReplicatedStateWithMethods(id, type, parameters, feature,
+                                               logContext, server, vocbase,
+                                               std::move(*maybeStorage));
+      }
     }
   };
   Guarded<GuardedData> _guardedData;
@@ -2232,9 +2253,9 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
   }
 }
 
-auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
-    -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
-  return _logManager->getReplicatedLogsQuickStatus();
+auto TRI_vocbase_t::getReplicatedLogsStatusMap() const
+    -> std::unordered_map<LogId, maintenance::LogStatus> {
+  return _logManager->getReplicatedLogsStatusMap();
 }
 
 auto TRI_vocbase_t::getReplicatedStatesStatus() const

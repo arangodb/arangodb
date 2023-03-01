@@ -310,3 +310,12 @@ struct GlobalStatus {
 auto to_string(GlobalStatus::SpecificationSource source) -> std::string_view;
 
 }  // namespace arangodb::replication2::replicated_log
+
+namespace arangodb::replication2::maintenance {
+
+struct LogStatus {
+  arangodb::replication2::replicated_log::QuickLogStatus status;
+  arangodb::replication2::agency::ServerInstanceReference server;
+};
+
+}  // namespace arangodb::replication2::maintenance

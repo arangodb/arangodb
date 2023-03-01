@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Exceptions.tpp"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Logger/LogContextKeys.h"
@@ -53,8 +54,10 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     return iter->second.factory->createReplicatedState(
         std::move(gid), std::move(log), std::move(lc), iter->second.metrics);
   }
-  THROW_ARANGO_EXCEPTION(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
+  using namespace fmt::literals;
+  throw basics::Exception::fmt(
+      ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,
+      "type"_a = name);
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
