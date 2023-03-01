@@ -51,6 +51,11 @@
     let withView = {};
     let plainView = {};
     let testAnalyzers = {};
+    let defaultAnalyzer = null;
+
+    function createDefaultAnalyzer() {
+      defaultAnalyzer = analyzers.save("geo_json", analyzerType, analyzerDefinition, ["frequency", "norm", "position"]);
+    }
 
     function makePolyInside(lon, lat) {
       // lon and lat are longitude and latitude ranges
@@ -84,7 +89,7 @@
       viewName = plainView[basename].name();
       analyzerName = testAnalyzers[basename].name();
     }
-    function createCollectionSet(basename) {
+    function createCollectionSet(basename, theanalyzer) {
       let collWithoutIndex = "UnitTestsGeoWithoutIndex";
       let collWithIndex = "UnitTestsGeoWithIndex";
       let collWithView = "UnitTestsGeoWithView";
@@ -93,7 +98,7 @@
       withIndex[basename] = db._create(basename + '_' + collWithIndex);
       withIndex[basename].ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView[basename] = db._create(basename + '_' + collWithView);
-      testAnalyzers[basename] = analyzers.save(basename + "_geo_json", analyzerType, analyzerDefinition, ["frequency", "norm", "position"]);
+      testAnalyzers[basename] = theanalyzer;
 
       withIndex[basename].save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       withView[basename].save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
@@ -152,9 +157,9 @@
         plainView[basename] = db._createView(basename + '_' + viewName, "arangosearch", meta);
       }
     }
-    function insertAll(name, x) {
+    function insertAll(name, theAnalyzer, x) {
       if (!noIndex.hasOwnProperty(name)) {
-        createCollectionSet(name);
+        createCollectionSet(name, theAnalyzer);
       }
 
       for (let i = 0; i < x.length; ++i) {
@@ -262,11 +267,11 @@
     }
 
     function createOnePolygon() {
-      insertAll('createOnePolygon', [{geo: { type: "Point", coordinates: [50, 50] } }]);
+      insertAll('createOnePolygon', defaultAnalyzer, [{geo: { type: "Point", coordinates: [50, 50] } }]);
     }
     function createTwoPolygons() {
       // Centroid will be at approx. [7,10]
-      insertAll('createTwoPolygons', [
+      insertAll('createTwoPolygons', defaultAnalyzer, [
         {geo:{type:"Polygon",
               coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
         {geo:{type:"Polygon",
@@ -274,7 +279,7 @@
       ]);
     }
     function createThreePolygons() {
-      insertAll('createThreePolygons', [
+      insertAll('createThreePolygons', defaultAnalyzer, [
         {geo:{type:"Polygon",
               coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,10]]]}},
         {geo:{type:"Polygon",
@@ -294,27 +299,27 @@
           points.push({ geo: { type: "Point",
                                coordinates: [lat + x/1000, long + y/1000] } });
         }
-        insertAll(name, points);
+        insertAll(name, defaultAnalyzer, points);
       }
-      insertAll(name, [{ geo: { "type": "Polygon", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "Polygon", "coordinates": [
         [[ 37.614323, 55.705898 ],
          [ 37.615825, 55.705898 ],
          [ 37.615825, 55.70652  ],
          [ 37.614323, 55.70652  ],
          [ 37.614323, 55.705898 ]]
       ]}}]);
-      insertAll(name, [{ geo: {"type": "LineString", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: {"type": "LineString", "coordinates": [
         [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
                         }}]);
-      insertAll(name, [{ geo: { "type": "MultiLineString", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiLineString", "coordinates": [
         [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
         [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
       ]}}]);
-      insertAll(name, [{ geo: { "type": "MultiPoint", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPoint", "coordinates": [
         [ 6.537, 50.332 ], [ 6.537, 50.376 ],
         [ 6.621, 50.332 ], [ 6.621, 50.376 ]
       ]}}]);
-      insertAll(name, [{ geo: { "type": "MultiPolygon", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPolygon", "coordinates": [
         [[[ 37.614323, 55.705898 ],
           [ 37.615825, 55.705898 ],
           [ 37.615825, 55.70652  ],
@@ -334,13 +339,13 @@
         for (let lon = 9; lon <= 21; lon += 0.1) {
           l.push({geo:{type:"Point", coordinates:[lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     function createNarrowGrid() {
@@ -358,13 +363,13 @@
             centroid: {type: "Point", coordinates: [lon, 10]}
           });
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     function createNearSlidingObject() {
@@ -382,13 +387,13 @@
             centroid: {type: "Point", coordinates: [lon, 10]}
           });
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     function createLargeGrid() {
@@ -398,13 +403,13 @@
         for (let lon = 90; lon <= 100; lon += 1) {
           l.push({geo: {type: "Point", coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     function createSuperLargeGrid() {
@@ -414,20 +419,20 @@
         for (let lon = 175; lon < 180; lon += 1) {
           l.push({geo:{type:"Point", coordinates:[lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
         for (let lon = -179; lon <= -170; lon += 1) {
           l.push({geo:{type:"Point", coordinates:[lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     function createBiggestGrid() {
@@ -437,20 +442,20 @@
         for (let lon = 175; lon < 180; lon += 1) {
           l.push({geo:{type:"Point", coordinates:[lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
         for (let lon = -179; lon <= -170; lon += 1) {
           l.push({geo:{type:"Point", coordinates:[lon, lat]}});
           if (l.length % 1000 === 0) {
-            insertAll(name, l);
+            insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
       }
       if (l.length > 0) {
-        insertAll(name, l);
+        insertAll(name, defaultAnalyzer, l);
       }
     }
     return {
@@ -464,6 +469,7 @@
         //db._drop(collWithoutIndex);
         //db._drop(collWithIndex);
         //db._drop(collWithView);
+        createDefaultAnalyzer();
         createOnePolygon();
         createTwoPolygons();
         createThreePolygons();
@@ -487,7 +493,10 @@
         Object.keys(noIndex).forEach(key => { noIndex[key].drop(); });
         Object.keys(withIndex).forEach(key => { withIndex[key].drop(); });
         Object.keys(testAnalyzers).forEach(key => {
-          analyzers.remove(testAnalyzers[key].name(), true); });
+          if (testAnalyzers[key].name() !== defaultAnalyzer.name()) {
+            analyzers.remove(testAnalyzers[key].name(), true);
+          }});
+        analyzers.remove(defaultAnalyzer.name(), true);
       },
 
       ////////////////////////////////////////////////////////////////////////////////
