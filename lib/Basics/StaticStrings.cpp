@@ -48,7 +48,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::TimeString("_time");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
@@ -356,6 +355,7 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeight("weight");
 std::string const StaticStrings::GraphQueryWeights("weights");
 std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");

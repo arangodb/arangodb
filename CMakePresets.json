@@ -124,6 +124,15 @@
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
+      "name": "enterprise-pr",
+      "inherits": [
+        "pr",
+        "maintainer",
+        "enterprise"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition"
+    },
+    {
       "name": "community-pr-arm",
       "inherits": [
         "pr-arm",
@@ -162,6 +171,16 @@
       "name": "enterprise-developer-asan-ubsan",
       "inherits": [ "asan-ubsan", "enterprise-developer" ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "community-developer-coverage",
+      "inherits": [ "gcov", "community-developer" ],
+      "displayName": "Build ArangoDB Community Edition (Coverage Build)"
+    },
+    {
+      "name": "enterprise-developer-coverage",
+      "inherits": [ "gcov", "enterprise-developer" ],
+      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build)"
     }
   ],
   "buildPresets": [
@@ -186,6 +205,10 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
+    },
+    {
       "name": "community-pr-arm",
       "configurePreset": "community-pr-arm"
     },
@@ -204,6 +227,14 @@
     {
       "name": "enterprise-developer-asan-ubsan",
       "configurePreset": "enterprise-developer-asan-ubsan"
+    },
+    {
+      "name": "community-developer-coverage",
+      "configurePreset": "community-developer-coverage"
+    },
+    {
+      "name": "enterprise-developer-coverage",
+      "configurePreset": "enterprise-developer-coverage"
     }
   ],
   "testPresets": [
@@ -218,6 +249,10 @@
     {
       "name": "community-pr",
       "configurePreset": "community-pr"
+    },
+    {
+      "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
     }
   ]
 }

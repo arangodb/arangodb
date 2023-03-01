@@ -35,11 +35,14 @@ class ServerSecurityFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  bool isRestApiHardened() const;
-  bool isFoxxApiDisabled() const;
-  bool isFoxxStoreDisabled() const;
-  bool canAccessHardenedApi() const;
-  bool foxxAllowInstallFromRemote() const;
+  // disable Foxx API. must only be called during server startup
+  void disableFoxxApi() noexcept;
+
+  bool isRestApiHardened() const noexcept;
+  bool isFoxxApiDisabled() const noexcept;
+  bool isFoxxStoreDisabled() const noexcept;
+  bool canAccessHardenedApi() const noexcept;
+  bool foxxAllowInstallFromRemote() const noexcept;
 
  private:
   bool _enableFoxxApi;

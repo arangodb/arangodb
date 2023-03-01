@@ -117,11 +117,10 @@ TEST(ActorMPSCQueue, threads_push_stuff_comes_out) {
     while (true) {
       auto rcv = queue.pop();
       if (rcv != nullptr) {
-        auto msg = rcv.release();
-        receivedIds[msg->threadId][msg->messageId] = true;
+        receivedIds[rcv->threadId][rcv->messageId] = true;
         counter++;
 
-        ASSERT_LT(msg->threadId, numberThreads);
+        ASSERT_LT(rcv->threadId, numberThreads);
         ASSERT_LE(counter, numberThreads * numberMessages);
 
         if (counter == numberThreads * numberMessages) {
