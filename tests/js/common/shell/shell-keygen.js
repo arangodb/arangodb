@@ -1505,14 +1505,14 @@ function KeyGenerationLocationSmartGraphSuite() {
   };
 }
 
-// jsunity.run(TraditionalSuite);
-// jsunity.run(AutoIncrementSuite);
-// jsunity.run(AllowUserKeysSuite);
-// jsunity.run(PersistedLastValueSuite);
+jsunity.run(TraditionalSuite);
+jsunity.run(AutoIncrementSuite);
+jsunity.run(AllowUserKeysSuite);
+jsunity.run(PersistedLastValueSuite);
 
 if (isServer) {
   if (internal.debugCanUseFailAt()) {
-    // jsunity.run(KeyGenerationLocationSuite);
+    jsunity.run(KeyGenerationLocationSuite);
   }
   if (isEnterprise && internal.debugCanUseFailAt()) {
     jsunity.run(KeyGenerationLocationSmartGraphSuite);
