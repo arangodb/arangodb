@@ -2895,10 +2895,10 @@ DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
 #ifdef ARANGODB_ROCKSDB8
-DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
-              "rocksdb_block_cache_entries");
-DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
-              "rocksdb_block_cache_charge_per_entry");
+// DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
+//                    "rocksdb_block_cache_entries");
+// DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
+//                    "rocksdb_block_cache_charge_per_entry");
 #endif
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
               "rocksdb_compaction_pending");
