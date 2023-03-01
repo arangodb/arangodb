@@ -22,11 +22,9 @@ export class GraphView extends React.Component {
         graphName={this.props.graphName}
         graphData={this.props.data}
         responseDuration={this.props.responseDuration}
-        nodesColorAttributes={this.props.nodesColorAttributes}
         onChangeGraphData={(newGraphData) => {
           this.props.onChangeGraphData(newGraphData);
         }}
-        onLoadFullGraph={() => this.props.onLoadFullGraph}
         onGraphDataLoaded={(newGraphData, responseTimesObject) => {
           this.props.onGraphDataLoaded({newGraphData, responseTimesObject})}}
       />

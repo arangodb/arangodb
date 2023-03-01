@@ -9,7 +9,6 @@ import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
-import { HelpModal } from "./HelpModal";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
 import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
 import ParameterNodeColor from "./ParameterNodeColor";
@@ -19,16 +18,13 @@ import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
-import SearchNodes from "./SearchNodes";
-import SearchEdges from "./SearchEdges";
 import AccordionView from './components/Accordion/Accordion';
 import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onChangeGraphData, onLoadFullGraph, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [open, toggleDrawer] = useState(false);
 
@@ -60,11 +56,11 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         <br />
         <ParameterNodeColor />
         <br />
-        <ParameterNodeLabelByCollection graphData={graphData} />
+        <ParameterNodeLabelByCollection />
         <br />
         <ParameterNodeColorByCollection />
         <br />
-        <ParameterNodeColorAttribute nodesColorAttributes={nodesColorAttributes} />
+        <ParameterNodeColorAttribute />
         <br />
         <ParameterNodeSizeByEdges />
         <br />
@@ -83,7 +79,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         <br />
         <ParameterEdgeColorByCollection />
         <br />
-        <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
+        <ParameterEdgeColorAttribute />
         <br />
         <EdgeStyleSelector />
       </>)
@@ -107,7 +103,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
               onClick={() => {
                 let canvas = document.getElementsByTagName('canvas')[0];
                 
-                // set canvas nackground to white for screenshot download
+                // set canvas background to white for screenshot download
                 let context = canvas.getContext("2d");
                 context.globalCompositeOperation = "destination-over";
                 context.fillStyle = '#ffffff';
@@ -157,21 +153,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
                 'background': '#fff',
                 'border': 0
               }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
-            </button>
-          </ToolTip>
-
-          <ToolTip
-            title={"Get instructions and support on how to use the graph viewer"}
-            setArrow={true}
-          >
-            <button
-              onClick={() => {
-                setShowHelpModal(true);
-              }}
-              style={{
-                'background': '#fff',
-                'border': 0
-              }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
             </button>
           </ToolTip>
         
@@ -232,13 +213,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
           />
         </div>
       </Drawer>
-      <HelpModal
-        shouldShow={showHelpModal}
-        onRequestClose={() => {
-          setShowHelpModal(false);
-        }}
-      >
-      </HelpModal>
       {isLoadingData ? "Loading..." : null}
     </>
   );

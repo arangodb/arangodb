@@ -3,7 +3,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import ToolTip from '../../components/arango/tootip';
 
-const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }) => {
+const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabelByCollection, setNodeLabelByCollection] = useState(urlParameters.nodeLabelByCollection);
 

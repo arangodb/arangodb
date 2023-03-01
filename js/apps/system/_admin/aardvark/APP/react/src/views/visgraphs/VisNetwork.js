@@ -21,8 +21,12 @@ const VisNetwork = ({graphData, graphName, options}) => {
 		const network =
 			visJsRef.current &&
 			new Network(visJsRef.current, { nodes, edges }, layoutOptions );
+		
+		network.on("stabilizationIterationsDone", function () {
+			network.setOptions({ physics: false });
+		});
 	}, [visJsRef, nodes, edges, layoutOptions]);
-	
+
 	return <>
 		<div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '100%', background: '#fff' }} />
 	</>;

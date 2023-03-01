@@ -3,7 +3,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
-const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
+const ParameterEdgeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
 
