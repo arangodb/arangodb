@@ -118,8 +118,11 @@ void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
   if (_telemetricsResponse.ok()) {
     builder.add(_telemetricsResult.slice());
   } else {
-    builder.add("errorNum", _telemetricsResponse.errorNumber());
-    builder.add("errorMessage", _telemetricsResponse.errorMessage());
+    builder.openObject();
+    builder.add("errorNum", VPackValue(_telemetricsResponse.errorNumber()));
+    builder.add("errorMessage",
+                VPackValue(_telemetricsResponse.errorMessage()));
+    builder.close();
   }
 }
 

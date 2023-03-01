@@ -105,7 +105,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
       // from the coordinator and not add the database name to the result for
       // privacy reasons
       if (name == "name") {
-        result.add("numViews", VPackValue(dbViews[it.value.stringView()]));
+        result.add("nViews", VPackValue(dbViews[it.value.stringView()]));
       } else {
         result.add(name, it.value);
       }
@@ -327,12 +327,12 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.add("os", VPackValue(ef.operatingSystem()));
   result.add("platform", VPackValue(Version::getPlatform()));
 
-  result.add("physicalMemory", VPackValue(VPackValueType::Object));
+  result.add("physMem", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(PhysicalMemory::getValue()));
   result.add("overridden", VPackValue(PhysicalMemory::overridden()));
   result.close();  // physical memory
 
-  result.add("numberOfCores", VPackValue(VPackValueType::Object));
+  result.add("nCores", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(NumberOfCores::getValue()));
   result.add("overridden", VPackValue(NumberOfCores::overridden()));
   result.close();  // number of cores
@@ -343,7 +343,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.add("processUptime", VPackValue(serverInfo.uptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
-  result.add("numberOfThreads", VPackValue(info._numberThreads));
+  result.add("nThreads", VPackValue(info._numberThreads));
   result.add("virtualSize", VPackValue(info._virtualSize));
   result.add("residentSetSize", VPackValue(info._residentSize));
   result.close();  // processStats
@@ -419,7 +419,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
         &guard.database(), [&](std::shared_ptr<LogicalCollection> const& coll) {
           result.openObject();
           size_t numShards = coll->numberOfShards();
-          result.add("numShards", VPackValue(numShards));
+          result.add("nShards", VPackValue(numShards));
 
           auto ctx = transaction::StandaloneContext::Create(*vocbase);
 
@@ -441,7 +441,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                   << "Failed to get number of documents: "
                   << res.errorMessage();
             } else {
-              result.add("numDocs", VPackSlice(opResult.buffer->data()));
+              result.add("nDocs", VPackSlice(opResult.buffer->data()));
             }
 
           } else {
@@ -554,10 +554,10 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
     result.close();
 
     result.add("isSingleShard", VPackValue(vocbase->isOneShard()));
-    result.add("numDocCollections", VPackValue(numDocColls));
-    result.add("numGraphCollections", VPackValue(numGraphColls));
-    result.add("numSmartCollections", VPackValue(numSmartColls));
-    result.add("numDisjointGraphs", VPackValue(numDisjointGraphs));
+    result.add("nColls", VPackValue(numDocColls));
+    result.add("nGraphColls", VPackValue(numGraphColls));
+    result.add("nSmartColls", VPackValue(numSmartColls));
+    result.add("nDisjointGraphs", VPackValue(numDisjointGraphs));
 
     result.close();
   }
