@@ -66,6 +66,7 @@ export const AnalyzersDropdown = ({
   });
   return (
     <MultiSelect
+      isClearable={false}
       value={newAnalyzers}
       options={options}
       noOptionsMessage={() => "Analyzer does not exist."}

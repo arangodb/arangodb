@@ -89,6 +89,7 @@ const CollectionsDropdown = () => {
       components={{
         MultiValueLabel
       }}
+      isClearable={false}
       isDisabled={!isAdminUser}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
