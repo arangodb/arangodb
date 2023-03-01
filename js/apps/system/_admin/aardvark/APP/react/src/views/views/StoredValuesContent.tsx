@@ -19,10 +19,10 @@ export const StoredValuesContent = ({
     <table>
       <tbody>
         {formState.storedValues.map(item => (
-          <tr className="tableRow" id={"row_" + item.fields}>
+          <tr key={item.fields.join(',')} className="tableRow" id={"row_" + item.fields}>
             <th className="collectionTh">
               {item.fields.map(field => {
-                return <FieldNameTag>{field}</FieldNameTag>;
+                return <FieldNameTag key={field}>{field}</FieldNameTag>;
               })}
               :
             </th>

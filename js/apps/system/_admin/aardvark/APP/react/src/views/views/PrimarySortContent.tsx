@@ -14,8 +14,8 @@ export const PrimarySortContent = ({ formState }: { formState: FormState }) => {
   return (
     <table>
       <tbody>
-        {formState.primarySort.map(item => (
-          <tr className="tableRow" id={"row_" + item.field}>
+        {formState.primarySort.map((item, index) => (
+          <tr key={`${item.field})_${index}`} className="tableRow" id={"row_" + item.field}>
             <th className="collectionTh"><FieldNameTag>{item.field}</FieldNameTag>:</th>
             <th className="collectionTh">
               <Textbox
