@@ -59,12 +59,6 @@ const CollectionsDropdown = () => {
         value: {}
       }
     });
-    setOptions(
-      without(options, {
-        value: link,
-        label: link
-      })
-    );
   };
 
   const removeLink = async (link: string) => {
@@ -75,16 +69,6 @@ const CollectionsDropdown = () => {
         value: null
       }
     });
-    setOptions(
-      options
-        .concat([
-          {
-            value: link,
-            label: link
-          }
-        ])
-        .sort()
-    );
   };
 
   const validLinks = chain(formState.links)
