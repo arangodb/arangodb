@@ -140,15 +140,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                       << op.shard << " during recovery: " << abortRes;
                   return abortRes;
                 }
-                abortRes = basics::catchToResult([&]() {
-                  return self->_transactionManager.abortManagedTrx(
-                      tid.asLeaderTransactionId(), self->gid.database);
-                });
-                if (abortRes.fail()) {
-                  LOG_CTX("df8ad", INFO, self->loggerContext)
-                      << "failed to abort transaction " << tid << " for shard "
-                      << op.shard << " during recovery: " << abortRes;
-                }
               }
             }
             return transactionHandler->applyEntry(doc.operation);
@@ -368,7 +359,7 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
           auto transactionHandler = data.core->getTransactionHandler();
           auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
           if (applyEntryRes.fail()) {
-            LOG_CTX("6865f", FATAL, self->loggerContext)
+            LOG_CTX("d11f0", FATAL, self->loggerContext)
                 << "CreateShard operation failed on the leader, after being "
                    "replicated to followers: "
                 << applyEntryRes;

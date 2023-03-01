@@ -122,28 +122,72 @@ auto DocumentFollowerState::applyEntries(
                 }
 
                 self->_activeTransactions.markAsActive(op.tid, entry->first);
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          IntermediateCommit>) {
                 if (!self->_activeTransactions.getTransactions().contains(
                         op.tid)) {
                   return Result{};
                 }
+                return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (FinishesUserTransaction<T>) {
                 if (!self->_activeTransactions.getTransactions().contains(
                         op.tid)) {
                   // Single commit/abort operations are possible.
                   return Result{};
                 }
-                self->_activeTransactions.markAsInactive(op.tid);
-                releaseIndex =
-                    self->_activeTransactions.getReleaseIndex().value_or(
-                        entry->first);
+                auto applyRes = transactionHandler->applyEntry(doc.operation);
+                if (applyRes.ok()) {
+                  self->_activeTransactions.markAsInactive(op.tid);
+                  releaseIndex =
+                      self->_activeTransactions.getReleaseIndex().value_or(
+                          entry->first);
+                }
+                return applyRes;
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          AbortAllOngoingTrx>) {
-                self->_activeTransactions.clear();
-                releaseIndex = entry->first;
+                auto applyRes = transactionHandler->applyEntry(doc.operation);
+                if (applyRes.ok()) {
+                  self->_activeTransactions.clear();
+                  releaseIndex = entry->first;
+                }
+                return applyRes;
+              } else if constexpr (std::is_same_v<
+                                       T, ReplicatedOperation::DropShard>) {
+                // Abort all transactions for this shard.
+                for (auto const& tid :
+                     transactionHandler->getTransactionsForShard(op.shard)) {
+                  auto abortRes = transactionHandler->applyEntry(
+                      ReplicatedOperation::buildAbortOperation(tid));
+                  if (abortRes.fail()) {
+                    LOG_CTX("aa36c", INFO, self->loggerContext)
+                        << "failed to abort transaction " << tid
+                        << " for shard " << op.shard
+                        << " during recovery: " << abortRes;
+                    return abortRes;
+                  }
+                  self->_activeTransactions.markAsInactive(tid);
+                }
+
+                auto applyRes = transactionHandler->applyEntry(doc.operation);
+                if (applyRes.ok()) {
+                  releaseIndex =
+                      self->_activeTransactions.getReleaseIndex().value_or(
+                          entry->first);
+                }
+                return applyRes;
+              } else if constexpr (std::is_same_v<
+                                       T, ReplicatedOperation::CreateShard>) {
+                auto applyRes = transactionHandler->applyEntry(doc.operation);
+                if (applyRes.ok()) {
+                  releaseIndex =
+                      self->_activeTransactions.getReleaseIndex().value_or(
+                          entry->first);
+                }
+                return applyRes;
+              } else {
+                static_assert(always_false_v<T>, "non-exhaustive visitor!");
               }
-              return transactionHandler->applyEntry(doc.operation);
             },
             doc.getInnerOperation());
         if (res.fail()) {
