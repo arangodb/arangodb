@@ -22,52 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
-#include "Actor/HandlerBase.h"
+#include "Pregel/Worker/Handler.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/State.h"
-#include "Pregel/Conductor/Messages.h"
 
 namespace arangodb::pregel::worker {
-
-template<typename Runtime>
-struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
-  auto operator()(WorkerStart start) -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} started with state {}", this->self, *this->state);
-    this->template dispatch<conductor::ConductorMessages>(
-        this->state->conductor, conductor::WorkerCreated{});
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::UnknownMessage unknown)
-      -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::ActorNotFound notFound)
-      -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor: Error - receiving actor {} not found", notFound.actor);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::NetworkError notFound)
-      -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("1c3d9", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor: Error - network error {}", notFound.message);
-    return std::move(this->state);
-  }
-
-  auto operator()(auto&& rest) -> std::unique_ptr<WorkerState> {
-    LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
-        << "Worker Actor: Got unhandled message";
-    LOG_TOPIC("f5bac", INFO, Logger::PREGEL) << fmt::format("{}", rest);
-    return std::move(this->state);
-  }
-};
 
 struct WorkerActor {
   using State = WorkerState;
@@ -76,4 +35,5 @@ struct WorkerActor {
   using Handler = WorkerHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
 };
+
 }  // namespace arangodb::pregel::worker

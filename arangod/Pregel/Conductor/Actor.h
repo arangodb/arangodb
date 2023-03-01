@@ -22,115 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
-#include <variant>
-#include "Actor/HandlerBase.h"
-#include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
-#include "Pregel/SpawnActor.h"
-#include "Pregel/SpawnMessages.h"
-#include "Pregel/Worker/Actor.h"
+#include "Pregel/Conductor/Handler.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/State.h"
-#include "fmt/core.h"
 
 namespace arangodb::pregel::conductor {
-
-template<typename Runtime>
-struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
-  void spawnActorOnServer(actor::ServerID server, SpawnMessages msg) {
-    if (server == this->self.server) {
-      std::visit(
-          [this](auto&& arg) {
-            this->template spawn<SpawnActor>(std::make_unique<SpawnState>(),
-                                             arg);
-          },
-          msg);
-    } else {
-      this->dispatch(
-          actor::ActorPID{
-              .server = server, .database = this->self.database, .id = {0}},
-          msg);
-    }
-  }
-
-  auto operator()(ConductorStart start) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("5adb0", INFO, Logger::PREGEL) << fmt::format(
-        "Conductor Actor {} started with state {}", this->self, *this->state);
-    this->state->_executionState =
-        std::make_unique<CreateWorkers>(*this->state);
-    /*
-       CreateWorkers is a special state because it creates the workers instead
-       of just sending messages to them. Therefore we cannot use the message fct
-       of the ExecutionState but need to call the special messages function
-       which is specific to the CreateWorkers state only
-    */
-    auto createWorkers =
-        static_cast<CreateWorkers*>(this->state->_executionState.get());
-    auto messages = createWorkers->messages();
-    for (auto& [server, message] : messages) {
-      spawnActorOnServer(server,
-                         SpawnMessages{SpawnWorker{.conductor = this->self,
-                                                   .message = message}});
-    }
-    return std::move(this->state);
-  }
-
-  auto operator()(WorkerCreated start) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("17915", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Worker {} was created", this->sender);
-    auto newExecutionState =
-        this->state->_executionState->receive(this->sender, std::move(start));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
-      sendMessageToWorkers();
-    }
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::UnknownMessage unknown)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("d1791", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Error - sent unknown message to {}",
-                       unknown.receiver);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::ActorNotFound notFound)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("ea585", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Error - receiving actor {} not found",
-                       notFound.actor);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::NetworkError notFound)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("866d8", INFO, Logger::PREGEL) << fmt::format(
-        "Conductor Actor: Error - network error {}", notFound.message);
-    return std::move(this->state);
-  }
-
-  auto operator()(auto&& rest) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("7ae0f", INFO, Logger::PREGEL)
-        << "Conductor Actor: Got unhandled message";
-    return std::move(this->state);
-  }
-
-  auto changeState(std::unique_ptr<ExecutionState> newState) -> void {
-    this->state->_executionState = std::move(newState);
-    LOG_TOPIC("17915", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Execution state changed to {}",
-                       this->state->_executionState->name());
-  }
-
-  auto sendMessageToWorkers() -> void {
-    auto message = this->state->_executionState->message();
-    // TODO activate when loading state is implemented (GORDO-1548)
-    // for (auto& worker : this->state->_workers) {
-    //   this->dispatch(worker, message);
-    // }
-  }
-};
 
 struct ConductorActor {
   using State = ConductorState;
