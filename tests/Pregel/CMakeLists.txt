@@ -1,4 +1,3 @@
-add_subdirectory(Store)
 
 # note that typedbuffer.cpp is excluded intentionally
 # since it seems to have a big dependency footprint;
@@ -37,3 +36,4 @@ add_test(NAME pregel
   COMMAND arangodbtests_pregel)
 
 add_subdirectory(Actor)
+add_subdirectory(GraphStore)

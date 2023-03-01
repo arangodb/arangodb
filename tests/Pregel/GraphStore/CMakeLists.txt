@@ -1,5 +1,5 @@
 add_library(arango_tests_pregel_store OBJECT
-  StoreTest.cpp)
+  QuiverTest.cpp)
 
 target_include_directories(arango_tests_pregel_store
   PRIVATE
