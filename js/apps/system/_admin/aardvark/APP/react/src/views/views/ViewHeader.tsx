@@ -1,11 +1,10 @@
-import React from "react";
-import { Cell } from "../../components/pure-css/grid";
-import CopyFromInput from "./forms/inputs/CopyFromInput";
-import { DeleteButton, SaveButton } from "./Actions";
-import { EditableViewName } from "./EditableViewName";
-import { FormState } from "./constants";
-import { FormProps } from "../../utils/constants";
 import { Box } from "@chakra-ui/react";
+import React from "react";
+import { FormProps } from "../../utils/constants";
+import { DeleteButton, SaveButton } from "./Actions";
+import { FormState } from "./constants";
+import { EditableViewName } from "./EditableViewName";
+import CopyFromInput from "./forms/inputs/CopyFromInput";
 
 export const ViewHeader = ({
   editName,
@@ -45,8 +44,8 @@ export const ViewHeader = ({
         closeEditName={closeEditName}
       />
       {isAdminUser && views.length ? (
-        <Cell size={"1"} style={{ paddingLeft: 10 }}>
-          <div style={{ display: "flex" }}>
+        <Box>
+          <Box display={"flex"}>
             <div style={{ flex: 1, padding: "10" }}>
               <CopyFromInput
                 views={views}
@@ -73,8 +72,8 @@ export const ViewHeader = ({
               )}
               <DeleteButton view={formState} />
             </div>
-          </div>
-        </Cell>
+          </Box>
+        </Box>
       ) : null}
     </Box>
   );
