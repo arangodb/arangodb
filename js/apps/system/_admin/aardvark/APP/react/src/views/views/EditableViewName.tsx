@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import Textbox from "../../components/pure-css/form/Textbox";
 import { FormState } from "./constants";
@@ -8,9 +9,11 @@ export const EditableViewName = ({
   handleEditName,
   updateName,
   nameEditDisabled,
-  closeEditName
+  closeEditName,
+  isAdminUser
 }: {
   editName: boolean;
+  isAdminUser: boolean;
   formState: FormState;
   handleEditName: () => void;
   updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -19,29 +22,24 @@ export const EditableViewName = ({
 }) => {
   if (!editName) {
     return (
-      <>
-        <div
-          style={{
-            color: "#717d90",
-            fontWeight: 600,
-            fontSize: "12.5pt",
-            padding: 10,
-            float: "left"
-          }}
-        >
-          {formState.name}{nameEditDisabled?' (read only)' : ''}
-        </div>
+      <Box display="flex" alignItems="center">
+        <Box color="gray.700" paddingY="3" fontWeight="600" fontSize="lg">
+          {formState.name}
+          {!isAdminUser ? " (read only)" : ""}
+        </Box>
         {!nameEditDisabled ? (
-          <i
+          <Box
+            as="i"
             className="fa fa-edit"
+            padding={"3"}
             onClick={handleEditName}
-            style={{ paddingTop: "14px" }}
-          ></i>
+          />
         ) : null}
-      </>
+      </Box>
     );
   }
-  return <div>
+  return (
+    <div>
       <>
         <Textbox
           type={"text"}
@@ -56,5 +54,6 @@ export const EditableViewName = ({
           style={{ paddingTop: "14px" }}
         ></i>
       </>
-  </div>;
+    </div>
+  );
 };
