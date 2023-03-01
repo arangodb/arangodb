@@ -92,8 +92,7 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
   // optimization, since during regular runtime should have at most 1 identical
   // primary key in the entire datastore
   if (!irs::doc_limits::valid(_pkIterator.value())) {
-    return irs::memory::to_managed<irs::filter::prepared>(
-        const_cast<PrimaryKeyFilter&>(*this));
+    return irs::memory::to_managed<irs::filter::prepared const>((*this));
   }
 
   // already processed
