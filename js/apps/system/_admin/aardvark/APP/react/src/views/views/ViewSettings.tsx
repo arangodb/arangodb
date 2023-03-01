@@ -46,6 +46,8 @@ export const ViewSettings = ({
     formState: initFormState,
     formCache: initFormState,
     renderKey: uniqueId("force_re-render_"),
+    // these might be unnecessary fields, unused here, but they cause type issues
+    // TODO: type needs to be fixed
     show: true,
     showJsonForm: true,
     lockJsonForm: false
