@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,21 +43,20 @@ class Slice;
 }  // namespace velocypack
 namespace geo {
 
-inline constexpr double kPi = M_PI;
 // assume up to 8x machine epsilon in precision errors for radian calculations
 inline constexpr double kRadEps = 8 * std::numeric_limits<double>::epsilon();
-inline constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
+inline constexpr double kMaxRadiansBetweenPoints = M_PI + kRadEps;
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
-// constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
+// inline constexpr double kEarthRadiusInMeters = 6'378'137.0;
 // Volumetric mean radius
-inline constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
+inline constexpr double kEarthRadiusInMeters = 6'371'000.0;
 inline constexpr double kMaxDistanceBetweenPoints =
     kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 
 constexpr double metersToRadians(double distanceInMeters) noexcept {
-  return std::max(0.0, std::min(distanceInMeters / kEarthRadiusInMeters, M_PI));
+  return std::clamp(distanceInMeters / kEarthRadiusInMeters, 0.0, M_PI);
 }
 
 enum class FilterType {
@@ -121,6 +120,10 @@ struct QueryParams {
   double maxDistance = kMaxDistanceBetweenPoints;
   bool maxInclusive = false;
 
+  /// Some condition on min and max distances are given, this starts out
+  /// as false and must be set whenever the values minDistance, minInclusive
+  /// maxDistance and maxInclusive are intended to take effect.
+  bool distanceRestricted = false;
   /// @brief results need to be sorted by distance to centroid
   bool sorted = false;
   /// @brief Default order is from closest to farthest

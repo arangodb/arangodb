@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,6 @@
 
 #include "Supervision.h"
 
-#include <Basics/StringUtils.h>
-#include <Basics/overload.h>
-#include <thread>
-
 #include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
@@ -37,11 +33,14 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "Agency/NodeLoadInspector.h"
 #include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/overload.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Metrics/CounterBuilder.h"
@@ -278,7 +277,7 @@ void Supervision::upgradeZero(Builder& builder) {
           VPackObjectBuilder oo(&builder);
           if (fails.length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails)) {
-              builder.add(VPackValue(fail.copyString()));
+              builder.add(VPackValue(fail.stringView()));
               { VPackArrayBuilder ooo(&builder); }
             }
           }
@@ -532,7 +531,7 @@ void handleOnStatus(
                            delayFailedFollower, failedLeaderAddsFollower);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
-  } else if (serverID.compare(0, 4, "SNGL") == 0) {
+  } else if (serverID.starts_with("SNGL")) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID,
                          jobId, envelope);
   } else {
@@ -559,7 +558,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
          ClusterHelpers::isDBServerName(machine.first)) ||
         (type == "Coordinators" &&
          ClusterHelpers::isCoordinatorName(machine.first)) ||
-        (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
+        (type == "Singles" && machine.first.starts_with("SNGL"))) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
         todelete.push_back(machine.first);
@@ -569,7 +568,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   if (!todelete.empty()) {
     velocypack::Builder builder;
-    removeTransactionBuilder(builder, todelete);
+    buildRemoveTransaction(builder, todelete);
     _agent->write(builder.slice());
   }
 
@@ -786,7 +785,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       Builder tReport;
       {
         VPackArrayBuilder transaction(&tReport);  // Transist Transaction
-        std::shared_ptr<VPackBuilder> envelope;
         {
           VPackObjectBuilder operation(&tReport);  // Operation
           tReport.add(
@@ -816,7 +814,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
                          envelope->slice()[0].isObject());
               for (VPackObjectIterator::ObjectPair i :
                    VPackObjectIterator(envelope->slice()[0])) {
-                pReport.add(i.key.copyString(), i.value);
+                pReport.add(i.key.stringView(), i.value);
               }
             }
           }  // Operation
@@ -883,14 +881,14 @@ bool Supervision::earlyBird() const {
 
   // every db server in plan accounted for in transient store?
   for (auto const& server : VPackObjectIterator(dbservers)) {
-    auto serverId = server.key.copyString();
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
   }
   // every db server in plan accounted for in transient store?
   for (auto const& server : VPackObjectIterator(coordinators)) {
-    auto serverId = server.key.copyString();
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
@@ -1460,7 +1458,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
         }
       } catch (std::exception const& e) {
         LOG_TOPIC("21a9e", DEBUG, Logger::SUPERVISION)
-            << "Failing to analyse " << serverId << " as deletion candidate "
+            << "Failing to analyze " << serverId << " as deletion candidate "
             << e.what();
       }
 
@@ -1921,14 +1919,13 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     for (auto const& pp : dbservers->get()) {
       auto const& status = pp.second->hasAsString("Status");
       if (status) {
-        if (status->compare("COMPLETED") != 0 &&
-            status->compare("FAILED") != 0) {
+        if (status.value() != "COMPLETED" && status.value() != "FAILED") {
           // If we get here, we might be looking at an old leftover which
           // appears to be ongoing, or at a new style, properly ongoing
           // We ignore non-completedness of old crud and only consider
           // new jobs with a rebootId as incomplete:
           auto const& rebootId = pp.second->hasAsUInt(StaticStrings::RebootId);
-          if (status.value().compare("NEW") == 0 || rebootId) {
+          if (status.value() == "NEW" || rebootId) {
             completed = false;
           }
         }
@@ -2022,9 +2019,8 @@ void arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
           // Should not happen, just be cautious
           continue;
         }
-        if (status.value().compare("COMPLETED") == 0 ||
-            status.value().compare("FAILED") == 0 ||
-            status.value().compare("CANCELLED") == 0) {
+        if (status.value() == "COMPLETED" || status.value() == "FAILED" ||
+            status.value() == "CANCELLED") {
           // Nothing to do
           continue;
         }
@@ -2154,8 +2150,7 @@ void Supervision::workJobs() {
   bool doneFailedJob = false;
   while (it != todos.end()) {
     auto const& jobNode = *(it->second);
-    if (jobNode.hasAsString("type").value().compare(0, FAILED.length(),
-                                                    FAILED) == 0) {
+    if (jobNode.hasAsString("type").value().starts_with(FAILED)) {
       if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(
                               todos.size())) > maximalJobsPerRound) {
         LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
@@ -2186,8 +2181,7 @@ void Supervision::workJobs() {
         continue;
       }
       auto const& jobNode = *todoEnt.second;
-      if (jobNode.hasAsString("type").value().compare(0, FAILED.length(),
-                                                      FAILED) != 0) {
+      if (!jobNode.hasAsString("type").value().starts_with(FAILED)) {
         LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION)
             << "Begin JobContext::run()";
         JobContext(TODO, jobNode.hasAsString("jobId").value(), snapshot(),
@@ -2675,8 +2669,15 @@ void Supervision::deleteBrokenIndex(AgentInterface* agent,
 namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
-  auto builder = n.toBuilder();
-  return velocypack::deserialize<T>(builder.slice());
+  inspection::NodeUnsafeLoadInspector<> i{&n, {}};
+  T result;
+  if (auto status = i.apply(result); !status.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while reading from Agency node: "} + status.error() +
+            "\nPath: " + status.path());
+  }
+  return result;
 }
 
 template<typename T>
@@ -3347,8 +3348,6 @@ bool Supervision::start(Agent* agent) {
   return start();
 }
 
-static std::string const syncLatest = "/Sync/LatestID";
-
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
 
@@ -3408,7 +3407,7 @@ Node const& Supervision::snapshot() const {
   return *_snapshot;
 }
 
-void Supervision::removeTransactionBuilder(
+void Supervision::buildRemoveTransaction(
     velocypack::Builder& del, std::vector<std::string> const& todelete) {
   VPackArrayBuilder trxs(&del);
   {
@@ -3474,17 +3473,17 @@ void Supervision::checkUndoLeaderChangeActions() {
   };
 
   auto const checkDeletion = [&](std::string const& shard,
-                                 std::shared_ptr<Node> entry) -> bool {
+                                 Node const& entry) -> bool {
     std::string now(timepointToString(std::chrono::system_clock::now()));
-    auto deadline = entry->hasAsString("removeIfNotStartedBy");
-    auto started = entry->hasAsString("started");
+    auto deadline = entry.hasAsString("removeIfNotStartedBy");
+    auto started = entry.hasAsString("started");
     if (deadline) {
       if (!started && now > deadline.value()) {
         return true;
       }
     }
     if (started) {
-      auto jobId = entry->hasAsString("jobId");
+      auto jobId = entry.hasAsString("jobId");
       if (jobId) {
         auto inTodo = _snapshot->hasAsNode(toDoPrefix + jobId.value());
         auto inPending = _snapshot->hasAsNode(pendingPrefix + jobId.value());
@@ -3497,7 +3496,7 @@ void Supervision::checkUndoLeaderChangeActions() {
         // jobId.
       }
     }
-    auto jobOpt = entry->hasAsNode("moveShard");
+    auto jobOpt = entry.hasAsNode("moveShard");
     if (!jobOpt) {
       return true;
     }
@@ -3558,7 +3557,8 @@ void Supervision::checkUndoLeaderChangeActions() {
       //  - deadline exceeded (and not yet started)
       //  - dependent MoveShard gone (and started)
       //  - fromServer no longer in Plan
-      if (checkDeletion(shard, entry)) {
+      TRI_ASSERT(entry != nullptr);
+      if (checkDeletion(shard, *entry)) {
         // Let's remove the entry:
         trx->add(VPackValue(returnLeadershipPrefix + shard));
         {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 
 using namespace arangodb::aql;
 
-ModificationOptions::ModificationOptions(VPackSlice const& slice)
+ModificationOptions::ModificationOptions(velocypack::Slice slice)
     : OperationOptions() {
   VPackSlice obj = slice.get("modificationFlags");
 
@@ -49,7 +49,7 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   overwriteMode = OperationOptions::determineOverwriteMode(
       basics::VelocyPackHelper::getStringView(obj, StaticStrings::OverwriteMode,
                                               ""));
-  if (VPackSlice s = obj.get(StaticStrings::RefillIndexCachesString);
+  if (velocypack::Slice s = obj.get(StaticStrings::RefillIndexCachesString);
       s.isBoolean()) {
     // this attribute can have 3 values: default, true and false. only
     // pick it up when it is set to true or false
@@ -67,7 +67,7 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
       basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
 }
 
-void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
+void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
 
   // relevant attributes from OperationOptions
@@ -94,9 +94,6 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   // our own attributes
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
-  // "readCompleteInput" was removed in 3.9. We'll leave it here only to be
-  // downwards-compatible. TODO: remove attribute in 3.10
-  builder.add("readCompleteInput", VPackValue(false));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
 }

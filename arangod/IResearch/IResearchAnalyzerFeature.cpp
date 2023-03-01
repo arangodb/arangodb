@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +90,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -128,8 +129,6 @@ REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
 REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
                         GeoVPackAnalyzer::normalize);
-REGISTER_ANALYZER_VPACK(GeoS2Analyzer, GeoS2Analyzer::make,
-                        GeoS2Analyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
@@ -505,8 +504,10 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     if (!coords.empty() &&
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
-        (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-         vocbase.isOneShard())) {
+        vocbase.isOneShard()) {
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
@@ -799,9 +800,11 @@ getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   if (type == irs::type<GeoVPackAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoVPackAnalyzer::store};
+#ifdef USE_ENTERPRISE
   } else if (type == irs::type<GeoS2Analyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoS2Analyzer::store};
+#endif
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
@@ -1519,6 +1522,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       SingleCollectionTransaction trx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::EXCLUSIVE);
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
       auto res = trx.begin();
       if (res.fail()) {
@@ -1986,6 +1990,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     trx.begin();
 
     auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);

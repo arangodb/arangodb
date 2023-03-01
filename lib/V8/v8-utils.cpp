@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -6152,14 +6152,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
       TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
-
-#ifdef COVERAGE
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::True(isolate));
-#else
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::False(isolate));
-#endif
 
   TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "VERSION"),
                                TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));

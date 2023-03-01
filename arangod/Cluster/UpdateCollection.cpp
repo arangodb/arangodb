@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ bool UpdateCollection::first() {
     if (found.ok()) {
       TRI_ASSERT(coll);
       LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + shard;
+          << "Updating local collection " << shard;
 
       // If someone (the Supervision most likely) has thrown
       // out a follower from the plan, then the leader
@@ -130,8 +130,8 @@ bool UpdateCollection::first() {
 
     } else {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << "in database " + database;
+      error << "failed to lookup local collection " << shard << "in database "
+            << database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       result(res);

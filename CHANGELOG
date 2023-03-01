@@ -2,6 +2,139 @@ devel
 -----
 
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
+* ES-1428: make the maximum number of V8 contexts depend on the maximum number
+  of server threads, if `--javascript.v8-contexts` is not set explicitly. 
+  Previously the maximum number of V8 contexts was hard-coded to 16 when the
+  option `--javascript.v8-contexts` option was not set explicitly.
+  Now the maximum number defaults to 7/8 of the value of the startup option
+  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  the default value is used. Only 7/8 are used to leave some headroom for other
+  important maintenance tasks.
+  A server with default configuration should now not block waiting for V8 
+  contexts to become available, but it may use more memory for the additional V8 
+  contexts if there are many concurrent requests that invoke JavaScript actions 
+  (e.g. requests using the web UI or Foxx).
+
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating
+  the same _rev value for two different documents concurrently.
+
+* BTS-1249: Add startup option `--foxx.enable`.
+  This startup option determines whether access to user-defined Foxx services
+  is possible for the instance. It defaults to `true`.
+  If the option is set to `false`, access to Foxx services is forbidden and
+  will be responded with an HTTP 403 Forbidden error. Access to ArangoDB's
+  built-in web interface, which is also a Foxx service, is still possible even
+  with the option set to `false`.
+  When setting the option to `false`, access to the management APIs for Foxx
+  services will also be disabled. This is the same as manually setting the
+  option `--foxx.api false`.
+
+* Updated arangosync to v2.15.0-preview-1.
+
+* The internal Graph code is completely converted to the new graph engine.
+  Last algorithms added to that lists are: ShortestPath, WeightedShortestPath,
+  KShortestPaths and WeightedKShortestPaths.
+
+* Improve memory usage of in-memory edge index cache if most of the edges in an
+  index refer to a single or mostly the same collection.
+  Previously the full edge ids, consisting of the the referred-to collection
+  name and the referred-to key of the edge were stored in full. Now, the first
+  edge inserted into an edge index' in-memory cache will determine the
+  collection name for which all corresponding edges can be prefix-compressed.
+  For example, when inserting an edge pointing to `the-collection/abc` into the
+  empty cache, the collection name `the-collection` will be noted for that
+  cache as a prefix. The edge will be stored in memory as only `/abc`. Further
+  edges that are inserted into the cache and that point to the same collection
+  will also be stored prefix-compressed.
+  The prefix compression is transparent and does not require configuration or
+  setup. Compression is done separately for each cache, i.e. a separate prefix
+  can be used for each individual edge index, and separately for the `_from`
+  and `_to` parts. Lookups from the in-memory edge cache will not return
+  compressed values but the full-length edge ids. The compressed values will
+  also be used in memory only and will not be persisted on disk.
+
+* Updated ArangoDB Starter to 0.15.7.
+
+* Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.
+
+* Made all transactions used by the gharial API on coordinators and a few
+  others marked "globally managed". This fixes an issue where
+  transaction conflicts could lead to a silent out of sync situation
+  between a leader shard and its followers.
+
+* BTS-1184: Fixed index hint with `forceIndexHint` set to true not being used
+  on query when geo index was present, because it would override the choice of
+  the index hint with optimizations related to it.
+
+* Updated ArangoDB Starter to 0.15.7-preview-1.
+
+* BTS-1219: Fix cost estimation for geo index usage and for collection
+  enumeration with included filtering. This fixes a regression from 3.9
+  where a geo index was no longer used because of an optimizer rule,
+  which gained new powers, and wrong cost estimations for execution plans.
+
+* FE-131: Added search input for query page.
+
+* Return peak memory usage and execution time as part of query explain result.
+  This helps finding queries that use a lot of memory to build the execution
+  plan.
+
+* Allow usage of document projections and traversal projections in slightly
+  more cases, specifically when the document's or traversal's output
+  variables were used in subqueries. Previously the usage of the document or
+  traversal output variables in subqueries could lead to projections being 
+  disabled.
+
+* FE-133: Alphabetical sorting for collections on user permissions page.
+
+* Fixed EE: Concurrent batch insert/update CRUD operations into
+  SmartEdgeCollections on conflicting edge keys could get the
+  smart edge caching out-of-sync, which would yield different results
+  for OUTBOUND/INBOUND search over edges. This is now fixed, however there
+  is now a slightly higher chance to get a CONFLICT response back on those
+  queries.
+
+* Fixed issue #18053: Computed Values become null when Schema is modified.
+
+* BTS-1193: Fix for schema update. When removing a field and then inserting a 
+  new field into the schema, previously, both old and new schema would be 
+  merged, meaning it would maintain the old field and add the new one. 
+
+* Added startup option `--javascript.user-defined-functions`. 
+  This option controls whether JavaScript user-defined functions (UDFs) can
+  be used in AQL queries. The option defaults to `true`. The option can be
+  set to `false` to disallow using JavaScript UDFs from inside AQL queries.
+  In that case, a parse error will be thrown when trying to run a query that
+  invokes a UDF.
+
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
+* Allowing enabling/disabling supervision maintenance mode also via followers
+  in active failover mode. Previously the supervision maintenance mode could
+  only be enabled/disabled by making a call to the active failover leader.
+
+* Activate RDB_CoveringIterator and use it for some geo index queries.
+  This speeds up and simplifies geo queries with geo index which do not use
+  GEO_DISTANCE.
+
+* Fix bug in hotbackup download/restore to make sure no data is mixed up
+  between servers. This fixes a bug introduced in 3.10.
+
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+  creating a database and then restarting the cluster with the startup option
+  `--cluster.force-one-shard` set to true, when the formerly created database
+  has more than one shard, but the flag is set to true, this could lead to 
+  arangosearch's analyzers to use optimizations that should not be used if not 
+  in a single shard mode. For this not to happen, the verification of the 
+  parameter being true as a condition to run optimizations was removed. 
 
 * Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
 

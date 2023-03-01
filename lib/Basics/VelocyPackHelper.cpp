@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -275,11 +275,6 @@ void VelocyPackHelper::initialize() {
                  .copyString() == StaticStrings::FromString);
   TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase))
                  .copyString() == StaticStrings::ToString);
-}
-
-/// @brief turn off assembler optimizations in vpack
-void VelocyPackHelper::disableAssemblerFunctions() {
-  arangodb::velocypack::disableAssemblerFunctions();
 }
 
 /// @brief return the (global) attribute translator instance

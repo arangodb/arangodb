@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -198,8 +198,7 @@ class EnumeratePathsNode : public virtual GraphNode {
   /// DBServer cannot map the Vertex to its shard.
   Variable const* _distributeVariable;
 
-  template<typename KPathRefactored, typename Provider,
-           typename ProviderOptions>
+  template<typename KPath, typename Provider, typename ProviderOptions>
   std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
       graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
       ProviderOptions backwardProviderOptions,

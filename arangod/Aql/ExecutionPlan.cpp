@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -292,9 +292,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
-        } else if (name == StaticStrings::GraphRefactorFlag &&
-                   value->isBoolValue()) {
-          options->setRefactor(value->getBoolValue());
         } else if (name == arangodb::StaticStrings::MaxProjections) {
           auto maxProjections = parseMaxProjections(value);
           if (maxProjections.fail()) {
@@ -326,7 +323,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -338,7 +335,6 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
   options->minDepth = minDepth;
   options->maxDepth = maxDepth;
-  options->setRefactor(defaultToRefactor);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -357,8 +353,6 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
               std::string(value->getStringValue(), value->getStringLength()));
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
-        } else if (name == StaticStrings::GraphRefactorFlag) {
-          options->setRefactor(value->getBoolValue());
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
@@ -1480,12 +1474,8 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
       parseTraversalVertexNode(previous, node->getMember(3));
   AstNode const* graph = node->getMember(4);
 
-  // Refactored variant shall be default on SingleServer and Cluster on KPaths
-  // After the whole refactoring is done, this can be removed.
-  bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
-
-  auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), type, defaultToRefactor);
+  auto options =
+      createShortestPathOptions(getAst(), direction, node->getMember(5), type);
 
   // First create the node
   auto spNode = new EnumeratePathsNode(

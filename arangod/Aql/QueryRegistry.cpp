@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -166,13 +166,6 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
 
-    // #warning the "isModificationQuery()" is probably too coarse-grained here.
-    // previously the "isModificationQuery()" always returned false on a DB
-    // server. now that we made it return the true value, the assertion is
-    // triggered.
-    // TODO: need to sort this out.
-    // TRI_ASSERT(ei._queryInfo->_numOpen == 1 ||
-    // !ei._queryInfo->_query->isModificationQuery());
     LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL)
         << "opening engine " << id
         << ", query id: " << ei._queryInfo->_query->id()

@@ -173,7 +173,6 @@ auto ShortestPathExecutor<FinderType>::doSkipPath(AqlCall& call) -> size_t {
 
 template<class FinderType>
 auto ShortestPathExecutor<FinderType>::getPathLength() const -> size_t {
-  LOG_DEVEL << _pathBuilder->toJson();
   TRI_ASSERT(_pathBuilder->slice().hasKey(StaticStrings::GraphQueryVertices));
   return _pathBuilder->slice().get(StaticStrings::GraphQueryVertices).length();
 }

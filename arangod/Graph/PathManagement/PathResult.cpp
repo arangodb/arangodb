@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,6 +46,7 @@ PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider,
                                            ProviderType& targetProvider)
     : _numVerticesFromSourceProvider(0),
       _numEdgesFromSourceProvider(0),
+      _pathWeight(0.0),
       _sourceProvider(sourceProvider),
       _targetProvider(targetProvider) {}
 
@@ -55,6 +56,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
+  _pathWeight = 0.0;
 }
 
 template<class ProviderType, class Step>
@@ -82,13 +84,14 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
   _edges.insert(_edges.begin(), std::move(e));
 }
 
-// NOTE:
-// Potential optimization: Instead of counting on each append
-// We can do a size call to the vector when switching the Provider.
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::addWeight(double weight) -> void {
+  _pathWeight += weight;
+}
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
-    arangodb::velocypack::Builder& builder) -> void {
+    arangodb::velocypack::Builder& builder, WeightType weightType) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
@@ -116,6 +119,33 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
       _targetProvider.addEdgeToBuilder(_edges[i], builder);
     }
   }
+
+  if (weightType != WeightType::NONE) {
+    // We need to handle two different cases here. In case no weight callback
+    // has been set, we need to write the number of edges here. In case a weight
+    // callback is set, we need to set the calculated weight.
+    if (weightType == WeightType::AMOUNT_EDGES) {
+      // Case 1) Amount of edges (as will be seen as weight=1 per edge)
+      builder.add(StaticStrings::GraphQueryWeight, VPackValue(_edges.size()));
+    } else if (weightType == WeightType::ACTUAL_WEIGHT) {
+      // Case 2) Calculated weight (currently passed as parameter)
+      builder.add(StaticStrings::GraphQueryWeight, VPackValue(_pathWeight));
+    }
+  }
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::isEqualEdgeRepresentation(
+    PathResult<ProviderType, Step> const& other) -> bool {
+  if (_edges.size() == other._edges.size()) {
+    for (size_t i = 0; i < _edges.size(); i++) {
+      if (!_edges[i].getID().equals(other._edges[i].getID())) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 template<class ProviderType, class Step>

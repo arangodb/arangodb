@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -868,11 +868,9 @@ class CalculationNode : public ExecutionNode {
 };
 
 /// @brief class SubqueryNode
-/// in 3.8, SubqueryNodes are only used during query planning and optimization,
-/// but will finally be replaced with SubqueryStartNode and SubqueryEndNode
-/// nodes by the splice-subqueries optimizer rule. In addition, any query
-/// execution plan from 3.7 may contain this node type. We can clean this up
-/// in 3.9.
+/// From 3.8 onwards, SubqueryNodes are only used during query planning and
+/// optimization, but will finally be replaced with SubqueryStartNode and
+/// SubqueryEndNode nodes by the splice-subqueries optimizer rule.
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
@@ -1170,8 +1168,6 @@ class MaterializeNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  auto getReadableInputRegisters(RegisterId inNmDocId) const -> RegIdSet;
-
  protected:
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
@@ -1205,6 +1201,7 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
+template<bool localDocumentId>
 class MaterializeSingleNode : public MaterializeNode,
                               public CollectionAccessingNode {
  public:

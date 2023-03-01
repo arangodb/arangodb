@@ -277,7 +277,15 @@ function printRules(rules, stats) {
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
@@ -2358,11 +2366,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},

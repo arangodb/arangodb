@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,8 @@ TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
 
 TwoSidedEnumeratorOptions::~TwoSidedEnumeratorOptions() = default;
 
+void TwoSidedEnumeratorOptions::setMinDepth(size_t min) { _minDepth = min; }
+void TwoSidedEnumeratorOptions::setMaxDepth(size_t max) { _maxDepth = max; }
 size_t TwoSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
 size_t TwoSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
 

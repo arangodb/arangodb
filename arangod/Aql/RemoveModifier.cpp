@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,8 +63,8 @@ ModifierOperationType RemoveModifierCompletion::accumulate(
     }
 
     _keyDocBuilder.clear();
+    // This adds _rev as a null value if rev is empty.
     buildKeyAndRevDocument(_keyDocBuilder, key, rev);
-    // This deletes _rev if rev is empty or ignoreRevs is set in options.
     accu.add(_keyDocBuilder.slice());
     return ModifierOperationType::ReturnIfAvailable;
   } else {

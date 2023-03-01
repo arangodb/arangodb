@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,6 +84,25 @@ using TracedKPathEnumerator = TracedTwoSidedEnumeratorWithProvider<Provider>;
 // ALL_SHORTEST_PATHS implementation
 template<class Provider>
 using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// K_SHORTEST_PATHS implementation
+template<class Provider>
+using KShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// K_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedKShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// WEIGHTED_K_SHORTEST_PATHS implementation
+template<class Provider>
+using WeightedKShortestPathsEnumerator =
+    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+
+// WEIGHTED_K_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedWeightedKShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
 
 // ALL_SHORTEST_PATHS implementation using Tracing
 template<class Provider>

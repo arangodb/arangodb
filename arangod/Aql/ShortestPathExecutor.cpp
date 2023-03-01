@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,22 +23,14 @@
 
 #include "ShortestPathExecutor.h"
 
-#include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "Basics/system-compiler.h"
-#include "Graph/ShortestPathFinder.h"
-#include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
-
 #include "Graph/algorithm-aliases.h"
-#include "Transaction/Helpers.h"
-
-#include <velocypack/Builder.h>
-
-#include <utility>
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Providers/ClusterProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 
 #include "ShortestPathExecutor.tpp"
 
@@ -47,7 +39,7 @@ using Cluster = ClusterProvider<ClusterProviderStep>;
 
 // Infos
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    ShortestPathEnumerator<SingleServer>>;
+    arangodb::graph::ShortestPathEnumerator<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutorInfos<
     TracedShortestPathEnumerator<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutorInfos<

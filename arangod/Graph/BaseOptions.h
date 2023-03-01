@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,10 +219,6 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
-  void setRefactor(bool r) noexcept { _refactor = r; }
-
-  bool refactor() const { return _refactor; }
-
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
@@ -327,11 +323,6 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data
   aql::Projections _edgeProjections;
-
-  /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release - (is currently needed for the
-  /// refactoring)
-  bool _refactor;
 };
 
 }  // namespace graph
