@@ -1585,9 +1585,15 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
 
-  auto& rf = _info.server().getFeature<ReplicationFeature>();
-  _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
+  if (_info.server().hasFeature<ReplicationFeature>()) {
+    auto& rf = _info.server().getFeature<ReplicationFeature>();
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
+  } else {
+    // during unit testing, there is no ReplicationFeature available
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(nullptr);
+  }
 
   // init collections
   _collections.reserve(32);
