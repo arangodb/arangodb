@@ -21,12 +21,11 @@ import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
 import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
-import LoadingSpinner from './LoadingSpinner.js';
 import AccordionView from './components/Accordion/Accordion';
 import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onChangeGraphData, onLoadFullGraph, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -46,10 +45,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
   const AccordionGraphContent = () => {
     return (
       <>
-        <ParameterNodeStart
-          nodes={graphData.nodes}
-          onNodeSelect={(node) => onDocumentSelect(node)}
-        />
+        <ParameterNodeStart />
         <br />
         <GraphLayoutSelector />
         <ParameterDepth />
@@ -89,11 +85,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         <br />
         <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
         <br />
-        <EdgeStyleSelector
-          onEdgeStyleChange={(typeModel) => {
-            onEdgeStyleChanged(typeModel);
-          }}
-        />
+        <EdgeStyleSelector />
       </>)
   };
 
@@ -247,7 +239,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
         }}
       >
       </HelpModal>
-      {isLoadingData ? <LoadingSpinner /> : null}
+      {isLoadingData ? "Loading..." : null}
     </>
   );
 }

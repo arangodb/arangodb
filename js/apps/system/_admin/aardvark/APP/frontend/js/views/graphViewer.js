@@ -72,7 +72,7 @@
 
     events: {
       'click #downloadPNG': 'downloadPNG',
-      'click #switchToG6GraphViewer': 'switchToG6GraphViewer',
+      'click #switchToVisGraphViewer': 'switchToVisGraphViewer',
       'click #loadFullGraph': 'loadFullGraphModal',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
@@ -106,10 +106,10 @@
       });
     },
 
-    switchToG6GraphViewer: function () {
+    switchToVisGraphViewer: function () {
       const url = window.location.href;
       const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
-      window.location.href = `/_db/_system/_admin/aardvark/index.html#g6graphs/${linkToNewGraphViewer}`;
+      window.location.href = `/_db/_system/_admin/aardvark/index.html#visgraphs/${linkToNewGraphViewer}`;
     },
 
     loadFullGraphModal: function () {

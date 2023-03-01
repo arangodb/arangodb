@@ -15,7 +15,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
 import './tooltip.css';
 
-const G6JsGraph = () => {
+const VisJsGraph = () => {
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   let localUrlParameters = URLPARAMETERS;
@@ -58,7 +58,7 @@ const G6JsGraph = () => {
   const [nodesColorAttributes, setNodesColorAttributes] = useState({});
   const [edgesColorAttributes, setEdgesColorAttributes] = useState({});
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
-  let [queryString, setQueryString] = useState(`/_admin/aardvark/g6graph/${graphName}`);
+  let [queryString, setQueryString] = useState(`/_admin/aardvark/visgraph/${graphName}`);
   let [queryMethod, setQueryMethod] = useState("GET");
   let [visQueryString, setVisQueryString] = useState(`/_admin/aardvark/visgraph/${graphName}`);
   let [visQueryMethod, setVisQueryMethod] = useState("GET");
@@ -244,32 +244,6 @@ const G6JsGraph = () => {
     setGraphData({...graphData});
   }
 
-  const updateGraphDataNodes = (newNodes) => {
-    const currentEdges = graphData.edges;
-    const newGraphData = {
-      nodes: [
-        ...newNodes
-      ],
-      edges: [
-        ...currentEdges
-      ]
-    };
-    setGraphData(newGraphData);
-  }
-
-  const updateGraphDataEdges = (newEdges) => {
-    const currentNodes = graphData.nodes;
-    const newGraphData = {
-      nodes: [
-        ...currentNodes
-      ],
-      edges: [
-        ...newEdges
-      ]
-    };
-    setGraphData(newGraphData);
-  }
-
   const removeNode = (nodeId) => {
     const nodes = graphData.nodes;
     const updatedNodes = nodes.filter(item => item.id !== nodeId);
@@ -399,7 +373,7 @@ const G6JsGraph = () => {
   }
 
   const expandNode = (node) => {
-    const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
@@ -445,7 +419,7 @@ const G6JsGraph = () => {
     const newUrlParameters = urlParameters;
     newUrlParameters.nodeStart = node;
     setUrlParameters(newUrlParameters);
-    const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}`;
+    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
@@ -629,8 +603,6 @@ const G6JsGraph = () => {
               data={graphData}
               visGraphData={visGraphData}
               vertexCollections={vertexCollections}
-              onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
-              onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
               onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
               onAddSingleEdge={(newEdge) => {
                 setEdgeModelToAdd(newEdge);
@@ -685,4 +657,4 @@ const G6JsGraph = () => {
   );
 }
 
-export default G6JsGraph;
+export default VisJsGraph;

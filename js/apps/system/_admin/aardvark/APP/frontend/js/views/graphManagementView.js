@@ -299,7 +299,7 @@
       var name = $(e.currentTarget).attr('id');
       if (name) {
         name = name.substr(0, name.length - 5);
-        window.App.navigate('g6graphs/' + encodeURIComponent(name), {trigger: true});
+        window.App.navigate('visgraphs/' + encodeURIComponent(name), {trigger: true});
       }
     },
 

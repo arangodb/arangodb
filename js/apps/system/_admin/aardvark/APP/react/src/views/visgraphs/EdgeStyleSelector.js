@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import ToolTip from '../../components/arango/tootip';
 import { UrlParametersContext } from "./url-parameters-context";
 
-const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
+const EdgeStyleSelector = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [type, setType] = useState(urlParameters.edgeType);
 
@@ -22,13 +22,9 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
 
   const handleChange = (event) => {
     const type = event.target.value;
-    const typeModelMerged = {
-      type: type
-    };
     setType(type);
     newUrlParameters.edgeType = type;
     setUrlParameters(newUrlParameters);
-    onEdgeStyleChange(typeModelMerged);
   };
 
   return (

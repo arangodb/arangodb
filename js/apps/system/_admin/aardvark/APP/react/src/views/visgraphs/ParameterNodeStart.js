@@ -3,7 +3,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
-const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
+const ParameterNodeStart = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
