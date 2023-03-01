@@ -96,7 +96,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            });
   }
 
-  result.add("databases", VPackValue(VPackValueType::Array));
+  //  result.add("databases", VPackValue(VPackValueType::Array));
   for (auto const it : velocypack::ArrayIterator(infoSlice.get("databases"))) {
     result.openObject();
     for (auto const it : velocypack::ObjectIterator(it)) {
@@ -114,7 +114,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
     result.close();
   }
 
-  result.close();
+  //  result.close();
 }
 
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
@@ -274,6 +274,8 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       }
 
       if (!futures.empty()) {
+        result.add("databases", VPackValue(VPackValueType::Array));
+
         auto responses = futures::collectAll(futures).get();
         for (auto const& it : responses) {
           auto& resp = it.get();
@@ -285,10 +287,12 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
             auto slice = resp.slice();
             // copy results from other server
             if (slice.isObject()) {
+              LOG_DEVEL << "IS OBJECT";
               addDatabaseInfo(result, slice, server);
             }
           }
         }
+        result.close();
       }
     } else {
       // DB server or other coordinator
