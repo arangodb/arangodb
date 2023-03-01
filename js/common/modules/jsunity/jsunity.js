@@ -10,6 +10,30 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 var counter; // crying
+function reduceStack(errstack) {
+  const maxLines = 5;
+  let ret = '';
+  let numPrinted = 0;
+  let last;
+  let lines = String(errstack).split('\n').filter(
+    line => line.trim() !== '').filter(
+      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run)/));
+  lines.forEach((line, index) => {
+    if (numPrinted++ >= maxLines && index !== lines.length - 1) {
+      ret += '.';
+      // don't print more than x lines, but always print last line
+      return;
+    }
+    if (last === line) {
+      // don't print duplicate lines
+      ret += '.';
+      return;
+    }
+    last = line;
+    ret += line + '\n';
+  });
+  return ret;
+}
 var jsUnity = exports.jsUnity = (function () {
   function fmt(str) {
     var internal = require("internal");
@@ -62,7 +86,7 @@ var jsUnity = exports.jsUnity = (function () {
       var err = new Error();
 
       throw fmt("?: (?) does not raise an exception or not a function\n(?)",
-                message || "assertException", fn, err.stack);
+                message || "assertException", fn, reduceStack(err.stack));
     },
 
     assertTrue: function (actual, message) {
@@ -70,7 +94,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (! actual) {
         var err = new Error();
         throw fmt("?: (?) does not evaluate to true\n(?)",
-                  message || "assertTrue", actual, err.stack);
+                  message || "assertTrue", actual, reduceStack(err.stack));
       }
     },
 
@@ -79,7 +103,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual) {
         var err = new Error();
         throw fmt("?: (?) does not evaluate to false\n(?)",
-                  message || "assertFalse", actual, err.stack);
+                  message || "assertFalse", actual, reduceStack(err.stack));
       }
     },
 
@@ -89,7 +113,7 @@ var jsUnity = exports.jsUnity = (function () {
         var err = new Error();
         throw fmt("?: (?) is not identical to (?)\n(?)",
                   message || "assertIdentical", actual,
-                  expected, err.stack);
+                  expected, reduceStack(err.stack));
       }
     },
 
@@ -98,7 +122,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (expected === actual) {
         var err = new Error();
         throw fmt("?: (?) is identical to (?)\n(?)",
-                  message || "assertNotIdentical", actual, expected, err.stack);
+                  message || "assertNotIdentical", actual, expected, reduceStack(err.stack));
       }
     },
 
@@ -107,7 +131,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (hash(expected) !== hash(actual)) {
         var err = new Error();
         throw fmt("?: (?) is not equal to (?)\n(?)",
-                  message || "assertEqual", actual, expected, err.stack);
+                  message || "assertEqual", actual, expected, reduceStack(err.stack));
       }
     },
 
@@ -116,7 +140,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (hash(expected) === hash(actual)) {
         var err = new Error();
         throw fmt("?: (?) is equal to (?)\n(?)",
-                  message || "assertNotEqual", actual, expected, err.stack);
+                  message || "assertNotEqual", actual, expected, reduceStack(err.stack));
       }
     },
 
@@ -125,7 +149,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (! re.test(actual)) {
         var err = new Error();
         throw fmt("?: (?) does not match (?)\n(?)",
-                  message || "assertMatch", actual, re, err.stack);
+                  message || "assertMatch", actual, re, reduceStack(err.stack));
       }
     },
 
@@ -134,7 +158,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (re.test(actual)) {
         var err = new Error();
         throw fmt("?: (?) matches (?)\n(?)",
-                  message || "assertNotMatch", actual, re, err.stack);
+                  message || "assertNotMatch", actual, re, reduceStack(err.stack));
       }
     },
 
@@ -143,7 +167,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (typeof actual !== typ) {
         var err = new Error();
         throw fmt("?: (?) is not of type (?)\n(?)",
-                  message || "assertTypeOf", actual, typ, err.stack);
+                  message || "assertTypeOf", actual, typ, reduceStack(err.stack));
       }
     },
 
@@ -152,7 +176,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (typeof actual === typ) {
         var err = new Error();
         throw fmt("?: (?) is of type (?)\n(?)",
-                  message || "assertNotTypeOf", actual, typ, err.stack);
+                  message || "assertNotTypeOf", actual, typ, reduceStack(err.stack));
       }
     },
 
@@ -161,7 +185,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (!(actual instanceof cls)) {
         var err = new Error();
         throw fmt("?: (?) is not an instance of (?)\n(?)",
-                  message || "assertInstanceOf", actual, cls, err.stack);
+                  message || "assertInstanceOf", actual, cls, reduceStack(err.stack));
       }
     },
 
@@ -170,7 +194,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual instanceof cls) {
         var err = new Error();
         throw fmt("?: (?) is an instance of (?)\n(?)",
-                  message || "assertNotInstanceOf", actual, cls, err.stack);
+                  message || "assertNotInstanceOf", actual, cls, reduceStack(err.stack));
       }
     },
 
@@ -179,7 +203,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual !== null) {
         var err = new Error();
         throw fmt("?: (?) is not null\n(?)",
-                  message || "assertNull", actual, err.stack);
+                  message || "assertNull", actual, reduceStack(err.stack));
       }
     },
 
@@ -188,7 +212,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual === null) {
         var err = new Error();
         throw fmt("?: (?) is null\n(?)",
-                  message || "assertNotNull", actual, err.stack);
+                  message || "assertNotNull", actual, reduceStack(err.stack));
       }
     },
 
@@ -197,7 +221,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual !== undefined) {
         var err = new Error();
         throw fmt("?: (?) is not undefined\n(?)",
-                  message || "assertUndefined", actual, err.stack);
+                  message || "assertUndefined", actual, reduceStack(err.stack));
       }
     },
 
@@ -206,7 +230,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (actual === undefined) {
         var err = new Error();
         throw fmt("?: (?) is undefined\n(?)",
-                  message || "assertNotUndefined", actual, err.stack);
+                  message || "assertNotUndefined", actual, reduceStack(err.stack));
       }
     },
 
@@ -215,7 +239,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (!isNaN(actual)) {
         var err = new Error();
         throw fmt("?: (?) is not NaN\n(?)",
-                  message || "assertNaN", actual, err.stack);
+                  message || "assertNaN", actual, reduceStack(err.stack));
       }
     },
 
@@ -224,7 +248,7 @@ var jsUnity = exports.jsUnity = (function () {
       if (isNaN(actual)) {
         var err = new Error();
         throw fmt("?: (?) is NaN\n(?)",
-                  message || "assertNotNaN", actual, err.stack);
+                  message || "assertNotNaN", actual, reduceStack(err.stack));
       }
     },
 
@@ -521,7 +545,7 @@ var jsUnity = exports.jsUnity = (function () {
           runSuite = false;
           if (setUpAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,
-                              setUpAllError + " - " + String(setUpAllError.stack) + 
+                              setUpAllError + " - " + reduceStack(setUpAllError.stack) + 
                               " - setUpAll failed");
           }
         }
@@ -570,31 +594,32 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 break;
               } catch (e) {
+                let ex = e;
                 let arangodb = require("@arangodb");
-                if ( typeof e === "string" ) {
-                  e = new Error(e);
-                } else if (e instanceof arangodb.ArangoError && (
-                           (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
-                           (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                if ( typeof ex === "string" ) {
+                  ex = new Error(ex);
+                } else if (ex instanceof arangodb.ArangoError && (
+                           (ex.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
+                           (ex.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
                 )) {
                   skipTest = true;
                 }
                 if (!didSetUp) {
                   this.results.endSetUp(suite.scope, test.name);
                   didSetUp = true;
-                  messages.push(String(e.stack) + " - setUp failed");
+                  messages.push(reduceStack(ex.stack) + " - setUp failed");
                   skipTest = true;
                   continue;
                 }
                 if (!didTest && !skipTest) {
                   didTest = true;
-                  messages.push(String(e.stack) + " - test failed");
+                  messages.push(reduceStack(ex.stack) + " - test failed");
                   continue;
                 }
                 if (!didTearDown) {
                   this.results.endTeardown(suite.scope, test.name);
                   didTearDown = true;
-                  messages.push(String(e.stack) + " - tearDown failed");
+                  messages.push(reduceStack(ex.stack) + " - tearDown failed");
                   continue;
                 }
               }
@@ -607,9 +632,10 @@ var jsUnity = exports.jsUnity = (function () {
           tearDownAll(suite.suiteName);
           this.results.endTeardownAll(suite.scope);
         } catch (tearDownAllError) {
+          results.total += 1;
           if (tearDownAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,
-                              tearDownAllError + " - " + String(tearDownAllError.stack) + 
+                              tearDownAllError + " - " + reduceStack(tearDownAllError.stack) + 
                               " - tearDownAll failed");
           }
         }
