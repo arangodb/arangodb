@@ -18,34 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Pregel/Algorithm.h"
-#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
-#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
+#include "Pregel/GraphStore/VertexID.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel {
+/// A counter for counting unique vertex IDs using a HyperLogLog sketch.
+/// @author Aljoscha Krettek, Robert Metzger, Robert Waury
+/// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
+/// https://github.com/rmetzger/spargel-closeness/blob/master/src/main/java/de/robertmetzger/HLLCounterWritable.java
+struct HLLCounter {
+  friend struct HLLCounterFormat;
+  constexpr static int32_t NUM_BUCKETS = 64;
+  constexpr static double ALPHA = 0.709;
 
-/// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
+  uint32_t getCount();
+  void addNode(VertexID const& pregelId);
+  void merge(HLLCounter const& counter);
 
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
-  MessageFormat<HLLCounter>* messageFormat() const override;
-  MessageCombiner<HLLCounter>* messageCombiner() const override;
-
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+ private:
+  uint8_t _buckets[NUM_BUCKETS] = {0};
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+
+template<typename Inspector>
+auto inspect(Inspector& f, HLLCounter& v) {
+  // TODO: friend and implement
+  return f.object(v).fields();
+}
+
+}  // namespace arangodb::pregel

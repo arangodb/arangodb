@@ -18,34 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Pregel/Algorithm.h"
-#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
-#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
+#include <cstdint>
+#include <limits>
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
-/// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
-
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
-  MessageFormat<HLLCounter>* messageFormat() const override;
-  MessageCombiner<HLLCounter>* messageCombiner() const override;
-
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+// Label propagation
+struct LPValue {
+  /// The desired partition the vertex want to migrate to.
+  uint64_t currentCommunity = 0;
+  /// The actual partition.
+  uint64_t lastCommunity = std::numeric_limits<uint64_t>::max();
+  /// Iterations since last migration.
+  uint64_t stabilizationRounds = 0;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+
+template<typename Inspector>
+auto inspect(Inspector& f, LPValue& v) {
+  return f.object(v).fields(
+      f.field("currentCommunity", v.currentCommunity),
+      f.field("lastCommunity", v.lastCommunity),
+      f.field("stabilizationRounds", v.stabilizationRounds));
+}
+
+}  // namespace arangodb::pregel::algos

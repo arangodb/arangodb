@@ -18,34 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Pregel/Algorithm.h"
-#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
-#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
+namespace arangodb::pregel::algos {
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
-
-/// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
-
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
-  MessageFormat<HLLCounter>* messageFormat() const override;
-  MessageCombiner<HLLCounter>* messageCombiner() const override;
-
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+// Speaker-listerner Label propagation
+struct SLPAValue {
+  // our own initialized id
+  uint64_t nodeId = 0;
+  // number of received communities
+  uint64_t numCommunities = 0;
+  /// Memory used to hold the labelId and the count
+  // used for memorizing communities
+  std::map<uint64_t, uint64_t> memory;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+
+template<typename Inspector>
+auto inspect(Inspector& f, SLPAValue& v) {
+  return f.object(v).fields(f.field("nodeId", v.nodeId),
+                            f.field("numCommunities", v.numCommunities),
+                            f.field("memory", v.memory));
+}
+}  // namespace arangodb::pregel::algos

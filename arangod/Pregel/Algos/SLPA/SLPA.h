@@ -25,11 +25,9 @@
 
 #include <cmath>
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// SLPA algorithm:
 /// Overlap is one of the characteristics of social
@@ -120,6 +118,4 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
       WorkerConfig const*) const override;
   WorkerContext* workerContext(velocypack::Slice userParams) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos
