@@ -39,6 +39,7 @@ auto DocumentStateShardHandler::createLocalShard(
     ShardID const& shardId, std::string const& collectionId,
     std::shared_ptr<velocypack::Builder> const& properties) -> Result {
   auto serverId = ServerState::instance()->getId();
+  namespace maintenance = arangodb::maintenance;
 
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
@@ -67,6 +68,7 @@ auto DocumentStateShardHandler::createLocalShard(
 Result DocumentStateShardHandler::dropLocalShard(
     ShardID const& shardId, const std::string& collectionId) {
   auto serverId = ServerState::instance()->getId();
+  namespace maintenance = arangodb::maintenance;
 
   maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
