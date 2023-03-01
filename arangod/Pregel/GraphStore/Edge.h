@@ -33,9 +33,7 @@ namespace arangodb::pregel {
 template<typename V, typename E>
 class GraphStore;
 
-// header entry for the edge file
 template<typename E>
-// cppcheck-suppress noConstructor
 struct Edge {
   template<typename V, typename E2>
   friend class GraphStore;
