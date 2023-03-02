@@ -461,7 +461,9 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
-      generateError(rest::ResponseCode::FORBIDDEN, code,
+      // generateError(rest::ResponseCode::FORBIDDEN, code,
+      //               "collection is read-only");
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, code,
                     "collection is read-only");
       return;
 

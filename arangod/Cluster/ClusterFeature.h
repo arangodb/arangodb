@@ -182,6 +182,10 @@ class ClusterFeature : public ArangodFeature {
   /// note: this may be called multiple times during shutdown
   void waitForSyncersToStop();
 
+  uint32_t returnCodeFailedWriteConcern() const noexcept {
+    return _returnCodeFailedWriteConcern;
+  }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
@@ -227,6 +231,13 @@ class ClusterFeature : public ArangodFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
+  // The following value indicates what HTTP code should be returned if
+  // a configured write concern cannot currently be fulfilled. The old
+  // behaviour (false, currently the default) means that a 403 FORBIDDEN
+  // with an error of 1004 COLLECTION READ ONLY is returned. The new
+  // behaviour (true) would be a HTTP 503 SERVER UNAVAILABLE with an error of
+  // 1429 ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED is returned.
+  uint32_t _returnCodeFailedWriteConcern = 403;
   /// @brief coordinator timeout for index creation. defaults to 4 days
   double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;

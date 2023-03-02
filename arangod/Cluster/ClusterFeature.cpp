@@ -420,6 +420,18 @@ any extra JWT checks compared to v3.7.)");
 shards operations that can be made when the **Rebalance Shards** button is
 clicked in the web interface. For backwards compatibility, the default value is
 `10`. A value of `0` disables the button.)");
+
+  options
+      ->addOption("--cluster.failed-write-concern-error-code",
+                  "HTTP code which is sent when a shard has not enough in-sync "
+                  "replicas to fulfill the write concern.",
+                  new UInt32Parameter(&_returnCodeFailedWriteConcern),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31100)
+      .setLongDescription(
+          R"(The old legacy behaviour is to send a 403 FORBIDDEN. The new, more correct behaviour is to send a 503 SERVICE UNAVAILABLE, which can lead to a retry on the coordinator. Therefore, the two only valid values are 403 and 503, all other values will be interpreted as not specified and the default is taken. Currently, the default is 403.)");
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

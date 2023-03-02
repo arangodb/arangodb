@@ -2268,9 +2268,15 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       }
 
       switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
+        case FollowerInfo::WriteState::FORBIDDEN: {
           // We cannot fulfill minimum replication Factor. Reject write.
-          return {TRI_ERROR_ARANGO_READ_ONLY};
+          auto& clusterFeature =
+              vocbase().server().getFeature<ClusterFeature>();
+          if (clusterFeature.returnCodeFailedWriteConcern() == 403) {
+            return {TRI_ERROR_ARANGO_READ_ONLY};
+          }
+          return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
+        }
         case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
