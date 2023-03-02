@@ -35,6 +35,10 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
+// TODO: enable this once we upgrade to a newer version of RocksDB and
+// remove the ifdefs
+#undef ARANGODB_ROCKSDB8
+
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -104,6 +108,21 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+#ifdef ARANGODB_ROCKSDB8
+  // only used for HyperClockCache
+  uint64_t _blockCacheEstimatedEntryCharge;
+#endif
+  uint64_t _minBlobSize;
+  uint64_t _blobFileSize;
+#ifdef ARANGODB_ROCKSDB8
+  uint32_t _blobFileStartingLevel;
+#endif
+  bool _enableBlobFiles;
+#ifdef ARANGODB_ROCKSDB8
+  bool _enableBlobCache;
+#endif
+  double _blobGarbageCollectionAgeCutoff;
+  double _blobGarbageCollectionForceThreshold;
   double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
@@ -114,12 +133,17 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
   std::string _compressionType;
+  std::string _blobCompressionType;
+  std::string _blockCacheType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
   bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
+#ifdef ARANGODB_ROCKSDB8
+  bool _prepopulateBlobCache;
+#endif
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
   bool _reserveFileMetadataMemory;
@@ -141,6 +165,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
   bool _minWriteBufferNumberToMergeTouched;
 
