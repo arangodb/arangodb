@@ -304,7 +304,6 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
-        this.arangoViewsStore = new window.ArangoViews();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
@@ -1355,17 +1354,10 @@
     },
     views: function () {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.viewsView) {
-          this.viewsView.remove();
-        }
-
-        this.viewsView = new window.ViewsView({
-          collection: this.arangoViewsStore
-        });
-        this.viewsView.render();
-      });
+      
+      this.init.then(
+       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
+         document.getElementById('content')));
     },
 
     fetchDBS: function (callback) {
