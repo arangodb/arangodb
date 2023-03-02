@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add peak memory usage to the query object details for queries in the slow
+  query history and in the list of currently running queries. The peak memory
+  usage is also returned via REST APIs as `peakMemoryUsage`.
+
 * Provide options for configuring and enabling RocksDB's blob storage (BlobDB)
   for large documents in the documents column family.
   This is currently an experimental feature.
