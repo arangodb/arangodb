@@ -34,21 +34,21 @@ shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol
 # Shell client tests Single Server; distribute evenly
 shell_client priority=250 parallelity=2 buckets=2 single -- $EncryptionAtRest
 shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
-shell_client_multi priority=1500 parallelity=2 single suffix=http
+shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 shell_client_multi priority=2500 parallelity=2 single suffix=vst -- --vst true
 
 
-shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
+shell_client_transaction priority=750 single suffix=http -- --http true $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
-shell_client_traffic priority=250 parallelity=1 single suffix=http -- http true
+shell_client_traffic priority=250 parallelity=1 single suffix=http -- --http true
 shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
 shell_client_traffic priority=250 parallelity=1 single suffix=vst -- --vst true
 shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
 shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
 shell_client_traffic priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql priority=250  single suffix=http
+shell_client_aql priority=250  single suffix=http -- --http true
 shell_client_aql priority=500  single suffix=http2 -- --http2 true
 shell_client_aql priority=750  single suffix=vst -- --vst true
 shell_client_aql priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
@@ -84,8 +84,8 @@ resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 size=small cluster buckets=8
 
+shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
-shell_client_multi priority=1500 cluster suffix=http
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
