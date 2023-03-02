@@ -1139,6 +1139,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
   }
 
   var toReturn;
+  // if we have multiple start nodes than startVertex === undefined
   if (startVertex === null) {
     toReturn = {
       empty: true,
