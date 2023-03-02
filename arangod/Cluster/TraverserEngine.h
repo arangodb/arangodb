@@ -62,7 +62,7 @@ struct TraverserOptions;
 
 class BaseEngine {
  public:
-  enum EngineType { TRAVERSER, SHORTESTPATH };
+  enum EngineType { TRAVERSER };
 
   static std::unique_ptr<BaseEngine> BuildEngine(
       TRI_vocbase_t& vocbase, aql::QueryContext& query,
@@ -110,12 +110,6 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t,
-                arangodb::velocypack::Builder&);
-
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
-
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
 
@@ -139,37 +133,6 @@ class BaseTraverserEngine : public BaseEngine {
       _depthSpecificCursors;
   std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
-};
-
-class ShortestPathEngine : public BaseEngine {
- public:
-  // Only the Registry (friend) is allowed
-  // to create and destroy engines.
-  // We can get into undefined state if sth.
-  // deletes an engine but the registry
-  // does not get informed properly
-
-  ShortestPathEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
-                     arangodb::velocypack::Slice info);
-
-  ~ShortestPathEngine();
-
-  void getEdges(arangodb::velocypack::Slice, bool backward,
-                arangodb::velocypack::Builder&);
-
-  EngineType getType() const override { return SHORTESTPATH; }
-
-  graph::BaseOptions const& options() const override;
-
- private:
-  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
-                   std::string_view v);
-
- protected:
-  std::unique_ptr<graph::ShortestPathOptions> _opts;
-
-  std::unique_ptr<graph::EdgeCursor> _forwardCursor;
-  std::unique_ptr<graph::EdgeCursor> _backwardCursor;
 };
 
 class TraverserEngine : public BaseTraverserEngine {

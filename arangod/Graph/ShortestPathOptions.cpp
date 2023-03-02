@@ -28,7 +28,7 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/ClusterTraverserCache.h"
-#include "Graph/SingleServerEdgeCursor.h"
+
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
@@ -182,18 +182,6 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   }
 
   return weight;
-}
-
-std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
-  ensureCache();
-
-  if (_isCoordinator) {
-    return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
-  }
-
-  return std::make_unique<SingleServerEdgeCursor>(
-      this, _tmpVar, nullptr,
-      backward ? _reverseLookupInfos : _baseLookupInfos);
 }
 
 template<typename ListType>

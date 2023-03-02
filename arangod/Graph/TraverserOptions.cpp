@@ -31,7 +31,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -748,26 +747,6 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
       info.calculateIndexExpressions(ast, _expressionCtx);
     }
   }
-}
-
-std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
-    uint64_t depth) {
-  ensureCache();
-
-  if (_isCoordinator) {
-    return std::make_unique<ClusterTraverserEdgeCursor>(this);
-  }
-
-  auto specific = _depthLookupInfo.find(depth);
-  if (specific != _depthLookupInfo.end()) {
-    // use specific cursor
-    return std::make_unique<graph::SingleServerEdgeCursor>(
-        this, _tmpVar, nullptr, specific->second);
-  }
-
-  // otherwise, retain / reuse the general (global) cursor
-  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
-                                                         _baseLookupInfos);
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {

@@ -38,7 +38,6 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace graph {
-class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
@@ -72,8 +71,6 @@ struct ShortestPathOptions : public BaseOptions {
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
-  std::unique_ptr<EdgeCursor> buildCursor(bool backward);
 
   /// @brief  Test if we have to use a weight attribute
   bool useWeight() const;

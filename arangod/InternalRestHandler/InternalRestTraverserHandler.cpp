@@ -61,9 +61,6 @@ RestStatus InternalRestTraverserHandler::execute() {
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case RequestType::POST:
-        createEngine();
-        break;
       case RequestType::PUT:
         queryEngine();
         break;
@@ -86,12 +83,6 @@ RestStatus InternalRestTraverserHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
-}
-
-void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -177,6 +168,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
   VPackBuilder result;
   if (option == "edge") {
+    TRI_ASSERT(false);
     VPackSlice keysSlice = body.get("keys");
 
     if (!keysSlice.isString() && !keysSlice.isArray()) {
@@ -187,6 +179,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
     switch (engine->getType()) {
       case BaseEngine::EngineType::TRAVERSER: {
+        TRI_ASSERT(false);
         VPackSlice depthSlice = body.get("depth");
         if (!depthSlice.isInteger()) {
           generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -200,20 +193,6 @@ void InternalRestTraverserHandler::queryEngine() {
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
-        eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
-        break;
-      }
-      case BaseEngine::EngineType::SHORTESTPATH: {
-        VPackSlice bwSlice = body.get("backward");
-        if (!bwSlice.isBool()) {
-          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "expecting 'backward' to be a boolean value");
-          return;
-        }
-        // Safe cast ShortestPathEngines are all of type SHORTESTPATH
-        auto eng = static_cast<ShortestPathEngine*>(engine);
-        TRI_ASSERT(eng != nullptr);
-        eng->getEdges(keysSlice, bwSlice.getBoolean(), result);
         break;
       }
       default:

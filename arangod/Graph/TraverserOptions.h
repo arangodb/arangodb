@@ -46,10 +46,6 @@ class TraversalNode;
 struct Variable;
 }  // namespace aql
 
-namespace graph {
-class EdgeCursor;
-}
-
 namespace traverser {
 
 struct TraverserOptions : public graph::BaseOptions {
@@ -150,8 +146,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               std::string_view vertexId, uint64_t, size_t);
-
-  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
 
