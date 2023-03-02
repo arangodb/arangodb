@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB logo in web interface.
+
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
 * Allow usage of projections and covering indexes in more cases.
