@@ -93,53 +93,49 @@ let debugClearFailAtAll = () => {
 const disableSingleDocRule = {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}};
 const disableRestrictToSingleShardRule = {optimizer: {rules: ["-restrict-to-single-shard"]}};
 
-const runSmartVertexInserts = (graphProperties, generators, forbiddenGenerator) => {
-  generators().forEach((generator) => {
-    if (generator === forbiddenGenerator) {
-      return;
-    }
-    graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
+const runSmartVertexInserts = (graphProperties) => {
+  graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
 
-    try {
-      // test various ways of inserting documents into the collection
+  try {
+    // test various ways of inserting documents into the collection
 
-      // single insert, using document API
-      db[vn].insert({value: "42"});
+    // single insert, using document API
+    db[vn].insert({value: "42"});
 
-      // batch insert, using document API
-      db[vn].insert([{value: "42"}, {value: "42"}, {value: "42"}]).forEach((res) => {
-        assertFalse(res.hasOwnProperty('error'));
-      });
+    // batch insert, using document API
+    db[vn].insert([{value: "42"}, {value: "42"}, {value: "42"}]).forEach((res) => {
+      assertFalse(res.hasOwnProperty('error'));
+    });
 
-      // single insert, using AQL
-      db._query(`INSERT
+    // single insert, using AQL
+    db._query(`INSERT
           { value: "42" } INTO
           ${vn}`);
 
-      db._query(`INSERT
+    db._query(`INSERT
           { value: "42" } INTO
           ${vn}`, null, disableSingleDocRule);
 
-      db._query(`INSERT
+    db._query(`INSERT
           { value: "42" } INTO
           ${vn}`, null, disableRestrictToSingleShardRule);
 
-      // batch insert, using AQL
-      db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
+    // batch insert, using AQL
+    db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
 
-      db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+    db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
 
-      // 13 documents inserted so far. Try to insert some malformed ones (must fail).
-      insertInvalidSmartVertices(vn);
+    // 13 documents inserted so far. Try to insert some malformed ones (must fail).
+    insertInvalidSmartVertices(vn);
 
-      assertEqual(13, db[vn].count());
-    } finally {
-      graphs._drop(gn, true);
-    }
-  });
+    assertEqual(13, db[vn].count());
+  } finally {
+    graphs._drop(gn, true);
+  }
 };
 
-const runSmartEdgeInserts = (graphProperties, generators, forbiddenGenerator) => {
+const runSmartEdgeInserts = (graphProperties) => {
+  // Helper method to either insert edges into SmartGraphs or EnterpriseGraphs
   if (cluster) {
     // fail if we generate a key on a DB server
     debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
@@ -148,50 +144,45 @@ const runSmartEdgeInserts = (graphProperties, generators, forbiddenGenerator) =>
     debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
   }
 
-  generators().forEach((generator) => {
-    if (generator === forbiddenGenerator) {
-      return;
-    }
-    graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
+  graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
 
-    try {
-      // test various ways of inserting documents into the collection
+  try {
+    // test various ways of inserting documents into the collection
 
-      // single insert, using document API
-      db[en].insert({value: "42", _from: vn + "/test:42", _to: vn + "/test:42"});
+    // single insert, using document API
+    db[en].insert({value: "42", _from: vn + "/test:42", _to: vn + "/test:42"});
 
-      // batch insert, using document API
-      db[en].insert([{value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}, {
-        value: "42",
-        _from: vn + "/test:42",
-        _to: vn + "/test:42"
-      }, {value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}]).forEach((res) => {
-        assertFalse(res.hasOwnProperty('error'));
-      });
+    // batch insert, using document API
+    db[en].insert([{value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}, {
+      value: "42",
+      _from: vn + "/test:42",
+      _to: vn + "/test:42"
+    }, {value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}]).forEach((res) => {
+      assertFalse(res.hasOwnProperty('error'));
+    });
 
-      // single insert, using AQL
-      db._query(`INSERT
+    // single insert, using AQL
+    db._query(`INSERT
           { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
           ${en}`);
-      db._query(`INSERT
+    db._query(`INSERT
           { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
           ${en}`, null, disableSingleDocRule);
-      db._query(`INSERT
+    db._query(`INSERT
           { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
           ${en}`, null, disableRestrictToSingleShardRule);
 
-      // batch insert, using AQL
-      db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
-      db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+    // batch insert, using AQL
+    db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+    db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
 
-      // 13 documents inserted so far. Try to insert some malformed ones (must fail).
-      insertInvalidSmartEdges(en);
+    // 13 documents inserted so far. Try to insert some malformed ones (must fail).
+    insertInvalidSmartEdges(en);
 
-      assertEqual(13, db[en].count());
-    } finally {
-      graphs._drop(gn, true);
-    }
-  });
+    assertEqual(13, db[en].count());
+  } finally {
+    graphs._drop(gn, true);
+  }
 };
 
 const insertInvalidSmartVertices = (vn) => {
@@ -205,10 +196,21 @@ const insertInvalidSmartVertices = (vn) => {
     null // null not allowed
   ];
 
+  // Note: Using save() <-> insert() should be the same.
+  // Using both here to double-check that the assumption is
+  // proven.
+
   // single insert, using document API
   invalidKeys.forEach(invalidKey => {
     try {
       db[vn].insert({_key: invalidKey, value: "43"});
+    } catch (ignore) {
+    }
+  });
+  // single insert, using document API
+  invalidKeys.forEach(invalidKey => {
+    try {
+      db[vn].save({_key: invalidKey, value: "43"});
     } catch (ignore) {
     }
   });
@@ -1400,15 +1402,9 @@ function KeyGenerationLocationSuite() {
 function KeyGenerationLocationSmartGraphSuite() {
   'use strict';
 
-  let generators = function () {
-    let generators = [
-      "traditional",
-      "padded",
-      "uuid",
-      "autoincrement"
-    ];
-    return generators;
-  };
+  // Note: No key generators defined here in this suite compared to the other one
+  // sitting in this test file. This is totally valid, because one cannot define
+  // manually which key generator can be used in a Graph/SmartGraph/EnterpriseGraph etc.
 
   return {
     setUp: function () {
@@ -1440,30 +1436,34 @@ function KeyGenerationLocationSmartGraphSuite() {
         numberOfShards: 1,
         smartGraphAttribute: "value"
       };
-      runSmartVertexInserts(smartGraphProperties, generators);
+      runSmartVertexInserts(smartGraphProperties);
     },
 
     testSingleShardEnterpriseVertexInserts: function () {
-      if (cluster) {
-        // fail if we generate a key on a coordinator
-        // TODOD debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
+      if (!cluster) {
         // single server: we can actually get here with the SmartGraph simulator!
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
+      // Note: To cluster tests and why we're not setting any failure point here:
+      // We cannot declare a failure point here because both, that means:
+      // * SingleServer || DatabaseServer key generation is valid
+      // * Coordinator-based key generation is valid as well.
+      // This statement is only true in case we're using a SingleShard(!).
+      // Therefore, the other test below (MultiShardEnterprise) will include
+      // these assertions for both cases (cluster and singleserver).
 
       // note: test can run in single server as well!
       const enterpriseGraphProperties = {
         numberOfShards: 1,
         isSmart: true
       };
-      runSmartVertexInserts(enterpriseGraphProperties, generators);
+      runSmartVertexInserts(enterpriseGraphProperties);
     },
 
     testMultiShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
-        // TODO debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
@@ -1474,7 +1474,7 @@ function KeyGenerationLocationSmartGraphSuite() {
         numberOfShards: 2,
         smartGraphAttribute: "value"
       };
-      runSmartVertexInserts(smartGraphProperties, generators, "autoincrement");
+      runSmartVertexInserts(smartGraphProperties);
     },
 
     testMultiShardEnterpriseVertexInserts: function () {
@@ -1491,75 +1491,43 @@ function KeyGenerationLocationSmartGraphSuite() {
         numberOfShards: 2,
         isSmart: true
       };
-      runSmartVertexInserts(enterpriseGraphProperties, generators, "autoincrement");
+      runSmartVertexInserts(enterpriseGraphProperties);
     },
 
     testSingleShardSmartEdgeInserts: function () {
       // note: test can run in single server as well!
-      if (cluster) {
-        // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
-        // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-      }
-
       const smartGraphProperties = {
         numberOfShards: 1,
         smartGraphAttribute: "value"
       };
-      runSmartEdgeInserts(smartGraphProperties, generators);
+      runSmartEdgeInserts(smartGraphProperties);
     },
 
     testMultiShardSmartEdgeInserts: function () {
       // note: test can run in single server as well!
-      if (cluster) {
-        // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
-        // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-      }
-
       const smartGraphProperties = {
         numberOfShards: 1,
         smartGraphAttribute: "value"
       };
-      runSmartEdgeInserts(smartGraphProperties, generators, "autoincrement");
+      runSmartEdgeInserts(smartGraphProperties);
     },
 
     testSingleShardEnterpriseEdgeInserts: function () {
       // note: test can run in single server as well!
-
-      if (cluster) {
-        // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
-        // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-      }
-
       const enterpriseGraphProperties = {
         numberOfShards: 1,
         isSmart: true
       };
-      runSmartEdgeInserts(enterpriseGraphProperties, generators);
+      runSmartEdgeInserts(enterpriseGraphProperties);
     },
 
     testMultiShardEnterpriseEdgeInserts: function () {
       // note: test can run in single server as well!
-      if (cluster) {
-        // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
-        // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-      }
       const enterpriseGraphProperties = {
         numberOfShards: 1,
         isSmart: true
       };
-      runSmartEdgeInserts(enterpriseGraphProperties, generators, "autoincrement");
+      runSmartEdgeInserts(enterpriseGraphProperties);
     },
 
   };
