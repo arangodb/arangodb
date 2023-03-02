@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathExecutor.h"
