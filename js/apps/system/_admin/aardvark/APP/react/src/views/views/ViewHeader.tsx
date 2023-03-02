@@ -40,7 +40,7 @@ export const ViewHeader = ({
       borderBottom="2px solid"
       borderColor={"gray.300"}
       padding="4"
-      zIndex="sticky"
+      zIndex="900"
     >
       <EditableViewName
         isAdminUser={isAdminUser}
