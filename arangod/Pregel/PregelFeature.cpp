@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
@@ -109,6 +110,27 @@ network::Headers buildHeaders() {
   return headers;
 }
 
+std::vector<ShardID> getShardIds(TRI_vocbase_t& vocbase,
+                                 ShardID const& collection) {
+  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::vector<ShardID> result;
+  try {
+    std::shared_ptr<LogicalCollection> lc =
+        ci.getCollection(vocbase.name(), collection);
+    std::shared_ptr<std::vector<ShardID>> shardIDs =
+        ci.getShardList(std::to_string(lc->id().id()));
+    result.reserve(shardIDs->size());
+    for (auto const& it : *shardIDs) {
+      result.emplace_back(it);
+    }
+  } catch (...) {
+    result.clear();
+  }
+
+  return result;
+}
+
 }  // namespace
 
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
@@ -167,6 +189,25 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   }
 
   ServerState* ss = ServerState::instance();
+
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictionsPerShard;
+  if (ss->isSingleServer()) {
+    edgeCollectionRestrictionsPerShard = std::move(edgeCollectionRestrictions);
+  } else {
+    for (auto const& [vertexCollection, edgeCollections] :
+         edgeCollectionRestrictions) {
+      for (auto const& shardId : getShardIds(vocbase, vertexCollection)) {
+        // intentionally create key in map
+        auto& restrictions = edgeCollectionRestrictionsPerShard[shardId];
+        for (auto const& edgeCollection : edgeCollections) {
+          for (auto const& edgeShardId : getShardIds(vocbase, edgeCollection)) {
+            restrictions.push_back(edgeShardId);
+          }
+        }
+      }
+    }
+  }
 
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
@@ -282,12 +323,44 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     }
   }
 
+  uint64_t maxSuperstep = basics::VelocyPackHelper::getNumericValue(
+      options.userParameters.slice(), Utils::maxGSS, 500);
+  if (options.userParameters.slice().hasKey(Utils::maxNumIterations)) {
+    // set to "infinity"
+    maxSuperstep = std::numeric_limits<uint64_t>::max();
+  }
+  auto useMemoryMapsVar = basics::VelocyPackHelper::getBooleanValue(
+      options.userParameters.slice(), Utils::useMemoryMapsKey, useMemoryMaps());
+
+  auto storeResults = basics::VelocyPackHelper::getBooleanValue(
+      options.userParameters.slice(), "store", true);
+
+  auto parallelismVar = parallelism(options.userParameters.slice());
+
+  // time-to-live for finished/failed Pregel jobs before garbage collection.
+  // default timeout is 10 minutes for each conductor
+  auto ttl = TTL{.duration = std::chrono::seconds(
+                     basics::VelocyPackHelper::getNumericValue(
+                         options.userParameters.slice(), "ttl", 600))};
+
   auto en = createExecutionNumber();
 
+  auto executionSpecifications = ExecutionSpecifications{
+      .executionNumber = en,
+      .algorithm = options.algorithm,
+      .vertexCollections = vertexCollections,
+      .edgeCollections = edgeColls,
+      .edgeCollectionRestrictions = edgeCollectionRestrictionsPerShard,
+      .maxSuperstep = maxSuperstep,
+      .useMemoryMaps = useMemoryMapsVar,
+      .storeResults = storeResults,
+      .ttl = ttl,
+      .parallelism = parallelismVar,
+      .userParameters = options.userParameters};
+
   // TODO needs to be part of the conductor state
-  auto c = std::make_shared<pregel::Conductor>(
-      en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      options.algorithm, options.userParameters.slice(), *this);
+  auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
+                                               *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
@@ -671,6 +744,20 @@ size_t PregelFeature::maxParallelism() const noexcept {
   return _maxParallelism;
 }
 
+size_t PregelFeature::parallelism(VPackSlice params) const noexcept {
+  size_t parallelism = defaultParallelism();
+  if (params.isObject()) {
+    // then update parallelism value from user config
+    if (VPackSlice parallel = params.get(Utils::parallelismKey);
+        parallel.isInteger()) {
+      // limit parallelism to configured bounds
+      parallelism = std::clamp(parallel.getNumber<size_t>(), minParallelism(),
+                               maxParallelism());
+    }
+  }
+  return parallelism;
+}
+
 bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
@@ -977,7 +1064,7 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
       ++nr;
       LOG_TOPIC("41564", WARN, Logger::PREGEL)
           << fmt::format("Conductor for executionNumber {} is in state {}.",
-                         c->_executionNumber, ExecutionStateNames[c->_state]);
+                         c->executionNumber(), ExecutionStateNames[c->_state]);
     }
   }
   return nr;
