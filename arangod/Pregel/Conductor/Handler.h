@@ -120,7 +120,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
   auto changeState(std::unique_ptr<ExecutionState> newState) -> void {
     this->state->_executionState = std::move(newState);
-    LOG_TOPIC("17915", INFO, Logger::PREGEL)
+    LOG_TOPIC("e3b0c", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Execution state changed to {}",
                        this->state->_executionState->name());
   }
