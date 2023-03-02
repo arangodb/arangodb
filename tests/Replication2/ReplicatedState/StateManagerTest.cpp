@@ -216,42 +216,42 @@ struct StateManagerTest : testing::Test {
 };
 
 TEST_F(StateManagerTest, get_leader_state_machine_early) {
-  // TODO:
-  //  - establish leadership
-  //  - check leader state machine: should still be nullptr, though the leader
-  //    status should be available now
-  //  - let recovery finish
-  //  - check leader state machine again: should now be available
+  // Overview:
+  // - establish leadership
+  // - check leader state machine: it should still be nullptr, but the leader
+  //   status should be available at this point
+  // - let recovery finish
+  // - check leader state machine again: should now be available
 
-  auto term = agency::LogPlanTermSpecification{LogTerm{1}, myself};
-  auto config = agency::ParticipantsConfig{
+  auto const term = agency::LogPlanTermSpecification{LogTerm{1}, myself};
+  auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
   log->updateConfig(term, config, myself);
-  auto logStatus = log->getQuickStatus();
-  ASSERT_EQ(logStatus.role, ParticipantRole::kLeader);
-  ASSERT_EQ(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
-  auto leader = std::dynamic_pointer_cast<ILogLeader>(log->getParticipant());
+  {
+    auto logStatus = log->getQuickStatus();
+    ASSERT_EQ(logStatus.role, ParticipantRole::kLeader);
+    ASSERT_EQ(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
+  }
+  auto const leader =
+      std::dynamic_pointer_cast<ILogLeader>(log->getParticipant());
   ASSERT_NE(leader, nullptr);
-  auto future = leader->waitForLeadership();
-  EXPECT_FALSE(future.isReady());
+  // Note that we have to check the (quick) status, rather than using
+  // `waitForLeadership()`, because the futures are resolved asynchronously.
+  // This means recovery might also already be completed at that point, but we
+  // want to do some checks while leadership has been established, but before
+  // recovery has completed.
+  EXPECT_FALSE(log->getQuickStatus().leadershipEstablished);
   EXPECT_TRUE(executor->hasWork() or scheduler->hasWork());
   bool runAtLeastOnce = false;
-  while (not future.isReady() and
+  while (not log->getQuickStatus().leadershipEstablished and
          (executor->hasWork() or scheduler->hasWork())) {
     runAtLeastOnce = true;
-    auto stats = log->getQuickStatus().getLocalStatistics();
-    ASSERT_TRUE(stats.has_value());
-    auto const commitIndex = stats->commitIndex;
-    // Note that this will toggle to true before the corresponding future is
-    // resolved, because that is posted onto the scheduler.
-    auto const leadershipEstablished = commitIndex == LogIndex{1};
     // while leadership isn't established yet, the leader state manager isn't
-    // instantiated yet, so it can't be asked for a status.
+    // instantiated yet, so it can't return a status.
     auto stateStatus = state->getStatus();
     ASSERT_TRUE(stateStatus.has_value());
-    EXPECT_EQ(stateStatus->asLeaderStatus() == nullptr,
-              not leadershipEstablished);
+    EXPECT_EQ(stateStatus->asLeaderStatus(), nullptr);
     // the state machine must not be available until after recovery
     auto stateMachine = state->getLeader();
     EXPECT_EQ(stateMachine, nullptr);
@@ -263,19 +263,20 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
     }
   }
   EXPECT_TRUE(runAtLeastOnce);
-  EXPECT_TRUE(future.hasValue());
-  std::ignore = future.get();
 
   // leadership was established, but recovery hasn't been completed. That means
   // the status should be available (as a leader status), but the state machine
   // must still be inaccessible.
+  EXPECT_EQ(log->getQuickStatus().localState,
+            LocalStateMachineStatus::kRecovery);
   auto stateStatus = state->getStatus();
   ASSERT_TRUE(stateStatus.has_value());
   ASSERT_NE(stateStatus->asLeaderStatus(), nullptr);
-  auto stateMachine = state->getLeader();
-  EXPECT_EQ(stateMachine, nullptr);
-  // TODO continue writing this: run recovery, after which everything should be
-  //      available.
+  EXPECT_EQ(state->getLeader(), nullptr);
+  scheduler->runOnce();
+  EXPECT_EQ(log->getQuickStatus().localState,
+            LocalStateMachineStatus::kOperational);
+  EXPECT_NE(state->getLeader(), nullptr);
 }
 
 TEST_F(StateManagerTest, get_follower_state_machine_early) {
