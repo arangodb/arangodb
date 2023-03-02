@@ -227,7 +227,7 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   auto config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(term, config);
+  log->updateConfig(term, config, myself);
   auto logStatus = log->getQuickStatus();
   ASSERT_EQ(logStatus.role, ParticipantRole::kLeader);
   ASSERT_EQ(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
@@ -283,7 +283,7 @@ TEST_F(StateManagerTest, get_follower_state_machine_early) {
   auto config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(term, config);
+  log->updateConfig(term, config, myself);
   auto status = log->getQuickStatus();
   ASSERT_EQ(status.role, ParticipantRole::kFollower);
 
