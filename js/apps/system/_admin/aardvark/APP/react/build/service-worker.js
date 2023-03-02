@@ -14,11 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.6.3/workbox-sw.js");
 
 importScripts(
-<<<<<<< HEAD
-  "precache-manifest.05427c775e6f87780f0b6d1ff005540b.js"
-=======
-  "precache-manifest.883a3e6e9490adb2de7609bfcc549451.js"
->>>>>>> feature/FE-135-graph-viewer-vis-js-update
+  "precache-manifest.45a1fb8a17b5ea0028a3ed2373de2677.js"
 );
 
 workbox.clientsClaim();
