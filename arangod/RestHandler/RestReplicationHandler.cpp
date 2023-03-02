@@ -1597,11 +1597,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
-            char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
-
-            documentsToInsert.add(it.key);
-            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            // We simply get rid of the `_rev` attribute here on the
+            // coordinator. We need to create a new value but it has to be
+            // unique in the shard, therefore the shard leader must create the
+            // value. If multiple coordinators would create a timestamp based
+            // _rev value concurrently, we could get a duplicate, which would
+            // lead to a clash on the actual shard leader and can lead to
+            // RocksDB conflicts or even data corruption between primary index
+            // and data in the documents column family.
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);

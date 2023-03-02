@@ -96,7 +96,7 @@ class NondeterministicExpressionIterator
     return _it->get_mutable(id);
   }
 
-  irs::doc_id_t seek(irs::doc_id_t target) override {
+  irs::doc_id_t seek(irs::doc_id_t target) final {
     auto const doc = _it->seek(target);
 
     if (irs::doc_limits::eof(doc) || evaluate()) {

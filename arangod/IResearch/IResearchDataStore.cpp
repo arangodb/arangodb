@@ -194,7 +194,8 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
   auto const oldTime = oldTimeNum >> 32U;
   auto const oldNum = oldTimeNum & std::numeric_limits<uint32_t>::max();
   if (oldNum >= kWindowSize) {
-    timeNum.fetch_sub((oldTime / oldNum) + 1, std::memory_order_relaxed);
+    timeNum.fetch_sub(((oldTime / oldNum) << 32U) + 1,
+                      std::memory_order_relaxed);
   }
   return (oldTime + newTime) / (oldNum + 1);
 }
@@ -995,7 +996,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
     }
 #endif
-    auto const commitOne = _dataStore._writer->Commit(std::numeric_limits<uint64_t>::max(), progress);
+    auto const commitOne = _dataStore._writer->Commit(
+        std::numeric_limits<uint64_t>::max(), progress);
     std::move(stageOneGuard).Cancel();
     if (!commitOne) {
       LOG_TOPIC("7e319", TRACE, TOPIC)
