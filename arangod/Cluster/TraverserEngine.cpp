@@ -70,8 +70,6 @@ static const std::string TYPE = "type";
 
   if (type.isEqualString("traversal")) {
     return std::make_unique<TraverserEngine>(vocbase, query, info);
-  } else if (type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathEngine>(vocbase, query, info);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "The 'options.type' attribute either has to "
