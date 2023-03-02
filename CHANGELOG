@@ -1,6 +1,9 @@
 devel
 -----
 
+* GORDO-1554: Fixes invalid document insertion with invalid user-specified
+  keys (e.g. numeric values) into EnterpriseGraph related vertices.
+
 * Add peak memory usage to the query object details for queries in the slow
   query history and in the list of currently running queries. The peak memory
   usage is also returned via REST APIs as `peakMemoryUsage`.
