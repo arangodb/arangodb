@@ -558,3 +558,18 @@
     max-height: 250px;
   }
 }
+
+
+#sortOptionsDropdown input[type="radio"],
+input[type="checkbox"] {
+  margin: 0;
+}
+
+#sortOptionsDropdown {
+  padding: 0;
+  top: 6px;
+}
+
+#sortOptionsDropdownInner {
+  min-height: 144px;
+}
