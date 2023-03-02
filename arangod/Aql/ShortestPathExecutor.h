@@ -28,8 +28,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Graph/ShortestPathFinder.h"
-#include "Graph/ShortestPathResult.h"
+
 #include "GraphNode.h"
 #include "Transaction/Helpers.h"
 
@@ -44,8 +43,6 @@ class Slice;
 }
 
 namespace graph {
-class ShortestPathFinder;
-class ShortestPathResult;
 class TraverserCache;
 }  // namespace graph
 
@@ -54,6 +51,7 @@ namespace aql {
 template<BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
+class TraversalStats;
 class NoStats;
 
 template<class FinderType>

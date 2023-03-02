@@ -54,6 +54,8 @@ class SchedulerFeature final : public ArangodFeature {
   void buildControlCHandler();
   void buildHangupHandler();
 
+  uint64_t maximalThreads() const noexcept;
+
  private:
   void signalStuffInit();
   void signalStuffDeinit();

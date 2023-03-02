@@ -30,6 +30,7 @@
 #include "Graph/TraverserOptions.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
+#include "Graph/EdgeDocumentToken.h"
 
 #include <Aql/TraversalStats.h>
 #include <velocypack/Slice.h>
