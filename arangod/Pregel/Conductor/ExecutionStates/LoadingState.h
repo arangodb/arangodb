@@ -53,7 +53,6 @@ struct Loading : ExecutionState {
     return std::nullopt;
   };
   ConductorState& conductor;
-  uint responded_servers;
 };
 
 }  // namespace arangodb::pregel::conductor
