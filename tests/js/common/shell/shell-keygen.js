@@ -37,7 +37,11 @@ const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const internal = require("internal");
 const isServer = typeof internal.arango === 'undefined';
-const graphs = require("@arangodb/smart-graph");
+
+let graphs = require("@arangodb/general-graph");
+if (isEnterprise) {
+  graphs = require("@arangodb/smart-graph");
+}
 
 const gn = "UnitTestsGraph";
 const vn = "UnitTestsVertex";
@@ -90,14 +94,6 @@ const disableSingleDocRule = {optimizer: {rules: ["-optimize-cluster-single-docu
 const disableRestrictToSingleShardRule = {optimizer: {rules: ["-restrict-to-single-shard"]}};
 
 const runSmartVertexInserts = (graphProperties, generators, forbiddenGenerator) => {
-  if (cluster) {
-    // fail if we generate a key on a coordinator
-    debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-  } else {
-    // single server: we can actually get here with the SmartGraph simulator!
-    debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-  }
-
   generators().forEach((generator) => {
     if (generator === forbiddenGenerator) {
       return;
@@ -1431,6 +1427,14 @@ function KeyGenerationLocationSmartGraphSuite() {
     },
 
     testSingleShardSmartVertexInserts: function () {
+      if (cluster) {
+        // fail if we generate a key on a coordinator
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       // note: test can run in single server as well!
       const smartGraphProperties = {
         numberOfShards: 1,
@@ -1440,6 +1444,14 @@ function KeyGenerationLocationSmartGraphSuite() {
     },
 
     testSingleShardEnterpriseVertexInserts: function () {
+      if (cluster) {
+        // fail if we generate a key on a coordinator
+        // TODOD debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       // note: test can run in single server as well!
       const enterpriseGraphProperties = {
         numberOfShards: 1,
@@ -1449,6 +1461,14 @@ function KeyGenerationLocationSmartGraphSuite() {
     },
 
     testMultiShardSmartVertexInserts: function () {
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        // TODO debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       // note: test can run in single server as well!
       const smartGraphProperties = {
         numberOfShards: 2,
@@ -1458,6 +1478,14 @@ function KeyGenerationLocationSmartGraphSuite() {
     },
 
     testMultiShardEnterpriseVertexInserts: function () {
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       // note: test can run in single server as well!
       const enterpriseGraphProperties = {
         numberOfShards: 2,
@@ -1468,6 +1496,14 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testSingleShardSmartEdgeInserts: function () {
       // note: test can run in single server as well!
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       const smartGraphProperties = {
         numberOfShards: 1,
         smartGraphAttribute: "value"
@@ -1477,6 +1513,14 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testMultiShardSmartEdgeInserts: function () {
       // note: test can run in single server as well!
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       const smartGraphProperties = {
         numberOfShards: 1,
         smartGraphAttribute: "value"
@@ -1486,6 +1530,15 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testSingleShardEnterpriseEdgeInserts: function () {
       // note: test can run in single server as well!
+
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+
       const enterpriseGraphProperties = {
         numberOfShards: 1,
         isSmart: true
@@ -1495,6 +1548,13 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testMultiShardEnterpriseEdgeInserts: function () {
       // note: test can run in single server as well!
+      if (cluster) {
+        // fail if we generate a key on a DB server
+        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      } else {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
       const enterpriseGraphProperties = {
         numberOfShards: 1,
         isSmart: true
