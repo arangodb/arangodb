@@ -1519,7 +1519,7 @@ void RocksDBOptionFeature::prepare() {
   if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
 #ifndef ARANGODB_ROCKSDB8
     // cannot be reached with RocksDB 7.2
-    TRI_ASSERT(false);
+    ADB_PROD_ASSERT(false);
 #endif
 
     LOG_TOPIC("26f64", WARN, Logger::ENGINES)
