@@ -161,6 +161,9 @@ jobs:
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
               --definition tests/test-definitions.txt
+      - run:
+          name: Copy test results
+          command: |
             mkdir test-results
             find testrun -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:
