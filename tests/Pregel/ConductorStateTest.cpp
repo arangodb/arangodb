@@ -74,7 +74,7 @@ TEST(ConductorStateTest,
   std::vector<std::string> emptyServers{};
   auto cState = ConductorState(ExecutionSpecifications(),
                                std::make_unique<LookupInfoMock>(emptyServers));
-  ASSERT_EQ(cState._executionState->name(), "initial");
+  ASSERT_EQ(cState.executionState->name(), "initial");
 }
 
 TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
@@ -116,7 +116,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
         created);
   }
 
-  ASSERT_EQ(cState._workers.size(), servers.size());
+  ASSERT_EQ(cState.workers.size(), servers.size());
   // for (auto const& serverID : servers) {
   //  TODO check also if proper PIDs are inserted here
   //   enable as soon as _workers ar a std::set instead of a std::vector
