@@ -7,6 +7,7 @@ import { getPath } from '../../utils/helpers';
 import { chain, cloneDeep, get, isNull, merge, omit, set, uniqueId } from 'lodash';
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { fixFieldsInit } from './reducerHelper';
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: any;
@@ -67,6 +68,10 @@ export function useView (name: string) {
   return view;
 }
 
+/**
+ * called after the reducer, 
+ * modifies "formState" (while reducer deals with "formCache")
+ */
 export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>, setChanged: (changed: boolean) => void, oldName: string) => {
   if (action.type === 'setField' && action.field) {
     const path = getPath(action.basePath, action.field.path);
@@ -79,6 +84,7 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
 
       merge(state.formCache, state.formState);
     } else if (action.field.value !== undefined) {
+      fixFieldsInit(state.formState, action);
       set(state.formState, path, action.field.value);
     }
   }
