@@ -184,7 +184,7 @@ def read_definitions(filename):
     return tests
 
 
-def filter_tests(args, tests):
+def filter_tests(args, tests, enterprise):
     """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
@@ -205,7 +205,8 @@ def filter_tests(args, tests):
     #else:
     #   filters.append(lambda test: "gtest" != test["name"])
 
-    filters.append(lambda test: "enterprise" not in test["flags"])
+    if not enterprise:
+        filters.append(lambda test: "enterprise" not in test["flags"])
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
@@ -215,7 +216,7 @@ def filter_tests(args, tests):
     return list(tests)
 
 
-def create_test_job(test, cluster):
+def create_test_job(test, cluster, edition, requires):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -227,13 +228,13 @@ def create_test_job(test, cluster):
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
-        "name": f"test-ce-{'cluster' if cluster else 'single'}-{suite_name}",
+        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}",
         "testDefinitionLine": test["lineNumber"],
         "suiteName": suite_name,
         "suites": test["suites"],
         "size": test["size"],
         "cluster": cluster,
-        "requires": ["build-community-pr"],
+        "requires": [requires],
     }
 
     extra_args = test["args"]
@@ -247,22 +248,30 @@ def create_test_job(test, cluster):
     return result
 
 
-def generate_output(args, tests):
+def generate_output(args, tests, enterprise):
     """generate output"""
     with open(args.base_config, "r", encoding="utf-8") as instream:
         with open(args.output, "w", encoding="utf-8") as outstream:
             config = yaml.safe_load(instream)
-            jobs = config["workflows"]["community-pr"]["jobs"]
+            workflow = "enterprise-pr" if enterprise else "community-pr"
+            edition = "ee" if enterprise else "ce"
+            requires = "build-enterprise-pr" if enterprise else "build-community-pr"
+            jobs = config["workflows"][workflow]["jobs"]
             for test in tests:
                 print(f"test: {test}")
                 if "cluster" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, True)})
+                    jobs.append({"run-tests": create_test_job(test, True, edition, requires)})
                 elif "single" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, False, edition, requires)})
                 else:
-                    jobs.append({"run-tests": create_test_job(test, True)})
-                    jobs.append({"run-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, True, edition, requires)})
+                    jobs.append({"run-tests": create_test_job(test, False, edition, requires)})
             yaml.dump(config, outstream)
+
+
+def generate_jobs(args, tests, enterprise):
+    tests = filter_tests(args, tests, enterprise)
+    generate_output(args, tests, enterprise)
 
 
 def main():
@@ -273,8 +282,8 @@ def main():
         # if args.validate_only:
         #    return  # nothing left to do
         print("args", args)
-        tests = filter_tests(args, tests)
-        generate_output(args, tests)
+        generate_jobs(args, tests, False) # community
+        generate_jobs(args, tests, True) # enterprise
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
         sys.exit(1)
