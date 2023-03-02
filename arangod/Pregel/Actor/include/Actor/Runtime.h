@@ -63,11 +63,13 @@ struct Runtime
         externalDispatcher(externalDispatcher) {}
 
   template<typename ActorConfig>
-  auto spawn(typename ActorConfig::State initialState,
+  auto spawn(DatabaseName const& database,
+             typename ActorConfig::State initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
-    auto address = ActorPID{.server = myServerID, .id = newId};
+    auto address =
+        ActorPID{.server = myServerID, .database = database, .id = newId};
 
     auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
         address, this->shared_from_this(),
@@ -75,7 +77,27 @@ struct Runtime
     actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    dispatch(address, address, initialMessage);
+    dispatchLocally(address, address, initialMessage);
+
+    return newId;
+  }
+
+  template<typename ActorConfig>
+  auto spawn(DatabaseName const& database,
+             typename ActorConfig::State initialState,
+             velocypack::SharedSlice initialMessage) -> ActorID {
+    auto newId = ActorID{uniqueActorIDCounter++};
+
+    auto address =
+        ActorPID{.server = myServerID, .database = database, .id = newId};
+
+    auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
+        address, this->shared_from_this(),
+        std::make_unique<typename ActorConfig::State>(initialState));
+    actors.add(newId, std::move(newActor));
+
+    // Send initial message to newly created actor
+    receive(address, address, initialMessage);
 
     return newId;
   }
@@ -162,7 +184,8 @@ struct Runtime
   std::shared_ptr<Scheduler> scheduler;
   std::shared_ptr<ExternalDispatcher> externalDispatcher;
 
-  std::atomic<size_t> uniqueActorIDCounter{0};
+  // actor id 0 is reserved for special messages
+  std::atomic<size_t> uniqueActorIDCounter{1};
 
   ActorList actors;
 
