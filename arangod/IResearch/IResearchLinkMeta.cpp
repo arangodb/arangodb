@@ -414,8 +414,8 @@ bool FieldMeta::init(
         std::string childErrorField;
 
         if (!_fields[name].init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
@@ -464,8 +464,8 @@ bool FieldMeta::init(
         std::string childErrorField;
 
         if (!_nested[name].init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
@@ -555,7 +555,7 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
           VPackValue(velocypack::ValueType::Object));
 
       if (!entry.second.json(server, fieldsBuilder, &subDefaults,
-                              defaultVocbase, &fieldMask)) {
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 
@@ -579,7 +579,7 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
           VPackValue(velocypack::ValueType::Object));
 
       if (!entry.second.json(server, fieldsBuilder, &subDefaults,
-                              defaultVocbase, &fieldMask)) {
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 

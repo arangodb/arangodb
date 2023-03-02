@@ -60,8 +60,7 @@ enum class ValueStorage : uint32_t {
 };
 
 struct FieldMeta {
-  using Fields =
-      containers::NodeHashMap<std::string, FieldMeta>;
+  using Fields = containers::NodeHashMap<std::string, FieldMeta>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)

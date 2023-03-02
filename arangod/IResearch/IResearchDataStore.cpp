@@ -995,7 +995,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
     }
 #endif
-    auto const commitOne = _dataStore._writer->Commit(std::numeric_limits<uint64_t>::max(), progress);
+    auto const commitOne = _dataStore._writer->Commit(
+        std::numeric_limits<uint64_t>::max(), progress);
     std::move(stageOneGuard).Cancel();
     if (!commitOne) {
       LOG_TOPIC("7e319", TRACE, TOPIC)
