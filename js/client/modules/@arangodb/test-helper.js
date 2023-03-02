@@ -29,6 +29,7 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
+  runWithRetry,
   helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
@@ -50,6 +51,7 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
+exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
 exports.versionHas = versionHas;
 exports.helper = helper;
