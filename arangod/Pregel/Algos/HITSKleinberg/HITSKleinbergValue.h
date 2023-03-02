@@ -18,34 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Pregel/Algorithm.h"
-#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
-#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
-
-namespace arangodb {
-namespace pregel {
-namespace algos {
-
-/// Effective Closeness
-struct EffectiveCloseness
-    : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
-
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
-  MessageFormat<HLLCounter>* messageFormat() const override;
-  MessageCombiner<HLLCounter>* messageCombiner() const override;
-
-  VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+namespace arangodb::pregel::algos {
+/// Value for Hyperlink-Induced Topic Search (HITS; also known as
+/// hubs and authorities) according to the paper
+/// J. Kleinberg, Authoritative sources in a hyperlinked environment,
+/// Journal of the ACM. 46 (5): 604–632, 1999,
+/// http://www.cs.cornell.edu/home/kleinber/auth.pdf.
+struct HITSKleinbergValue {
+  double nonNormalizedAuth;
+  double nonNormalizedHub;
+  double normalizedAuth;
+  double normalizedHub;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+
+template<typename Inspector>
+auto inspect(Inspector& f, HITSKleinbergValue& v) {
+  return f.object(v).fields(f.field("nonNormalizedAuth", v.nonNormalizedAuth),
+                            f.field("nonNormalizedHub", v.nonNormalizedHub),
+                            f.field("normalizedAuth", v.normalizedAuth),
+                            f.field("normalizedHub", v.normalizedHub));
+}
+
+}  // namespace arangodb::pregel::algos
