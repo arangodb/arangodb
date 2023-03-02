@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormState } from "./constants";
 import { pick } from "lodash";
 import { IconButton } from "../../components/arango/buttons";
 import { mutate } from "swr";
 import { useHistory, useLocation } from "react-router-dom";
+import { DeleteViewModal } from "./DeleteViewModal";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -167,31 +167,12 @@ export const DeleteButton = ({ view }: ButtonProps) => {
       >
         Delete
       </IconButton>
-      <Modal
-        show={show}
-        setShow={setShow}
-        cid={`modal-content-delete-${view.name}`}
-      >
-        <ModalHeader title={`Delete View ${view.name}?`}/>
-        <ModalBody>
-          <p>
-            Are you sure? Clicking on the <b>Delete</b> button will permanently
-            delete the View.
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <button className="button-close" onClick={() => setShow(false)}>
-            Close
-          </button>
-          <button
-            className="button-danger"
-            style={{ float: "right" }}
-            onClick={handleDelete}
-          >
-            Delete
-          </button>
-        </ModalFooter>
-      </Modal>
+      <DeleteViewModal
+        isOpen={show}
+        onClose={() => setShow(false)}
+        view={view}
+        onDelete={handleDelete}
+      />
     </>
   );
 };

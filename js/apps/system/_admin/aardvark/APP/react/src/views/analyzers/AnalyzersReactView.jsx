@@ -1,11 +1,13 @@
 /* global $ */
 
+import { ChakraProvider } from '@chakra-ui/react';
 import { isEqual, map, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
-import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../components/modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
+import { theme } from '../../theme/theme';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
@@ -28,7 +30,7 @@ const FilterHelpModal = () => {
         fontSize: '18px'
       }}/>
     </a>
-    <Modal show={show} setShow={setShow} cid={'modal-content-filter-help'}>
+    <Modal isOpen={show} onClose={() => setShow(false)} cid={'modal-content-filter-help'}>
       <ModalHeader title={'Filter Help'}/>
       <ModalBody>
         <dl>
@@ -106,7 +108,7 @@ const AnalyzersReactView = () => {
       processAndSetFilteredAnalyzers(data.body.result);
     }
 
-    return <>
+    return <ChakraProvider theme={theme}>
       <div className="headerBar">
         <div className="search-field">
           <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
@@ -190,7 +192,7 @@ const AnalyzersReactView = () => {
           </Cell>
         </Grid>
       </div>
-    </>;
+    </ChakraProvider>;
   }
 
   return <h1>Analyzers</h1>;
