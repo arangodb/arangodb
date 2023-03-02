@@ -26,9 +26,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 
+#include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/SpawnActor.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -59,7 +62,31 @@ RestStatus RestPregelHandler::execute() {
 
     VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
-    if (suffix.size() != 2) {
+    if (suffix.size() == 1 && suffix[0] == "actor") {
+      auto msg = inspection::deserializeWithErrorT<pregel::NetworkMessage>(
+          velocypack::SharedSlice({}, body));
+      if (!msg.ok()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+            fmt::format(
+                "Received actor network message {} cannot be deserialized",
+                body.toJson()));
+        return RestStatus::DONE;
+      }
+      if (msg.get().receiver.id == actor::ActorID{0}) {
+        _pregel._actorRuntime->spawn<SpawnActor>(
+            _vocbase.name(), SpawnState{},
+            velocypack::SharedSlice({}, msg.get().payload.slice()));
+        generateResult(rest::ResponseCode::OK, VPackBuilder().slice());
+        return RestStatus::DONE;
+      } else {
+        _pregel._actorRuntime->receive(
+            msg.get().sender, msg.get().receiver,
+            velocypack::SharedSlice({}, msg.get().payload.slice()));
+        generateResult(rest::ResponseCode::OK, VPackBuilder().slice());
+        return RestStatus::DONE;
+      }
+    } else if (suffix.size() != 2) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {

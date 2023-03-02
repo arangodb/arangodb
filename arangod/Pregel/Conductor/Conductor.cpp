@@ -29,11 +29,13 @@
 #include "Conductor.h"
 
 #include "Inspection/VPackWithErrorT.h"
+#include "Logger/LogMacros.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/MasterContext.h"
+#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
@@ -541,6 +543,17 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
                      .edgeShards = edgeShardMap,
                      .collectionPlanIds = collectionPlanIdMap,
                      .allShards = _allShards};
+
+    // TODO should be done inside conductor actor (this whole function will be
+    // moved into the conductor actor state)
+    _feature.spawnActor(
+        server,
+        // TODO will be the pid of the conductor actor
+        actor::ActorPID{.server = _feature._actorRuntime->myServerID,
+                        .database = _vocbaseGuard.database().name(),
+                        .id = {0}},
+        SpawnMessages{SpawnWorker{}});
+
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);

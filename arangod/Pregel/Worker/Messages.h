@@ -24,12 +24,30 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
+#include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 
 namespace arangodb::pregel {
+
+struct WorkerStart {
+  // arangodb::pregel::actor::ActorPID conductor;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerStart& x) {
+  return f.object(x).fields();  // f.field("conductor", x.conductor));
+}
+
+struct WorkerMessages : std::variant<WorkerStart> {
+  using std::variant<WorkerStart>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<WorkerStart>("Start"));
+}
 
 struct GraphLoaded {
   ExecutionNumber executionNumber;
