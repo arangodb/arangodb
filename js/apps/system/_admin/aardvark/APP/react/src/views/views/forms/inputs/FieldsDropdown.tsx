@@ -69,6 +69,7 @@ export const FieldsDropdown = ({
     <CreatableMultiSelect
       value={fields}
       isClearable={false}
+      noOptionsMessage={() => null}
       components={{
         MultiValueLabel
       }}
