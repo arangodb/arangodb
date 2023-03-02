@@ -34,6 +34,11 @@ struct ReplicationMaintenanceTest : ::testing::Test {
   containers::FlatHashSet<DatabaseID> dirtyset;
   bool callNotify = false;
   std::vector<std::shared_ptr<ActionDescription>> actions;
+  // Note that diffReplicatedLogs() in Maintenance.cpp looks in
+  // ServerState::instance()->getRebootId() for comparison. We assume that this
+  // is 1 in the tests.
+  // The serverId is currently unused in the tests.
+  agency::ServerInstanceReference myself{{}, RebootId{1}};
 };
 
 /*
@@ -115,8 +120,10 @@ TEST_F(ReplicationMaintenanceTest,
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
-       replicated_log::QuickLogStatus{
-           replicated_log::ParticipantRole::kUnconfigured}},
+       replication2::maintenance::LogStatus{
+           replicated_log::QuickLogStatus{
+               replicated_log::ParticipantRole::kUnconfigured},
+           myself}},
   };
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -157,8 +164,10 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
-       replicated_log::QuickLogStatus{
-           replicated_log::ParticipantRole::kUnconfigured}},
+       arangodb::replication2::maintenance::LogStatus{
+           replicated_log::QuickLogStatus{
+               replicated_log::ParticipantRole::kUnconfigured},
+           myself}},
   };
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -199,10 +208,12 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{{
       logId,
-      replicated_log::QuickLogStatus{
-          .role = replicated_log::ParticipantRole::kFollower,
-          .term = LogTerm{4},
-          .local = {}},
+      replication2::maintenance::LogStatus{
+          replicated_log::QuickLogStatus{
+              .role = replicated_log::ParticipantRole::kFollower,
+              .term = LogTerm{4},
+              .local = {}},
+          myself},
   }};
   auto const defaultConfig = agency::LogPlanConfig{};
 
@@ -266,7 +277,9 @@ TEST_F(ReplicationMaintenanceTest,
               participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::QuickLogStatus{std::move(leaderStatus)}},
+      {logId,
+       replication2::maintenance::LogStatus{
+           replicated_log::QuickLogStatus{std::move(leaderStatus)}, myself}},
   };
 
   // Modify generation to trigger an update
@@ -294,10 +307,12 @@ TEST_F(ReplicationMaintenanceTest,
 
   // No new updates in case we are follower
   localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::QuickLogStatus{
-                  .role = replicated_log::ParticipantRole::kFollower,
-                  .term = LogTerm{3},
-                  .local = {}}}};
+      {logId, replication2::maintenance::LogStatus{
+                  replicated_log::QuickLogStatus{
+                      .role = replicated_log::ParticipantRole::kFollower,
+                      .term = LogTerm{3},
+                      .local = {}},
+                  myself}}};
 
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
@@ -310,10 +325,12 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_no_longer_in_plan) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::QuickLogStatus{
-                  .role = replicated_log::ParticipantRole::kFollower,
-                  .term = LogTerm{3},
-                  .local = {}}}};
+      {logId, replication2::maintenance::LogStatus{
+                  replicated_log::QuickLogStatus{
+                      .role = replicated_log::ParticipantRole::kFollower,
+                      .term = LogTerm{3},
+                      .local = {}},
+                  myself}}};
 
   auto const planLogs = ReplicatedLogSpecMap{};
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
