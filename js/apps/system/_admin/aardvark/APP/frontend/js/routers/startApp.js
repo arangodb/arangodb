@@ -30,7 +30,6 @@
     };
     
     window.arangoFetch = function (url, options) {
-      // ToDo: Verify if we can use fetch (need polyfill?)
       // eslint-disable-next-line
       return fetch(url, updateOptions(options));
     };
