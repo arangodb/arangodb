@@ -323,6 +323,7 @@ function CollectionDocumentSuiteBabies() {
           assertEqual(docs[0]._key, "a");
           assertTrue(docs[1].error);
           assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+          collection.remove("a");
           assertEqual(collection.count(), 0);
         } else {
           try {
