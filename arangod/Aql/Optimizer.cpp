@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Aql/ProfileLevel.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
