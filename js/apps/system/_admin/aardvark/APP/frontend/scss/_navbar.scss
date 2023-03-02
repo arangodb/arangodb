@@ -44,6 +44,7 @@ $navbar-size: 150px;
     margin-left: 3px;
     margin-top: 15px;
     width: $navbar-size - 6px;
+    display: block;
   }
 
   .arango-collection-select {
@@ -86,21 +87,25 @@ $navbar-size: 150px;
   }
 
   .shortcut {
-    bottom: 31px;
+    bottom: 35px;
     left: 13px;
     position: absolute;
+    margin-bottom: 10px;
+    width: 20px;
+    height: 20px;
 
     i {
       background-color: rgba(0, 0, 0, 0);
       border-radius: 20px;
       color: $c-white;
-      padding: {
-        bottom: 6px;
-        left: 4px;
-        right: 0;
-        top: 5px;
-      };
-      width: 20px;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+
+      &::before {
+        margin: auto;
+      }
     }
 
     i:hover {
@@ -133,6 +138,7 @@ $navbar-size: 150px;
       margin-right: 10px;
       padding: 0;
       width: 25px;
+      margin-bottom: 10px;
     }
 
     p:hover {
@@ -163,6 +169,11 @@ $navbar-size: 150px;
   @extend %pull-left;
   height: 60px;
   width: 100%;
+  line-height: 20px;
+
+  *, *::after, *::before {
+    box-sizing: border-box;
+  }
 
   .small {
     display: none;
@@ -199,12 +210,13 @@ $navbar-size: 150px;
     font-size: 11px;
     font-weight: 100;
     left: 0;
-    padding-bottom: 10px;
-    padding-left: 5px;
+    margin-bottom: 10px;
+    margin-left: 5px;
     position: absolute;
     text-align: center;
     text-transform: uppercase;
     width: 100%;
+    line-height: 20px;
 
     .out-of-date {
       color: $c-warning;
@@ -244,6 +256,10 @@ $navbar-size: 150px;
   top: 0;
   width: $navbar-size;
 
+  *, *::after, *::before {
+    box-sizing: border-box;
+  }
+
   > li {
     line-height: 30px;
   }
@@ -258,8 +274,8 @@ $navbar-size: 150px;
 
     .fa {
       opacity: .3;
-      padding-left: 5px;
-      padding-right: 15px;
+      margin-left: 5px;
+      margin-right: 15px;
       text-align: center;
       width: 10px;
 
