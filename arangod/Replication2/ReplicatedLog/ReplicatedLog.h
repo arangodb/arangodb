@@ -31,13 +31,14 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/IScheduler.h"
 
 #include <iosfwd>
 #include <memory>
 #include <mutex>
 #include <utility>
 #include <vector>
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 namespace arangodb::cluster {
 struct IFailureOracle;
@@ -185,8 +186,6 @@ struct alignas(64) ReplicatedLog {
                     agency::ParticipantsConfig config)
       -> futures::Future<futures::Unit>;
 
-  [[nodiscard]] auto getId() const noexcept -> LogId;
-
   [[nodiscard]] auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
   [[nodiscard]] auto getStatus() const -> LogStatus;
@@ -253,24 +252,6 @@ struct ReplicatedLogConnection {
   };
 
   std::unique_ptr<ReplicatedLog, nop> _log = nullptr;
-};
-
-struct IScheduler {
-  virtual ~IScheduler() = default;
-  virtual auto delayedFuture(std::chrono::steady_clock::duration duration)
-      -> futures::Future<futures::Unit> = 0;
-
-  struct WorkItem {
-    virtual ~WorkItem() = default;
-  };
-
-  using WorkItemHandle = std::shared_ptr<WorkItem>;
-
-  virtual auto queueDelayed(
-      std::string_view name, std::chrono::steady_clock::duration delay,
-      fu2::unique_function<void(bool canceled)> handler) noexcept
-      -> WorkItemHandle = 0;
-  virtual void queue(fu2::unique_function<void()>) noexcept = 0;
 };
 
 struct DefaultParticipantsFactory : IParticipantsFactory {

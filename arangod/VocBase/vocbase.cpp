@@ -85,6 +85,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
@@ -423,10 +424,14 @@ struct arangodb::VocBaseLogManager {
           ServerState::instance()->getId(),
           ServerState::instance()->getRebootId());
 
-      struct MyScheduler : replicated_log::IScheduler {
-        auto delayedFuture(std::chrono::steady_clock::duration duration)
+      struct MyScheduler : IScheduler {
+        auto delayedFuture(std::chrono::steady_clock::duration duration,
+                           std::string_view name)
             -> futures::Future<futures::Unit> override {
-          return SchedulerFeature::SCHEDULER->delay("replication-2", duration);
+          if (name.data() == nullptr) {
+            name = "replication-2";
+          }
+          return SchedulerFeature::SCHEDULER->delay(name, duration);
         }
 
         auto queueDelayed(
@@ -467,7 +472,7 @@ struct arangodb::VocBaseLogManager {
       });
 
       auto& state = stateAndLog.state = feature.createReplicatedState(
-          type, vocbase.name(), id, log, logContext);
+          type, vocbase.name(), id, log, logContext, sched);
 
       auto const& stateParams = maybeMetadata->specification.parameters;
       auto&& stateHandle = state->createStateHandle(vocbase, stateParams);

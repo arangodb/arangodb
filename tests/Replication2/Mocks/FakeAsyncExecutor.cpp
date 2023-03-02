@@ -80,6 +80,7 @@ void DelayedExecutor::operator()(DelayedExecutor::Func fn) {
 
 void DelayedExecutor::runOnce() noexcept {
   auto f = std::invoke([this] {
+    ADB_PROD_ASSERT(not queue.empty());
     auto f = std::move(queue.front());
     queue.pop_front();
     return f;
@@ -91,4 +92,8 @@ void DelayedExecutor::runAll() noexcept {
   while (not queue.empty()) {
     runOnce();
   }
+}
+
+auto DelayedExecutor::hasWork() const noexcept -> bool {
+  return not queue.empty();
 }

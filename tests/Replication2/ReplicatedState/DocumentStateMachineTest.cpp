@@ -34,6 +34,7 @@
 #include "Mocks/Death_Test.h"
 #include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
+#include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -47,8 +48,9 @@
 #include <vector>
 
 using namespace arangodb;
+using namespace arangodb::tests;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::test;
+using namespace arangodb::replication2::tests;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -84,7 +86,7 @@ struct DocumentStateMachineTest : testing::Test {
           std::make_shared<testing::NiceMock<MockDocumentStateHandlersFactory>>(
               databaseSnapshotFactoryMock);
   MockTransactionManager transactionManagerMock;
-  tests::mocks::MockServer mockServer = tests::mocks::MockServer();
+  mocks::MockServer mockServer = mocks::MockServer();
   MockVocbase vocbaseMock =
       MockVocbase(mockServer.server(), "documentStateMachineTestDb", 2);
 

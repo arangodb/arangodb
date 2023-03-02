@@ -39,6 +39,7 @@
 #include <utility>
 #include "Metrics/Gauge.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
