@@ -48,7 +48,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::TimeString("_time");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
