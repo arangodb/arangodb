@@ -45,7 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
-      'g6graphs/:name': 'showG6Graph',
+      'visgraphs/:name': 'showVisGraph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -386,10 +386,10 @@
         document.getElementById('content')));
     },
 
-    showG6Graph: function (name) {
+    showVisGraph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.G6GraphReactView),
+      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
         document.getElementById('content'))
       );
     },

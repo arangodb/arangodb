@@ -24,7 +24,8 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 namespace arangodb {
 namespace pregel {

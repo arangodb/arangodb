@@ -2,12 +2,12 @@ import React from 'react';
 
 type TagProps = {
   label?: string;
-  style?: string;
+  template?: string;
 };
 
-const Tag = ({ label, style }: TagProps) => {
+const Tag = ({ label, template }: TagProps) => {
 
-    if (style === 'transparent') {
+    if (template === 'transparent') {
         return <>
             {label ?
                 <div
