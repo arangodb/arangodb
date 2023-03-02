@@ -301,4 +301,5 @@ TEST_F(StateManagerTest, get_follower_state_machine_early) {
   //    - finish acquiring the snapshot (if one was started)
   //  At every point, check that the stateMachine is not available until the
   //  very end.
+  ASSERT_TRUE(false) << "Finish writing the test!";
 }
