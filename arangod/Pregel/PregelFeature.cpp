@@ -359,7 +359,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .userParameters = options.userParameters};
 
   // TODO needs to be part of the conductor state
-  auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase, *this);
+  auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
+                                               *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();

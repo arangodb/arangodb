@@ -79,14 +79,14 @@ using namespace arangodb::basics;
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
-Conductor::Conductor(ExecutionSpecifications const& specifications, TRI_vocbase_t& vocbase,
-                     PregelFeature& feature)
+Conductor::Conductor(ExecutionSpecifications const& specifications,
+                     TRI_vocbase_t& vocbase, PregelFeature& feature)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _specifications(specifications),
-      _algorithm(
-          AlgoRegistry::createAlgorithm(vocbase.server(), specifications.algorithm,
-                                        specifications.userParameters.slice())),
+      _algorithm(AlgoRegistry::createAlgorithm(
+          vocbase.server(), specifications.algorithm,
+          specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -475,17 +475,18 @@ ErrorCode Conductor::_initializeWorkers() {
   for (auto const& [server, vertexShardMap] : vertexMap) {
     auto const& edgeShardMap = edgeMap[server];
 
-    auto createWorker = CreateWorker{
-        .executionNumber = _specifications.executionNumber,
-        .algorithm = _algorithm->name(),
-        .userParameters = _specifications.userParameters,
-        .coordinatorId = coordinatorId,
-        .useMemoryMaps = _specifications.useMemoryMaps,
-        .edgeCollectionRestrictions = _specifications.edgeCollectionRestrictions,
-        .vertexShards = vertexShardMap,
-        .edgeShards = edgeShardMap,
-        .collectionPlanIds = collectionPlanIdMap,
-        .allShards = shardList};
+    auto createWorker =
+        CreateWorker{.executionNumber = _specifications.executionNumber,
+                     .algorithm = _algorithm->name(),
+                     .userParameters = _specifications.userParameters,
+                     .coordinatorId = coordinatorId,
+                     .useMemoryMaps = _specifications.useMemoryMaps,
+                     .edgeCollectionRestrictions =
+                         _specifications.edgeCollectionRestrictions,
+                     .vertexShards = vertexShardMap,
+                     .edgeShards = edgeShardMap,
+                     .collectionPlanIds = collectionPlanIdMap,
+                     .allShards = shardList};
 
     // TODO should be done inside conductor actor (this whole function will be
     // moved into the conductor actor state)
