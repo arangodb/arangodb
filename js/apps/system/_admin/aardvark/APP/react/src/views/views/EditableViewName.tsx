@@ -48,11 +48,12 @@ export const EditableViewName = ({
           required={true}
           disabled={nameEditDisabled}
         />{" "}
-        <i
+        <Box
+          as="i"
           className="fa fa-check"
+          padding={"3"}
           onClick={closeEditName}
-          style={{ paddingTop: "14px" }}
-        ></i>
+        />
       </>
     </div>
   );

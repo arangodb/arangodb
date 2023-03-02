@@ -7,6 +7,7 @@ import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { validateAndFix } from "../../helpers";
 import { IconButton } from "../../../../components/arango/buttons";
 import { useHistory, useLocation } from "react-router-dom";
+import { Stack, Text } from "@chakra-ui/react";
 
 type CopyFromInputProps = {
   views: FormState[];
@@ -45,17 +46,28 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
     setSelectedView(tempSelectedView);
   };
 
-  return <>
-    Copy mutable properties <select value={selectedView.name} onChange={updateSelectedView} style={{marginBottom: "0px"}}>
-      {
-        sortedViews.map((view, idx) =>
-          <option key={idx} value={view.name}>{view.name}</option>)
-      }
-    </select>
-    <IconButton icon={'hand-o-left'} type={'warning'} onClick={copyFormState}>
-      Copy
-    </IconButton>
-  </>;
+
+  return (
+    <Stack direction="row" alignItems="center" flexWrap="wrap">
+      <Text>Copy mutable properties</Text>
+      <Stack direction="row" alignItems="center">
+        <select
+          value={selectedView.name}
+          onChange={updateSelectedView}
+          style={{ marginBottom: "0px" }}
+        >
+          {sortedViews.map((view, idx) => (
+            <option key={idx} value={view.name}>
+              {view.name}
+            </option>
+          ))}
+        </select>
+        <IconButton icon={"hand-o-left"} type={"warning"} onClick={copyFormState}>
+          Copy
+        </IconButton>
+      </Stack>
+    </Stack>
+  );
 };
 
 export default CopyFromInput;

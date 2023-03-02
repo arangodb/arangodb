@@ -52,34 +52,21 @@ export const ViewHeader = ({
         closeEditName={closeEditName}
       />
       {isAdminUser && views.length ? (
-        <Box>
-          <Box display={"flex"}>
-            <div style={{ flex: 1, padding: "10" }}>
-              <CopyFromInput
-                views={views}
-                dispatch={dispatch}
-                formState={formState}
-              />
-            </div>
-            <div style={{ flex: 1, padding: "10" }}>
-              {isAdminUser && changed ? (
-                <SaveButton
-                  view={formState}
-                  oldName={name}
-                  menu={"json"}
-                  setChanged={setChanged}
-                />
-              ) : (
-                <SaveButton
-                  view={formState}
-                  oldName={name}
-                  menu={"json"}
-                  setChanged={setChanged}
-                  disabled
-                />
-              )}
-              <DeleteButton view={formState} />
-            </div>
+        <Box display="flex">
+          <CopyFromInput
+            views={views}
+            dispatch={dispatch}
+            formState={formState}
+          />
+          <Box display="flex" ml="auto" flexWrap="wrap">
+            <SaveButton
+              view={formState}
+              oldName={name}
+              menu={"json"}
+              setChanged={setChanged}
+              disabled={!isAdminUser || !changed}
+            />
+            <DeleteButton view={formState} />
           </Box>
         </Box>
       ) : null}
