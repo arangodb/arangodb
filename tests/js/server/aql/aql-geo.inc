@@ -156,14 +156,10 @@
     let cmpResView = compareKeyLists("without index", resFullScanNoIndexes, "with view", resView);
     let cmpResInvertedIndex = compareKeyLists("without index", resFullScanNoIndexes, "with inverted index", resInvertedIndex);
 
-    // PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/BTS-1184
-
-    /*
     let explanation = db._createStatement(invertedIndexQuery).explain().plan;
     let utilizedIndexes = explanation.nodes.filter(node => node.type === 'IndexNode')[0].indexes;
     assertEqual(utilizedIndexes.length, 1);
     assertEqual(utilizedIndexes[0].name, "inverted");
-    */
 
     if (!cmpResFullScanWithIndexes.good || !cmpResView.good || !cmpResInvertedIndex.good) {
       print("Query for collections:", fullScanQuery);
