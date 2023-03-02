@@ -1,6 +1,8 @@
 devel
 -----
-* FE-132: Added sorting by modified date, option to sort order.
+
+* FE-132: Added query sorting (in web UI) by modified date, option to sort
+  order.
 
 * Added metric `arangodb_replication_clients` showing the number of currently
   active/connected replication clients for a server.
