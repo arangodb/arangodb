@@ -33,7 +33,14 @@ export const ViewHeader = ({
   setChanged: (changed: boolean) => void;
 } & Pick<FormProps<FormState>, "dispatch">) => {
   return (
-    <Box position="sticky" top="0" backgroundColor={"white"} borderBottom="2px solid" borderColor={"gray.300"} padding="4">
+    <Box
+      position="sticky"
+      top="0"
+      backgroundColor="gray.100"
+      borderBottom="2px solid"
+      borderColor={"gray.300"}
+      padding="4"
+    >
       <EditableViewName
         isAdminUser={isAdminUser}
         editName={editName}
