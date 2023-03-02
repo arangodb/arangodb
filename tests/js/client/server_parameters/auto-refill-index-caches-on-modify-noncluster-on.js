@@ -37,6 +37,7 @@ if (getOptions === true) {
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+const runWithRetry = require('@arangodb/test-helper').runWithRetry;
 
 const cn = 'UnitTestsCollection';
 const n = 5000;
@@ -46,29 +47,13 @@ const waitForPendingRefills = () => {
   arango.POST('/_api/index/sync-caches', {});
 };
 
-const runWithRetry = (cb) => {
-  let tries = 0;
-  while (true) {
-    try {
-      cb();
-      // return upon first successful execution of the callback function
-      return;
-    } catch (err) {
-      // if it fails, check how many failures we got. fail only if we failed
-      // 3 times in a row
-      if (tries++ === 3) {
-        throw err;
-      }
-      // attempt failed. this can happen because inserting data into
-      // the cache can fail under the following circumstances:
-      // - cache global budget exceeded
-      // - cache hash table migration in progress
-
-      // start over...
-      db[cn].truncate();
-      require("internal").sleep(2);
-    }
-  }
+const runWithRetryFailCb = () => {
+  // attempt failed. this can happen because inserting data into
+  // the cache can fail under the following circumstances:
+  // - cache global budget exceeded
+  // - cache hash table migration in progress
+  db[cn].truncate();
+  require("internal").sleep(2);
 };
 
 function AutoRefillIndexCachesEdge() {
@@ -151,7 +136,7 @@ function AutoRefillIndexCachesEdge() {
 
         assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
         runCheck(true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testInsertEdgeDisabled: function() {
@@ -175,7 +160,7 @@ function AutoRefillIndexCachesEdge() {
 
         assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
         runCheck(true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testUpdateEdgeDisbled: function() {
@@ -201,7 +186,7 @@ function AutoRefillIndexCachesEdge() {
 
         assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
         runCheck(true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testReplaceEdgeDisabled: function() {
@@ -227,7 +212,7 @@ function AutoRefillIndexCachesEdge() {
 
         assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
         runRemoveCheck(true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testRemoveEdgeDisabled: function() {
@@ -344,7 +329,7 @@ function AutoRefillIndexCachesVPack() {
 
         assertTrue(newValue - oldValue >= n, { oldValue, newValue });
         runCheck(0, true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testUpdateVPackNoCache: function() {
@@ -387,7 +372,7 @@ function AutoRefillIndexCachesVPack() {
 
         assertTrue(newValue - oldValue >= n, { oldValue, newValue });
         runCheck(1, true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testReplaceVPackNoCache: function() {
@@ -430,7 +415,7 @@ function AutoRefillIndexCachesVPack() {
 
         assertTrue(newValue - oldValue >= n, { oldValue, newValue });
         runCheck(1, true);
-      });
+      }, runWithRetryFailCb);
     },
     
     testRemoveVPackNoCache: function() {
@@ -473,7 +458,7 @@ function AutoRefillIndexCachesVPack() {
 
         assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
         runRemoveCheck(true);
-      });
+      }, runWithRetryFailCb);
     },
 
   };
