@@ -39,12 +39,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
   void spawnActorOnServer(actor::ServerID server,
                           pregel::message::SpawnMessages msg) {
     if (server == this->self.server) {
-      std::visit(
-          [this](auto&& arg) {
-            this->template spawn<SpawnActor>(std::make_unique<SpawnState>(),
-                                             arg);
-          },
-          msg);
+      this->template spawn<SpawnActor>(std::make_unique<SpawnState>(), msg);
     } else {
       this->dispatch(
           actor::ActorPID{

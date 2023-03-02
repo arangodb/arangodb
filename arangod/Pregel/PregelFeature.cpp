@@ -71,13 +71,6 @@ using namespace arangodb::pregel;
 
 namespace {
 
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
 // locations for Pregel's temporary files
 std::unordered_set<std::string> const tempLocationTypes{
     {"temp-directory", "database-directory", "custom"}};
