@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric `arangodb_replication_clients` showing the number of currently
+  active/connected replication clients for a server.
+
 * Partial fix for PRESUPP-539: account for memory used during AQL condition
   transformation to disjunctive normal form (DNF). This transformation can use
   a lot of memory for complex filter conditions, which was previously not
