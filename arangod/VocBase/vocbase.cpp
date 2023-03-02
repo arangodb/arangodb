@@ -91,6 +91,7 @@
 #include "Metrics/Gauge.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1876,8 +1877,16 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
     _queries = std::make_unique<arangodb::aql::QueryList>(feature);
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
-  _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>();
+
+  if (_info.server().hasFeature<ReplicationFeature>()) {
+    auto& rf = _info.server().getFeature<ReplicationFeature>();
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
+  } else {
+    // during unit testing, there is no ReplicationFeature available
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(nullptr);
+  }
 
   // init collections
   _collections.reserve(32);

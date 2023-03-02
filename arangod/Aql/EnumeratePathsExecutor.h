@@ -29,6 +29,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 
@@ -176,7 +177,6 @@ class EnumeratePathsExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
- private:
   Infos& _infos;
   transaction::Methods _trx;
   InputAqlItemRow _inputRow;

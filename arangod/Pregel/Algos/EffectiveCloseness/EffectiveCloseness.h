@@ -24,7 +24,8 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 namespace arangodb {
 namespace pregel {

@@ -30,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RestAqlHandler.h"

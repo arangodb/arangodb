@@ -25,9 +25,7 @@
 
 #include "Pregel/Algorithm.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 struct SPGraphFormat;
 
@@ -55,6 +53,4 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   IAggregator* aggregator(std::string const& name) const override;
   std::set<std::string> initialActiveSet() override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos

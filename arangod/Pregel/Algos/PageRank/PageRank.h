@@ -26,9 +26,7 @@
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
@@ -57,6 +55,4 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
  private:
   bool const _useSource;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos
