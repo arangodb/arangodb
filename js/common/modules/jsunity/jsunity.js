@@ -607,6 +607,7 @@ var jsUnity = exports.jsUnity = (function () {
           tearDownAll(suite.suiteName);
           this.results.endTeardownAll(suite.scope);
         } catch (tearDownAllError) {
+          results.total += 1;
           if (tearDownAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,
                               tearDownAllError + " - " + String(tearDownAllError.stack) + 
