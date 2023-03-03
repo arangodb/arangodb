@@ -297,7 +297,7 @@ function server_secrets(options) {
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
 
-  fs.copyFile("./UnitTests/server.pem", keyfileName);
+  fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
 
   process.env["tls-keyfile"] = keyfileName;
 
@@ -316,7 +316,7 @@ function server_secrets(options) {
   };
   if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./UnitTests/tls.keyfile";
+      = "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
   let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {
