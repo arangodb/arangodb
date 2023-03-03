@@ -31,7 +31,7 @@
 #include "Agency/NodeDeserialization.h"
 #include "Agency/NodeLoadInspector.h"
 
-#include "InspectionTestHelper.h"
+#include "Inspection/InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;

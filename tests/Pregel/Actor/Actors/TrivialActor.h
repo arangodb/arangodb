@@ -97,10 +97,9 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
-  auto operator()(ServerNotFound notFound) -> std::unique_ptr<TrivialState> {
+  auto operator()(NetworkError notFound) -> std::unique_ptr<TrivialState> {
     this->state->called++;
-    this->state->state =
-        fmt::format("receiving server {} not found", notFound.server);
+    this->state->state = fmt::format("network error: {}", notFound.message);
     return std::move(this->state);
   }
 

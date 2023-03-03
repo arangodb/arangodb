@@ -34,18 +34,30 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Pregel/ArangoExternalDispatcher.h"
+#include "Actor/Runtime.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
+
+struct PregelScheduler {
+  auto operator()(auto fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+  }
+};
 
 class Conductor;
 class IWorker;
@@ -102,10 +114,15 @@ class PregelFeature final : public ArangodFeature {
   size_t defaultParallelism() const noexcept;
   size_t minParallelism() const noexcept;
   size_t maxParallelism() const noexcept;
+  size_t parallelism(VPackSlice params) const noexcept;
+
   std::string tempPath() const;
   bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
+  void spawnActor(actor::ServerID server, actor::ActorPID sender,
+                  SpawnMessages msg);
 
  private:
   void scheduleGarbageCollection();
@@ -148,6 +165,10 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+ public:
+  std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
+      _actorRuntime;
 };
 
 }  // namespace arangodb::pregel

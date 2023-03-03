@@ -188,11 +188,9 @@ struct custom_sort : public irs::sort {
                                     filter_node_attrs, document_attrs, boost);
       }
 
-      return {
-          std::make_unique<custom_sort::prepared::scorer>(
-              sort_, segment_reader, term_reader, filter_node_attrs,
-              document_attrs),
-          [](irs::score_ctx* ctx, irs::score_t* res) {
+      return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
+
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
             auto& ctxImpl =
                 *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
@@ -204,7 +202,9 @@ struct custom_sort : public irs::sort {
             if (ctxImpl.sort_.scorer_score) {
               ctxImpl.sort_.scorer_score(doc_id, res);
             }
-          }};
+          },
+          sort_, segment_reader, term_reader, filter_node_attrs,
+          document_attrs);
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
@@ -1121,7 +1121,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+    EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
 
     // set reachable filter condition
     {
@@ -1266,7 +1266,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_NE(*score, irs::ScoreFunction::kDefault);
+    EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1387,7 +1387,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+    EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
