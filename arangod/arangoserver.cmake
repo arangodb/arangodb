@@ -205,6 +205,7 @@ target_link_libraries(arangoserver
   arango_geo
   arango_graph
   arango_indexes
+  arango_inspection
   arango_iresearch
   arango_metrics
   arango_network

@@ -24,8 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "Inspection/ValidateInspector.h"
-
-#include "InspectionTestHelper.h"
+#include "Inspection/InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;

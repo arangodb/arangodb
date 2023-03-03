@@ -26,8 +26,7 @@
 #include <velocypack/Builder.h>
 
 #include "Inspection/VPackSaveInspector.h"
-
-#include "InspectionTestHelper.h"
+#include "Inspection/InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;
