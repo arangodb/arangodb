@@ -898,7 +898,7 @@ const replicatedLogSuite = function () {
           );
         }
 
-        let localStatus = helper.getLocalStatus(database, logId, leader);
+        let localStatus = helper.getLocalStatus(leader, database, logId);
         if (localStatus.role !== "leader") {
           return Error("Designated leader does not report as leader");
         }
@@ -918,7 +918,7 @@ const replicatedLogSuite = function () {
               )}; expected = ${JSON.stringify(localStatus)}`
           );
         }
-        localStatus = helper.getLocalStatus(database, logId, followers[1]);
+        localStatus = helper.getLocalStatus(followers[1], database, logId);
         if (localStatus.role !== "follower") {
           return Error("Designated follower does not report as follower");
         }
