@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -330,60 +331,73 @@ arangodb::Result Databases::create(ArangodServer& server,
                                    std::string const& dbName,
                                    VPackSlice const& users,
                                    VPackSlice const& options) {
-  // Only admin users are permitted to create databases
-  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
-    events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return Result(TRI_ERROR_FORBIDDEN);
-  }
+  Result res = basics::catchToResult([&]() {
+    Result res;
 
-  CreateDatabaseInfo createInfo(server, exec);
-  arangodb::Result res = createInfo.load(dbName, options, users);
+    // Only admin users are permitted to create databases
+    if (!exec.isAdminUser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN);
+    }
+    if (ServerState::readOnly() && !exec.isSuperuser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
+    }
 
-  if (!res.ok()) {
-    events::CreateDatabase(dbName, res, exec);
+    CreateDatabaseInfo createInfo(server, exec);
+    res = createInfo.load(dbName, options, users);
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (createInfo.getName() != dbName) {
+      // check if name after normalization will change
+      res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                "database name is not properly UTF-8 NFC-normalized");
+      return res;
+    }
+
+    if (ServerState::instance()
+            ->isCoordinator() /* REVIEW! && !localDatabase*/) {
+      if (!createInfo.validId()) {
+        auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+        createInfo.setId(clusterInfo.uniqid());
+      }
+      if (server.getFeature<ClusterFeature>().forceOneShard()) {
+        createInfo.sharding("single");
+      }
+
+      try {
+        res = ShardingInfo::validateShardsAndReplicationFactor(options, server,
+                                                               true);
+      } catch (basics::Exception const& ex) {
+        res = {ex.code(), ex.what()};
+      } catch (std::exception const& ex) {
+        res = {TRI_ERROR_INTERNAL, ex.what()};
+      }
+
+      if (res.ok()) {
+        res = createCoordinator(createInfo);
+      }
+
+    } else {  // Single, DBServer, Agency
+      if (!createInfo.validId()) {
+        createInfo.setId(TRI_NewTickServer());
+      }
+      res = createOther(createInfo);
+    }
+
+    if (res.fail()) {
+      if (!res.is(TRI_ERROR_BAD_PARAMETER) &&
+          !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+        LOG_TOPIC("1964a", ERR, Logger::FIXME)
+            << "Could not create database: " << res.errorMessage();
+      }
+    }
+
     return res;
-  }
-
-  if (createInfo.getName() != dbName) {
-    // check if name after normalization will change
-    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-              "database name is not properly UTF-8 NFC-normalized");
-    events::CreateDatabase(dbName, res, exec);
-    return res;
-  }
-
-  if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
-    if (!createInfo.validId()) {
-      auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-      createInfo.setId(clusterInfo.uniqid());
-    }
-    if (server.getFeature<ClusterFeature>().forceOneShard()) {
-      createInfo.sharding("single");
-    }
-
-    res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
-    if (res.ok()) {
-      res = createCoordinator(createInfo);
-    }
-
-  } else {  // Single, DBServer, Agency
-    if (!createInfo.validId()) {
-      createInfo.setId(TRI_NewTickServer());
-    }
-    res = createOther(createInfo);
-  }
-
-  if (res.fail()) {
-    if (!res.is(TRI_ERROR_BAD_PARAMETER) &&
-        !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-      LOG_TOPIC("1964a", ERR, Logger::FIXME)
-          << "Could not create database: " << res.errorMessage();
-    }
-  }
+  });
 
   events::CreateDatabase(dbName, res, exec);
-
   return res;
 }
 
@@ -462,7 +476,8 @@ arangodb::Result Databases::drop(ExecContext const& exec,
       TRI_ClearObjectCacheV8(isolate);
 
       if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave differently:
+        // If we are a coordinator in a cluster, we have to behave
+        // differently:
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {

@@ -2293,9 +2293,10 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
-  LOG_TOPIC("4673c", TRACE, Logger::ENGINES)
+  LOG_TOPIC("4673c", DEBUG, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
-      << ", minTickExternal: " << minTickExternal;
+      << ", minTickExternal: " << minTickExternal
+      << ", releasedTick: " << _releasedTick;
 
   // Retrieve the sorted list of all wal files with earliest file first
   rocksdb::VectorLogPtr files;
