@@ -96,7 +96,7 @@ fi
        --log.level warning \
        --server.endpoint none \
        --javascript.allow-external-process-control true \
-       --javascript.execute UnitTests${PS}unittest.js \
+       --javascript.execute js${PS}client${PS}modules${PS}\@arangodb${PS}testutils${PS}unittest.js \
        -- \
        "$@" "${EXTRA_ARGS[@]}"
 )
