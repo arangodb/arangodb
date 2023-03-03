@@ -220,6 +220,7 @@ function randomTestSuite() {
       do {
         try {
           stats = pregel.status(pid);
+          internal.print("stats: " + JSON.stringify(stats));
           assertEqual(pregelTestHelpers.runFinishedSuccessfully(stats), stats.state);
         } catch (err) {
           // run was garbage collected and therefore does not exist anymore
@@ -228,8 +229,7 @@ function randomTestSuite() {
         internal.sleep(0.2);
       } while (i-- >= 0);
       assertTrue(i > 0, "timeout in pregel execution");
-    },
-
+    }
   };
 }
 
