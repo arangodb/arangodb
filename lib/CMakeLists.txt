@@ -129,12 +129,18 @@ target_include_directories(arango_lightweight PUBLIC
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
-target_link_libraries(arango_lightweight PUBLIC velocypack PRIVATE date_interface fmt
-        arango_assertions arango_static_strings arango_futures boost_boost boost_system)
-
-# yes we need absl now everywhere
-target_link_libraries(arango_lightweight PUBLIC
-        absl::flat_hash_set absl::synchronization)
+target_link_libraries(arango_lightweight
+  PUBLIC velocypack
+         arango_inspection
+         absl::flat_hash_set
+         absl::synchronization
+  PRIVATE date_interface
+          fmt
+          arango_assertions
+          arango_static_strings
+          arango_futures
+          boost_boost
+          boost_system)
 
 # Enterprise
 if (USE_ENTERPRISE)
@@ -232,28 +238,27 @@ add_library(arango STATIC
   Zip/zip.cpp
 )
 
-target_link_libraries(arango PUBLIC
-  s2
-  boost_system
-  boost_boost
-  arango_futures
-  arango_static_strings
-  arango_crashhandler
-  velocypack
-  linenoise-ng
-  date_interface
-  ${V8_LIBS}
-  ${SYSTEM_LIBRARIES}
-  ${ICU_LIBS}
-  absl::crc32c
-  absl::flat_hash_set
-  absl::flat_hash_map
-  absl::node_hash_set
-  absl::node_hash_map
-  absl::synchronization
-  absl::strings
-  arango_lightweight
-)
+target_link_libraries(arango
+  PUBLIC s2
+         boost_system
+         boost_boost
+         arango_futures
+         arango_static_strings
+         arango_crashhandler
+         velocypack
+         linenoise-ng
+         date_interface
+         ${V8_LIBS}
+         ${SYSTEM_LIBRARIES}
+         ${ICU_LIBS}
+         absl::crc32c
+         absl::flat_hash_set
+         absl::flat_hash_map
+         absl::node_hash_set
+         absl::node_hash_map
+         absl::synchronization
+         absl::strings
+         arango_lightweight)
 
 target_link_libraries(arango PUBLIC fmt::fmt)
 
@@ -301,3 +306,4 @@ add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
+add_subdirectory(Inspection)

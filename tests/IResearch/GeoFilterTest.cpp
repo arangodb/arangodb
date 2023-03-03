@@ -148,11 +148,8 @@ struct custom_sort : public irs::sort {
                              document_attrs, boost);
       }
 
-      return {
-          std::make_unique<custom_sort::prepared::scorer>(
-              sort_, segment_reader, term_reader, filter_node_attrs,
-              document_attrs),
-          [](irs::score_ctx* ctx, irs::score_t* res) {
+      return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
             auto& ctxImpl =
                 *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
@@ -162,7 +159,9 @@ struct custom_sort : public irs::sort {
             if (ctxImpl.sort_.scorer_score) {
               ctxImpl.sort_.scorer_score(doc_id, res);
             }
-          }};
+          },
+          sort_, segment_reader, term_reader, filter_node_attrs,
+          document_attrs);
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
@@ -424,7 +423,7 @@ TEST(GeoFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+      EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -800,7 +799,7 @@ TEST(GeoFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_NE(*score, irs::ScoreFunction::kDefault);
+      EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);

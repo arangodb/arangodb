@@ -30,11 +30,38 @@
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-let internal = require('internal'); // OK: processCsvFile
+const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const fs = require('fs');
 
 let instanceInfo = null;
+
+// execute callback function cb upto maxTries times.
+// in case of failure, execute callback function failCb.
+exports.runWithRetry = (cb, failCb, maxTries = 3) => {
+  if (!failCb) {
+    // this indicates an error in the test code. check call site
+    // and verify that it sets a proper failure callback
+    throw "test setup error - failure callback not set!";
+  }
+  let tries = 0;
+  while (true) {
+    try {
+      cb();
+      // return upon first successful execution of the callback function
+      return;
+    } catch (err) {
+      // if it fails, check how many failures we got. fail only if we failed
+      // 3 times in a row
+      if (tries++ === maxTries) {
+        throw err;
+      }
+
+      // attempt failed.
+      failCb();
+    }
+  }
+};
 
 exports.versionHas = function (attribute) {
   if (global.hasOwnProperty('ARANGODB_CLIENT_VERSION')) {

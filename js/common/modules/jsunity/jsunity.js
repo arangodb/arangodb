@@ -11,15 +11,16 @@
  */
 var counter; // crying
 function reduceStack(errstack) {
-  const maxLines = 5;
+  const maxLines = 3;
   let ret = '';
   let numPrinted = 0;
+  let count = false;
   let last;
   let lines = String(errstack).split('\n').filter(
     line => line.trim() !== '').filter(
-      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run)/));
+      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run|iterateTests.*testing\.js)/));
   lines.forEach((line, index) => {
-    if (numPrinted++ >= maxLines && index !== lines.length - 1) {
+    if (numPrinted >= maxLines && index !== lines.length - 1) {
       ret += '.';
       // don't print more than x lines, but always print last line
       return;
@@ -31,6 +32,13 @@ function reduceStack(errstack) {
     }
     last = line;
     ret += line + '\n';
+    if (line.match(/^\s+at\s/)) {
+      // start counting only from first line that contains an actual stack trace
+      count = true;
+    }
+    if (count) {
+      ++numPrinted;
+    }
   });
   return ret;
 }

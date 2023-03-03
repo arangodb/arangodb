@@ -38,35 +38,55 @@ namespace {
 char const* emptyString = "";
 }  // namespace
 
-AstResources::AstResources(arangodb::ResourceMonitor& resourceMonitor)
+AstResources::AstResources(ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _stringsLength(0),
-      _shortStringStorage(_resourceMonitor, 1024) {}
+      _shortStringStorage(_resourceMonitor, 1024),
+      _childNodes(0) {}
 
 AstResources::~AstResources() {
   clear();
-  size_t memoryUsage = _strings.capacity() * memoryUsageForStringBlock();
+  size_t memoryUsage = (_strings.capacity() * memoryUsageForStringBlock()) +
+                       (_childNodes * memoryUsageForChildNode());
   _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+}
+
+void AstResources::reserveChildNodes(AstNode* node, size_t n) {
+  // the following increaseMemoryUsage call can throw. if it does, then
+  // we don't have to roll back any state
+  _resourceMonitor.increaseMemoryUsage(n * memoryUsageForChildNode());
+  // now that we successfully reserved memory in the query, we can safely
+  // bump up the number of reserved childNodes.
+  _childNodes += n;
+
+  TRI_ASSERT(node != nullptr);
+  // now reserve the actual space in the AstNode. this can still fail
+  // with OOM, but even if it does, there is no need to roll back the
+  // two modifications above. the number of child nodes and the tracked
+  // memory will be cleared in this class' dtor nicely.
+  node->reserve(n);
 }
 
 // frees all data
 void AstResources::clear() noexcept {
-  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength;
+  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength +
+                       (_childNodes * memoryUsageForChildNode());
   _nodes.clear();
   clearStrings();
-  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
-
   _shortStringStorage.clear();
+  _childNodes = 0;
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
 
 // frees most data (keeps a bit of memory around to avoid later re-allocations)
 void AstResources::clearMost() noexcept {
-  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength;
+  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength +
+                       (_childNodes * memoryUsageForChildNode());
   _nodes.clearMost();
   clearStrings();
-  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
-
   _shortStringStorage.clearMost();
+  _childNodes = 0;
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
 
 // clears dynamic string data. resets _strings and _stringsLength,
@@ -108,8 +128,7 @@ AstNode* AstResources::registerNode(AstNodeType type) {
 }
 
 // create and register an AstNode
-AstNode* AstResources::registerNode(Ast* ast,
-                                    arangodb::velocypack::Slice slice) {
+AstNode* AstResources::registerNode(Ast* ast, velocypack::Slice slice) {
   // may throw
   ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 

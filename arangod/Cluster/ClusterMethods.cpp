@@ -595,6 +595,8 @@ struct InsertOperationCtx {
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
+      } else {
+        return {TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD};
       }
     }
 
