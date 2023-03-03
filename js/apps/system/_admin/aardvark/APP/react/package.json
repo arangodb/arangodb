@@ -23,6 +23,7 @@
     "dotenv-expand": "4.2.0",
     "ejs-loader": "^0.3.7",
     "file-loader": "2.0.0",
+    "formik": "^2.2.9",
     "framer-motion": "^4",
     "fs-extra": "7.0.0",
     "highlight.js": "^9.18.1",
@@ -72,7 +73,8 @@
     "url-loader": "1.1.1",
     "vis-data": "^7.1.4",
     "vis-network": "^9.1.2",
-    "vis-react": "^0.5.1"
+    "vis-react": "^0.5.1",
+    "yup": "^1.0.2"
   },
   "scripts": {
     "start": "node scripts/start.js",
@@ -91,6 +93,8 @@
   ],
   "devDependencies": {
     "@babel/core": "7.14.8",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.18.6",
+    "@babel/plugin-proposal-optional-chaining": "^7.21.0",
     "@svgr/webpack": "2.4.1",
     "@types/backbone": "^1.4.3",
     "@types/d3": "^5.5.0",
