@@ -132,7 +132,7 @@
 
     loginCallback: function (username, password, error) {
       if (error) {
-        if (self.loginCounter === 0) {
+        if (this.loginCounter === 0) {
           this.loginCounter++;
           this.collection.login(username, password, () => this.loginCallback(username));
           return;
