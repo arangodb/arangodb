@@ -1,6 +1,12 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating the same
+  _rev value for two different documents concurrently.
+
 * ES-1428: make the maximum number of V8 contexts depend on the maximum number
   of server threads, if `--javascript.v8-contexts` is not set explicitly.
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
