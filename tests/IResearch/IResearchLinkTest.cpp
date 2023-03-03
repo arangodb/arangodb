@@ -2423,21 +2423,24 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
   setLink();
   auto* l = getLink();
   {
-    insert(1, 10000, 0);
+    insert(1, 100000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     EXPECT_LT(0, commitTime1);
-    insert(10000, 10100, 1);
+    insert(100000, 200000, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_LT(0, commitTime2);
+    if (consolidationTime1 > 0 || consolidationTime2 > 0) {
+      return;
+    }
   }
   auto start = std::chrono::steady_clock::now();
   auto check = [&] {
     while ((std::chrono::steady_clock::now() - start) < 10s) {
-      auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-      if (consolidationTime1 > 0) {
+      auto [commitTime, cleanupTime, consolidationTime] = l->avgTime();
+      if (consolidationTime > 0) {
         return true;
       }
-      std::this_thread::sleep_for(10ms);
+      std::this_thread::sleep_for(1ms);
     }
     return false;
   };

@@ -10,6 +10,91 @@ devel
   for 900 seconds before returning the error to the client. This will cover
   up most temporary write concern problems for the client.
 
+* GORDO-1554: Fixes invalid document insertion with invalid user-specified
+  keys (e.g. numeric values) into EnterpriseGraph related vertices.
+
+* Add peak memory usage to the query object details for queries in the slow
+  query history and in the list of currently running queries. The peak memory
+  usage is also returned via REST APIs as `peakMemoryUsage`.
+
+* Provide options for configuring and enabling RocksDB's blob storage (BlobDB)
+  for large documents in the documents column family.
+  This is currently an experimental feature.
+
+  The following experimental options are available:
+
+  - `--rocksdb.enable-blob-files`: Enable the usage of blob files for the 
+    documents column family. This option defaults to `false`. All following
+    options are only relevant if this option is set to `true`.
+  - `--rocksdb.min-blob-size`: Size threshold for storing large documents in 
+    blob files (in bytes, 0 = store all documents in blob files).
+  - `--rocksdb.blob-file-size`: Size limit for blob files in the documents 
+    column family (in bytes).
+  - `--rocksdb.blob-compression-type`: Compression algorithm to use for blob
+    data in the documents column family.
+  - `--rocksdb.enable-blob-garbage-collection`: Enable blob garbage collection
+    during compaction in the documents column family. 
+  - `--rocksdb.blob-garbage-collection-age-cutoff`: Age cutoff for garbage 
+    collecting blob files in the documents column family (percentage value from 
+    0 to 1 determines how many blob files are garbage collected during 
+    compaction).
+  - `--rocksdb.blob-garbage-collection-force-threshold`: Garbage ratio 
+    threshold for scheduling targeted compactions for the oldest blob files 
+    in the documents column family. 
+
+* FE-132: Added query sorting (in web UI) by modified date, option to sort
+  order.
+
+* Added metric `arangodb_replication_clients` showing the number of currently
+  active/connected replication clients for a server.
+
+* Partial fix for PRESUPP-539: account for memory used during AQL condition
+  transformation to disjunctive normal form (DNF). This transformation can use
+  a lot of memory for complex filter conditions, which was previously not
+  accounted for. Now, if the transformation uses a lot of memory and hits the
+  configured query memory limit, the query will rather be aborted with a 
+  proper error message than overuse memory.
+  For very complex conditions that would use massive amounts of memory when
+  transformed into DNF, the DNF conversion is also aborted at some threshold
+  complexity value. If the threshold is hit, the query continues with a 
+  simplified representation of the condition, which will not be usable in 
+  index lookups. However, this should still be better than overusing memory 
+  or taking a very long time to compute the DNF version.
+  The complexity threshold value can be configured per query by setting the
+  new `maxDNFConditionMembers` query option. There is also a new startup
+  option `--query.max-dnf-condition-members` for coordinators and single
+  servers to adjust the threshold value globally.
+
+* ES-1428: make the maximum number of V8 contexts depend on the maximum number
+  of server threads, if `--javascript.v8-contexts` is not set explicitly. 
+  Previously the maximum number of V8 contexts was hard-coded to 16 when the
+  option `--javascript.v8-contexts` option was not set explicitly.
+  Now the maximum number defaults to 7/8 of the value of the startup option
+  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  the default value is used. Only 7/8 are used to leave some headroom for other
+  important maintenance tasks.
+  A server with default configuration should now not block waiting for V8 
+  contexts to become available, but it may use more memory for the additional V8 
+  contexts if there are many concurrent requests that invoke JavaScript actions 
+  (e.g. requests using the web UI or Foxx).
+
+* Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
+  is generated for each imported document to avoid clashes with previously
+  present data. This must be created on the shard leader rather than the
+  coordinator. The bug happened, when two coordinators were creating
+  the same _rev value for two different documents concurrently.
+
+* BTS-1249: Add startup option `--foxx.enable`.
+  This startup option determines whether access to user-defined Foxx services
+  is possible for the instance. It defaults to `true`.
+  If the option is set to `false`, access to Foxx services is forbidden and
+  will be responded with an HTTP 403 Forbidden error. Access to ArangoDB's
+  built-in web interface, which is also a Foxx service, is still possible even
+  with the option set to `false`.
+  When setting the option to `false`, access to the management APIs for Foxx
+  services will also be disabled. This is the same as manually setting the
+  option `--foxx.api false`.
+
 * Updated arangosync to v2.15.0-preview-1.
 
 * The internal Graph code is completely converted to the new graph engine.

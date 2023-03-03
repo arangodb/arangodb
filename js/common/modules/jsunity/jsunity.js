@@ -11,15 +11,16 @@
  */
 var counter; // crying
 function reduceStack(errstack) {
-  const maxLines = 5;
+  const maxLines = 3;
   let ret = '';
   let numPrinted = 0;
+  let count = false;
   let last;
   let lines = String(errstack).split('\n').filter(
     line => line.trim() !== '').filter(
-      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run)/));
+      line => !line.match(/(jsunity\.js|unknown source|RunTest|Object\.run|<anonymous>|run.*Runner\.run|iterateTests.*testing\.js)/));
   lines.forEach((line, index) => {
-    if (numPrinted++ >= maxLines && index !== lines.length - 1) {
+    if (numPrinted >= maxLines && index !== lines.length - 1) {
       ret += '.';
       // don't print more than x lines, but always print last line
       return;
@@ -31,6 +32,13 @@ function reduceStack(errstack) {
     }
     last = line;
     ret += line + '\n';
+    if (line.match(/^\s+at\s/)) {
+      // start counting only from first line that contains an actual stack trace
+      count = true;
+    }
+    if (count) {
+      ++numPrinted;
+    }
   });
   return ret;
 }
@@ -594,31 +602,32 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 break;
               } catch (e) {
+                let ex = e;
                 let arangodb = require("@arangodb");
-                if ( typeof e === "string" ) {
-                  e = new Error(e);
-                } else if (e instanceof arangodb.ArangoError && (
-                           (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
-                           (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                if ( typeof ex === "string" ) {
+                  ex = new Error(ex);
+                } else if (ex instanceof arangodb.ArangoError && (
+                           (ex.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
+                           (ex.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
                 )) {
                   skipTest = true;
                 }
                 if (!didSetUp) {
                   this.results.endSetUp(suite.scope, test.name);
                   didSetUp = true;
-                  messages.push(reduceStack(e.stack) + " - setUp failed");
+                  messages.push(reduceStack(ex.stack) + " - setUp failed");
                   skipTest = true;
                   continue;
                 }
                 if (!didTest && !skipTest) {
                   didTest = true;
-                  messages.push(reduceStack(e.stack) + " - test failed");
+                  messages.push(reduceStack(ex.stack) + " - test failed");
                   continue;
                 }
                 if (!didTearDown) {
                   this.results.endTeardown(suite.scope, test.name);
                   didTearDown = true;
-                  messages.push(reduceStack(e.stack) + " - tearDown failed");
+                  messages.push(reduceStack(ex.stack) + " - tearDown failed");
                   continue;
                 }
               }
@@ -631,6 +640,7 @@ var jsUnity = exports.jsUnity = (function () {
           tearDownAll(suite.suiteName);
           this.results.endTeardownAll(suite.scope);
         } catch (tearDownAllError) {
+          results.total += 1;
           if (tearDownAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,
                               tearDownAllError + " - " + reduceStack(tearDownAllError.stack) + 
