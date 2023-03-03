@@ -44,12 +44,11 @@
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Inspection/ValidateInspector.h"
+#include "Inspection/InspectionTestHelper.h"
 #include "velocypack/Builder.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include "Logger/LogMacros.h"
-
-#include "InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;
