@@ -1,6 +1,9 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* GORDO-1554: Fixes invalid document insertion with invalid user-specified keys
+  (e.g. numeric values) into EnterpriseGraph related vertices.
+
 * Added metric `arangodb_replication_clients` showing the number of currently
   active/connected replication clients for a server.
 
