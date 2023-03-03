@@ -39,7 +39,7 @@
           $('#loginUsername').focus();
         }, 300);
       } else {
-        const errCallback = () => {
+        let errCallback = () => {
           // existing jwt login is not valid anymore => reload
           arangoHelper.setCurrentJwt(null, null);
           location.reload(true);
