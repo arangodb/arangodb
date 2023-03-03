@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import Checkbox from "./components/pure-css/form/Checkbox.tsx";
+import { Checkbox } from 'antd';
 import { AttributesInfo } from './AttributesInfo';
 
 const ModalBackground = styled.div`
@@ -93,32 +93,16 @@ export const DeleteNodeModal = ({ shouldShow, onDeleteNode, onRequestClose, node
           {children}<br />
         </div>
         <AttributesInfo attributes={basicNodeData} />
-
         <Checkbox
-          label='Delete connected edges too'
-          inline
           checked={deleteEdges}
           onChange={() => {
             const newDeleteEdges = !deleteEdges;
             setDeleteEdges(newDeleteEdges);
           }}
-          //template={'graphviewer'}
-        />
-
-          {
-            /*
-            <Checkbox
-              checked={deleteEdges}
-              onChange={() => {
-                const newDeleteEdges = !deleteEdges;
-                setDeleteEdges(newDeleteEdges);
-              }}
-              style={{ 'color': '#736b68' }}
-            >
-              Delete connected edges too
-            </Checkbox>
-            */
-          }
+          style={{ 'color': '#736b68' }}
+        >
+          Delete connected edges too
+        </Checkbox>
 
         <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
           <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>

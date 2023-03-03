@@ -2,19 +2,22 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { GraphView } from './GraphView';
+import { AttributesInfo } from './AttributesInfo';
+import { DocumentInfo } from './DocumentInfo';
 import { data } from './data';
-import { UrlParametersContext } from "./url-parameters-context";
-import { AddNodeModal } from './AddNodeModal';
-import { AddEdgeModal } from './AddEdgeModal';
 import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
-import { DeleteNodeModal } from './DeleteNodeModal';
 import { DeleteEdgeModal } from './DeleteEdgeModal';
-import { DocumentInfo } from './DocumentInfo';
-import URLPARAMETERS from "./UrlParameters";
+import { DeleteNodeModal } from './DeleteNodeModal';
+import { AddNodeModal } from './AddNodeModal';
+import { AddEdgeModal } from './AddEdgeModal';
+import { FetchFullGraphModal } from './FetchFullGraphModal';
 import { omit, pick, uniqBy } from "lodash";
+import { UrlParametersContext } from "./url-parameters-context";
+import URLPARAMETERS from "./UrlParameters";
+import './tooltip.css';
 
-const VisJsGraph = () => {
+const G6JsGraph = () => {
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   let localUrlParameters = URLPARAMETERS;
@@ -52,13 +55,16 @@ const VisJsGraph = () => {
     mode: 'all'
   };
 
+  const [urlParams, setUrlParams] = useState(urlParamsObject);
   const [lookedUpData, setLookedUpData] = useState([]);
   const [nodesColorAttributes, setNodesColorAttributes] = useState({});
   const [edgesColorAttributes, setEdgesColorAttributes] = useState({});
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
-  const [visQueryString, setVisQueryString] = useState(`/_admin/aardvark/visgraph/${graphName}`);
-  const [visQueryMethod, setVisQueryMethod] = useState("GET");
-  const [graphData, setGraphData] = useState(data);
+  let [queryString, setQueryString] = useState(`/_admin/aardvark/g6graph/${graphName}`);
+  let [queryMethod, setQueryMethod] = useState("GET");
+  let [visQueryString, setVisQueryString] = useState(`/_admin/aardvark/visgraph/${graphName}`);
+  let [visQueryMethod, setVisQueryMethod] = useState("GET");
+  let [graphData, setGraphData] = useState(data);
   let [visGraphData, setVisGraphData] = useState(data);
   const [showFetchFullGraphModal, setShowFetchFullGraphModal] = useState(false);
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
@@ -96,6 +102,55 @@ const VisJsGraph = () => {
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
   const [showEdgeToAddModal, setShowEdgeToAddModal] = useState();
 
+  const randomColor = () => {
+    return Math.floor(Math.random()*16777215).toString(16);
+  }
+
+  const fetchData = useCallback(() => {
+    responseTimesObject.fetchStarted = new Date();
+    $.ajax({
+      type: queryMethod,
+      url: arangoHelper.databaseUrl(queryString),
+      contentType: 'application/json',
+      data: urlParameters,
+      success: function (data) {
+        responseTimesObject.fetchFinished = new Date();
+        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        setResponseTimes(responseTimesObject);
+        setVertexCollections(data.settings.vertexCollections);
+        if(data.settings.connectionsMinMax) {
+          setConnectionsMinMax(data.settings.connectionsMinMax);
+        }
+        if(data.settings.nodesColorAttributes) {
+          setNodesColorAttributes(data.settings.nodesColorAttributes);
+        }
+        if(data.settings.nodesSizeMinMax) {
+          setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
+        if(data.settings.edgesColorAttributes) {
+          setEdgesColorAttributes(data.settings.edgesColorAttributes);
+        }
+        const collectionColors = [];
+        Object.keys(data.settings.vertexCollections)
+        .map((key, i) => {
+          collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
+          return true;
+        });
+        setVertexCollectionsColors(collectionColors);
+        setEdgeCollections(data.settings.edgeCollections);
+        setGraphData(data);
+      },
+      error: function (e) {
+        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
+        console.log(e);
+      }
+    });
+  }, [queryString]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const fetchVisData = useCallback(() => {
     responseTimesObject.fetchStarted = new Date();
     $.ajax({
@@ -104,13 +159,35 @@ const VisJsGraph = () => {
       contentType: 'application/json',
       data: urlParameters,
       success: function (data) {
-        console.log("data: ", data);
-        console.log("data.settings.edgeCollections: ", data.settings.edgeCollections);
+        
+        
         responseTimesObject.fetchFinished = new Date();
         responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
         setResponseTimes(responseTimesObject);
         setVertexCollections(data.settings.vertexCollections);
-        setEdgeCollections(data.settings.edgeCollections);
+        if(data.settings.connectionsMinMax) {
+          setConnectionsMinMax(data.settings.connectionsMinMax);
+        }
+        if(data.settings.nodesColorAttributes) {
+          setNodesColorAttributes(data.settings.nodesColorAttributes);
+        }
+        if(data.settings.nodesSizeMinMax) {
+          setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
+        if(data.settings.edgesColorAttributes) {
+          setEdgesColorAttributes(data.settings.edgesColorAttributes);
+        }
+        const collectionColors = [];
+        Object.keys(data.settings.vertexCollections)
+        .map((key, i) => {
+          collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
+          return true;
+        });
+        setVertexCollectionsColors(collectionColors);
+
+        if(data.settings.edgeCollections !== undefined) {
+          setEdgeCollections(data.settings.edgeCollections);
+        }
         setVisGraphData(data);
       },
       error: function (e) {
@@ -124,12 +201,26 @@ const VisJsGraph = () => {
     fetchVisData();
   }, [fetchVisData]);
 
-  const openAddNodeModal = () => {
-    setNodeToAdd({});
-    setShowNodeToAddModal(true);
-  }
+  const fetchEdgeCollections = useCallback(() => {
+    arangoFetch(arangoHelper.databaseUrl('/_api/collection'), {
+      method: "GET"
+    })
+    .then(response => response.json())
+    .then(data => {
+      const returnedEdgeCollections = data.result.filter(collection => collection.type === 3);
+      setEdgeCollections(returnedEdgeCollections);
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not load collection.');
+      console.log(err);
+    });
+  }, []);
 
-  const updateVisGraphDataWithNode = (newNode) => {
+  useEffect(() => {
+    fetchEdgeCollections();
+  }, [fetchEdgeCollections]);
+
+  const updateGraphDataWithNode = (newNode) => {
     const currentEdges = visGraphData.edges;
     const newGraphData = {
       nodes: [
@@ -143,7 +234,7 @@ const VisJsGraph = () => {
     setVisGraphData(newGraphData);
   }
 
-  const updateVisGraphDataWithEdge = (newEdge) => {
+  const updateGraphDataWithEdge = (newEdge) => {
     const currentNodes = visGraphData.nodes;
     const newGraphData = {
       nodes: [
@@ -157,39 +248,9 @@ const VisJsGraph = () => {
     setVisGraphData(newGraphData);
   }
 
-  const openAddEdgeModal = (newEdge) => {
-    setShowEdgeToAddModal(true);
-  }
-
-
-  const openDeleteNodeModal = (nodeId) => {
-    console.log("nodeId in openDeleteNodeModal: ", nodeId);
-    const slashPos = nodeId.indexOf("/");
-    setNodeToDelete(nodeId);
-    setNodeToDeleteKey(nodeId.substring(slashPos + 1));
-    setNodeToDeleteCollection(nodeId.substring(0, slashPos));
-    const nodeDataObject = {
-      "keys": [
-        nodeId.substring(slashPos + 1)
-      ],
-      "collection": nodeId.substring(0, slashPos)
-    };
-
-    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
-      method: "PUT",
-      body: JSON.stringify(nodeDataObject),
-    })
-    .then(response => response.json())
-    .then(data => {
-      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
-      setNodeDataToDelete(allowedDocuments);
-      setBasicNodeDataToDelete(pick(data.documents[0], ['_id', '_key', '_rev']));
-    })
-    .catch((err) => {
-      arangoHelper.arangoError('Graph', 'Could not look up this node.');
-      console.log(err);
-    });
-    setShowDeleteNodeModal(true);
+  const removeDrawnEdge = () => {
+    // reset to previous saved data
+    setGraphData({...graphData});
   }
 
   const updateGraphDataNodes = (newNodes) => {
@@ -218,12 +279,13 @@ const VisJsGraph = () => {
     setGraphData(newGraphData);
   }
 
-  const updateGraphDataWithNode = (newNode) => {
+  const removeNodeInVis = (nodeId) => {
+    const nodes = visGraphData.nodes;
+    const updatedNodes = nodes.filter(item => item.id !== nodeId);
     const currentEdges = visGraphData.edges;
     const newGraphData = {
       nodes: [
-        ...visGraphData.nodes,
-        newNode
+        ...updatedNodes
       ],
       edges: [
         ...currentEdges
@@ -293,33 +355,33 @@ const VisJsGraph = () => {
     setShowEditNodeModal(true);
   }
 
-  const openEditEdgeModal = (edgeId) => {
-    const slashPos = edgeId.indexOf("/");
-    setEdgeToEdit(edgeId);
-    setEdgeKey(edgeId.substring(slashPos + 1));
-    setEdgeCollection(edgeId.substring(0, slashPos));
-    const edgeDataObject = {
+  const openDeleteNodeModal = (nodeId) => {
+    const slashPos = nodeId.indexOf("/");
+    setNodeToDelete(nodeId);
+    setNodeToDeleteKey(nodeId.substring(slashPos + 1));
+    setNodeToDeleteCollection(nodeId.substring(0, slashPos));
+    const nodeDataObject = {
       "keys": [
-        edgeId.substring(slashPos + 1)
+        nodeId.substring(slashPos + 1)
       ],
-      "collection": edgeId.substring(0, slashPos)
+      "collection": nodeId.substring(0, slashPos)
     };
 
     arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
       method: "PUT",
-      body: JSON.stringify(edgeDataObject),
+      body: JSON.stringify(nodeDataObject),
     })
     .then(response => response.json())
     .then(data => {
-      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev', '_from', '_to');
-      setBasicEdgeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev', '_from', '_to']));
-      setEdgeDataToEdit(allowedDocuments);
+      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
+      setNodeDataToDelete(allowedDocuments);
+      setBasicNodeDataToDelete(pick(data.documents[0], ['_id', '_key', '_rev']));
     })
     .catch((err) => {
-      arangoHelper.arangoError('Graph', 'Could not look up this edge.');
+      arangoHelper.arangoError('Graph', 'Could not look up this node.');
       console.log(err);
     });
-    setShowEditEdgeModal(true);
+    setShowDeleteNodeModal(true);
   }
 
   const openDeleteEdgeModal = (edge) => {
@@ -349,6 +411,44 @@ const VisJsGraph = () => {
       console.log(err);
     });
     setShowDeleteEdgeModal(true);
+  }
+
+  const openEditEdgeModal = (edgeId) => {
+    const slashPos = edgeId.indexOf("/");
+    setEdgeToEdit(edgeId);
+    setEdgeKey(edgeId.substring(slashPos + 1));
+    setEdgeCollection(edgeId.substring(0, slashPos));
+    const edgeDataObject = {
+      "keys": [
+        edgeId.substring(slashPos + 1)
+      ],
+      "collection": edgeId.substring(0, slashPos)
+    };
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(edgeDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev', '_from', '_to');
+      setBasicEdgeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev', '_from', '_to']));
+      setEdgeDataToEdit(allowedDocuments);
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this edge.');
+      console.log(err);
+    });
+    setShowEditEdgeModal(true);
+  }
+
+  const openAddEdgeModal = (newEdge) => {
+    setShowEdgeToAddModal(true);
+  }
+
+  const openAddNodeModal = () => {
+    setNodeToAdd({});
+    setShowNodeToAddModal(true);
   }
 
   const expandNode = (nodeId) => {
@@ -419,6 +519,31 @@ const VisJsGraph = () => {
     drawnGraph.downloadImage();
   }
 
+  const lookUpDocumentForVis = (document) => {
+    const slashPos = document.indexOf("/");
+    const documentDataObject = {
+      "keys": [
+        document.substring(slashPos + 1)
+      ],
+      "collection": document.substring(0, slashPos)
+    };
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(documentDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const attributes = data.documents[0];
+      const allowedAttributesList = omit(attributes, '_rev', '_key');
+      setLookedUpData(allowedAttributesList);
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this document.');
+      console.log(err);
+    });
+  }
+
   const lookUpDocument = (document) => {
     const documentId = document.item._cfg.id;
     const slashPos = documentId.indexOf("/");
@@ -445,29 +570,23 @@ const VisJsGraph = () => {
     });
   }
 
-  const lookUpDocumentForVis = (document) => {
-    const slashPos = document.indexOf("/");
-    const documentDataObject = {
-      "keys": [
-        document.substring(slashPos + 1)
+  const onDeleteEdge = (edgeId) => {
+    setShowDeleteEdgeModal(false);
+    const edgesWithoutRemovedEdge = visGraphData.edges.filter(edges => edges.id !== edgeId);
+    const currentNodes = visGraphData.nodes;
+    const currentSettings = visGraphData.settings;
+
+    const newGraphData = {
+      nodes: [
+        ...currentNodes
       ],
-      "collection": document.substring(0, slashPos)
+      edges: [
+        ...edgesWithoutRemovedEdge
+      ],
+      settings: currentSettings
     };
 
-    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
-      method: "PUT",
-      body: JSON.stringify(documentDataObject),
-    })
-    .then(response => response.json())
-    .then(data => {
-      const attributes = data.documents[0];
-      const allowedAttributesList = omit(attributes, '_rev', '_key');
-      setLookedUpData(allowedAttributesList);
-    })
-    .catch((err) => {
-      arangoHelper.arangoError('Graph', 'Could not look up this document.');
-      console.log(err);
-    });
+    setVisGraphData(newGraphData);
   }
 
   const onDeleteNode = (nodeId) => {
@@ -489,102 +608,10 @@ const VisJsGraph = () => {
     setVisGraphData(newGraphData);
   }
 
-  const onDeleteEdge = (edgeId) => {
-    setShowDeleteEdgeModal(false);
-    const edgesWithoutRemovedEdge = visGraphData.edges.filter(edges => edges.id !== edgeId);
-    const currentNodes = visGraphData.nodes;
-    const currentSettings = visGraphData.settings;
-
-    const newGraphData = {
-      nodes: [
-        ...currentNodes
-      ],
-      edges: [
-        ...edgesWithoutRemovedEdge
-      ],
-      settings: currentSettings
-    };
-
-    setVisGraphData(newGraphData);
-  }
-
   return (
     <div>
-      <UrlParametersContext.Provider value={[urlParameters, setUrlParameters]}>
-        <DeleteEdgeModal
-          shouldShow={showDeleteEdgeModal}
-          onRequestClose={() => {
-            setShowDeleteEdgeModal(false);
-            setEdgeDataToDelete(undefined);
-          }}
-          edge={edgeToDelete}
-          edgeData={edgeDataToDelete}
-          basicEdgeData={basicEdgeDataToDelete}
-          editorContent={edgeToDelete}
-          onDeleteEdge={(edgeId) => onDeleteEdge(edgeId)}
-          edgeToDeleteKey={edgeToDeleteKey}
-          edgeToDeleteCollection={edgeToDeleteCollection}
-        >
-          <strong>Delete edge: {edgeToDelete}</strong>
-        </DeleteEdgeModal>
-        <DeleteNodeModal
-          shouldShow={showDeleteNodeModal}
-          onRequestClose={() => {
-            setShowDeleteNodeModal(false);
-            setNodeDataToDelete(undefined);
-          }}
-          node={nodeToDelete}
-          nodeData={nodeDataToDelete}
-          basicNodeData={basicNodeDataToDelete}
-          editorContent={nodeToDelete}
-          onDeleteNode={(nodeId) => onDeleteNode(nodeId)}
-          nodeToDeleteKey={nodeToDeleteKey}
-          nodeToDeleteCollection={nodeToDeleteCollection}
-          graphName={graphName}
-        >
-          <strong>Delete node: {nodeToDelete}</strong>
-        </DeleteNodeModal>
-        <AddNodeModal
-          shouldShow={showNodeToAddModal}
-          onRequestClose={() => {
-            setShowNodeToAddModal(false);
-          }}
-          node={'nodeToEdit'}
-          vertexCollections={vertexCollections}
-          nodeData={{}}
-          editorContent={'nodeToEdit'}
-          onAddNode={() => {
-            setShowNodeToAddModal(false);
-          }}
-          onNodeCreation={(newNode) => {
-            updateVisGraphDataWithNode(newNode)
-          }}
-          graphName={graphName}
-          graphData={visGraphData}
-        >
-          <strong>Add node</strong>
-        </AddNodeModal>
-        <AddEdgeModal
-          edgeModelToAdd={edgeModelToAdd}
-          shouldShow={showEdgeToAddModal}
-          onRequestClose={(isTriggeredOnSave) => {
-            setShowEdgeToAddModal(false);
-            //!isTriggeredOnSave && removeDrawnEdge();
-          }}
-          edgeCollections={edgeCollections}
-          editorContent={'edgeToEdit'}
-          onAddEdge={() => {
-            setShowEdgeToAddModal(false);
-          }}
-          onEdgeCreation={(newEdge) => {
-            updateVisGraphDataWithEdge(newEdge)
-          }}
-          edgeData={{}}
-          graphName={graphName}
-          graphData={graphData}
-        >
-          <strong>Add edge</strong>
-        </AddEdgeModal>
+      <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
+
         <EditNodeModal
           shouldShow={showEditNodeModal}
           onRequestClose={() => {
@@ -621,94 +648,169 @@ const VisJsGraph = () => {
         >
           <strong>Edit edge: {edgeToEdit}</strong>
         </EditEdgeModal>
+        <DeleteEdgeModal
+          shouldShow={showDeleteEdgeModal}
+          onRequestClose={() => {
+            setShowDeleteEdgeModal(false);
+            setEdgeDataToDelete(undefined);
+          }}
+          edge={edgeToDelete}
+          edgeData={edgeDataToDelete}
+          basicEdgeData={basicEdgeDataToDelete}
+          editorContent={edgeToDelete}
+          onDeleteEdge={(edgeId) => onDeleteEdge(edgeId)}
+          edgeToDeleteKey={edgeToDeleteKey}
+          edgeToDeleteCollection={edgeToDeleteCollection}
+        >
+          <strong>Delete edge: {edgeToDelete}</strong>
+        </DeleteEdgeModal>
+        <DeleteNodeModal
+          shouldShow={showDeleteNodeModal}
+          onRequestClose={() => {
+            setShowDeleteNodeModal(false);
+            setNodeDataToDelete(undefined);
+          }}
+          node={nodeToDelete}
+          nodeData={nodeDataToDelete}
+          basicNodeData={basicNodeDataToDelete}
+          editorContent={nodeToDelete}
+          onDeleteNode={(nodeId) => onDeleteNode(nodeId)}
+          nodeToDeleteKey={nodeToDeleteKey}
+          nodeToDeleteCollection={nodeToDeleteCollection}
+          graphName={graphName}
+        >
+          <strong>Delete node: {nodeToDelete}</strong>
+        </DeleteNodeModal>
+        <FetchFullGraphModal
+          shouldShow={showFetchFullGraphModal}
+          onRequestClose={() => {
+            setShowFetchFullGraphModal(false);
+          }}
+          onFullGraphLoaded={(newGraphData, responseTimesObject) => {
+            setResponseTimes(responseTimesObject);
+            setGraphData(newGraphData);}
+          }
+          graphName={graphName}
+        >
+          <strong>Fetch full graph</strong>
+          <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
+        </FetchFullGraphModal>
+        <AddEdgeModal
+          edgeModelToAdd={edgeModelToAdd}
+          shouldShow={showEdgeToAddModal}
+          onRequestClose={(isTriggeredOnSave) => {
+            setShowEdgeToAddModal(false);
+            !isTriggeredOnSave && removeDrawnEdge();
+          }}
+          edgeCollections={edgeCollections}
+          editorContent={'edgeToEdit'}
+          onAddEdge={() => {
+            setShowEdgeToAddModal(false);
+          }}
+          onEdgeCreation={(newEdge) => {
+            updateGraphDataWithEdge(newEdge)
+          }}
+          edgeData={{}}
+          graphName={graphName}
+          graphData={graphData}
+          onEdgeCreationCancellation={() => {
+            removeDrawnEdge();
+          }}
+        >
+          <strong>Add edge</strong>
+        </AddEdgeModal>
+        <AddNodeModal
+          shouldShow={showNodeToAddModal}
+          onRequestClose={() => {
+            setShowNodeToAddModal(false);
+          }}
+          node={'nodeToEdit'}
+          vertexCollections={vertexCollections}
+          nodeData={{}}
+          editorContent={'nodeToEdit'}
+          onAddNode={() => {
+            setShowNodeToAddModal(false);
+          }}
+          onNodeCreation={(newNode) => {
+            updateGraphDataWithNode(newNode)
+          }}
+          graphName={graphName}
+          graphData={visGraphData}
+        >
+          <strong>Add node</strong>
+        </AddNodeModal>
 
+        <GraphView
+              data={graphData}
+              visGraphData={visGraphData}
+              vertexCollections={vertexCollections}
+              onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
+              onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
+              onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
+              onAddSingleEdge={(newEdge) => {
+                setEdgeModelToAdd(newEdge);
+                openAddEdgeModal(newEdge);
+              }}
+              onAddEdgeToDb={(edgeData) => {
+                setEdgeModelToAdd(edgeData);
+                openAddEdgeModal(edgeData);
+              }}
+              onRemoveSingleNode={(node) => removeNode(node)}
+              onRemoveSingleEdge={(edge) => removeEdge(edge)}
+              onEditNode={(nodeId) => openEditNodeModal(nodeId)}
+              onEditEdge={(edgeId) => openEditEdgeModal(edgeId)}
+              onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
+              onAddNodeToDb={() => openAddNodeModal()}
+              onExpandNode={(nodeId) => expandNode(nodeId)}
+              onSetStartnode={(nodeId) => setStartnode(nodeId)}
+              onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
+              graphName={graphName}
+              responseDuration={responseTimes.fetchDuration}
+              onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
+              onClickDocument={(document) => lookUpDocument(document)}
+              onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
+              onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
+              onDeleteNode={(nodeId) => openDeleteNodeModal(nodeId)}
+              onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
+              onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
+                setVisGraphData(newGraphData);
+                if(newGraphData.settings.nodesColorAttributes) {
+                  setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
+                }
+                if(newGraphData.settings.nodesSizeMinMax) {
+                  setNodesSizeMinMax(newGraphData.settings.nodesSizeMinMax);
+                }
+                if(newGraphData.settings.connectionsMinMax) {
+                  setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
+                }
+                if(newGraphData.settings.edgesColorAttributes) {
+                  setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
+                }
+                setResponseTimes(responseTimesObject);
+                setGraphData(newGraphData);
+              }}
+              vertexCollectionsColors={vertexCollectionsColors}
+              nodeColor={urlParameters.nodeColor}
+              edgeType={urlParameters.edgeType}
+              nodesColorAttributes={nodesColorAttributes}
+              nodeColorAttribute={urlParameters.nodeColorAttribute}
+              nodeColorByCollection={urlParameters.nodeColorByCollection}
+              edgesColorAttributes={edgesColorAttributes}
+              edgeColorAttribute={urlParameters.edgeColorAttribute}
+              edgeColorByCollection={urlParameters.edgeColorByCollection}
+              nodesSizeMinMax={nodesSizeMinMax}
+              connectionsMinMax={connectionsMinMax}
+        />
+
+        <DocumentInfo attributes={lookedUpData} />
         {
           /*
-        <GraphView
-          visGraphData={visGraphData}
-          graphName={graphName}
-          responseDuration={responseTimes.fetchDuration}
-          onChangeGraphData={(newGraphData) => setVisGraphData(newGraphData)}
-          onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
-            setVisGraphData(newGraphData);
-            setResponseTimes(responseTimesObject);
-            setGraphData(newGraphData);
-          }}
-          onAddNodeToDb={() => openAddNodeModal()}
-          onAddEdgeToDb={(edgeData) => {
-            setEdgeModelToAdd(edgeData);
-            openAddEdgeModal(edgeData);
-          }}
-        />
+          <AttributesInfo attributes={lookedUpData} />
           */
         }
-        <GraphView
-          data={graphData}
-          visGraphData={visGraphData}
-          vertexCollections={vertexCollections}
-          onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
-          onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
-          onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
-          onAddSingleEdge={(newEdge) => {
-            setEdgeModelToAdd(newEdge);
-            openAddEdgeModal(newEdge);
-          }}
-          onAddEdgeToDb={(edgeData) => {
-            setEdgeModelToAdd(edgeData);
-            openAddEdgeModal(edgeData);
-          }}
-          onRemoveSingleNode={(node) => removeNode(node)}
-          onRemoveSingleEdge={(edge) => removeEdge(edge)}
-          onEditNode={(nodeId) => openEditNodeModal(nodeId)}
-          onEditEdge={(edgeId) => openEditEdgeModal(edgeId)}
-          onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
-          onAddNodeToDb={() => openAddNodeModal()}
-          onExpandNode={(nodeId) => expandNode(nodeId)}
-          onSetStartnode={(nodeId) => setStartnode(nodeId)}
-          onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
-          graphName={graphName}
-          responseDuration={responseTimes.fetchDuration}
-          onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
-          onClickDocument={(document) => lookUpDocument(document)}
-          onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
-          onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
-          onDeleteNode={(nodeId) => openDeleteNodeModal(nodeId)}
-          onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
-          onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
-            setVisGraphData(newGraphData);
-            /*
-            if(newGraphData.settings.nodesColorAttributes) {
-              setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
-            }
-            if(newGraphData.settings.nodesSizeMinMax) {
-              setNodesSizeMinMax(newGraphData.settings.nodesSizeMinMax);
-            }
-            if(newGraphData.settings.connectionsMinMax) {
-              setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
-            }
-            if(newGraphData.settings.edgesColorAttributes) {
-              setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
-            }
-            setGraphData(newGraphData);
-            */
-            setResponseTimes(responseTimesObject);
-          }}
-          vertexCollectionsColors={vertexCollectionsColors}
-          nodeColor={urlParameters.nodeColor}
-          edgeType={urlParameters.edgeType}
-          nodesColorAttributes={nodesColorAttributes}
-          nodeColorAttribute={urlParameters.nodeColorAttribute}
-          nodeColorByCollection={urlParameters.nodeColorByCollection}
-          edgesColorAttributes={edgesColorAttributes}
-          edgeColorAttribute={urlParameters.edgeColorAttribute}
-          edgeColorByCollection={urlParameters.edgeColorByCollection}
-          nodesSizeMinMax={nodesSizeMinMax}
-          connectionsMinMax={connectionsMinMax}
-        />
-        <DocumentInfo attributes={lookedUpData} />
       </UrlParametersContext.Provider>
     </div>
   );
 }
 
-export default VisJsGraph;
+export default G6JsGraph;

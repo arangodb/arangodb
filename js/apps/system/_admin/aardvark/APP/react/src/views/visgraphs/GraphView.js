@@ -33,6 +33,39 @@ export class GraphView extends React.Component {
         graphData={this.props.visGraphData}
         graphName={this.props.graphName}
         options={{}}
+        onSelectNode={(nodeId) => {
+          this.props.onClickNode(nodeId);
+        }}
+        onSelectEdge={(edgeId) => {
+          this.props.onClickEdge(edgeId);
+        }}
+        onDeleteNode={(nodeId) => {
+          console.log("nodeId: ", nodeId);
+          this.props.onDeleteNode(nodeId);
+        }}
+        onDeleteEdge={(edgeId) => {
+          this.props.onDeleteEdge(edgeId);
+        }}
+        onEditNode={(nodeId) => {
+          this.props.onEditNode(nodeId);
+        }}
+        onEditEdge={(edgeId) => {
+          this.props.onEditEdge(edgeId);
+        }}
+        onSetStartnode={(nodeId) => {
+          this.props.onSetStartnode(nodeId);
+        }}
+        onExpandNode={(nodeId) => {
+          this.props.onExpandNode(nodeId);
+        }}
+        onAddNodeToDb={() => {
+          this.props.onAddNodeToDb();
+        }}
+        onAddEdge={(edgeData) => {
+          const id = (Math.random() + 1).toString(36).substring(7);
+          edgeData.id = id;
+          this.props.onAddEdgeToDb(edgeData);
+        }}
       />
 
       <GraphInfo>
