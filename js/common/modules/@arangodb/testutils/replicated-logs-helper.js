@@ -358,13 +358,6 @@ const checkRequestResult = function (requestResult, expectingError=false) {
   return requestResult;
 };
 
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
-};
-
 const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
@@ -659,6 +652,23 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
 };
 
+const getLocalStatus = function (serverId, database, logId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(
+    `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+  );
+  checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -706,3 +716,5 @@ exports.unsetLeader = unsetLeader;
 exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
 exports.getShardsToLogsMapping = getShardsToLogsMapping;
+exports.replaceParticipant = replaceParticipant;
+

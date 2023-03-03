@@ -104,10 +104,15 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
     // We have to write to the log and wait for the log entry to be
     // committed (in the log sense), before we can commit locally.
-    auto leader = rtc.leaderState();
-    if ((rtc.accessType() != AccessMode::Type::READ ||
-         !logs.contains(leader->gid.id)) &&
-        leader->needsReplication(operation)) {
+    if ((rtc.accessType() != AccessMode::Type::READ)) {
+      auto leader = rtc.leaderState();
+      if (logs.contains(leader->gid.id) ||
+          !leader->needsReplication(operation)) {
+        // For transactions that have been already committed in the log, we only
+        // have to commit locally.
+        commits.emplace_back(rtc.commitTransaction());
+        return true;
+      }
       logs.insert(leader->gid.id);
 
       commits.emplace_back(
@@ -137,8 +142,6 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     } else {
       // For read-only transactions the commit is a no-op, but we still have
       // to call it to ensure cleanup.
-      // For transactions that have been already committed in the log, we only
-      // have to commit locally.
       rtc.commitTransaction();
     }
     return true;
@@ -194,26 +197,30 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   std::unordered_set<replication2::LogId> logs;
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
-    auto leader = rtc.leaderState();
-    replication2::LogIndex logIndex;
-    auto needsReplication = leader->needsReplication(operation);
-    if ((rtc.accessType() != AccessMode::Type::READ ||
-         !logs.contains(leader->gid.id)) &&
-        needsReplication) {
-      logs.insert(leader->gid.id);
+
+    if (rtc.accessType() != AccessMode::Type::READ) {
+      auto leader = rtc.leaderState();
+      auto needsReplication = leader->needsReplication(operation);
+      if (logs.contains(leader->gid.id) || !needsReplication) {
+        if (auto r = rtc.abortTransaction(); r.fail()) {
+          return r;
+        }
+      }
       auto res = leader->replicateOperation(operation, options).get();
       if (res.fail()) {
         return res.result();
       }
-      logIndex = res.get();
-    }
-    if (auto r = rtc.abortTransaction(); r.fail()) {
-      return r;
-    }
-    if (needsReplication) {
-      if (auto releaseRes = leader->release(id(), logIndex); releaseRes.fail()) {
+      if (auto r = rtc.abortTransaction(); r.fail()) {
+        return r;
+      }
+      if (auto releaseRes = leader->release(id(), res.get());
+          releaseRes.fail()) {
         LOG_CTX("0279d", ERR, leader->loggerContext)
             << "Failed to call release: " << releaseRes;
+      }
+    } else {
+      if (auto r = rtc.abortTransaction(); r.fail()) {
+        return r;
       }
     }
   }

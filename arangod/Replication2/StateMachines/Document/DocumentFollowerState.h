@@ -33,7 +33,6 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateTransactionHandler;
-enum class OperationType;
 struct SnapshotConfig;
 struct SnapshotBatch;
 

@@ -193,6 +193,7 @@ auto DocumentFollowerState::applyEntries(
         if (res.fail()) {
           LOG_CTX("0aa2e", FATAL, self->loggerContext)
               << "failed to apply entry " << doc << " on follower: " << res;
+          FATAL_ERROR_EXIT();
         }
       }
 
@@ -298,7 +299,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         if (res.fail()) {
           LOG_CTX("d82d4", ERR, self->loggerContext) << res;
-          // TODO Handle resign
           if (res.isNot(
                   TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
             return leader->finishSnapshot(snapshotRes->snapshotId);

@@ -72,9 +72,8 @@ auto ReplicatedOperation::buildCreateShardOperation(
                                  std::move(properties)}};
 }
 
-auto ReplicatedOperation::buildDropShardOperation(CollectionID collection,
-                                                  ShardID shard) noexcept
-    -> ReplicatedOperation {
+auto ReplicatedOperation::buildDropShardOperation(
+    ShardID shard, CollectionID collection) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
       std::in_place, DropShard{std::move(shard), std::move(collection)}};
 }

@@ -29,15 +29,9 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
         real)
     : _real(std::move(real)) {
   ON_CALL(*this, applyEntry(testing::_))
-      .WillByDefault([this](replicated_state::document::DocumentLogEntry doc) {
-        return _real->applyEntry(std::move(doc));
-      });
-  ON_CALL(*this, ensureTransaction(testing::_))
       .WillByDefault(
-          [this](replicated_state::document::DocumentLogEntry const& doc)
-              -> std::shared_ptr<
-                  replicated_state::document::IDocumentStateTransaction> {
-            return _real->ensureTransaction(doc);
+          [this](replicated_state::document::ReplicatedOperation op) {
+            return _real->applyEntry(std::move(op));
           });
   ON_CALL(*this, removeTransaction(testing::_))
       .WillByDefault(
@@ -45,6 +39,15 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
   ON_CALL(*this, getUnfinishedTransactions())
       .WillByDefault([this]() -> TransactionMap const& {
         return _real->getUnfinishedTransactions();
+      });
+  ON_CALL(*this, validate(testing::_))
+      .WillByDefault(
+          [this](replicated_state::document::ReplicatedOperation op) {
+            return _real->validate(std::move(op));
+          });
+  ON_CALL(*this, getTransactionsForShard(testing::_))
+      .WillByDefault([this](ShardID const& shard) {
+        return _real->getTransactionsForShard(shard);
       });
 }
 
@@ -97,11 +100,12 @@ auto MockDocumentStateHandlersFactory::makeRealSnapshotHandler()
 }
 
 auto MockDocumentStateHandlersFactory::makeRealTransactionHandler(
-    GlobalLogIdentifier const& gid)
-    -> std::shared_ptr<MockDocumentStateTransactionHandler> {
+    GlobalLogIdentifier const& gid,
+    std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>
+        shardHandler) -> std::shared_ptr<MockDocumentStateTransactionHandler> {
   auto real = std::make_shared<
       replicated_state::document::DocumentStateTransactionHandler>(
-      gid, nullptr, shared_from_this());
+      gid, nullptr, shared_from_this(), std::move(shardHandler));
   return std::make_shared<
       testing::NiceMock<MockDocumentStateTransactionHandler>>(std::move(real));
 }

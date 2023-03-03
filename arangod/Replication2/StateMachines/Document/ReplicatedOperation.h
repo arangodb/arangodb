@@ -56,6 +56,12 @@ struct ReplicatedOperation {
                                 f.field("shard", x.shard),
                                 f.field("payload", x.payload));
     }
+
+    friend auto operator==(DocumentOperation const& a,
+                           DocumentOperation const& b) -> bool {
+      return a.tid == b.tid && a.shard == b.shard &&
+             a.payload.binaryEquals(b.payload.slice());
+    }
   };
 
  public:
@@ -64,6 +70,9 @@ struct ReplicatedOperation {
     friend auto inspect(Inspector& f, AbortAllOngoingTrx& x) {
       return f.object(x).fields();
     }
+
+    friend auto operator==(AbortAllOngoingTrx const&, AbortAllOngoingTrx const&)
+        -> bool = default;
   };
 
   struct Commit {
@@ -73,6 +82,8 @@ struct ReplicatedOperation {
     friend auto inspect(Inspector& f, Commit& x) {
       return f.object(x).fields(f.field("tid", x.tid));
     }
+
+    friend auto operator==(Commit const&, Commit const&) -> bool = default;
   };
 
   struct IntermediateCommit {
@@ -82,6 +93,9 @@ struct ReplicatedOperation {
     friend auto inspect(Inspector& f, IntermediateCommit& x) {
       return f.object(x).fields(f.field("tid", x.tid));
     }
+
+    friend auto operator==(IntermediateCommit const&, IntermediateCommit const&)
+        -> bool = default;
   };
 
   struct Abort {
@@ -91,6 +105,8 @@ struct ReplicatedOperation {
     friend auto inspect(Inspector& f, Abort& x) {
       return f.object(x).fields(f.field("tid", x.tid));
     }
+
+    friend auto operator==(Abort const&, Abort const&) -> bool = default;
   };
 
   struct Truncate {
@@ -102,6 +118,8 @@ struct ReplicatedOperation {
       return f.object(x).fields(f.field("tid", x.tid),
                                 f.field("shard", x.shard));
     }
+
+    friend auto operator==(Truncate const&, Truncate const&) -> bool = default;
   };
 
   struct CreateShard {
@@ -115,6 +133,9 @@ struct ReplicatedOperation {
                                 f.field("collection", x.collection),
                                 f.field("properties", x.properties));
     }
+
+    friend auto operator==(CreateShard const&, CreateShard const&)
+        -> bool = default;
   };
 
   struct DropShard {
@@ -126,6 +147,9 @@ struct ReplicatedOperation {
       return f.object(x).fields(f.field("shard", x.shard),
                                 f.field("collection", x.collection));
     }
+
+    friend auto operator==(DropShard const&, DropShard const&)
+        -> bool = default;
   };
 
   struct Insert : DocumentOperation {
@@ -201,6 +225,9 @@ struct ReplicatedOperation {
             inspection::type<Replace>("Replace"),
             inspection::type<Remove>("Remove"));
   }
+
+  friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)
+      -> bool = default;
 
  private:
   template<typename... Args>

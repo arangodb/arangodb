@@ -68,17 +68,20 @@ auto DocumentLeaderState::resign() && noexcept
     TRI_ASSERT(false) << "Double-resign in document leader state " << gid;
   }
 
-  _activeTransactions.doUnderLock([&](auto& activeTransactions) {
-    for (auto const& trx : activeTransactions.getTransactions()) {
-      try {
-        _transactionManager.abortManagedTrx(trx.first, gid.database);
-      } catch (...) {
-        LOG_CTX("7341f", WARN, loggerContext)
-            << "failed to abort active transaction " << trx.first
-            << " during resign";
-      }
+  // We are taking a copy of active transactions to avoid a deadlock in doAbort
+  auto activeTransactions =
+      _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+        return activeTransactions.getTransactions();
+      });
+  for (auto const& trx : activeTransactions) {
+    try {
+      _transactionManager.abortManagedTrx(trx.first, gid.database);
+    } catch (...) {
+      LOG_CTX("7341f", WARN, loggerContext)
+          << "failed to abort active transaction " << trx.first
+          << " during resign";
     }
-  });
+  }
 
   return core;
 }
@@ -178,6 +181,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
+    TRI_ASSERT(transactionHandler->applyEntry(abortAll).ok());
+
     self->release(abortAllRes.get());
 
     return {TRI_ERROR_NO_ERROR};
@@ -189,7 +194,9 @@ auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
   return std::visit(
       [&](auto&& op) -> bool {
         using T = std::decay_t<decltype(op)>;
-        if constexpr (FinishesUserTransaction<T>) {
+        if constexpr (FinishesUserTransaction<T> ||
+                      std::is_same_v<T,
+                                     ReplicatedOperation::IntermediateCommit>) {
           // We don't replicate single abort/commit operations in case we have
           // not replicated anything else for a transaction.
           return _activeTransactions.getLockedGuard()
@@ -334,7 +341,7 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
                                       std::shared_ptr<VPackBuilder> properties)
     -> futures::Future<Result> {
   auto op = ReplicatedOperation::buildCreateShardOperation(
-      shard, std::move(collectionId), std::move(properties));
+      std::move(shard), std::move(collectionId), std::move(properties));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
