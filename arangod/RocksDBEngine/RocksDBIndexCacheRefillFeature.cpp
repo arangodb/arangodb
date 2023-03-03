@@ -70,6 +70,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
       _fillOnStartup(false),
+      _autoRefillOnFollowers(true),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
       _currentlyRunningIndexFillTasks(0) {
@@ -165,6 +166,17 @@ slower than other operations that invalidate cache entries of edge indexes.)");
       .setIntroducedIn(31002)
       .setLongDescription(R"(The lower this number, the lower the impact of the
 edge cache filling, but the longer it takes to complete.)");
+
+  options
+      ->addOption(
+          "--rocksdb.auto-refill-index-caches-on-followers",
+          "Whether or not to automatically (re-)fill the in-memory index "
+          "caches on followers as well.",
+          new options::BooleanParameter(&_autoRefillOnFollowers),
+          arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
+                                       options::Flags::OnDBServer,
+                                       options::Flags::OnSingle))
+      .setIntroducedIn(31005);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -198,6 +210,10 @@ void RocksDBIndexCacheRefillFeature::stop() { stopThread(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
   return _autoRefill;
+}
+
+bool RocksDBIndexCacheRefillFeature::autoRefillOnFollowers() const noexcept {
+  return _autoRefillOnFollowers;
 }
 
 size_t RocksDBIndexCacheRefillFeature::maxCapacity() const noexcept {

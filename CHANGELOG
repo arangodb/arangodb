@@ -1,6 +1,11 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
+  control whether automatic refilling of in-memory caches should happen on
+  followers or just leaders. The default value is `true`, i.e. refilling
+  happens on followers too.
+
 * Improve memory usage of in-memory edge index cache if most of the edges in an
   index refer to a single or mostly the same collection.
   Previously the full edge ids, consisting of the the referred-to collection
