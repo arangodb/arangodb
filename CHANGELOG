@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.0.8.
+
 * Provide options for configuring and enabling RocksDB's blob storage (BlobDB)
   for large documents in the documents column family.
   This is currently an experimental feature.
