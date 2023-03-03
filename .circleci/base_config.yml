@@ -151,8 +151,6 @@ jobs:
         default: 1
       cluster:
         type: boolean
-      testDefinitionLine:
-        type: integer
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
@@ -205,12 +203,12 @@ workflows:
   community-pr:
     jobs:
       - compile-linux:
-          name: build
+          name: build-ce
           preset: community-pr
           edition: x64-community
   enterprise-pr:
     jobs:
       - compile-linux:
-          name: build
+          name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise

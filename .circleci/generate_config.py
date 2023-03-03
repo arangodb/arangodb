@@ -216,7 +216,7 @@ def filter_tests(args, tests, enterprise):
     return list(tests)
 
 
-def create_test_job(test, cluster):
+def create_test_job(test, cluster, edition):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -228,13 +228,12 @@ def create_test_job(test, cluster):
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
-        "name": f"test-{'cluster' if cluster else 'single'}-{suite_name}",
-        "testDefinitionLine": test["lineNumber"],
+        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}",
         "suiteName": suite_name,
         "suites": test["suites"],
         "size": test["size"],
         "cluster": cluster,
-        "requires": ["build"],
+        "requires": [f"build-{edition}"],
     }
 
     extra_args = test["args"]
@@ -254,16 +253,17 @@ def generate_output(args, tests, enterprise):
         with open(args.output, "w", encoding="utf-8") as outstream:
             config = yaml.safe_load(instream)
             workflow = "enterprise-pr" if enterprise else "community-pr"
+            edition = "ee" if enterprise else "ce"
             jobs = config["workflows"][workflow]["jobs"]
             for test in tests:
                 print(f"test: {test}")
                 if "cluster" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, True)})
+                    jobs.append({"run-tests": create_test_job(test, True, edition)})
                 elif "single" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, False, edition)})
                 else:
-                    jobs.append({"run-tests": create_test_job(test, True)})
-                    jobs.append({"run-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, True, edition)})
+                    jobs.append({"run-tests": create_test_job(test, False, edition)})
             yaml.dump(config, outstream)
 
 
