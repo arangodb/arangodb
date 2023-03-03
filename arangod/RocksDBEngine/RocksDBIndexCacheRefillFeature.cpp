@@ -176,7 +176,10 @@ index cache filling, but the longer it takes to complete.)");
           arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
                                        options::Flags::OnDBServer,
                                        options::Flags::OnSingle))
-      .setIntroducedIn(31005);
+      .setIntroducedIn(31005)
+      .setLongDescription(R"(Set this to `false` to only (re-)fill in-memory
+index caches on leaders and save memory on followers. 
+Note that the value of this option should be identical for all DBServers.)");
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {

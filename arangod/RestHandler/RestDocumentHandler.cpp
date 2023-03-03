@@ -30,7 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -916,8 +917,9 @@ void RestDocumentHandler::handleFillIndexCachesValue(
 
   if (!options.isSynchronousReplicationFrom.empty() &&
       !_vocbase.server()
-           .getFeature<RocksDBIndexCacheRefillFeature>()
-           .autoRefillOnFollowers()) {
+           .template getFeature<EngineSelectorFeature>()
+           .engine()
+           .autoRefillIndexCachesOnFollowers()) {
     // do not refill caches on followers if this is intentionally turned off
     ric = RefillIndexCaches::kDontRefill;
   } else {
