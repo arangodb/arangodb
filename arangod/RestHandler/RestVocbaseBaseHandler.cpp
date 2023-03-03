@@ -461,12 +461,14 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
-      // generateError(rest::ResponseCode::FORBIDDEN, code,
-      //               "collection is read-only");
-      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, code,
+      generateError(rest::ResponseCode::FORBIDDEN, code,
                     "collection is read-only");
       return;
 
+    case static_cast<int>(TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED):
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, code,
+                    "write concern not fulfilled");
+      return;
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
       generateDocumentNotFound(collectionName, key);
       return;
