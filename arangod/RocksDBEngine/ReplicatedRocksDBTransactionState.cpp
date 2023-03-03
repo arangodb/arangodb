@@ -113,7 +113,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         commits.emplace_back(rtc.commitTransaction());
         return true;
       }
-      logs.insert(leader->gid.id);
+      logs.emplace(leader->gid.id);
 
       commits.emplace_back(
           leader->replicateOperation(operation, options)
@@ -205,7 +205,9 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
         if (auto r = rtc.abortTransaction(); r.fail()) {
           return r;
         }
+        continue;
       }
+      logs.emplace(leader->gid.id);
       auto res = leader->replicateOperation(operation, options).get();
       if (res.fail()) {
         return res.result();
