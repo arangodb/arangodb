@@ -29,6 +29,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Gauge.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 
@@ -135,9 +137,13 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId,
         return ReplicationClientProgress(timestamp, expires, lastServedTick,
                                          syncerId, clientId, clientInfo);
       }));
-  auto const syncer = syncerId.toString();
 
   if (inserted) {
+    if (_feature != nullptr) {
+      // increase clients metric
+      _feature->clientsMetric().fetch_add(1);
+    }
+
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
         << "inserting replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
@@ -200,6 +206,8 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
   LOG_TOPIC("11a30", TRACE, Logger::REPLICATION)
       << "garbage collecting replication client entries";
 
+  size_t removed = 0;
+
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _clients.begin();
@@ -212,9 +220,15 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
           << "removing expired replication client entry for "
           << SyncerInfo{progress};
       it = _clients.erase(it);
+      ++removed;
     } else {
       ++it;
     }
+  }
+
+  if (removed > 0 && _feature != nullptr) {
+    // adjust metric
+    _feature->clientsMetric().fetch_sub(removed);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -262,7 +276,10 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
       << SyncerInfo{syncerId, clientId, clientInfo};
 
   WRITE_LOCKER(writeLocker, _lock);
-  _clients.erase(key);
+  if (_clients.erase(key) > 0 && _feature != nullptr) {
+    // possible that key does not exist (anymore)
+    _feature->clientsMetric().fetch_sub(1);
+  }
 }
 
 double ReplicationClientProgress::steadyClockToSystemClock(
@@ -277,6 +294,10 @@ double ReplicationClientProgress::steadyClockToSystemClock(
 
   return duration<double>(systemTimePoint.time_since_epoch()).count();
 }
+
+ReplicationClientsProgressTracker::ReplicationClientsProgressTracker(
+    ReplicationFeature* rf)
+    : _feature(rf) {}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
