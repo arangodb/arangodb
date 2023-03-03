@@ -247,29 +247,26 @@ def create_test_job(test, cluster, edition):
     return result
 
 
-def generate_output(args, tests, enterprise):
+def generate_output(config, tests, enterprise):
     """generate output"""
-    with open(args.base_config, "r", encoding="utf-8") as instream:
-        with open(args.output, "w", encoding="utf-8") as outstream:
-            config = yaml.safe_load(instream)
-            workflow = "enterprise-pr" if enterprise else "community-pr"
-            edition = "ee" if enterprise else "ce"
-            jobs = config["workflows"][workflow]["jobs"]
-            for test in tests:
-                print(f"test: {test}")
-                if "cluster" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, True, edition)})
-                elif "single" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, False, edition)})
-                else:
-                    jobs.append({"run-tests": create_test_job(test, True, edition)})
-                    jobs.append({"run-tests": create_test_job(test, False, edition)})
-            yaml.dump(config, outstream)
+    workflow = "enterprise-pr" if enterprise else "community-pr"
+    edition = "ee" if enterprise else "ce"
+    jobs = config["workflows"][workflow]["jobs"]
+    for test in tests:
+        print(f"test: {test}")
+        if "cluster" in test["flags"]:
+            jobs.append({"run-tests": create_test_job(test, True, edition)})
+        elif "single" in test["flags"]:
+            jobs.append({"run-tests": create_test_job(test, False, edition)})
+        else:
+            jobs.append({"run-tests": create_test_job(test, True, edition)})
+            jobs.append({"run-tests": create_test_job(test, False, edition)})
 
 
-def generate_jobs(args, tests, enterprise):
+def generate_jobs(config, args, tests, enterprise):
+    """generate job definitions"""
     tests = filter_tests(args, tests, enterprise)
-    generate_output(args, tests, enterprise)
+    generate_output(config, tests, enterprise)
 
 
 def main():
@@ -280,8 +277,12 @@ def main():
         # if args.validate_only:
         #    return  # nothing left to do
         print("args", args)
-        generate_jobs(args, tests, False) # community
-        generate_jobs(args, tests, True) # enterprise
+        with open(args.base_config, "r", encoding="utf-8") as instream:
+            with open(args.output, "w", encoding="utf-8") as outstream:
+                config = yaml.safe_load(instream)
+                generate_jobs(config, args, tests, False) # community
+                generate_jobs(config, args, tests, True) # enterprise
+                yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
         sys.exit(1)
