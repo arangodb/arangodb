@@ -8,6 +8,7 @@ target_include_directories(arango_tests_pregel_graphstore
 
 target_link_libraries(arango_tests_pregel_graphstore
   PRIVATE
+  arango_inspection
   gtest
   velocypack
   fmt)
