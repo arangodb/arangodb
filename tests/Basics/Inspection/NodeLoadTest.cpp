@@ -317,6 +317,40 @@ TEST_F(NodeLoadInspectorTest, load_slice) {
   }
 }
 
+TEST_F(NodeLoadInspectorTest, load_builder) {
+  {
+    consensus::Node parent{""};
+    auto& node = addChild(parent, "dummy");
+    assign(addChild(node, "i"), 42);
+    assign(addChild(node, "b"), true);
+    assign(addChild(node, "s"), "foobar");
+    NodeLoadInspector inspector{&parent};
+
+    velocypack::Builder builder;
+    auto result = inspector.apply(builder);
+    ASSERT_TRUE(result.ok());
+    auto slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    slice = slice["dummy"];
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(42, slice["i"].getInt());
+    EXPECT_EQ(true, slice["b"].getBoolean());
+    EXPECT_EQ("foobar", slice["s"].stringView());
+  }
+
+  {
+    consensus::Node node{""};
+    assign(node, VPackValue("foobar"));
+    NodeLoadInspector inspector{&node};
+
+    velocypack::Builder builder;
+    auto result = inspector.apply(builder);
+    auto slice = builder.slice();
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ("foobar", slice.stringView());
+  }
+}
+
 TEST_F(NodeLoadInspectorTest, load_optional) {
   consensus::Node node{""};
   assign(addChild(node, "y"), "blubb");

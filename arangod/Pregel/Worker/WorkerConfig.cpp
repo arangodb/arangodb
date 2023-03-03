@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +49,7 @@ void WorkerConfig::updateConfig(PregelFeature& feature,
   VPackSlice userParams = params.userParameters.slice();
   _globalShardIDs = params.allShards;
 
-  // parallelism
-  _parallelism = WorkerConfig::parallelism(feature, userParams);
+  _parallelism = feature.parallelism(userParams);
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
@@ -86,22 +85,6 @@ void WorkerConfig::updateConfig(PregelFeature& feature,
   }
 
   _edgeCollectionRestrictions = params.edgeCollectionRestrictions;
-}
-
-size_t WorkerConfig::parallelism(PregelFeature& feature, VPackSlice params) {
-  // start off with default parallelism
-  size_t parallelism = feature.defaultParallelism();
-  if (params.isObject()) {
-    // then update parallelism value from user config
-    if (VPackSlice parallel = params.get(Utils::parallelismKey);
-        parallel.isInteger()) {
-      // limit parallelism to configured bounds
-      parallelism =
-          std::clamp(parallel.getNumber<size_t>(), feature.minParallelism(),
-                     feature.maxParallelism());
-    }
-  }
-  return parallelism;
 }
 
 std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(

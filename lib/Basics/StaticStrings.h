@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,6 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
-  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -335,6 +334,7 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeight;
   static std::string const GraphQueryWeights;
   static std::string const GraphQueryOrder;
   static std::string const GraphQueryOrderBFS;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,10 @@
 #pragma once
 
 #include <atomic>
+#include <string>
+#include <string_view>
 #include <unordered_set>
+#include <vector>
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ConditionVariable.h"
@@ -32,6 +35,7 @@
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
+#include "V8Server/GlobalContextMethods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -110,7 +114,7 @@ class V8DealerFeature final : public ArangodFeature {
   bool allowJavaScriptUdfs() const noexcept { return _allowJavaScriptUdfs; }
   bool allowJavaScriptTasks() const noexcept { return _allowJavaScriptTasks; }
 
-  bool addGlobalContextMethod(std::string const&);
+  bool addGlobalContextMethod(GlobalContextMethods::MethodType type);
   void collectGarbage();
 
   /// @brief loads a JavaScript file in all contexts, only called at startup.
@@ -132,9 +136,9 @@ class V8DealerFeature final : public ArangodFeature {
     }
   }
 
-  uint64_t maximumContexts() const { return _nrMaxContexts; }
+  uint64_t maximumContexts() const noexcept { return _nrMaxContexts; }
 
-  void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
+  void setMaximumContexts(size_t nr) noexcept { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
   std::vector<DetailedContextStatistics> getCurrentContextDetails();

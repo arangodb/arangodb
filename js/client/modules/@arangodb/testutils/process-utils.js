@@ -49,6 +49,7 @@ const download = internal.download;
 const time = internal.time;
 const wait = internal.wait;
 const sleep = internal.sleep;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -425,22 +426,19 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOSH_BIN
   ];
 
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      isEnterpriseClient = true;
-      checkFiles.push(ARANGOBACKUP_BIN);
-    }
-    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS";
-      let fileName = san + "_arangodb_suppressions.txt";
-      if (!process.env.hasOwnProperty(envName) &&
-          fs.exists(fileName)) {
-        // print('preparing ' + san + ' environment');
-        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-      }
-    });
+  if (isEnterprise()) {
+    isEnterpriseClient = true;
+    checkFiles.push(ARANGOBACKUP_BIN);
   }
+  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+    let envName = san.toUpperCase() + "_OPTIONS";
+    let fileName = san + "_arangodb_suppressions.txt";
+    if (!process.env.hasOwnProperty(envName) &&
+        fs.exists(fileName)) {
+      // print('preparing ' + san + ' environment');
+      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+    }
+  });
 
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {

@@ -54,8 +54,8 @@ double AcceptableDistanceError = 30.0;
 namespace {
 double distance(double degreesDiffLat, double degreesDiffLng) {
   using namespace arangodb::geo;
-  double radLat = kPi * degreesDiffLat / 180.0;
-  double radLng = kPi * degreesDiffLng / 180.0;
+  double radLat = M_PI * degreesDiffLat / 180.0;
+  double radLng = M_PI * degreesDiffLng / 180.0;
   double distRad = std::sqrt(std::pow(radLat, 2) + std::pow(radLng, 2));
   return distRad * kEarthRadiusInMeters;
 }

@@ -217,7 +217,7 @@ function multiCollectionTestSuite() {
 
       assertEqual(stats.vertexCount, numComponents * n, stats);
       assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-      assertFalse(stats.hasOwnProperty("parallelism"));
+      assertTrue(stats.hasOwnProperty("parallelism"));
 
       let allUniquePregelResults = new Set();
       for (let j = 0; j < cn; ++j) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,7 +120,7 @@ Result ModificationExecutorHelpers::getKeyAndRevision(
   return getRevision(resolver, value, rev);
 }
 
-void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
+void ModificationExecutorHelpers::buildKeyDocument(velocypack::Builder& builder,
                                                    std::string const& key) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
@@ -128,7 +128,8 @@ void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
 }
 
 void ModificationExecutorHelpers::buildKeyAndRevDocument(
-    VPackBuilder& builder, std::string const& key, std::string const& rev) {
+    velocypack::Builder& builder, std::string const& key,
+    std::string const& rev) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
@@ -142,7 +143,7 @@ void ModificationExecutorHelpers::buildKeyAndRevDocument(
 }
 
 bool ModificationExecutorHelpers::writeRequired(
-    ModificationExecutorInfos const& infos, VPackSlice const& doc,
+    ModificationExecutorInfos const& infos, velocypack::Slice doc,
     std::string const& key) {
   return (!infos._consultAqlWriteFilter ||
           !infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
@@ -225,9 +226,8 @@ OperationOptions ModificationExecutorHelpers::convertOptions(
 }
 
 AqlValue ModificationExecutorHelpers::getDocumentOrNull(
-    VPackSlice const& elm, std::string const& key) {
-  VPackSlice s = elm.get(key);
-  if (!s.isNone()) {
+    velocypack::Slice elm, std::string const& key) {
+  if (velocypack::Slice s = elm.get(key); !s.isNone()) {
     return AqlValue{s};
   }
   return AqlValue(AqlValueHintNull());

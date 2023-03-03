@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -383,7 +383,7 @@ class BenchmarkThread : public arangodb::Thread {
             if (++_warningCount < maxWarnings) {
               LOG_TOPIC("b1db5", WARN, arangodb::Logger::BENCH)
                   << type
-                  << " operation sServer side warning count: " << errorCount;
+                  << " operation server side warning count: " << errorCount;
             }
           }
         }

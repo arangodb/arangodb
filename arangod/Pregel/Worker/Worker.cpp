@@ -1,9 +1,7 @@
-#include "Cluster/ServerState.h"
-#include "Pregel/Conductor/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,33 +21,43 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/Worker.h"
-#include "Basics/voc-errors.h"
-#include "GeneralServer/RequestLane.h"
-#include "Pregel/Aggregator.h"
-#include "Pregel/CommonFormats.h"
-#include "Pregel/Worker/GraphStore.h"
-#include "Pregel/IncomingCache.h"
-#include "Pregel/OutgoingCache.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/VertexComputation.h"
-
-#include "Pregel/Status/Status.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/voc-errors.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/RequestLane.h"
+#include "Inspection/VPack.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/Aggregator.h"
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/Worker.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/OutgoingCache.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/VertexComputation.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
-#include "Inspection/VPack.h"
-#include "Inspection/VPackWithErrorT.h"
-#include "velocypack/Builder.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
+
+#include <velocypack/Builder.h>
 
 #include "fmt/core.h"
 
@@ -674,17 +682,17 @@ template class arangodb::pregel::Worker<float, uint8_t, float>;
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<WCCValue, uint64_t,
+template class arangodb::pregel::Worker<algos::WCCValue, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<SCCValue, int8_t,
+template class arangodb::pregel::Worker<algos::SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
+template class arangodb::pregel::Worker<algos::HITSValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
+template class arangodb::pregel::Worker<algos::HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
-                                        ColorPropagationMessageValue>;
+template class arangodb::pregel::Worker<algos::ECValue, int8_t, HLLCounter>;
+template class arangodb::pregel::Worker<algos::DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<algos::LPValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<algos::SLPAValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<algos::ColorPropagationValue, int8_t,
+                                        algos::ColorPropagationMessageValue>;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,19 +26,17 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/VariableGenerator.h"
-
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/Query.h"
 #include "Aql/SimpleModifier.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/UpsertModifier.h"
+#include "Aql/VariableGenerator.h"
 
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
@@ -593,5 +591,4 @@ void UpsertNode::replaceVariables(
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

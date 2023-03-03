@@ -387,7 +387,7 @@ function commitLocalState (replace) {
 // Change propagation
 
 function reloadRouting () {
-  global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadRouting');
+  global.SYS_RELOAD_ROUTING();
   actions.reloadRouting();
 }
 

@@ -104,7 +104,7 @@ the results in the vertices as attribute `component`:
 
   logJsonResponse(response);
 
-  var id = JSON.parse(response.body);
+  var id = response.parsedBody;
   var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);

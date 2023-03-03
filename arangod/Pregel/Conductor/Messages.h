@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +25,31 @@
 #include <map>
 
 #include "Inspection/Format.h"
+#include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 
 namespace arangodb::pregel {
+
+struct ConductorStart {};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorStart& x) {
+  return f.object(x).fields();
+}
+struct WorkerCreated {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerCreated& x) {
+  return f.object(x).fields();
+}
+struct ConductorMessages : std::variant<ConductorStart, WorkerCreated> {
+  using std::variant<ConductorStart, WorkerCreated>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<ConductorStart>("Start"),
+      arangodb::inspection::type<WorkerCreated>("WorkerCreated"));
+}
 
 // TODO split LoadGraph off CreateWorker
 struct CreateWorker {

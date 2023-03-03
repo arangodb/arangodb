@@ -148,11 +148,8 @@ struct custom_sort : public irs::sort {
                              document_attrs, boost);
       }
 
-      return {
-          std::make_unique<custom_sort::prepared::scorer>(
-              sort_, segment_reader, term_reader, filter_node_attrs,
-              document_attrs),
-          [](irs::score_ctx* ctx, irs::score_t* res) {
+      return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
             auto& ctxImpl =
                 *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
@@ -162,7 +159,9 @@ struct custom_sort : public irs::sort {
             if (ctxImpl.sort_.scorer_score) {
               ctxImpl.sort_.scorer_score(doc_id, res);
             }
-          }};
+          },
+          sort_, segment_reader, term_reader, filter_node_attrs,
+          document_attrs);
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
@@ -234,7 +233,7 @@ TEST(GeoFilterTest, equal) {
   GeoFilter q;
   q.mutable_options()->type = GeoFilterType::INTERSECTS;
   q.mutable_options()->shape.reset(
-      std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+      std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
       geo::ShapeContainer::Type::S2_POINT);
   *q.mutable_field() = "field";
 
@@ -242,7 +241,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
@@ -254,7 +253,7 @@ TEST(GeoFilterTest, equal) {
     q1.boost(1.5);
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
@@ -265,7 +264,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field1";
     ASSERT_NE(q, q1);
@@ -275,7 +274,7 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::CONTAINS;
     q1.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
@@ -297,7 +296,7 @@ TEST(GeoFilterTest, boost) {
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
 
@@ -311,7 +310,7 @@ TEST(GeoFilterTest, boost) {
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->shape.reset(
-        std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+        std::make_unique<S2PointRegion>(S2Point{1., 0., 0.}),
         geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
     q.boost(boost);
@@ -424,7 +423,7 @@ TEST(GeoFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+      EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -528,10 +527,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache, false));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -544,10 +544,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache, false));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -560,10 +561,11 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache, false));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false,
+        arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -586,17 +588,19 @@ TEST(GeoFilterTest, query) {
 
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache, false));
+            shapeJson->slice(), shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache,
-                                                           false));
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, point, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       if (!shape.contains(point)) {
         continue;
       }
@@ -610,7 +614,8 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache, false));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -633,17 +638,19 @@ TEST(GeoFilterTest, query) {
 
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache, false));
+            shapeJson->slice(), shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache,
-                                                           false));
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, point, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       if (!shape.contains(point)) {
         continue;
       }
@@ -657,7 +664,8 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache, false));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -680,13 +688,14 @@ TEST(GeoFilterTest, query) {
     arangodb::geo::ShapeContainer shape;
     arangodb::geo::ShapeContainer point;
     std::set<std::string> expected;
-    std::vector<S2Point> cache;
+    std::vector<S2LatLng> cache;
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache, false));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false,
+            arangodb::geo::coding::Options::kInvalid, nullptr));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -790,7 +799,7 @@ TEST(GeoFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_NE(*score, irs::ScoreFunction::kDefault);
+      EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);

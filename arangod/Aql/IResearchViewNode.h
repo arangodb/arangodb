@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +86,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
     // Condition optimization
     //  Auto - condition will be transformed to DNF.
     aql::ConditionOptimization conditionOptimization{
-        aql::ConditionOptimization::Auto};
+        aql::ConditionOptimization::kAuto};
 
     // `skipAll` method for view
     CountApproximate countApproximate{CountApproximate::Exact};

@@ -1,5 +1,6 @@
 add_library(arango_v8server STATIC
   FoxxFeature.cpp
+  GlobalContextMethods.cpp
   V8Context.cpp
   V8DealerFeature.cpp
   v8-actions.cpp
