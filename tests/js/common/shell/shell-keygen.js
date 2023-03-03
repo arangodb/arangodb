@@ -32,29 +32,250 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const { debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers } = require("@arangodb/test-helper");  
+const {debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers} = require("@arangodb/test-helper");
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
+const internal = require("internal");
+const isServer = typeof internal.arango === 'undefined';
 
+let graphs = require("@arangodb/general-graph");
+if (isEnterprise) {
+  graphs = require("@arangodb/smart-graph");
+}
+
+const gn = "UnitTestsGraph";
+const vn = "UnitTestsVertex";
+const en = "UnitTestsEdge";
 const cn = "UnitTestsKeyGen";
 
 // in single server case, this is the single server.
 // in cluster case, this is the coordinator.
-let endpoints = [arango.getEndpoint()];
-if (cluster) {
-  endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
+let endpoints;
+
+if (isServer) {
+  // e.g. shell server environment (v8)
+  if (typeof arango === "undefined") {
+    // eslint-disable-next-line no-native-reassign
+    arango = internal.arango;
+  }
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  endpoints = instanceInfo.endpoints;
+} else {
+  // e.g. shell client environment (http)
+  endpoints = [arango.getEndpoint()];
+  if (cluster) {
+    endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
+  }
 }
 
 let debugSetFailAtAll = (fp) => {
   endpoints.forEach((ep) => {
-    debugSetFailAt(ep, fp);
+    if (isServer) {
+      internal.debugSetFailAt(fp);
+    } else {
+      debugSetFailAt(ep, fp);
+    }
   });
 };
 
 let debugClearFailAtAll = () => {
   endpoints.forEach((ep) => {
-    debugClearFailAt(ep);
+    if (isServer) {
+      // in server mode this call actually does not support the clear of a single failure
+      // point. In comparison to the client module, it removes all failure points at once.
+      internal.debugClearFailAt();
+    } else {
+      debugClearFailAt(ep);
+    }
   });
+};
+
+const disableSingleDocRule = {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}};
+const disableRestrictToSingleShardRule = {optimizer: {rules: ["-restrict-to-single-shard"]}};
+
+const runSmartVertexInserts = (graphProperties) => {
+  graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
+
+  try {
+    // test various ways of inserting documents into the collection
+
+    // single insert, using document API
+    db[vn].insert({value: "42"});
+
+    // batch insert, using document API
+    db[vn].insert([{value: "42"}, {value: "42"}, {value: "42"}]).forEach((res) => {
+      assertFalse(res.hasOwnProperty('error'));
+    });
+
+    // single insert, using AQL
+    db._query(`INSERT
+          { value: "42" } INTO
+          ${vn}`);
+
+    db._query(`INSERT
+          { value: "42" } INTO
+          ${vn}`, null, disableSingleDocRule);
+
+    db._query(`INSERT
+          { value: "42" } INTO
+          ${vn}`, null, disableRestrictToSingleShardRule);
+
+    // batch insert, using AQL
+    db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
+
+    db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
+
+    // 13 documents inserted so far. Try to insert some malformed ones (must fail).
+    insertInvalidSmartVertices(vn);
+
+    assertEqual(13, db[vn].count());
+  } finally {
+    graphs._drop(gn, true);
+  }
+};
+
+const runSmartEdgeInserts = (graphProperties) => {
+  // Helper method to either insert edges into SmartGraphs or EnterpriseGraphs
+  if (cluster) {
+    // fail if we generate a key on a DB server
+    debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+  } else {
+    // single server: we can actually get here with the SmartGraph simulator!
+    debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+  }
+
+  graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
+
+  try {
+    // test various ways of inserting documents into the collection
+
+    // single insert, using document API
+    db[en].insert({value: "42", _from: vn + "/test:42", _to: vn + "/test:42"});
+
+    // batch insert, using document API
+    db[en].insert([{value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}, {
+      value: "42",
+      _from: vn + "/test:42",
+      _to: vn + "/test:42"
+    }, {value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}]).forEach((res) => {
+      assertFalse(res.hasOwnProperty('error'));
+    });
+
+    // single insert, using AQL
+    db._query(`INSERT
+          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
+          ${en}`);
+    db._query(`INSERT
+          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
+          ${en}`, null, disableSingleDocRule);
+    db._query(`INSERT
+          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
+          ${en}`, null, disableRestrictToSingleShardRule);
+
+    // batch insert, using AQL
+    db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
+    db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
+
+    // 13 documents inserted so far. Try to insert some malformed ones (must fail).
+    insertInvalidSmartEdges(en);
+
+    assertEqual(13, db[en].count());
+  } finally {
+    graphs._drop(gn, true);
+  }
+};
+
+const insertInvalidSmartVertices = (vn) => {
+  // after all positive tests, now some negative ones (not allowed inserts)
+  // we will not add any documents additionally!
+
+  const invalidKeys = [
+    "whitespace inbetween", // whitespace not allowed
+    12345, // numeric value not allowed
+    NaN,  // invalid numeric value not allowed
+    null // null not allowed
+  ];
+
+  // Note: Using save() <-> insert() should be the same.
+  // Using both here to double-check that the assumption is
+  // proven.
+
+  // single insert, using document API
+  invalidKeys.forEach(invalidKey => {
+    try {
+      db[vn].insert({_key: invalidKey, value: "43"});
+      fail();
+    } catch (ignore) {
+    }
+  });
+  // single insert, using document API
+  invalidKeys.forEach(invalidKey => {
+    try {
+      db[vn].save({_key: invalidKey, value: "43"});
+      fail();
+    } catch (ignore) {
+    }
+  });
+
+  // batch insert, using document API
+  const batch = [];
+  invalidKeys.forEach(invalidKey => {
+    batch.push({_key: invalidKey, value: "iAmSoSmart"});
+  });
+
+  try {
+    // batch insert of malformed documents (wrong keys)
+    db[vn].insert(batch);
+    fail();
+  } catch (ignore) {
+  }
+  try {
+    // batch insert of malformed documents (wrong keys)
+    db[vn].save(batch);
+    fail();
+  } catch (ignore) {
+  }
+};
+
+const insertInvalidSmartEdges = (en) => {
+  // after all positive tests, now some negative ones (not allowed inserts)
+  // we will not add any documents additionally!
+
+  const invalidKeys = [
+    "whitespace inbetween", // whitespace not allowed
+    12345, // numeric value not allowed
+    NaN,  // invalid numeric value not allowed
+    null, // null not allowed
+    undefined, // undefined not allowed,
+    true, // boolean not allowed
+    false // boolean not allowed
+  ];
+
+  // single insert, using document API
+  invalidKeys.forEach(invalidKey => {
+    try {
+      const body = {
+        _key: invalidKey, value: "43", _from: "dontCare/" + invalidKey, _to: "dontCare/" + invalidKey
+      };
+      db[en].insert(body);
+    } catch (ignore) {
+    }
+  });
+
+  // batch insert, using document API
+  let batch = [];
+
+  invalidKeys.forEach(invalidKey => {
+    batch.push({
+      _key: invalidKey, _from: "dontCare/" + invalidKey, _to: "dontCare/" + invalidKey
+    });
+  });
+
+  try {
+    // batch insert of malformed documents (wrong keys)
+    db[en].save(batch);
+  } catch (ignore) {
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,11 +287,11 @@ function TraditionalSuite() {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
@@ -78,7 +299,7 @@ function TraditionalSuite() {
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidKeyNonDefaultSharding1: function() {
+    testCreateInvalidKeyNonDefaultSharding1: function () {
       let c = db._create(cn, {shardKeys: ["value"], keyOptions: {type: "traditional", allowUserKeys: false}});
 
       try {
@@ -90,7 +311,7 @@ function TraditionalSuite() {
       }
     },
 
-    testCreateInvalidKeyNonDefaultSharding2: function() {
+    testCreateInvalidKeyNonDefaultSharding2: function () {
       if (!cluster) {
         return;
       }
@@ -106,7 +327,7 @@ function TraditionalSuite() {
       }
     },
 
-    testCreateKeyNonDefaultSharding: function() {
+    testCreateKeyNonDefaultSharding: function () {
       if (!cluster) {
         return;
       }
@@ -122,7 +343,7 @@ function TraditionalSuite() {
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateTraditionalInvalidKey1: function() {
+    testCreateTraditionalInvalidKey1: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional", allowUserKeys: false}});
 
       try {
@@ -138,7 +359,7 @@ function TraditionalSuite() {
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateTraditionalInvalidKey2: function() {
+    testCreateTraditionalInvalidKey2: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional", allowUserKeys: true}});
 
       try {
@@ -153,7 +374,7 @@ function TraditionalSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateTraditionalOk1: function() {
+    testCreateTraditionalOk1: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional"}});
 
       let options = c.properties().keyOptions;
@@ -165,7 +386,7 @@ function TraditionalSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateTraditionalOk2: function() {
+    testCreateTraditionalOk2: function () {
       let c = db._create(cn, {keyOptions: {}});
 
       let options = c.properties().keyOptions;
@@ -177,7 +398,7 @@ function TraditionalSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateTraditionalOk3: function() {
+    testCreateTraditionalOk3: function () {
       let c = db._create(cn, {keyOptions: {allowUserKeys: false}});
 
       let options = c.properties().keyOptions;
@@ -189,7 +410,7 @@ function TraditionalSuite() {
 /// @brief create with user key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckTraditionalUserKey: function() {
+    testCheckTraditionalUserKey: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional", allowUserKeys: true}});
 
       let options = c.properties().keyOptions;
@@ -204,7 +425,7 @@ function TraditionalSuite() {
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValues: function() {
+    testCheckAutoValues: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional"}});
 
       let d1 = parseFloat(c.save({})._key);
@@ -219,7 +440,7 @@ function TraditionalSuite() {
       assertTrue(d4 < d5);
     },
 
-    testInvalidKeyGenerator: function() {
+    testInvalidKeyGenerator: function () {
       try {
         db._create(cn, {keyOptions: {type: "der-fuchs"}});
         fail();
@@ -228,7 +449,7 @@ function TraditionalSuite() {
       }
     },
 
-    testAutoincrementGeneratorInCluster: function() {
+    testAutoincrementGeneratorInCluster: function () {
       if (!cluster) {
         return;
       }
@@ -241,7 +462,7 @@ function TraditionalSuite() {
       }
     },
 
-    testUuid: function() {
+    testUuid: function () {
       let c = db._create(cn, {keyOptions: {type: "uuid"}});
 
       let options = c.properties().keyOptions;
@@ -254,7 +475,7 @@ function TraditionalSuite() {
       }
     },
 
-    testPadded: function() {
+    testPadded: function () {
       let c = db._create(cn, {keyOptions: {type: "padded"}});
 
       let options = c.properties().keyOptions;
@@ -268,7 +489,7 @@ function TraditionalSuite() {
       }
     },
 
-    testTraditionalTracking: function() {
+    testTraditionalTracking: function () {
       let c = db._create(cn, {keyOptions: {type: "traditional"}});
 
       let options = c.properties().keyOptions;
@@ -289,7 +510,7 @@ function TraditionalSuite() {
       }
     },
 
-    testPaddedTracking: function() {
+    testPaddedTracking: function () {
       let c = db._create(cn, {keyOptions: {type: "padded"}});
 
       let options = c.properties().keyOptions;
@@ -324,11 +545,11 @@ function AutoIncrementSuite() {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
@@ -336,7 +557,7 @@ function AutoIncrementSuite() {
 /// @brief create with invalid offset
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidOffset: function() {
+    testCreateInvalidOffset: function () {
       try {
         db._create(cn, {keyOptions: {type: "autoincrement", offset: -1}});
         fail();
@@ -349,7 +570,7 @@ function AutoIncrementSuite() {
 /// @brief create with invalid increment
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidIncrement1: function() {
+    testCreateInvalidIncrement1: function () {
       try {
         db._create(cn, {keyOptions: {type: "autoincrement", increment: 0}});
         fail();
@@ -362,7 +583,7 @@ function AutoIncrementSuite() {
 /// @brief create with invalid increment
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidIncrement2: function() {
+    testCreateInvalidIncrement2: function () {
       try {
         db._create(cn, {keyOptions: {type: "autoincrement", increment: -1}});
         fail();
@@ -375,7 +596,7 @@ function AutoIncrementSuite() {
 /// @brief create with invalid increment
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidIncrement3: function() {
+    testCreateInvalidIncrement3: function () {
       try {
         db._create(cn, {keyOptions: {type: "autoincrement", increment: 9999999999999}});
         fail();
@@ -388,7 +609,7 @@ function AutoIncrementSuite() {
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateAutoIncrementInvalidKey1: function() {
+    testCreateAutoIncrementInvalidKey1: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: false}});
 
       try {
@@ -403,7 +624,7 @@ function AutoIncrementSuite() {
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateAutoIncrementInvalidKey2: function() {
+    testCreateAutoIncrementInvalidKey2: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: true}});
 
       try {
@@ -418,7 +639,7 @@ function AutoIncrementSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateAutoincrementOk1: function() {
+    testCreateAutoincrementOk1: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 12345678901234567}});
 
       let options = c.properties().keyOptions;
@@ -432,7 +653,7 @@ function AutoIncrementSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateAutoincrementOk2: function() {
+    testCreateAutoincrementOk2: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement"}});
 
       let options = c.properties().keyOptions;
@@ -446,7 +667,7 @@ function AutoIncrementSuite() {
 /// @brief create with valid properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateAutoIncrementOk3: function() {
+    testCreateAutoIncrementOk3: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: false, offset: 83, increment: 156}});
 
       let options = c.properties().keyOptions;
@@ -460,7 +681,7 @@ function AutoIncrementSuite() {
 /// @brief create with null keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateNullKeyGen: function() {
+    testCreateNullKeyGen: function () {
       let c = db._create(cn, {keyOptions: null});
 
       let options = c.properties().keyOptions;
@@ -472,7 +693,7 @@ function AutoIncrementSuite() {
 /// @brief create with user key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoIncrementUserKey: function() {
+    testCheckAutoIncrementUserKey: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: true}});
 
       let d1 = c.save({_key: "1234"});
@@ -483,7 +704,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValues1: function() {
+    testCheckAutoValues1: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 2, increment: 3}});
 
       let d1 = c.save({});
@@ -516,7 +737,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValues2: function() {
+    testCheckAutoValues2: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 19, increment: 1}});
 
       let d1 = c.save({});
@@ -549,7 +770,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValuesSequence1: function() {
+    testCheckAutoValuesSequence1: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 1, increment: 4}});
 
       let d1 = c.save({});
@@ -581,7 +802,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValuesSequence2: function() {
+    testCheckAutoValuesSequence2: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 0, increment: 2}});
 
       let d1 = c.save({});
@@ -621,7 +842,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValuesMixedWithUserKeys: function() {
+    testCheckAutoValuesMixedWithUserKeys: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 0, increment: 1}});
 
       let d1 = c.save({});
@@ -650,7 +871,7 @@ function AutoIncrementSuite() {
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValuesDuplicates: function() {
+    testCheckAutoValuesDuplicates: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", offset: 0, increment: 1}});
 
       let d1 = c.save({});
@@ -671,7 +892,7 @@ function AutoIncrementSuite() {
 /// @brief test out of keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOutOfKeys1: function() {
+    testOutOfKeys1: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: true, offset: 0, increment: 1}});
 
       let d1 = c.save({_key: "18446744073709551615"}); // still valid
@@ -689,7 +910,7 @@ function AutoIncrementSuite() {
 /// @brief test out of keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOutOfKeys2: function() {
+    testOutOfKeys2: function () {
       let c = db._create(cn, {keyOptions: {type: "autoincrement", allowUserKeys: true, offset: 0, increment: 10}});
 
       let d1 = c.save({_key: "18446744073709551615"}); // still valid
@@ -709,7 +930,7 @@ function AutoIncrementSuite() {
 function AllowUserKeysSuite() {
   'use strict';
 
-  let generators = function() {
+  let generators = function () {
     let generators = [
       "traditional",
       "padded",
@@ -720,15 +941,15 @@ function AllowUserKeysSuite() {
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    testAllowUserKeysTrueDefaultSharding: function() {
+    testAllowUserKeysTrueDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
         if (generator === "autoincrement" && cluster) {
@@ -756,7 +977,7 @@ function AllowUserKeysSuite() {
       });
     },
 
-    testAllowUserKeysFalseDefaultSharding: function() {
+    testAllowUserKeysFalseDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
         if (generator === "autoincrement" && cluster) {
@@ -785,7 +1006,7 @@ function AllowUserKeysSuite() {
       });
     },
 
-    testAllowUserKeysTrueCustomSharding: function() {
+    testAllowUserKeysTrueCustomSharding: function () {
       if (!cluster) {
         return;
       }
@@ -822,7 +1043,7 @@ function AllowUserKeysSuite() {
       });
     },
 
-    testAllowUserKeysFalseCustomSharding: function() {
+    testAllowUserKeysFalseCustomSharding: function () {
       if (!cluster) {
         return;
       }
@@ -865,7 +1086,7 @@ function AllowUserKeysSuite() {
 function PersistedLastValueSuite() {
   'use strict';
 
-  let generators = function() {
+  let generators = function () {
     let generators = [
       "padded",
       "autoincrement"
@@ -874,15 +1095,15 @@ function PersistedLastValueSuite() {
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    testPersistedLastValue: function() {
+    testPersistedLastValue: function () {
       generators().forEach((generator) => {
         let numShards = 2;
         if (generator === "autoincrement" && cluster) {
@@ -917,7 +1138,7 @@ function PersistedLastValueSuite() {
 function KeyGenerationLocationSuite() {
   'use strict';
 
-  let generators = function() {
+  let generators = function () {
     let generators = [
       "traditional",
       "padded",
@@ -928,16 +1149,16 @@ function KeyGenerationLocationSuite() {
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       debugClearFailAtAll();
       db._drop(cn);
     },
 
-    testThatFailurePointsWork1: function() {
+    testThatFailurePointsWork1: function () {
       if (!cluster) {
         return;
       }
@@ -952,7 +1173,7 @@ function KeyGenerationLocationSuite() {
       }
     },
 
-    testThatFailurePointsWork2: function() {
+    testThatFailurePointsWork2: function () {
       if (!cluster) {
         return;
       }
@@ -967,7 +1188,7 @@ function KeyGenerationLocationSuite() {
       }
     },
 
-    testSingleShardInserts: function() {
+    testSingleShardInserts: function () {
       if (!cluster) {
         return;
       }
@@ -1003,7 +1224,7 @@ function KeyGenerationLocationSuite() {
       });
     },
 
-    testSingleShardInsertsCustomSharding: function() {
+    testSingleShardInsertsCustomSharding: function () {
       if (!cluster) {
         return;
       }
@@ -1039,7 +1260,7 @@ function KeyGenerationLocationSuite() {
       });
     },
 
-    testOneShardInserts: function() {
+    testOneShardInserts: function () {
       if (!isEnterprise || !cluster) {
         // can test OneShard only in EE
         return;
@@ -1087,7 +1308,7 @@ function KeyGenerationLocationSuite() {
       }
     },
 
-    testMultiShardInserts: function() {
+    testMultiShardInserts: function () {
       if (!cluster) {
         return;
       }
@@ -1126,7 +1347,7 @@ function KeyGenerationLocationSuite() {
       });
     },
 
-    testMultiShardInsertsCustomSharding: function() {
+    testMultiShardInsertsCustomSharding: function () {
       if (!cluster) {
         return;
       }
@@ -1185,34 +1406,19 @@ function KeyGenerationLocationSuite() {
 function KeyGenerationLocationSmartGraphSuite() {
   'use strict';
 
-  const gn = "UnitTestsGraph";
-  const vn = "UnitTestsVertex";
-  const en = "UnitTestsEdge";
-
-  const disableSingleDocRule = {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}};
-  const disableRestrictToSingleShardRule = {optimizer: {rules: ["-restrict-to-single-shard"]}};
-
-  const graphs = require("@arangodb/smart-graph");
-
-  let generators = function() {
-    let generators = [
-      "traditional",
-      "padded",
-      "uuid",
-      "autoincrement"
-    ];
-    return generators;
-  };
+  // Note: No key generators defined here in this suite compared to the other one
+  // sitting in this test file. This is totally valid, because one cannot define
+  // manually which key generator can be used in a Graph/SmartGraph/EnterpriseGraph etc.
 
   return {
-    setUp: function() {
+    setUp: function () {
       try {
         graphs._drop(gn, true);
       } catch (err) {
       }
     },
 
-    tearDown: function() {
+    tearDown: function () {
       debugClearFailAtAll();
       try {
         graphs._drop(gn, true);
@@ -1220,9 +1426,7 @@ function KeyGenerationLocationSmartGraphSuite() {
       }
     },
 
-    testSingleShardSmartVertexInserts: function() {
-      // note: test can run in single server as well!
-
+    testSingleShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a coordinator
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
@@ -1231,48 +1435,36 @@ function KeyGenerationLocationSmartGraphSuite() {
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
 
-      generators().forEach((generator) => {
-        graphs._create(gn, [graphs._relation(en, vn, vn)], null, {numberOfShards: 1, smartGraphAttribute: "value"});
-
-        try {
-          // test various ways of inserting documents into the collection
-
-          // single insert, using document API
-          db[vn].insert({value: "42"});
-
-          // batch insert, using document API
-          db[vn].insert([{value: "42"}, {value: "42"}, {value: "42"}]).forEach((res) => {
-            assertFalse(res.hasOwnProperty('error'));
-          });
-
-          // single insert, using AQL
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`);
-
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`, null, disableSingleDocRule);
-
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`, null, disableRestrictToSingleShardRule);
-
-          // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
-
-          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
-
-          assertEqual(13, db[vn].count());
-        } finally {
-          graphs._drop(gn, true);
-        }
-      });
+      // note: test can run in single server as well!
+      const smartGraphProperties = {
+        numberOfShards: 1,
+        smartGraphAttribute: "value"
+      };
+      runSmartVertexInserts(smartGraphProperties);
     },
 
-    testMultiShardSmartVertexInserts: function() {
-      // note: test can run in single server as well!
+    testSingleShardEnterpriseVertexInserts: function () {
+      if (!cluster) {
+        // single server: we can actually get here with the SmartGraph simulator!
+        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      }
+      // Note: To cluster tests and why we're not setting any failure point here:
+      // We cannot declare a failure point here because both, that means:
+      // * SingleServer || DatabaseServer key generation is valid
+      // * Coordinator-based key generation is valid as well.
+      // This statement is only true in case we're using a SingleShard(!).
+      // Therefore, the other test below (MultiShardEnterprise) will include
+      // these assertions for both cases (cluster and singleserver).
 
+      // note: test can run in single server as well!
+      const enterpriseGraphProperties = {
+        numberOfShards: 1,
+        isSmart: true
+      };
+      runSmartVertexInserts(enterpriseGraphProperties);
+    },
+
+    testMultiShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
         debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
@@ -1281,51 +1473,15 @@ function KeyGenerationLocationSmartGraphSuite() {
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
 
-      generators().forEach((generator) => {
-        if (generator === "autoincrement") {
-          return;
-        }
-        graphs._create(gn, [graphs._relation(en, vn, vn)], null, {
-          numberOfShards: 2,
-          smartGraphAttribute: "value"
-        });
-
-        try {
-          // test various ways of inserting documents into the collection
-
-          // single insert, using document API
-          db[vn].insert({value: "42"});
-
-          // batch insert, using document API
-          db[vn].insert([{value: "42"}, {value: "42"}, {value: "42"}]).forEach((res) => {
-            assertFalse(res.hasOwnProperty('error'));
-          });
-
-          // single insert, using AQL
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`);
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`, null, disableSingleDocRule);
-          db._query(`INSERT
-          { value: "42" } INTO
-          ${vn}`, null, disableRestrictToSingleShardRule);
-
-          // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`);
-          db._query(`FOR i IN 1..3 INSERT { value: "42" } INTO ${vn}`, null, disableRestrictToSingleShardRule);
-
-          assertEqual(13, db[vn].count());
-        } finally {
-          graphs._drop(gn, true);
-        }
-      });
+      // note: test can run in single server as well!
+      const smartGraphProperties = {
+        numberOfShards: 2,
+        smartGraphAttribute: "value"
+      };
+      runSmartVertexInserts(smartGraphProperties);
     },
 
-    testSingleShardSmartEdgeInserts: function() {
-      // note: test can run in single server as well!
-
+    testMultiShardEnterpriseVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
         debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
@@ -1334,99 +1490,48 @@ function KeyGenerationLocationSmartGraphSuite() {
         debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
       }
 
-      generators().forEach((generator) => {
-        graphs._create(gn, [graphs._relation(en, vn, vn)], null, {numberOfShards: 1, smartGraphAttribute: "value"});
-
-        try {
-          // test various ways of inserting documents into the collection
-
-          // single insert, using document API
-          db[en].insert({value: "42", _from: vn + "/test:42", _to: vn + "/test:42"});
-
-          // batch insert, using document API
-          db[en].insert([{value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}, {
-            value: "42",
-            _from: vn + "/test:42",
-            _to: vn + "/test:42"
-          }, {value: "42", _from: vn + "/test:42", _to: vn + "/test:42"}]).forEach((res) => {
-            assertFalse(res.hasOwnProperty('error'));
-          });
-
-          // single insert, using AQL
-          db._query(`INSERT
-          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`);
-          db._query(`INSERT
-          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`, null, disableSingleDocRule);
-          db._query(`INSERT
-          { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`, null, disableRestrictToSingleShardRule);
-
-          // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
-          db._query(`FOR i IN 1..3 INSERT { value: "42", _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
-
-          assertEqual(13, db[en].count());
-        } finally {
-          graphs._drop(gn, true);
-        }
-      });
+      // note: test can run in single server as well!
+      const enterpriseGraphProperties = {
+        numberOfShards: 2,
+        isSmart: true
+      };
+      runSmartVertexInserts(enterpriseGraphProperties);
     },
 
-    testMultiShardSmartEdgeInserts: function() {
+    testSingleShardSmartEdgeInserts: function () {
       // note: test can run in single server as well!
+      const smartGraphProperties = {
+        numberOfShards: 1,
+        smartGraphAttribute: "value"
+      };
+      runSmartEdgeInserts(smartGraphProperties);
+    },
 
-      if (cluster) {
-        // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
-      } else {
-        // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
-      }
+    testMultiShardSmartEdgeInserts: function () {
+      // note: test can run in single server as well!
+      const smartGraphProperties = {
+        numberOfShards: 1,
+        smartGraphAttribute: "value"
+      };
+      runSmartEdgeInserts(smartGraphProperties);
+    },
 
-      generators().forEach((generator) => {
-        if (generator === "autoincrement") {
-          return;
-        }
-        graphs._create(gn, [graphs._relation(en, vn, vn)], null, {
-          numberOfShards: 2,
-          smartGraphAttribute: "value"
-        });
+    testSingleShardEnterpriseEdgeInserts: function () {
+      // note: test can run in single server as well!
+      const enterpriseGraphProperties = {
+        numberOfShards: 1,
+        isSmart: true
+      };
+      runSmartEdgeInserts(enterpriseGraphProperties);
+    },
 
-        try {
-          // test various ways of inserting documents into the collection
-
-          // single insert, using document API
-          db[en].insert({value: 42, _from: vn + "/test:42", _to: vn + "/test:42"});
-
-          // batch insert, using document API
-          db[en].insert([{value: 42, _from: vn + "/test:42", _to: vn + "/test:42"}, {
-            value: 42,
-            _from: vn + "/test:42",
-            _to: vn + "/test:42"
-          }, {value: 42, _from: vn + "/test:42", _to: vn + "/test:42"}]);
-
-          // single insert, using AQL
-          db._query(`INSERT
-          { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`);
-          db._query(`INSERT
-          { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`, null, disableSingleDocRule);
-          db._query(`INSERT
-          { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO
-          ${en}`, null, disableRestrictToSingleShardRule);
-
-          // batch insert, using AQL
-          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`);
-          db._query(`FOR i IN 1..3 INSERT { value: 42, _from: "${vn}/test:42", _to: "${vn}/test:42" } INTO ${en}`, null, disableRestrictToSingleShardRule);
-
-          assertEqual(13, db[en].count());
-        } finally {
-          graphs._drop(gn, true);
-        }
-      });
+    testMultiShardEnterpriseEdgeInserts: function () {
+      // note: test can run in single server as well!
+      const enterpriseGraphProperties = {
+        numberOfShards: 1,
+        isSmart: true
+      };
+      runSmartEdgeInserts(enterpriseGraphProperties);
     },
 
   };
@@ -1436,11 +1541,21 @@ jsunity.run(TraditionalSuite);
 jsunity.run(AutoIncrementSuite);
 jsunity.run(AllowUserKeysSuite);
 jsunity.run(PersistedLastValueSuite);
-if (debugCanUseFailAt(arango.getEndpoint())) {
-  jsunity.run(KeyGenerationLocationSuite);
-}
-if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
-  jsunity.run(KeyGenerationLocationSmartGraphSuite);
+
+if (isServer) {
+  if (internal.debugCanUseFailAt()) {
+    jsunity.run(KeyGenerationLocationSuite);
+  }
+  if (isEnterprise && internal.debugCanUseFailAt()) {
+    jsunity.run(KeyGenerationLocationSmartGraphSuite);
+  }
+} else {
+  if (debugCanUseFailAt(arango.getEndpoint())) {
+    jsunity.run(KeyGenerationLocationSuite);
+  }
+  if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
+    jsunity.run(KeyGenerationLocationSmartGraphSuite);
+  }
 }
 
 return jsunity.done();
