@@ -129,6 +129,7 @@ jobs:
             - build/
             - scripts/
             - js/
+            - enterprise/js
             - etc/
             - tests/js
             - utils
