@@ -1,6 +1,15 @@
 devel
 -----
 
+* Made the return code configurable that is delivered if a write fails because
+  the write concern is not fulfilled (not enough in-sync replicas available).
+  Previously (and now by default), a code of HTTP 403 is returned and the
+  request returns immediately. If the command line option
+    --cluster.failed-write-concern-error-code=503
+  is set, then HTTP 503 is returned and the coordinator retries the request
+  for 900 seconds before returning the error to the client. This will cover
+  up most temporary write concern problems for the client.
+
 * Updated arangosync to v2.15.0-preview-1.
 
 * The internal Graph code is completely converted to the new graph engine.
