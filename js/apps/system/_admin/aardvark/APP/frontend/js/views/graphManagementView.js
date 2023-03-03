@@ -1573,6 +1573,9 @@
     resetDisplaySettings: function () {
       var graphName = $('#editGraphName').val();
 
+      const localStorageKey = graphName + "-gv-urlparameters";
+      localStorage.removeItem(localStorageKey);
+
       var test = new window.GraphSettingsView({
         name: graphName,
         userConfig: window.App.userConfig
