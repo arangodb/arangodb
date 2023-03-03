@@ -343,6 +343,8 @@ class StorageEngine : public ArangodFeature {
                                        std::string const& collection,
                                        IndexId iid);
 
+  virtual bool autoRefillIndexCaches() const = 0;
+  virtual bool autoRefillIndexCachesOnFollowers() const = 0;
   virtual void syncIndexCaches();
 
  protected:
