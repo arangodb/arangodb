@@ -70,7 +70,7 @@ class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
   bool _destroy{false};
 };
 
-class NondeterministicExpressionIterator final
+class NondeterministicExpressionIterator
     : public NondeterministicExpressionIteratorBase {
  public:
   NondeterministicExpressionIterator(irs::doc_iterator::ptr&& it,
@@ -83,7 +83,7 @@ class NondeterministicExpressionIterator final
     TRI_ASSERT(_doc);
   }
 
-  bool next() override {
+  bool next() final {
     while (_it->next()) {
       if (evaluate()) {
         return true;
@@ -96,7 +96,7 @@ class NondeterministicExpressionIterator final
     return _it->get_mutable(id);
   }
 
-  irs::doc_id_t seek(irs::doc_id_t target) override {
+  irs::doc_id_t seek(irs::doc_id_t target) final {
     auto const doc = _it->seek(target);
 
     if (irs::doc_limits::eof(doc) || evaluate()) {
@@ -107,7 +107,7 @@ class NondeterministicExpressionIterator final
     return _doc->value;
   }
 
-  irs::doc_id_t value() const noexcept override { return _doc->value; }
+  irs::doc_id_t value() const noexcept final { return _doc->value; }
 
  private:
   irs::doc_iterator::ptr _it;
@@ -134,15 +134,14 @@ class ExpressionQuery : public irs::filter::prepared {
   ExpressionCompilationContext _ctx;
 };
 
-class NondeterministicExpressionQuery final : public ExpressionQuery {
+class NondeterministicExpressionQuery : public ExpressionQuery {
  public:
   explicit NondeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx,
       irs::filter::prepared::ptr&& allQuery) noexcept
       : ExpressionQuery{ctx, std::move(allQuery)} {}
 
-  irs::doc_iterator::ptr execute(
-      irs::ExecutionContext const& ctx) const override {
+  irs::doc_iterator::ptr execute(irs::ExecutionContext const& ctx) const final {
     if (ADB_UNLIKELY(!ctx.ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
@@ -163,15 +162,14 @@ class NondeterministicExpressionQuery final : public ExpressionQuery {
   }
 };
 
-class DeterministicExpressionQuery final : public ExpressionQuery {
+class DeterministicExpressionQuery : public ExpressionQuery {
  public:
   explicit DeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx,
       irs::filter::prepared::ptr&& allQuery) noexcept
       : ExpressionQuery{ctx, std::move(allQuery)} {}
 
-  irs::doc_iterator::ptr execute(
-      irs::ExecutionContext const& ctx) const override {
+  irs::doc_iterator::ptr execute(irs::ExecutionContext const& ctx) const final {
     if (ADB_UNLIKELY(!ctx.ctx)) {
       // no context provided
       return irs::doc_iterator::empty();

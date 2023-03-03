@@ -381,7 +381,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_TRUE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kAuto,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -435,7 +435,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kAuto,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -488,7 +488,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::None,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNone,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -541,7 +541,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::NoNegation,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNoNegation,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -594,7 +594,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::NoDNF,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNoDNF,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -647,7 +647,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kAuto,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
@@ -700,7 +700,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kAuto,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Cost);
@@ -1397,7 +1397,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(outVariable.name, setHere[0]->name);
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kAuto,
               node.options().conditionOptimization);  // default value
     EXPECT_EQ(0, node.options().sources.size());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
@@ -1448,7 +1448,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.options().sources.size());
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::None,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNone,
               node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
@@ -1496,7 +1496,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.options().sources.size());
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::NoNegation,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNoNegation,
               node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
@@ -1544,7 +1544,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.options().sources.size());
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::NoDNF,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNoDNF,
               node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
@@ -1592,7 +1592,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_FALSE(node.options().restrictSources);
     EXPECT_EQ(0, node.options().sources.size());
-    EXPECT_EQ(arangodb::aql::ConditionOptimization::NoDNF,
+    EXPECT_EQ(arangodb::aql::ConditionOptimization::kNoDNF,
               node.options().conditionOptimization);
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Cost);
