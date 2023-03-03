@@ -91,7 +91,6 @@ jobs:
             if [ << parameters.enterprise >> = true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
               git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "devel" /root/project/enterprise
-              git reset --hard "$CIRCLE_SHA1"
             fi
       - run:
           name: Print SCCache Settings
@@ -169,6 +168,8 @@ jobs:
       - run:
           name: Run << parameters.suiteName >> tests
           command: |
+            pwd
+            ls -la
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 scripts/test/test_launch_controller.py << parameters.suites >> \
