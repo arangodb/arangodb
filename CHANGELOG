@@ -1,6 +1,9 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Added metric `arangodb_replication_clients` showing the number of currently
+  active/connected replication clients for a server.
+
 * BTS-1249: Add startup option `--foxx.enable`.
   This startup option determines whether access to user-defined Foxx services is
   possible for the instance. It defaults to `true`.
