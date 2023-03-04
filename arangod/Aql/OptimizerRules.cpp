@@ -2608,9 +2608,6 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
-      }
-      // cppcheck-suppress knownConditionTrueFalse
-      if (modifiedNode) {
         nn->expression()->invalidateAfterReplacements();
         modified = true;
       }
