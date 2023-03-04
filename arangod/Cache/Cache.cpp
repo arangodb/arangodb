@@ -343,6 +343,9 @@ void Cache::shutdown() {
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
+      SpinUnlocker shutdownUnguard(SpinUnlocker::Mode::Write, _shutdownLock);
+
+      // sleep a bit without holding the locks
       std::this_thread::sleep_for(std::chrono::microseconds(20));
     }
 
