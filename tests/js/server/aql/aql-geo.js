@@ -275,6 +275,11 @@ function geoSuite(isSearchAlias) {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
+      
+      let analyzers = require("@arangodb/analyzers");
+      try {
+        analyzers.remove("geo_json", true);
+      } catch (err) {}
     },
 
 ////////////////////////////////////////////////////////////////////////////////
