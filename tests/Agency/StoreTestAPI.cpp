@@ -32,6 +32,7 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
 
+#include <numeric>
 #include <random>
 
 namespace arangodb {
