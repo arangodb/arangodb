@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Network } from "vis-network";
 import { isEqual } from "lodash";
+import { ProgressBar } from "./ProgressBar";
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
@@ -89,6 +90,25 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			console.log(selectedNode);
 			network.selectNodes([selectedNode.id])
 		}
+
+		network.on("stabilizationProgress", function (params) {
+			const maxWidth = 496;
+			const minWidth = 20;
+			const widthFactor = params.iterations / params.total;
+			const width = Math.max(minWidth, maxWidth * widthFactor);
+
+			const progressValue = Math.round(widthFactor * 100);
+		
+			document.getElementById("graphViewerProgressBar").style.width = width + "px";
+			document.getElementById("graphViewerLoadingText").innerText = progressValue + "%";
+
+			if(progressValue === 100) {
+				document.getElementById("graphViewerLoadingBar").style.opacity = 0;
+				setTimeout(function () {
+					document.getElementById("graphViewerLoadingBar").style.display = "none";
+				}, 500);
+			}
+		});
 
 		network.on("stabilizationIterationsDone", function () {
 			network.setOptions( { physics: false } );
@@ -258,6 +278,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			</ul>
 		</StyledContextComponent>
 		}
+		<ProgressBar />
 		<div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '100%', background: '#fff' }} />
 	</>;
 };
