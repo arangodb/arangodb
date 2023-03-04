@@ -1,6 +1,10 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* PRESUPP-546: make AQL optimizer rule `simplify-conditions` correctly report
+  that it was triggered. Previously that rule never reported that it was 
+  triggered although even though it actually was.
+
 * GORDO-1554: Fixes invalid document insertion with invalid user-specified keys
   (e.g. numeric values) into EnterpriseGraph related vertices.
 
