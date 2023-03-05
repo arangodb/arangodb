@@ -1522,15 +1522,30 @@ authRouter.get('/visgraph/:name', function (req, res) {
         }
       }
 
-      if(node.id === startVertex._id) {
-        node.borderWidth = 4;
-        node.shadow = {
-          enabled: true,
-          color: 'rgba(0,0,0,0.5)',
-          size: 16,
-          x: 0,
-          y: 0
-        };
+      if(multipleIds !== undefined) {
+        // mark every starting node
+        if(multipleIds.includes(node.id)) {
+          node.borderWidth = 4;
+          node.shadow = {
+            enabled: true,
+            color: 'rgba(0,0,0,0.5)',
+            size: 16,
+            x: 0,
+            y: 0
+          };
+        }
+      } else {
+        // mark the one starting node
+        if(node.id === startVertex._id) {
+          node.borderWidth = 4;
+          node.shadow = {
+            enabled: true,
+            color: 'rgba(0,0,0,0.5)',
+            size: 16,
+            x: 0,
+            y: 0
+          };
+        }
       }
 
       nodesArr.push(node);
