@@ -303,8 +303,8 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} RETURN doc.boo.far`, [['boo', 'far']] ],
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.unrelated]`, [['foo', 'bar'], 'unrelated'] ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo == 1].sub == 1 RETURN 1`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.baz == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.baz == 1].sub == 1 RETURN 1`, ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.baz == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, [['foo', 'bar'], ['foo', 'baz']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.baz == 1].sub == 1 RETURN 1`, [['foo', 'bar'], ['foo', 'baz']] ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.value1 == 1 RETURN doc.value2 == 1].sub == 1 RETURN 1`, [['foo', 'bar'], 'value1', 'value2'] ],
       ];
 
