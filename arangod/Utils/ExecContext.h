@@ -71,21 +71,21 @@ class ExecContext : public RequestContext {
 
   /// @brief an internal user is none / ro / rw for all collections / dbs
   /// mainly used to override further permission resolution
-  inline bool isInternal() const { return _type == Type::Internal; }
+  bool isInternal() const noexcept { return _type == Type::Internal; }
 
   /// @brief any internal operation is a superuser.
-  bool isSuperuser() const {
+  bool isSuperuser() const noexcept {
     return isInternal() && _systemDbAuthLevel == auth::Level::RW &&
            _databaseAuthLevel == auth::Level::RW;
   }
 
   /// @brief is this an internal read-only user
-  bool isReadOnly() const {
+  bool isReadOnly() const noexcept {
     return isInternal() && _systemDbAuthLevel == auth::Level::RO;
   }
 
   /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const { return _isAdminUser; }
+  bool isAdminUser() const noexcept { return _isAdminUser; }
 
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const { return false; }
@@ -95,15 +95,15 @@ class ExecContext : public RequestContext {
 
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const { return _systemDbAuthLevel; }
+  auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
-  auth::Level databaseAuthLevel() const { return _databaseAuthLevel; }
+  auth::Level databaseAuthLevel() const noexcept { return _databaseAuthLevel; }
 
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(auth::Level requested) const {
+  bool canUseDatabase(auth::Level requested) const noexcept {
     return requested <= _databaseAuthLevel;
   }
 
