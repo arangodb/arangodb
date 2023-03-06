@@ -127,7 +127,6 @@ class GraphStore final {
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
-  std::atomic<uint32_t> _runningThreads;
 };
 
 }  // namespace pregel

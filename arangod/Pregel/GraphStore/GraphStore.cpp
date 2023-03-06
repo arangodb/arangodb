@@ -91,8 +91,7 @@ GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
       _config(nullptr),
       _vertexIdRangeStart(0),
       _localVertexCount(0),
-      _localEdgeCount(0),
-      _runningThreads(0) {}
+      _localEdgeCount(0) {}
 
 static const char* shardError =
     "Collections need to have the same number of shards,"
@@ -103,12 +102,6 @@ void GraphStore<V, E>::loadShards(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
     std::function<void()> const& finishedLoadingCallback) {
   _config = config;
-  TRI_ASSERT(_runningThreads == 0);
-
-  LOG_PREGEL("27f1e", DEBUG)
-      << "Using up to " << _config->parallelism()
-      << " threads to load data. memory-mapping is turned "
-      << (config->useMemoryMaps() ? "on" : "off");
 
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
@@ -483,13 +476,8 @@ void GraphStore<V, E>::storeResults(
   _config = config;
   double now = TRI_microtime();
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-
-  _runningThreads.store(1);
-  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
-
   LOG_PREGEL("f3fd9", DEBUG)
-      << "Storing vertex data (" << _quiver.numberOfVertices()
-      << " vertices) using " << 1 << " threads";
+      << "Storing vertex data (" << _quiver.numberOfVertices() << " vertices)";
 
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=, this] {
     try {
@@ -500,15 +488,9 @@ void GraphStore<V, E>::storeResults(
     } catch (...) {
       LOG_PREGEL("51b87", ERR) << "Storing vertex data failed";
     }
-    uint32_t numRunning =
-        _runningThreads.fetch_sub(1, std::memory_order_relaxed);
-    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-    TRI_ASSERT(numRunning > 0);
-    if (numRunning - 1 == 0) {
-      LOG_PREGEL("b5a21", DEBUG)
-          << "Storing data took " << (TRI_microtime() - now) << "s";
-      cb();
-    }
+    LOG_PREGEL("b5a21", DEBUG)
+        << "Storing data took " << (TRI_microtime() - now) << "s";
+    cb();
   });
 }
 
