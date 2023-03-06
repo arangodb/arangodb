@@ -9,8 +9,6 @@ import { useInvertedIndexList } from "./useInvertedIndexList";
 
 export const IndexesForm = () => {
   const { collectionsList } = useCollectionsList();
-
-  console.log({ collectionsList });
   const collectionsOptions = collectionsList?.map(collection => {
     return { value: collection.name, label: collection.name };
   });
