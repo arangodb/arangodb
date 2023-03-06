@@ -38,6 +38,12 @@ using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
+  auto buildResignedResponse = [&] {
+    return AppendEntriesResult::withRejection(
+        request.leaderTerm, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kLostLogCore}, true);
+  };
+
   MeasureTimeGuard timer(*metrics->replicatedLogFollowerAppendEntriesRtUs);
   // TODO more metrics?
 
@@ -47,6 +53,9 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
 
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
+  if (guard->resigned) {
+    co_return buildResignedResponse();
+  }
   auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
@@ -93,13 +102,16 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
       auto result = co_await asResult(std::move(f));
+      guard = self->guarded.getLockedGuard();
+      if (guard->resigned) {
+        co_return buildResignedResponse();
+      }
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
             guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
-      guard = self->guarded.getLockedGuard();
       store = guard->storage.transaction();
     }
 
@@ -111,13 +123,18 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto f = store->appendEntries(InMemoryLog{request.entries});
       guard.unlock();
       auto result = co_await asResult(std::move(f));
+      guard = self->guarded.getLockedGuard();
+      if (guard->resigned) {
+        co_return buildResignedResponse();
+      }
       if (result.fail()) {
-        LOG_CTX("7cb3d", ERR, lctx) << "failed to persist:" << result;
+        LOG_CTX("7cb3d", ERR, lctx)
+            << "failed to persist new entries: " << result;
+        LOG_DEVEL << ADB_HERE << " snapshot=" << std::hex << &guard->snapshot;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
             guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
-      guard = self->guarded.getLockedGuard();
     }
   }
 
@@ -147,6 +164,11 @@ AppendEntriesManager::AppendEntriesManager(
 auto AppendEntriesManager::getLastReceivedMessageId() const noexcept
     -> MessageId {
   return guarded.getLockedGuard()->messageIdAcceptor.get();
+}
+
+auto AppendEntriesManager::resign() && noexcept -> void {
+  auto guard = guarded.getLockedGuard();
+  return std::move(guard.get()).resign();
 }
 
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
@@ -205,6 +227,10 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
   }
 
   return std::nullopt;
+}
+
+auto AppendEntriesManager::GuardedData::resign() && noexcept -> void {
+  resigned = true;
 }
 
 auto AppendEntriesMessageIdAcceptor::accept(MessageId id) noexcept -> bool {
