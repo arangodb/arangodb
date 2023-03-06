@@ -71,6 +71,14 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   }
 
   template<class T>
+  [[nodiscard]] Status set(T& set) {
+    auto& f = this->self();
+    return f.beginArray()                         //
+           | [&]() { return f.processSet(set); }  //
+           | [&]() { return f.endArray(); };      //
+  }
+
+  template<class T>
   [[nodiscard]] Status tuple(T& data) {
     constexpr auto arrayLength = std::tuple_size_v<T>;
     auto& f = this->self();
@@ -411,6 +419,21 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
           map.emplace(key, std::move(val));
           return {};
         });
+  }
+
+  template<class T>
+  Status processSet(T& set) {
+    std::size_t idx = 0;
+    return this->self().doProcessList([&](auto value) -> Status {
+      auto ff = this->self().make(value);
+      typename T::value_type val;
+      if (auto res = process(ff, val); !res.ok()) {
+        return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
+      }
+      set.insert(std::move(val));
+      ++idx;
+      return {};
+    });
   }
 
   template<class T>

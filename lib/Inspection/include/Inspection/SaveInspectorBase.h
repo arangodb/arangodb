@@ -79,6 +79,14 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
   }
 
   template<class T>
+  [[nodiscard]] auto set(T const& set) {
+    auto& f = this->self();
+    return f.beginArray()                                                     //
+           | [&]() { return f.processList(std::begin(set), std::end(set)); }  //
+           | [&]() { return f.endArray(); };                                  //
+  }
+
+  template<class T>
   [[nodiscard]] auto map(T const& map) {
     auto& f = this->self();
     return f.beginObject()                        //
