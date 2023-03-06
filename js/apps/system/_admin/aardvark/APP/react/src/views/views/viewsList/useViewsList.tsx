@@ -26,31 +26,33 @@ export const useViewsList = () => {
     SearchViewType[] | undefined
   >(result);
 
-  useEffect(() => {
-    const checkProgress = () => {
-      const callback = (_: any, lockedViews: { collection: string }[]) => {
-        const newViewsList = result?.map(view => {
-          if (
-            lockedViews.find(lockedView => lockedView.collection === view.name)
-          ) {
-            return { ...view, isLocked: true };
-          }
-          return { ...view, isLocked: false };
-        });
-        setUpdatedViewsList(newViewsList);
-      };
-      if (!window.frontendConfig.ldapEnabled) {
-        window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs(
-          "view",
-          callback
-        );
-      }
+  const checkProgress = () => {
+    const callback = (_: any, lockedViews: { collection: string }[]) => {
+      const newViewsList = result?.map(view => {
+        if (
+          lockedViews.find(lockedView => lockedView.collection === view.name)
+        ) {
+          return { ...view, isLocked: true };
+        }
+        return { ...view, isLocked: false };
+      });
+      setUpdatedViewsList(newViewsList);
     };
-    checkProgress();
-    const timeout = window.setTimeout(() => {
+    if (!window.frontendConfig.ldapEnabled) {
+      window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", callback);
+    }
+  };
+
+  useEffect(() => {
+    let interval: number;
+    if (result) {
       checkProgress();
-    }, 10000);
-    return () => clearTimeout(timeout);
+      interval = window.setInterval(() => {
+        checkProgress();
+      }, 10000);
+    }
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
   return { viewsList: updatedViewsList, ...rest };
 };
