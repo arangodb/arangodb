@@ -1,14 +1,18 @@
-import { Box, Spinner } from "@chakra-ui/react";
-import React from "react";
+import { Box, Spinner, Stack } from "@chakra-ui/react";
+import React, { useState } from "react";
 import { HashRouter } from "react-router-dom";
 import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../../utils/useDisableNavBar";
+import { useGlobalStyleReset } from "../../../utils/useGlobalStyleReset";
 import { AddViewTile } from "./AddViewTile";
+import { SearchInput } from "./SearchInput";
+import { SortPopover } from "./SortPopover";
 import { useViewsList } from "./useViewsList";
 import { ViewTile } from "./ViewTile";
 
 export const ViewsList = () => {
   useDisableNavBar();
+  useGlobalStyleReset();
   return (
     <ChakraCustomProvider>
       <HashRouter basename="/" hashType={"noslash"}>
@@ -18,7 +22,12 @@ export const ViewsList = () => {
   );
 };
 const ViewsListInner = () => {
-  const { viewsList, isValidating } = useViewsList();
+  const [searchValue, setSearchValue] = useState("");
+  const [sortDescending, setSortDescending] = useState(false);
+  const { viewsList, isValidating } = useViewsList({
+    searchValue,
+    sortDescending
+  });
   if (!viewsList && isValidating) {
     return <Spinner />;
   }
@@ -26,15 +35,38 @@ const ViewsListInner = () => {
     return <>no views found</>;
   }
   return (
-    <Box
-      display={"grid"}
-      gap="4"
-      gridTemplateColumns={"repeat(auto-fill, minmax(200px, 1fr))"}
-    >
-      <AddViewTile />
-      {viewsList.map(view => {
-        return <ViewTile key={view.globallyUniqueId} view={view} />;
-      })}
+    <Box display={"grid"} gridTemplateRows="48px 1fr" rowGap="5">
+      <Box
+        backgroundColor="white"
+        boxShadow="md"
+        display="flex"
+        alignItems="center"
+        padding="4"
+      >
+        <Stack direction="row" marginLeft="auto" alignItems="center">
+          <SortPopover
+            toggleSort={() => {
+              setSortDescending(sortOrder => !sortOrder);
+            }}
+          />
+          <SearchInput
+            onChange={event => {
+              setSearchValue(event.target.value);
+            }}
+          />
+        </Stack>
+      </Box>
+      <Box
+        display={"grid"}
+        gap="4"
+        padding="4"
+        gridTemplateColumns={"repeat(auto-fill, minmax(200px, 1fr))"}
+      >
+        <AddViewTile />
+        {viewsList.map(view => {
+          return <ViewTile key={view.globallyUniqueId} view={view} />;
+        })}
+      </Box>
     </Box>
   );
 };

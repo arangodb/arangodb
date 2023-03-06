@@ -14,7 +14,13 @@ interface ViewsListResponse extends ArangojsResponse {
   body: { result: Array<SearchViewType> };
 }
 
-export const useViewsList = () => {
+export const useViewsList = ({
+  searchValue,
+  sortDescending
+}: {
+  searchValue: string;
+  sortDescending: boolean;
+}) => {
   const { data, ...rest } = useSWR<ViewsListResponse>("/view", path => {
     return (getApiRouteForCurrentDB().get(path) as any) as Promise<
       ViewsListResponse
@@ -22,9 +28,9 @@ export const useViewsList = () => {
   });
   const result = data?.body?.result;
 
-  const [updatedViewsList, setUpdatedViewsList] = useState<
-    SearchViewType[] | undefined
-  >(result);
+  const [viewsList, setViewsList] = useState<SearchViewType[] | undefined>(
+    result
+  );
 
   const checkProgress = () => {
     const callback = (_: any, lockedViews: { collection: string }[]) => {
@@ -36,7 +42,15 @@ export const useViewsList = () => {
         }
         return { ...view, isLocked: false };
       });
-      setUpdatedViewsList(newViewsList);
+      if (newViewsList) {
+        setViewsList(
+          filterAndSortViews({
+            viewsList: newViewsList,
+            searchValue,
+            sortDescending
+          })
+        );
+      }
     };
     if (!window.frontendConfig.ldapEnabled) {
       window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", callback);
@@ -54,5 +68,32 @@ export const useViewsList = () => {
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
-  return { viewsList: updatedViewsList, ...rest };
+
+  useEffect(() => {
+    setViewsList(
+      filterAndSortViews({ viewsList: result, searchValue, sortDescending })
+    );
+  }, [searchValue, result, sortDescending]);
+  return { viewsList, ...rest };
+};
+
+const filterAndSortViews = ({
+  viewsList,
+  searchValue,
+  sortDescending
+}: {
+  viewsList: Array<SearchViewType> | undefined;
+  searchValue: string;
+  sortDescending: boolean;
+}) => {
+  return viewsList
+    ?.filter(view => {
+      return view.name.includes(searchValue);
+    })
+    .sort((a, b) => {
+      if (a.name > b.name) {
+        return sortDescending ? -1 : 1;
+      }
+      return sortDescending ? 1 : -1;
+    });
 };
