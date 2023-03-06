@@ -1096,7 +1096,17 @@ if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
   message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
 endif ()
 
-find_package(OpenSSL REQUIRED)
+if (WIN32)
+  # Attempt to find ArangoDB CI compiled OpenSSL
+  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
+  find_package(OpenSSL REQUIRED PATHS ${OPENSSL_ROOT_DIR})
+  if (NOT OPENSSL_FOUND)
+    message ("System-wide attempt to find OpenSSL:")
+    find_package(OpenSSL REQUIRED)
+  endif ()
+else ()
+  find_package(OpenSSL REQUIRED)
+endif ()
 
 if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
