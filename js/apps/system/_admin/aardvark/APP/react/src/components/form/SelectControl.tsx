@@ -27,9 +27,6 @@ export const SelectControl = (props: InputControlProps) => {
         isDisabled={isSubmitting}
         menuPortalTarget={document.body}
         {...selectProps}
-        getOptionValue={option => {
-          return option.value;
-        }}
         styles={{
           ...selectProps?.styles,
           menuPortal: (base) => ({ ...base, zIndex: 9999 }),
