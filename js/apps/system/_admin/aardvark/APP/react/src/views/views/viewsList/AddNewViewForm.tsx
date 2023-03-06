@@ -18,6 +18,16 @@ const typeOptions = [
     value: "search-alias"
   }
 ];
+const compressionOptions = [
+  {
+    label: "LZ4",
+    value: "lz4"
+  },
+  {
+    label: "None",
+    value: "none"
+  }
+];
 
 export const AddNewViewForm = () => {
   return (
@@ -30,6 +40,13 @@ export const AddNewViewForm = () => {
           name="type"
           selectProps={{
             options: typeOptions
+          }}
+        />
+        <FormLabel htmlFor="primarySortCompression">Primary Sort Compression</FormLabel>
+        <SelectControl
+          name="primarySortCompression"
+          selectProps={{
+            options: compressionOptions
           }}
         />
       </Box>

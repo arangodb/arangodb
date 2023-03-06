@@ -33,11 +33,11 @@ export const PrimarySortAccordionItem = () => {
 const directionOptions = [
   {
     label: "Ascending",
-    value: "ASC"
+    value: "asc"
   },
   {
     label: "Descending",
-    value: "DSC"
+    value: "dsc"
   }
 ];
 const PrimarySortFields = () => {
