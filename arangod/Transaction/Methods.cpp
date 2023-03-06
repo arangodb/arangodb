@@ -3176,12 +3176,10 @@ Future<Result> Methods::replicateOperations(
                        .template getFeature<EngineSelectorFeature>()
                        .engine();
 
-    bool refill = (options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+    bool const refill = engine.autoRefillIndexCachesOnFollowers() && 
+                  ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
                   (options.refillIndexCaches == RefillIndexCaches::kDefault &&
-                   engine.autoRefillIndexCaches());
-    if (!engine.autoRefillIndexCachesOnFollowers()) {
-      refill = false;
-    }
+                   engine.autoRefillIndexCaches()));
 
     TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
       if (refill) {
