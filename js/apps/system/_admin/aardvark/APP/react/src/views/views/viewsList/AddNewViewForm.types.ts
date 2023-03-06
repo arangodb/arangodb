@@ -7,4 +7,5 @@ export type AddNewViewFormValues = {
   writebufferIdle: string;
   writebufferActive: string;
   writebufferSizeMax: string;
+  indexes: { collection: string; index: string }[];
 };

@@ -5,6 +5,7 @@ import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 import { AdvancedAccordionItem } from "./AdvancedAccordionItem";
+import { IndexesForm } from "./IndexesForm";
 import { PrimarySortAccordionItem } from "./PrimarySortAccordionItem";
 import { StoredValuesAccordionItem } from "./StoredValuesAccordionItem";
 
@@ -79,5 +80,5 @@ const ViewTypeForm = () => {
       </Box>
     );
   }
-  return <>search-alias</>;
+  return <IndexesForm />;
 };

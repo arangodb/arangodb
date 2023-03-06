@@ -41,7 +41,13 @@ export const AddNewViewModal = ({
           ],
           writebufferIdle: 64,
           writebufferActive: 0,
-          writebufferSizeMax: 33554432
+          writebufferSizeMax: 33554432,
+          indexes: [
+            {
+              collection: "",
+              index: ""
+            }
+          ]
         }}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
