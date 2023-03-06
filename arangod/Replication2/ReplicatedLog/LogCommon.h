@@ -185,12 +185,11 @@ struct LogRange {
     LogIndex current;
   };
 
-  friend auto operator==(LogRange, LogRange) noexcept -> bool = default;
-
   [[nodiscard]] auto begin() const noexcept -> Iterator;
   [[nodiscard]] auto end() const noexcept -> Iterator;
 };
 
+auto operator==(LogRange, LogRange) noexcept -> bool;
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 
 template<class Inspector>
@@ -475,9 +474,11 @@ struct CompactionStopReason {
         -> bool = default;
   };
   struct LeaderBlocksReleaseEntry {
+    LogIndex lowestIndexToKeep;
     template<class Inspector>
     friend auto inspect(Inspector& f, LeaderBlocksReleaseEntry& x) {
-      return f.object(x).fields();
+      return f.object(x).fields(
+          f.field("lowestIndexToKeep", x.lowestIndexToKeep));
     }
     friend auto operator==(LeaderBlocksReleaseEntry const& left,
                            LeaderBlocksReleaseEntry const& right) noexcept
@@ -521,6 +522,7 @@ auto to_string(CompactionStopReason const&) -> std::string;
 
 struct CompactionResult {
   std::size_t numEntriesCompacted{0};
+  LogRange range;
   std::optional<CompactionStopReason> stopReason;
 
   friend auto operator==(CompactionResult const& left,

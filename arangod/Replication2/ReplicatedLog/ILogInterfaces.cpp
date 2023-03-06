@@ -23,7 +23,6 @@
 
 #include "ILogInterfaces.h"
 
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 

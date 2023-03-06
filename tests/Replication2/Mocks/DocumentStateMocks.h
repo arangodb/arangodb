@@ -185,6 +185,7 @@ struct MockDocumentStateTransaction
   MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
+  MOCK_METHOD(bool, containsShard, (ShardID const&), (override));
 };
 
 struct MockDocumentStateTransactionHandler
@@ -205,6 +206,8 @@ struct MockDocumentStateTransactionHandler
       ensureTransaction,
       (replicated_state::document::DocumentLogEntry const& doc), (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
+  MOCK_METHOD(void, abortTransactionsForShard, (ShardID const& tid),
+              (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
 

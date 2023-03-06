@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "Geo/Coding.h"
+
 #include <s2/s2region_term_indexer.h>
 
 namespace arangodb {
@@ -52,6 +54,7 @@ struct GeoOptions {
   static constexpr int32_t kDefaultMaxLevel = 23;  // ~1m
   static constexpr int8_t kDefaultLevelMod = 1;
 
+  // TODO(MBkkt) different maxCells can be set on every insertion/querying
   int32_t maxCells{kDefaultMaxCells};
   int32_t minLevel{kDefaultMinLevel};
   int32_t maxLevel{kDefaultMaxLevel};
@@ -80,7 +83,8 @@ enum class Parsing : uint8_t {
 
 template<Parsing p>
 bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
-                std::vector<S2Point>& cache, bool legacy);
+                std::vector<S2LatLng>& cache, bool legacy,
+                geo::coding::Options options, Encoder* encoder);
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng point);
 

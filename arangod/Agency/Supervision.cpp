@@ -2762,8 +2762,16 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
     if (spec.plan) {
       // lookup all replicated logs
       for (auto const& logId : spec.plan->shardSheaves) {
-        auto log = parseReplicatedLogAgency(root, dbName,
-                                            to_string(logId.replicatedLog));
+        std::optional<replication2::agency::Log> log;
+        try {
+          log = parseReplicatedLogAgency(root, dbName,
+                                         to_string(logId.replicatedLog));
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("46717", ERR, Logger::SUPERVISION)
+              << "failed to parse replicated log " << dbName << "/"
+              << logId.replicatedLog << ": " << ex.what();
+          throw;
+        }
         if (log.has_value()) {
           spec.logs[logId.replicatedLog] = std::move(*log);
         }
@@ -2771,11 +2779,37 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
 
       // lookup all plan collections
       for (auto const& [cid, _] : spec.plan->collections) {
-        auto coll = parseIfExists<CollectionPlanSpecification>(
-            root, basics::StringUtils::concatT("/Plan/Collections/", dbName,
-                                               "/", cid));
+        std::optional<CollectionPlanSpecification> coll;
+        try {
+          coll = parseIfExists<CollectionPlanSpecification>(
+              root, basics::StringUtils::concatT("/Plan/Collections/", dbName,
+                                                 "/", cid));
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("46716", ERR, Logger::SUPERVISION)
+              << "failed to parse plan collection " << dbName << "/" << cid
+              << ": " << ex.what();
+          throw;
+        }
         if (coll.has_value()) {
           spec.planCollections[cid] = std::move(*coll);
+        }
+
+        // parse current collection
+        {
+          std::optional<CollectionCurrentSpecification> current;
+          try {
+            current = parseIfExists<CollectionCurrentSpecification>(
+                root, basics::StringUtils::concatT("/Current/Collections/",
+                                                   dbName, "/", cid));
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("48716", ERR, Logger::SUPERVISION)
+                << "failed to parse current collection " << dbName << "/" << cid
+                << ": " << ex.what();
+            throw;
+          }
+          if (current.has_value()) {
+            spec.currentCollections[cid] = std::move(*current);
+          }
         }
       }
     }
@@ -2822,7 +2856,7 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
         << "Supervision caught exception while parsing replicated log" << dbName
         << "/" << idString << ": " << err.what();
-    throw;
+    return envelope;
   }
   if (maybeLog.has_value()) {
     try {

@@ -35,8 +35,13 @@ using namespace arangodb::replication2;
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right)
     -> bool {
-  return arangodb::basics::VelocyPackHelper::equal(left.slice(), right.slice(),
-                                                   true);
+  if (left.slice().isString() and right.slice().isString()) {
+    return left.slice().stringView() == right.slice().stringView();
+  } else {
+    // We do not use velocypack compare here, since this is used only in tests
+    // and velocypack compare always has ICU as dependency.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 }
 
 LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}

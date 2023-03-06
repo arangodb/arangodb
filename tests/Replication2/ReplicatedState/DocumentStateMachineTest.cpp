@@ -34,7 +34,12 @@
 #include "Mocks/Death_Test.h"
 #include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
-#include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Transaction/Manager.h"
+#include "velocypack/Value.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "gmock/gmock.h"
 
@@ -43,9 +48,9 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
-using namespace arangodb::replication2::test;
 
 struct DocumentStateMachineTest : testing::Test {
   std::vector<std::string> collectionData;
@@ -1236,7 +1241,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_EQ(logIndex, LogIndex{});
 }
 
-TEST_F(DocumentStateMachineTest, leader_create_shard) {
+TEST_F(DocumentStateMachineTest, leader_create_and_drop_shard) {
   using namespace testing;
 
   DocumentFactory factory =
@@ -1267,6 +1272,26 @@ TEST_F(DocumentStateMachineTest, leader_create_shard) {
       .Times(1);
 
   leaderState->createShard(shardId, collectionId, velocypack::SharedSlice());
+
+  Mock::VerifyAndClearExpectations(stream.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  EXPECT_CALL(*stream, insert).Times(1).WillOnce([&](DocumentLogEntry entry) {
+    EXPECT_EQ(entry.operation, OperationType::kDropShard);
+    EXPECT_EQ(entry.shardId, shardId);
+    EXPECT_EQ(entry.collectionId, collectionId);
+    return LogIndex{12};
+  });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
+
+  leaderState->dropShard(shardId, collectionId);
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {

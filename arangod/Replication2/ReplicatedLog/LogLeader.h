@@ -42,7 +42,6 @@
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
@@ -95,14 +94,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<LogCore>&& logCore,
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IReplicatedStateHandle> stateHandle,
-      std::shared_ptr<IAbstractFollowerFactory> followerFactory)
-      -> std::shared_ptr<LogLeader>;
+      std::unique_ptr<IReplicatedStateHandle>,
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+      std::shared_ptr<IScheduler> scheduler) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
@@ -140,8 +139,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
 
-  [[nodiscard]] auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  auto resign2() && -> std::tuple<
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
 
@@ -179,8 +179,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog, std::shared_ptr<IReplicatedStateHandle>,
-            std::shared_ptr<IAbstractFollowerFactory> followerFactory);
+            InMemoryLog inMemoryLog, std::unique_ptr<IReplicatedStateHandle>,
+            std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+            std::shared_ptr<IScheduler> scheduler);
 
  private:
   struct GuardedLeaderData;
@@ -208,7 +209,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     bool snapshotAvailable{true};
     MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
-    Scheduler::WorkHandle lastRequestHandle;
+    IScheduler::WorkItemHandle lastRequestHandle;
 
     enum class State {
       IDLE,
@@ -224,7 +225,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // The LogCore parameter will (and must) stay untouched in case of an
     // exception.
     LocalFollower(LogLeader& self, LoggerContext logContext,
-                  std::unique_ptr<LogCore>&& logCore, TermIndexPair lastIndex);
+                  std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
+                  TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -234,16 +236,18 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto getParticipantId() const noexcept
         -> ParticipantId const& override;
-    [[nodiscard]] auto appendEntries(AppendEntriesRequest request)
+    [[nodiscard]] auto appendEntries(AppendEntriesRequest methods)
         -> arangodb::futures::Future<AppendEntriesResult> override;
 
-    [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<LogCore>;
+    [[nodiscard]] auto resign() && noexcept
+        -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
     [[nodiscard]] auto release(LogIndex stop) const -> Result;
 
    private:
     LogLeader& _leader;
     LoggerContext const _logContext;
-    Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
+    Guarded<std::unique_ptr<replicated_state::IStorageEngineMethods>>
+        _guardedMethods;
   };
 
   struct PreparedAppendEntryRequest {
@@ -269,7 +273,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
-    GuardedLeaderData(LogLeader& self, InMemoryLog inMemoryLog);
+    GuardedLeaderData(LogLeader& self, InMemoryLog inMemoryLog,
+                      std::unique_ptr<IReplicatedStateHandle>);
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
@@ -339,6 +344,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
+    std::unique_ptr<IReplicatedStateHandle> _stateHandle;
 
     // active - that is currently used to check for committed entries
     std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig;
@@ -351,8 +357,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<IReplicatedStateHandle> _stateHandle;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
+  std::shared_ptr<IScheduler> const _scheduler;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
@@ -379,9 +385,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   static void executeAppendEntriesRequests(
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics, IScheduler*);
   static void handleResolvedPromiseSet(
-      ResolvedPromiseSet set,
+      replicated_log::IScheduler* sched, ResolvedPromiseSet set,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 };
 

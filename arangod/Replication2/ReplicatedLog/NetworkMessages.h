@@ -99,8 +99,8 @@ auto inspect(Inspector& f, MessageId& x) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 struct AppendEntriesResult {
-  LogTerm const logTerm;
-  ErrorCode const errorCode;
+  LogTerm logTerm;
+  ErrorCode errorCode;
   AppendEntriesErrorReason reason;
   MessageId messageId;
   bool snapshotAvailable{false};

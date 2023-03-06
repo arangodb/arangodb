@@ -405,8 +405,9 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
-  auto callbackInfos =
-      writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
+  auto callbackInfos = writer.prepareCurrentWatcher(
+      databaseName, waitForSyncReplication,
+      server.getFeature<ClusterFeature>().agencyCache());
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
@@ -556,17 +557,46 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   results.reserve(collectionNamesToLoad.size());
 
   auto& ci = feature.clusterInfo();
-  for (auto const& name : collectionNamesToLoad) {
-    auto c = ci.getCollection(vocbase.name(), name);
-    TRI_ASSERT(c.get() != nullptr);
-    // We never get a nullptr here because an exception is thrown if the
-    // collection does not exist. Also, the createCollection should have
-    // failed before.
-    if (!c->isSmartChild()) {
-      // Smart Child collections should be visible after create.
-      results.emplace_back(std::move(c));
+  if (isNewDatabase) {
+    // Call dangerous method on ClusterInfo to generate only collection stubs to
+    // use here.
+    auto lookupList = ci.generateCollectionStubs(vocbase);
+    for (auto const& name : collectionNamesToLoad) {
+      try {
+        auto c = lookupList.at(name);
+        TRI_ASSERT(c.get() != nullptr) << "Collection created as nullptr. "
+                                          "Should be detected in ClusterInfo.";
+        TRI_ASSERT(!c->isSmartChild())
+            << "For now we do not have SmartGraphs during database creation, "
+               "if that ever changes remove this assertion.";
+
+        // NOTE: The if is not strictly necessary now, see above assertion, just
+        // future proof.
+        if (!c->isSmartChild()) {
+          // Smart Child collections should not be visible after create.
+          results.emplace_back(std::move(c));
+        }
+      } catch (...) {
+        TRI_ASSERT(false) << "Collection " << name
+                          << " was not created during Database creation.";
+        return Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                      "Required Collection " + name + " could not be created."};
+      }
+    }
+  } else {
+    for (auto const& name : collectionNamesToLoad) {
+      auto c = ci.getCollection(vocbase.name(), name);
+      TRI_ASSERT(c.get() != nullptr);
+      // We never get a nullptr here because an exception is thrown if the
+      // collection does not exist. Also, the createCollection should have
+      // failed before.
+      if (!c->isSmartChild()) {
+        // Smart Child collections should be visible after create.
+        results.emplace_back(std::move(c));
+      }
     }
   }
+
   return {std::move(results)};
 }
 }  // namespace
@@ -612,7 +642,6 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   std::unordered_map<std::string, replication2::agency::CollectionGroupId>
       selfCreatedGroups;
   for (auto& col : collections) {
-#if false
     if (col.distributeShardsLike.has_value()) {
       auto const& leadingName = col.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
@@ -620,14 +649,12 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         groups.addToNewGroup(groupId, col.id);
         col.groupId = groupId;
       } else {
-        // TODO: This code needs to look-up the CollectionID.
-        // It is not yet added as part of the Collection Properties.
         auto c = ci.getCollection(databaseName, leadingName);
         TRI_ASSERT(c.get() != nullptr);
         // We never get a nullptr here because an exception is thrown if the
         // collection does not exist. Also, the createCollection should have
         // failed before.
-        auto groupId = replication2::agency::CollectionGroupId{c->id().id()};
+        auto groupId = c->groupID();
         groups.addToExistingGroup(groupId, col.id);
         col.groupId = groupId;
       }
@@ -638,13 +665,6 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
       selfCreatedGroups.emplace(col.name, groupId);
       col.groupId = groupId;
     }
-#else
-    // Create a new CollectionGroup
-    auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
-    // Remember it for reuse
-    selfCreatedGroups.emplace(col.name, groupId);
-    col.groupId = groupId;
-#endif
   }
   return groups;
 }

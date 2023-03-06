@@ -31,10 +31,14 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -60,12 +64,31 @@ DropCollection::DropCollection(MaintenanceFeature& feature,
 
 DropCollection::~DropCollection() = default;
 
+bool DropCollection::dropReplication2Shard(ShardID const& shard,
+                                           TRI_vocbase_t& vocbase) {
+  std::shared_ptr<LogicalCollection> coll;
+  Result found = methods::Collections::lookup(vocbase, shard, coll);
+  if (found.ok()) {
+    auto result = coll->getDocumentStateLeader()
+                      ->dropShard(shard, std::to_string(coll->planId().id()))
+                      .get();
+    if (result.fail()) {
+      LOG_DEVEL << "failed to drop shard: " << result.errorMessage();
+    }
+  }
+
+  return false;
+}
+
 bool DropCollection::first() {
   auto const& database = getDatabase();
   auto const& shard = getShard();
 
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;
+
+  std::string from;
+  _description.get("from", from);
 
   // Database still there?
   auto* vocbase =
@@ -74,6 +97,11 @@ bool DropCollection::first() {
     try {
       DatabaseGuard guard(*vocbase);
       auto& vocbase = guard.database();
+
+      if (vocbase.replicationVersion() == replication::Version::TWO &&
+          from == "maintenance") {
+        return dropReplication2Shard(shard, vocbase);
+      }
 
       std::shared_ptr<LogicalCollection> coll;
       Result found = methods::Collections::lookup(vocbase, shard, coll);

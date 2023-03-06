@@ -102,6 +102,8 @@ inline constexpr auto kStringFinished = std::string_view{"finished"};
 struct SnapshotParams {
   // Initiate a new snapshot.
   struct Start {
+    // TODO is this log entry actually needed? Always set to 0 by
+    //   StateHandleManager::acquireSnapshot.
     LogIndex waitForIndex;
   };
 

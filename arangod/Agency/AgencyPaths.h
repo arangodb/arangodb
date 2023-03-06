@@ -2527,6 +2527,18 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<Collections const> collections() const {
               return Collections::make_shared(shared_from_this());
             }
+
+            class Version : public StaticComponent<Version, Group> {
+             public:
+              static constexpr char const* component() noexcept {
+                return "version";
+              }
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Version const> version() const {
+              return Version::make_shared(shared_from_this());
+            }
           };
 
           std::shared_ptr<Group const> group(std::string value) const {

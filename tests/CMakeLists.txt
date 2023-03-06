@@ -330,6 +330,7 @@ target_link_libraries(arangodbtests
   arango
   arango_tests_basics
   arango_tests_replication2
+  arango_tests_replication2_pure
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd

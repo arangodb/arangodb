@@ -41,9 +41,7 @@ using namespace arangodb::replication2::replicated_state::document;
 void DocumentStateMachineFeature::prepare() {
   bool const enabled = ServerState::instance()->isDBServer();
   setEnabled(enabled);
-}
 
-void DocumentStateMachineFeature::start() {
   ArangodServer& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = s.getFeature<NetworkFeature>();

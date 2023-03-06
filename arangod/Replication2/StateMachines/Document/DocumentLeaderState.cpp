@@ -115,6 +115,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         }
       } else if (doc.operation == OperationType::kDropShard) {
         auto const& collectionId = doc.collectionId;
+        transactionHandler->abortTransactionsForShard(doc.shardId);
         auto res = data.core->dropShard(doc.shardId, collectionId);
         if (res.fail()) {
           LOG_CTX("f1eb0", FATAL, self->loggerContext)
@@ -270,18 +271,27 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
 auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
                                       velocypack::SharedSlice properties)
     -> futures::Future<Result> {
-  DocumentLogEntry entry;
-  entry.operation = OperationType::kCreateShard;
-  entry.shardId = shard;
-  entry.data = properties;
-  entry.collectionId = collectionId;
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
 
-  // TODO actually we have to block this log entry from release until the
-  // collection is actually created
-  auto const& stream = getStream();
-  auto idx = stream->insert(entry);
+    DocumentLogEntry entry;
+    entry.operation = OperationType::kCreateShard;
+    entry.shardId = shard;
+    entry.data = properties;
+    entry.collectionId = collectionId;
 
-  return stream->waitFor(idx).thenValue(
+    // TODO actually we have to block this log entry from release until the
+    // collection is actually created
+    auto const& stream = getStream();
+    auto idx = stream->insert(entry);
+
+    return stream->waitFor(idx);
+  });
+
+  return std::move(fut).thenValue(
       [self = shared_from_this(), shard = std::move(shard),
        collectionId = std::move(collectionId),
        properties = std::move(properties)](auto&&) mutable {
@@ -291,6 +301,43 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
           }
           return data.core->createShard(
               std::move(shard), std::move(collectionId), std::move(properties));
+        });
+      });
+}
+
+auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
+    -> futures::Future<Result> {
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+    DocumentLogEntry entry;
+    entry.operation = OperationType::kDropShard;
+    entry.shardId = shard;
+    entry.collectionId = collectionId;
+
+    // TODO actually we have to block this log entry from release until the
+    // collection is actually created
+    auto const& stream = getStream();
+    auto idx = stream->insert(entry);
+    return stream->waitFor(idx);
+  });
+
+  return std::move(fut).thenValue(
+      [self = shared_from_this(), shard = std::move(shard),
+       collectionId = std::move(collectionId)](auto&&) mutable {
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          // TODO we clear snapshot here, to release the shard lock. This is
+          //   very invasive and aborts all snapshot transfers. Maybe there is
+          //   a better solution?
+          self->_snapshotHandler.getLockedGuard().get()->clear();
+          auto result =
+              data.core->dropShard(std::move(shard), std::move(collectionId));
+          return result;
         });
       });
 }

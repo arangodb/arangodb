@@ -49,6 +49,7 @@ struct IDocumentStateTransactionHandler {
   virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
+  virtual void abortTransactionsForShard(ShardID const&) = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
 };
@@ -63,6 +64,7 @@ class DocumentStateTransactionHandler
   auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
+  void abortTransactionsForShard(ShardID const&) override;
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
 

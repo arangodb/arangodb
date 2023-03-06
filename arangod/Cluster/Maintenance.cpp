@@ -463,11 +463,13 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    if (replicationVersion != replication::Version::TWO) {
+    if (replicationVersion != replication::Version::TWO || isLeading) {
       // This collection is not planned anymore, can drop it
       description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
+          std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
+                                             {DATABASE, dbname},
+                                             {SHARD, colname},
+                                             {"from", "maintenance"}},
           isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
       makeDirty.insert(dbname);
       callNotify = true;
@@ -611,11 +613,16 @@ void arangodb::maintenance::diffReplicatedLogs(
       } else {
         // check if the term is the same
         bool const requiresUpdate =
-            std::invoke([&, &status = localIt->second, &spec = spec] {
+            std::invoke([&, &logStatus = localIt->second, &spec = spec] {
+              auto const& [status, server] = logStatus;
               // check if term has changed
               auto currentTerm = status.getCurrentTerm();
               if (!currentTerm.has_value() ||
                   *currentTerm != spec.currentTerm->term) {
+                return true;
+              }
+              auto rebootId = ServerState::instance()->getRebootId();
+              if (rebootId != server.rebootId) {
                 return true;
               }
 
@@ -1948,7 +1955,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto logsIter = localLogs.find(dbName);
           logsIter != std::end(localLogs)) {
         for (auto const& [id, status] : logsIter->second) {
-          reportCurrentReplicatedLog(report, status, cur, id, dbName, serverId);
+          reportCurrentReplicatedLog(report, status.status, cur, id, dbName,
+                                     serverId);
         }
       }
     } catch (std::exception const& ex) {

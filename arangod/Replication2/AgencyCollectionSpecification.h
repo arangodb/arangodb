@@ -117,6 +117,7 @@ struct Collection {
     bool isSmart{false};
     bool isDisjoint{false};
     bool cacheEnabled{false};
+    std::vector<std::string> shardKeys{};
     inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
     inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};
     inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections{
@@ -137,6 +138,18 @@ struct CollectionPlanSpecification : public Collection {
   // We think we can get away with just above shardList and CollectionGroups
   // as soon as everything is in place.
   PlanShardToServerMapping deprecatedShardMap;
+};
+
+struct CollectionCurrentShardSpecification {
+  bool error;
+  std::string errorMessage;
+  std::uint64_t errorNum;
+  std::vector<velocypack::SharedSlice> indexes;
+  std::vector<ServerID> servers;
+  std::vector<ServerID> failoverCandidates;
+};
+struct CollectionCurrentSpecification {
+  std::unordered_map<ShardID, CollectionCurrentShardSpecification> shards;
 };
 
 }  // namespace arangodb::replication2::agency

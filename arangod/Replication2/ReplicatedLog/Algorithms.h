@@ -35,7 +35,9 @@
 namespace arangodb::cluster {
 struct IFailureOracle;
 }
-
+namespace arangodb::replication2::replicated_log {
+struct TermIndexMapping;
+}
 namespace arangodb::replication2::algorithms {
 
 struct ParticipantRecord {
@@ -57,7 +59,7 @@ enum class ConflictReason {
 
 auto to_string(ConflictReason r) noexcept -> std::string_view;
 
-auto detectConflict(replicated_log::InMemoryLog const& log,
+auto detectConflict(replicated_log::TermIndexMapping const& log,
                     TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
 

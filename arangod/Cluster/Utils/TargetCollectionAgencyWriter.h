@@ -50,6 +50,7 @@ struct AgencyWriteTransaction;
 struct CurrentWatcher;
 struct IShardDistributionFactory;
 struct PlanCollectionEntryReplication2;
+class AgencyCache;
 
 struct TargetCollectionAgencyWriter {
   TargetCollectionAgencyWriter(
@@ -60,7 +61,8 @@ struct TargetCollectionAgencyWriter {
       replication2::CollectionGroupUpdates collectionGroups);
 
   [[nodiscard]] std::shared_ptr<CurrentWatcher> prepareCurrentWatcher(
-      std::string_view databaseName, bool waitForSyncReplication) const;
+      std::string_view databaseName, bool waitForSyncReplication,
+      AgencyCache& agencyCache) const;
 
   [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>> prepareCreateTransaction(
       std::string_view databaseName) const;

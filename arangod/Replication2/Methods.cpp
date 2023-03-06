@@ -178,7 +178,8 @@ struct ReplicatedLogMethodsDBServer final
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+        vocbase.getReplicatedLogLeaderById(id));
     auto idx = log->insert(std::move(payload), waitForSync);
     return log->waitFor(idx).thenValue([idx](auto&& result) {
       return std::make_pair(idx, std::forward<decltype(result)>(result));
@@ -189,7 +190,8 @@ struct ReplicatedLogMethodsDBServer final
               bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+        vocbase.getReplicatedLogLeaderById(id));
     auto indexes = std::vector<LogIndex>{};
     while (auto payload = iter.next()) {
       auto idx = log->insert(std::move(*payload));
@@ -209,7 +211,8 @@ struct ReplicatedLogMethodsDBServer final
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<LogIndex> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+        vocbase.getReplicatedLogLeaderById(id));
     auto idx = log->insert(std::move(payload), waitForSync);
     return {idx};
   }

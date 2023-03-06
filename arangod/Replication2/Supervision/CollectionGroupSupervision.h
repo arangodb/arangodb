@@ -47,6 +47,7 @@ struct DropCollectionPlan {
 };
 struct DropCollectionGroup {
   agency::CollectionGroupId gid;
+  std::vector<agency::CollectionGroupPlanSpecification::ShardSheaf> logs;
 };
 struct AddCollectionToPlan {
   CollectionID cid;
@@ -89,12 +90,16 @@ struct CollectionGroup {
   std::optional<agency::CollectionGroupCurrentSpecification> current;
 
   std::unordered_map<LogId, agency::Log> logs;
+  // TODO Make one map with optional plan and current?
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionTargetSpecification>
       targetCollections;
   std::unordered_map<arangodb::CollectionID,
                      agency::CollectionPlanSpecification>
       planCollections;
+  std::unordered_map<arangodb::CollectionID,
+                     agency::CollectionCurrentSpecification>
+      currentCollections;
 };
 
 struct UniqueIdProvider {
@@ -110,7 +115,7 @@ auto checkCollectionGroup(DatabaseID const& database,
 
 auto executeCheckCollectionGroup(
     DatabaseID const& database, std::string const& logIdString,
-    CollectionGroup const& log,
+    CollectionGroup const& group,
     replicated_log::ParticipantsHealth const& health, UniqueIdProvider& uniqid,
     arangodb::agency::envelope envelope) noexcept -> arangodb::agency::envelope;
 

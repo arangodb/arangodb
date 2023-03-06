@@ -185,4 +185,19 @@ auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
   return _transactions;
 }
 
+void DocumentStateTransactionHandler::abortTransactionsForShard(
+    ShardID const& sid) {
+  for (auto it = _transactions.begin(); it != _transactions.end();) {
+    auto const& [tid, trx] = *it;
+    if (it->second->containsShard(sid)) {
+      auto result = trx->abort();
+      ADB_PROD_ASSERT(result.ok())
+          << result.errorMessage();  // TODO error handling
+      it = _transactions.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 }  // namespace arangodb::replication2::replicated_state::document
