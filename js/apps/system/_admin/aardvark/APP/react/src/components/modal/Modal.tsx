@@ -11,7 +11,7 @@ export const Modal = (modalProps: ModalProps) => {
   return (
     <ChakraModal {...rest}>
       <ModalOverlay />
-      <ModalContent>{children}</ModalContent>
+      <ModalContent marginX="4">{children}</ModalContent>
     </ChakraModal>
   );
 };
