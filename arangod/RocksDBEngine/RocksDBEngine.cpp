@@ -2307,6 +2307,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
   uint64_t totalArchiveSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
@@ -2314,6 +2315,12 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
       // we are only interested in files of the archive
+      ++liveFiles;
+      LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
+          << "inspected WAL file #" << current << "/" << files.size()
+          << ", filename: '" << f->PathName()
+          << "', start sequence: " << f->StartSequence()
+          << " is not an archived WAL file";
       continue;
     }
 
@@ -2331,27 +2338,48 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // following, we need to take its start tick into account as well, because
     // the following file's start tick can be assumed to be the end tick of the
     // current file!
+    bool eligibleStep1 = false;
+    bool eligibleStep2 = false;
     if (f->StartSequence() < minTickToKeep && current < files.size() - 1) {
+      eligibleStep1 = true;
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
+        eligibleStep2 = true;
         // this file will be removed because it does not contain any data we
         // still need
-        auto const [it, emplaced] = _prunableWalFiles.try_emplace(
-            f->PathName(), TRI_microtime() + _pruneWaitTime);
+        double stamp = TRI_microtime() + _pruneWaitTime;
+        auto const [it, emplaced] =
+            _prunableWalFiles.try_emplace(f->PathName(), stamp);
         if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
+              << ", expire stamp " << stamp
               << " added to prunable list because it is not needed anymore";
           TRI_ASSERT(it != _prunableWalFiles.end());
+        } else {
+          LOG_TOPIC("d2c9e", TRACE, Logger::ENGINES)
+              << "unable to add WAL file #" << current << "/" << files.size()
+              << ", filename: '" << f->PathName()
+              << "', start sequence: " << f->StartSequence()
+              << " to list of prunable WAL files. file already present in list "
+                 "with expire stamp "
+              << it->second;
         }
       }
     }
+
+    LOG_TOPIC("ec350", TRACE, Logger::ENGINES)
+        << "inspected WAL file #" << current << "/" << files.size()
+        << ", filename: '" << f->PathName()
+        << "', start sequence: " << f->StartSequence()
+        << ", eligible step1: " << eligibleStep1
+        << ", step2: " << eligibleStep2;
   }
 
-  LOG_TOPIC("01e20", TRACE, Logger::ENGINES)
-      << "found " << files.size() << " WAL file(s), with " << archivedFiles
-      << " files in the archive, "
+  LOG_TOPIC("01e20", DEBUG, Logger::ENGINES)
+      << "found " << files.size() << " WAL file(s), with " << liveFiles
+      << " live file(s) and " << archivedFiles << " file(s) in the archive, "
       << "number of prunable files: " << _prunableWalFiles.size();
 
   if (_maxWalArchiveSizeLimit > 0 &&
@@ -2452,9 +2480,15 @@ void RocksDBEngine::pruneWalFiles() {
       // but only if there are no other threads currently inside the WAL tailing
       // section
       deleteFile = purgeEnabler.canPurge();
+      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking overflowed file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     } else if ((*it).second < TRI_microtime()) {
       // file has expired, and it is always safe to delete it
       deleteFile = true;
+      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking expired file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     }
 
     if (deleteFile) {
@@ -2467,6 +2501,9 @@ void RocksDBEngine::pruneWalFiles() {
         // otherwise RocksDB may complain about non-existing files and log a big
         // error message
         s = _db->DeleteFile((*it).first);
+        LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
+            << "calling RocksDB DeleteFile for WAL file '" << (*it).first
+            << "'. status: " << rocksutils::convertStatus(s).errorMessage();
       } else {
         LOG_TOPIC("c2cc9", DEBUG, Logger::ENGINES)
             << "to-be-deleted RocksDB WAL file '" << (*it).first
@@ -2493,7 +2530,7 @@ void RocksDBEngine::pruneWalFiles() {
 
   _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
 
-  LOG_TOPIC("82a4c", TRACE, Logger::ENGINES)
+  LOG_TOPIC("82a4c", DEBUG, Logger::ENGINES)
       << "prune WAL files started with " << initialSize
       << " prunable WAL files, "
       << "current number of prunable WAL files: " << _prunableWalFiles.size();
