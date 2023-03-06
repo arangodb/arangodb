@@ -207,7 +207,10 @@ TargetCollectionAgencyWriter::prepareCreateTransaction(
     // preconditions
     writes = std::move(writes).emplace_object(
         collectionNamePath->collection(entry.getName())->str(),
-        [](VPackBuilder& builder) {});
+        [](VPackBuilder& builder) {
+          builder.openObject();
+          builder.close();
+        });
   }
 
   // Done with adding writes. Now add all preconditions
