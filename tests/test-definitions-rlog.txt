@@ -1,4 +1,4 @@
-gtest_replication2 priority=1000
+gtest_replication2 single priority=1000
 replication2_client cluster
 replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
