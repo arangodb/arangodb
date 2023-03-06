@@ -29,11 +29,14 @@
 #include "Conductor.h"
 
 #include "Inspection/VPackWithErrorT.h"
+#include "Logger/LogMacros.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/MasterContext.h"
+#include "Pregel/PregelOptions.h"
+#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
@@ -71,85 +74,32 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _executionNumber.value << "] "
+      << "[job " << _specifications.executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
-Conductor::Conductor(
-    ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
-    std::vector<CollectionID> const& vertexCollections,
-    std::vector<CollectionID> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    std::string const& algoName, VPackSlice const& config,
-    PregelFeature& feature)
+Conductor::Conductor(ExecutionSpecifications const& specifications,
+                     TRI_vocbase_t& vocbase, PregelFeature& feature)
     : _feature(feature),
-      _created(std::chrono::system_clock::now()),
       _vocbaseGuard(vocbase),
-      _executionNumber(executionNumber),
-      _algorithm(
-          AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
-      _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections) {
-  if (!config.isObject()) {
-    _userParams.add(VPackSlice::emptyObjectSlice());
-  } else {
-    _userParams.add(config);
-  }
-
-  // handle edge collection restrictions
-  if (ServerState::instance()->isCoordinator()) {
-    for (auto const& it : edgeCollectionRestrictions) {
-      for (auto const& shardId : getShardIds(it.first)) {
-        // intentionally create key in map
-        auto& restrictions = _edgeCollectionRestrictions[shardId];
-        for (auto const& cn : it.second) {
-          for (auto const& edgeShardId : getShardIds(cn)) {
-            restrictions.push_back(edgeShardId);
-          }
-        }
-      }
-    }
-  } else {
-    _edgeCollectionRestrictions = edgeCollectionRestrictions;
-  }
-
+      _specifications(specifications),
+      _algorithm(AlgoRegistry::createAlgorithm(
+          vocbase.server(), specifications.algorithm,
+          specifications.userParameters.slice())),
+      _created(std::chrono::system_clock::now()) {
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
-  _masterContext.reset(_algorithm->masterContext(config));
+  _masterContext.reset(
+      _algorithm->masterContext(specifications.userParameters.slice()));
   _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
-
-  _maxSuperstep =
-      VelocyPackHelper::getNumericValue(config, Utils::maxGSS, _maxSuperstep);
-  if (config.hasKey(Utils::maxNumIterations)) {
-    // set to "infinity"
-    _maxSuperstep = std::numeric_limits<uint64_t>::max();
-  }
-  _useMemoryMaps = VelocyPackHelper::getBooleanValue(
-      _userParams.slice(), Utils::useMemoryMapsKey, _feature.useMemoryMaps());
-
-  VPackSlice storeSlice = config.get("store");
-  _storeResults = !storeSlice.isBool() || storeSlice.getBool();
-
-  // time-to-live for finished/failed Pregel jobs before garbage collection.
-  // default timeout is 10 minutes for each conductor
-  uint64_t ttl = 600;
-  _ttl = std::chrono::seconds(
-      VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
-  LOG_PREGEL("00f5f", INFO)
-      << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
-      << "', ttl: " << _ttl.count() << "s"
-      << ", parallelism: "
-      << WorkerConfig::parallelism(_feature, _userParams.slice())
-      << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
-      << ", store: " << (_storeResults ? "yes" : "no")
-      << ", config: " << _userParams.slice().toJson();
+  LOG_PREGEL("00f5f", INFO) << fmt::format(
+      "Starting pregel in database {} with {}", vocbase.name(), specifications);
 }
 
 Conductor::~Conductor() {
@@ -174,7 +124,7 @@ void Conductor::start() {
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
-  auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
+  auto res = _initializeWorkers();
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
@@ -198,10 +148,11 @@ bool Conductor::_startGlobalStep() {
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
 
-  auto prepareGss = PrepareGlobalSuperStep{.executionNumber = _executionNumber,
-                                           .gss = _globalSuperstep,
-                                           .vertexCount = _totalVerticesCount,
-                                           .edgeCount = _totalEdgesCount};
+  auto prepareGss =
+      PrepareGlobalSuperStep{.executionNumber = _specifications.executionNumber,
+                             .gss = _globalSuperstep,
+                             .vertexCount = _totalVerticesCount,
+                             .edgeCount = _totalEdgesCount};
   auto serialized = inspection::serializeWithErrorT(prepareGss);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -254,11 +205,11 @@ bool Conductor::_startGlobalStep() {
   }
 
   // TODO make maximum configurable
-  if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
+  if (!proceed || done || _globalSuperstep >= _specifications.maxSuperstep) {
     // tells workers to store / discard results
     _timing.computation.finish();
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
-    if (_storeResults) {
+    if (_specifications.storeResults) {
       updateState(ExecutionState::STORING);
       _feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
       _timing.storing.start();
@@ -288,11 +239,12 @@ bool Conductor::_startGlobalStep() {
     VPackObjectBuilder ob(&agg);
     _aggregators->serializeValues(agg);
   }
-  auto runGss = RunGlobalSuperStep{.executionNumber = _executionNumber,
-                                   .gss = _globalSuperstep,
-                                   .vertexCount = _totalVerticesCount,
-                                   .edgeCount = _totalEdgesCount,
-                                   .aggregators = agg};
+  auto runGss =
+      RunGlobalSuperStep{.executionNumber = _specifications.executionNumber,
+                         .gss = _globalSuperstep,
+                         .vertexCount = _totalVerticesCount,
+                         .edgeCount = _totalEdgesCount,
+                         .aggregators = agg};
 
   LOG_PREGEL("d98de", DEBUG) << fmt::format("Start gss: {}", runGss);
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
@@ -488,11 +440,8 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
-                                        VPackSlice additional) {
+ErrorCode Conductor::_initializeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
   std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
@@ -500,12 +449,12 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : _vertexCollections) {
+  for (CollectionID const& collectionID : _specifications.vertexCollections) {
     resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
                 vertexMap,
                 shardList);  // store or
   }
-  for (CollectionID const& collectionID : _edgeCollections) {
+  for (CollectionID const& collectionID : _specifications.edgeCollections) {
     resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
                 edgeMap,
                 shardList);  // store or
@@ -516,10 +465,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     _dbServers.push_back(pair.first);
   }
   _status = ConductorStatus::forWorkers(_dbServers);
-  // do not reload all shard id's, this list must stay in the same order
-  if (_allShards.size() == 0) {
-    _allShards = shardList;
-  }
 
   std::string coordinatorId = ServerState::instance()->getId();
   auto const& nf =
@@ -531,23 +476,36 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     auto const& edgeShardMap = edgeMap[server];
 
     auto createWorker =
-        CreateWorker{.executionNumber = _executionNumber,
+        CreateWorker{.executionNumber = _specifications.executionNumber,
                      .algorithm = _algorithm->name(),
-                     .userParameters = _userParams,
+                     .userParameters = _specifications.userParameters,
                      .coordinatorId = coordinatorId,
-                     .useMemoryMaps = _useMemoryMaps,
-                     .edgeCollectionRestrictions = _edgeCollectionRestrictions,
+                     .useMemoryMaps = _specifications.useMemoryMaps,
+                     .edgeCollectionRestrictions =
+                         _specifications.edgeCollectionRestrictions,
                      .vertexShards = vertexShardMap,
                      .edgeShards = edgeShardMap,
                      .collectionPlanIds = collectionPlanIdMap,
-                     .allShards = _allShards};
+                     .allShards = shardList};
+
+    // TODO should be done inside conductor actor (this whole function will be
+    // moved into the conductor actor state)
+    _feature.spawnActor(
+        server,
+        // TODO will be the pid of the conductor actor
+        actor::ActorPID{.server = _feature._actorRuntime->myServerID,
+                        .database = _vocbaseGuard.database().name(),
+                        .id = {0}},
+        SpawnMessages{SpawnWorker{}});
+
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
       if (_feature.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      std::shared_ptr<IWorker> worker = _feature.worker(_executionNumber);
+      std::shared_ptr<IWorker> worker =
+          _feature.worker(_specifications.executionNumber);
 
       if (worker) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -559,8 +517,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
                                                 createWorker, _feature);
 
       TRI_ASSERT(created.get() != nullptr);
-      _feature.addWorker(std::move(created), _executionNumber);
-      worker = _feature.worker(_executionNumber);
+      _feature.addWorker(std::move(created), _specifications.executionNumber);
+      worker = _feature.worker(_specifications.executionNumber);
       TRI_ASSERT(worker);
       worker->setupWorker();
 
@@ -569,6 +527,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
+      std::string const path =
+          Utils::baseUrl(Utils::workerPrefix) + Utils::startExecutionPath;
 
       auto serialized = inspection::serializeWithErrorT(createWorker);
       if (!serialized.ok()) {
@@ -614,8 +574,8 @@ ErrorCode Conductor::_finalizeWorkers() {
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-  auto finalize =
-      FinalizeExecution{.executionNumber = _executionNumber, .store = store};
+  auto finalize = FinalizeExecution{
+      .executionNumber = _specifications.executionNumber, .store = store};
   auto serialized = inspection::serializeWithErrorT(finalize);
   if (!serialized.ok()) {
     return TRI_ERROR_FAILED;
@@ -674,7 +634,7 @@ void Conductor::finishedWorkerFinalize(Finished const& data) {
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
-      auto exe = _executionNumber;
+      auto exe = _specifications.executionNumber;
       scheduler->queue(RequestLane::CLUSTER_AQL,
                        [this, exe, self = shared_from_this()] {
                          _feature.cleanupConductor(exe);
@@ -709,12 +669,12 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  if (_storeResults) {
+  if (_specifications.storeResults) {
     return;
   }
 
   auto collectResults = CollectPregelResults{
-      .executionNumber = _executionNumber, .withId = withId};
+      .executionNumber = _specifications.executionNumber, .withId = withId};
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -747,7 +707,8 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   result.openObject();
-  result.add("id", VPackValue(std::to_string(_executionNumber.value)));
+  result.add("id",
+             VPackValue(std::to_string(_specifications.executionNumber.value)));
   result.add("database", VPackValue(_vocbaseGuard.database().name()));
   if (_algorithm != nullptr) {
     result.add("algorithm", VPackValue(_algorithm->name()));
@@ -756,7 +717,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   if (_expires != std::chrono::system_clock::time_point{}) {
     result.add("expires", VPackValue(timepointToString(_expires)));
   }
-  result.add("ttl", VPackValue(_ttl.count()));
+  result.add("ttl", VPackValue(_specifications.ttl.duration.count()));
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
 
@@ -789,15 +750,12 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  VPackSlice p = _userParams.slice().get(Utils::parallelismKey);
-  if (!p.isNone()) {
-    result.add("parallelism", p);
-  }
+  result.add("parallelism", VPackValue(_specifications.parallelism));
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
-  result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
+  result.add("useMemoryMaps", VPackValue(_specifications.useMemoryMaps));
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
@@ -894,31 +852,10 @@ void Conductor::_ensureUniqueResponse(std::string const& sender) {
   _respondedServers.insert(sender);
 }
 
-std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
-  TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-
-  std::vector<ShardID> result;
-  try {
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    result.reserve(shardIDs->size());
-    for (auto const& it : *shardIDs) {
-      result.emplace_back(it);
-    }
-  } catch (...) {
-    result.clear();
-  }
-
-  return result;
-}
-
 void Conductor::updateState(ExecutionState state) {
   _state = state;
   if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
       _state == ExecutionState::FATAL_ERROR) {
-    _expires = std::chrono::system_clock::now() + _ttl;
+    _expires = std::chrono::system_clock::now() + _specifications.ttl.duration;
   }
 }

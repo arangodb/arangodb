@@ -22,10 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IncomingCache.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -38,6 +42,7 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)

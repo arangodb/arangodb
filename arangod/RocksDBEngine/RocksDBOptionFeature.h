@@ -35,6 +35,9 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
+// TODO: remove this once we are sure to upgrade
+#define ARANGODB_ROCKSDB8
+
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -104,13 +107,19 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+#ifdef ARANGODB_ROCKSDB8
   // only used for HyperClockCache
   uint64_t _blockCacheEstimatedEntryCharge;
+#endif
   uint64_t _minBlobSize;
   uint64_t _blobFileSize;
+#ifdef ARANGODB_ROCKSDB8
   uint32_t _blobFileStartingLevel;
+#endif
   bool _enableBlobFiles;
+#ifdef ARANGODB_ROCKSDB8
   bool _enableBlobCache;
+#endif
   double _blobGarbageCollectionAgeCutoff;
   double _blobGarbageCollectionForceThreshold;
   double _bloomBitsPerKey;
@@ -131,7 +140,9 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _enableIndexCompression;
   bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
+#ifdef ARANGODB_ROCKSDB8
   bool _prepopulateBlobCache;
+#endif
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
   bool _reserveFileMetadataMemory;
