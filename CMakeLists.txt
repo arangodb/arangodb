@@ -1096,17 +1096,7 @@ if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
   message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
 endif ()
 
-if (WIN32)
-  # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
-  include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
-  if (NOT OPENSSL_FOUND)
-    message ("System-wide attempt to find OpenSSL:")
-    find_package(OpenSSL REQUIRED)
-  endif ()
-else ()
-  find_package(OpenSSL REQUIRED)
-endif ()
+find_package(OpenSSL REQUIRED)
 
 if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
