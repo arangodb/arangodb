@@ -1,11 +1,11 @@
 # Using commit hooks
 
 We automatically check the C++ code that is pushed to our repository for correct 
-formatting. There is a Github action running for all pushes that runs a code
+formatting. There is a GitHub Action running for all pushes that runs a code
 formatting check that is based on clang-format.
 This check will flag non-correctly formatted code as broken.
 
-To make sure only correctly formatted code is pushed to Github, it is recommended
+To make sure only correctly formatted code is pushed to GitHub, it is recommended
 to install a Git pre-commit hook that checks every local commit for correct code
 formatting.
 

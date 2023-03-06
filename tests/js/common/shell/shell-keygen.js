@@ -204,6 +204,7 @@ const insertInvalidSmartVertices = (vn) => {
   invalidKeys.forEach(invalidKey => {
     try {
       db[vn].insert({_key: invalidKey, value: "43"});
+      fail();
     } catch (ignore) {
     }
   });
@@ -211,6 +212,7 @@ const insertInvalidSmartVertices = (vn) => {
   invalidKeys.forEach(invalidKey => {
     try {
       db[vn].save({_key: invalidKey, value: "43"});
+      fail();
     } catch (ignore) {
     }
   });
@@ -224,11 +226,13 @@ const insertInvalidSmartVertices = (vn) => {
   try {
     // batch insert of malformed documents (wrong keys)
     db[vn].insert(batch);
+    fail();
   } catch (ignore) {
   }
   try {
     // batch insert of malformed documents (wrong keys)
     db[vn].save(batch);
+    fail();
   } catch (ignore) {
   }
 };
