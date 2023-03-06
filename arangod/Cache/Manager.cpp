@@ -33,6 +33,7 @@
 
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
@@ -207,7 +208,7 @@ void Manager::shutdown() {
 
     while (globalProcessRunning()) {
       // wait for rebalancer and migration tasks to complete
-      std::this_thread::yield();
+      basics::cpu_relax();
     }
 
     while (!_caches.empty()) {
