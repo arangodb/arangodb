@@ -37,7 +37,7 @@ const directionOptions = [
   },
   {
     label: "Descending",
-    value: "dsc"
+    value: "desc"
   }
 ];
 const PrimarySortFields = () => {
@@ -90,7 +90,7 @@ const PrimarySortFields = () => {
             <Button
               colorScheme="blue"
               onClick={() => {
-                push({ field: "", direction: "" });
+                push({ field: "", direction: "asc" });
               }}
               variant={"ghost"}
               justifySelf="start"

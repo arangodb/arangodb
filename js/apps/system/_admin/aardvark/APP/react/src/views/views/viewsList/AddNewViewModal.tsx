@@ -9,6 +9,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { AddNewViewForm } from "./AddNewViewForm";
+import { useAddView } from "./useAddView";
 
 export const AddNewViewModal = ({
   onClose,
@@ -17,6 +18,7 @@ export const AddNewViewModal = ({
   onClose: () => void;
   isOpen: boolean;
 }) => {
+  const { onAdd } = useAddView();
   return (
     <Modal size="6xl" onClose={onClose} isOpen={isOpen}>
       <ModalHeader>Create New View</ModalHeader>
@@ -28,7 +30,7 @@ export const AddNewViewModal = ({
           primarySort: [
             {
               field: "",
-              direction: ""
+              direction: "asc"
             }
           ],
           storedValues: [
@@ -37,18 +39,21 @@ export const AddNewViewModal = ({
               compression: "lz4"
             }
           ],
-          writebufferIdle: "",
-          writebufferActive: "",
-          writebufferSizeMax: ""
+          writebufferIdle: 64,
+          writebufferActive: 0,
+          writebufferSizeMax: 33554432
         }}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
         onSubmit={(values, { setSubmitting }) => {
-          setTimeout(() => {
-            alert(JSON.stringify(values, null, 2));
+          onAdd(values).then(() => {
             setSubmitting(false);
-          }, 400);
+          });
+          // setTimeout(() => {
+          //   alert(JSON.stringify(values, null, 2));
+          //   setSubmitting(false);
+          // }, 400);
         }}
       >
         {({ isSubmitting }) => (
