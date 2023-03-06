@@ -50,6 +50,7 @@
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/Conductor/ExecutionStates/VocbaseLookupInfo.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/SpawnActor.h"
@@ -361,8 +362,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
-      std::make_unique<conductor::ConductorState>(executionSpecifications,
-                                                  vocbase),
+      std::make_unique<conductor::ConductorState>(
+          executionSpecifications,
+          std::make_unique<conductor::VocbaseLookupInfo>(
+              vocbase, executionSpecifications.vertexCollections,
+              executionSpecifications.edgeCollections)),
       conductor::message::ConductorStart{});
 
   return en;
