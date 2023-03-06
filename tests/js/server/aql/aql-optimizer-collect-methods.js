@@ -95,15 +95,14 @@ function optimizerCollectMethodsTestSuite () {
 
     testNumberOfPlansWithInto : function () {
       var queries = [
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g"
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'sorted' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe OPTIONS { method: 'sorted' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j OPTIONS { method: 'sorted' } RETURN g"
       ];
       
       queries.forEach(function(query) {
         var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
-
         assertEqual(1, plans.length);
       });
     },
@@ -294,11 +293,13 @@ function optimizerCollectMethodsTestSuite () {
     },
 
     testSkip : function () {
+      let docs = [];
       for (var i = 0; i < 10000; ++i) {
-        c.insert({ value: "test" + i });
+        docs.push({ value: "test" + i });
       }
+      c.insert(docs);
 
-      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value INTO group LIMIT 1, 2 RETURN group"; 
+      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value INTO group OPTIONS { method: 'sorted' } LIMIT 1, 2 RETURN group"; 
         
       var plan = AQL_EXPLAIN(query).plan;
 
@@ -336,7 +337,7 @@ function optimizerCollectMethodsTestSuite () {
       // the expectation is that the optimizer will still use the 'sorted' method here as there are
       // sorted indexes supporting it
       var queries = [
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]", "hash" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]", "sorted" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g RETURN [ value, g ]", "sorted" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value", "hash" ],

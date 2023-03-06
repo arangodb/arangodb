@@ -47,13 +47,18 @@ static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-    RegisterId collectRegister, std::vector<std::string> aggregateTypes,
+    RegisterId collectRegister, RegisterId expressionRegister,
+    Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
+      _expressionRegister(expressionRegister),
+      _inputVariables(std::move(inputVariables)),
+      _expressionVariable(expressionVariable),
       _vpackOptions(opts),
       _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
@@ -142,7 +147,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
   if (!_infos.getAggregateTypes().empty()) {
     // reduce the aggregates
-    ValueAggregators* aggregateValues = currentGroupIt->second.get();
+    ValueAggregators* aggregateValues = currentGroupIt->second.first.get();
 
     // apply the aggregators for the group
     TRI_ASSERT(aggregateValues != nullptr &&
@@ -179,8 +184,8 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 
   if (!_infos.getAggregatedRegisters().empty()) {
-    TRI_ASSERT(_currentGroup->second != nullptr);
-    auto& aggregators = *_currentGroup->second;
+    TRI_ASSERT(_currentGroup->second.first != nullptr);
+    auto& aggregators = *_currentGroup->second.first;
     TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size();
@@ -190,6 +195,18 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
                            _lastInitializedInputRow, guard);
     }
+  }
+  if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    auto& builder = *_currentGroup->second.second;
+    builder.close();
+
+    AqlValue val(std::move(*builder.steal()));
+    AqlValueGuard guard{val, true};
+    builder.clear();
+    _currentGroup->second.second.reset();
+
+    output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
+                         guard);
   }
 }
 
@@ -316,6 +333,25 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   auto it = _allGroups.find(_nextGroup);
   if (it != _allGroups.end()) {
     // group already exists
+    if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+      auto& builder = *((*it).second.second);
+      if (_infos.getExpressionVariable() != nullptr) {
+        input.getValue(_infos.getExpressionRegister())
+            .toVelocyPack(_infos.getVPackOptions(), builder,
+                          /*resolveExternals*/ false,
+                          /*allowUnindexed*/ false);
+      } else {
+        builder.openObject();
+        for (auto const& pair : _infos.getInputVariables()) {
+          builder.add(VPackValue(pair.first));
+          input.getValue(pair.second)
+              .toVelocyPack(_infos.getVPackOptions(), builder,
+                            /*resolveExternals*/ false,
+                            /*allowUnindexed*/ false);
+        }
+        builder.close();
+      }
+    }
     return it;
   }
 
@@ -355,9 +391,34 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForGroup(_nextGroup, true));
 
+  std::unique_ptr<velocypack::Builder> builder;
+
+  if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    builder = std::make_unique<velocypack::Builder>();
+    builder->openArray();
+    if (_infos.getExpressionVariable() != nullptr) {
+      input.getValue(_infos.getExpressionRegister())
+          .toVelocyPack(_infos.getVPackOptions(), *builder,
+                        /*resolveExternals*/ false,
+                        /*allowUnindexed*/ false);
+    } else {
+      // copy variables / keep variables into result register
+      builder->openObject();
+      for (auto const& pair : _infos.getInputVariables()) {
+        builder->add(VPackValue(pair.first));
+        input.getValue(pair.second)
+            .toVelocyPack(_infos.getVPackOptions(), *builder,
+                          /*resolveExternals*/ false,
+                          /*allowUnindexed*/ false);
+      }
+      builder->close();
+    }
+  }
+
   // note: aggregateValues may be a nullptr!
-  auto [result, emplaced] =
-      _allGroups.try_emplace(std::move(_nextGroup), std::move(aggregateValues));
+  auto [result, emplaced] = _allGroups.try_emplace(
+      std::move(_nextGroup),
+      std::make_pair(std::move(aggregateValues), std::move(builder)));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 

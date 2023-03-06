@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make the hashed variant of AQL COLLECT support INTO clauses too.
+  Previously only the sorted variant of AQL COLLECT supported INTO clauses.
+
 * GORDO-1554: Fixes invalid document insertion with invalid user-specified
   keys (e.g. numeric values) into EnterpriseGraph related vertices.
 
