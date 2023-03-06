@@ -34,12 +34,8 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-// cppcheck-suppress noConstructor
 struct Vertex {
-  Vertex() noexcept : _key(), _shard(), _edges(), _active(true) {
-    TRI_ASSERT(keyLength() == 0);
-    TRI_ASSERT(active());
-  }
+  Vertex() noexcept : _key(), _shard(), _edges(), _active(true) {}
   Vertex(Vertex const&) = delete;
   Vertex(Vertex&&) = default;
   auto operator=(Vertex const& other) -> Vertex& = delete;
@@ -65,12 +61,12 @@ struct Vertex {
   void setShard(PregelShard shard) noexcept { _shard = shard; }
   [[nodiscard]] PregelShard shard() const noexcept { return _shard; }
 
+  // TODO: maybe we should hence use the construtor to set them
+  //       at creation time and not any time later
   void setKey(char const* key, uint16_t keyLength) noexcept {
     // must only be called during initial vertex creation
-    TRI_ASSERT(active());
     TRI_ASSERT(this->keyLength() == 0);
     _key = std::string(key, keyLength);
-    TRI_ASSERT(active());
     TRI_ASSERT(this->keyLength() == keyLength);
   }
 

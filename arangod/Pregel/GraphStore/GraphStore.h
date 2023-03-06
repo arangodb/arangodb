@@ -75,7 +75,6 @@ class GraphStore final {
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
              ExecutionNumber executionNumber, GraphFormat<V, E>* graphFormat);
 
-  //  uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphStoreStatus status() const { return _observables.observe(); }
