@@ -56,7 +56,7 @@ violation. Possible values are:
 - `ignore`: this will not update an existing document and simply ignore the
   error caused by a unique key constraint violation.
 
-Note that that `update`, `replace` and `ignore` will only work when the
+Note that `update`, `replace` and `ignore` will only work when the
 import document in the request contains the `_key` attribute. `update` and
 `replace` may also fail because of secondary unique key constraint violations.
 

@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Cluster/ServerState.h"
-#include "Metrics/Counter.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
@@ -100,7 +100,7 @@ class ReplicationFeature final : public ArangodFeature {
   /// must only be called after a successful call to trackTailingstart
   void trackTailingEnd() noexcept;
 
-  void trackInventoryRequest() { ++_inventoryRequests; }
+  void trackInventoryRequest() noexcept;
 
   /// @brief set the x-arango-endpoint header
   void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
@@ -111,6 +111,9 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief get max document num for quick call to _api/replication/keys to get
   /// actual keys or only doc count
   uint64_t quickKeysLimit() const { return _quickKeysLimit; }
+
+  /// @brief return a reference to the "number of clients" metric
+  metrics::Gauge<uint64_t>& clientsMetric() { return _clients; }
 
  private:
   /// @brief connection timeout for replication requests
@@ -150,6 +153,9 @@ class ReplicationFeature final : public ArangodFeature {
   uint64_t _quickKeysLimit;
 
   metrics::Counter& _inventoryRequests;
+
+  /// @brief number of currently active clients
+  metrics::Gauge<uint64_t>& _clients;
 };
 
 }  // namespace arangodb
