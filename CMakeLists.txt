@@ -885,6 +885,10 @@ function(add_compile_warnings_flags)
       endif()
     else ()
       add_compile_options(-Werror -Wno-error=deprecated-declarations)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # This option has too many false positives
+        add_compile_options(-Wno-error=maybe-uninitialized)
+      endif()
     endif ()
   endif ()
 endfunction()
@@ -895,7 +899,7 @@ endif ()
 
 
 # compiler options
-if (MSVC) 
+if (MSVC)
   message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
 
   if (USE_MINIMAL_DEBUGINFO)
@@ -929,14 +933,14 @@ else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
 
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor -Wno-error=maybe-uninitialized")
+    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
-  elseif (CMAKE_COMPILER_IS_CLANG)
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
