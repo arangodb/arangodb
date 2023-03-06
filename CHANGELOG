@@ -1,6 +1,11 @@
 v3.9.9 (2023-02-19)
 -------------------
 
+* Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
+  control whether automatic refilling of in-memory caches should happen on
+  followers or just leaders. The default value is `true`, i.e. refilling
+  happens on followers too.
+
 * Updated ArangoDB Starter to 0.15.7.
 
 * Updated OpenSSL to 1.1.1t and OpenLDAP to 2.6.4.

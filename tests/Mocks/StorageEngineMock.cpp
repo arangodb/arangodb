@@ -1612,6 +1612,12 @@ arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   return nullptr;
 }
 
+bool StorageEngineMock::autoRefillIndexCaches() const { return false; }
+
+bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
+  return false;
+}
+
 void StorageEngineMock::addOptimizerRules(
     arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
