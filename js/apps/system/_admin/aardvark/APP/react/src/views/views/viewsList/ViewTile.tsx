@@ -15,7 +15,12 @@ export const ViewTile = ({ view }: { view: SearchViewType }) => {
       cursor="pointer"
       onClick={() => history.push(`/view/${view.name}`)}
     >
-      <Box as="i" fontSize={"4xl"} className="fa fa-clone" margin={"auto"} />
+      <Box
+        as="i"
+        fontSize={"4xl"}
+        className={`fa ${view.isLocked ? "fa-spinner fa-spin" : "fa-clone"}`}
+        margin={"auto"}
+      />
       <Box
         backgroundColor="gray.700"
         color="white"
