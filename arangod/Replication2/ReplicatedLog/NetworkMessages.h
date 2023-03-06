@@ -138,6 +138,8 @@ struct AppendEntriesResult {
 #pragma GCC diagnostic pop
 #endif
 
+auto to_string(AppendEntriesResult const& res) -> std::string;
+
 struct AppendEntriesRequest {
   using EntryContainer =
       ::immer::flex_vector<InMemoryLogEntry,
