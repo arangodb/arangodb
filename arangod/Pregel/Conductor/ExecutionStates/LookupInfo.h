@@ -23,6 +23,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #include "Cluster/ClusterTypes.h"
 
