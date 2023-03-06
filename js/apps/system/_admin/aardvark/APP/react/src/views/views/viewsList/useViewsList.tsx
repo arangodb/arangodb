@@ -13,9 +13,10 @@ interface ViewsListResponse extends ArangojsResponse {
 }
 
 export const useViewsList = () => {
-  const { data } = useSWR<ViewsListResponse>("/view", path => {
-    return (getApiRouteForCurrentDB().get(path) as any) as ViewsListResponse;
+  const { data, ...rest } = useSWR<ViewsListResponse>("/view", path => {
+    return (getApiRouteForCurrentDB().get(path) as any) as Promise<
+      ViewsListResponse
+    >;
   });
-  console.log({ data, result: data && data.body.result });
-  return { viewsList: data && data.body && data.body.result };
+  return { viewsList: data && data.body && data.body.result, ...rest };
 };
