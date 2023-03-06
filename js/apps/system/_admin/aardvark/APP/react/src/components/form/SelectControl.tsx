@@ -1,6 +1,6 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import Select, { Props as ReactSelectProps } from "react-select";
+import Select, { Props as ReactSelectProps, PropsValue } from "react-select";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -15,16 +15,30 @@ export const SelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
   const [field, , helper] = useField(name);
   const { isSubmitting } = useFormikContext();
+  const value = selectProps?.options?.find(option => {
+    return (option as OptionType).value === field.value;
+  }) as PropsValue<OptionType>;
   return (
     <FormikFormControl name={name} label={label} {...rest}>
       <Select
         {...field}
-        id={name}
+        value={value}
+        inputId={name}
         isDisabled={isSubmitting}
+        menuPortalTarget={document.body}
         {...selectProps}
-        onChange={(value, action) => {
-          console.log({value, action});
-          helper.setValue(value)
+        getOptionValue={option => {
+          return option.value;
+        }}
+        styles={{
+          ...selectProps?.styles,
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+          container: base => {
+            return { ...base, width: "100%" };
+          }
+        }}
+        onChange={value => {
+          helper.setValue((value as OptionType)?.value);
         }}
       />
     </FormikFormControl>
