@@ -37,60 +37,15 @@ struct LookupInfo {
       std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>;
   using ShardsMapping = std::vector<ShardID>;
 
- private:
-  // vertices related methods:
-  [[nodiscard]] auto const& getCollectionPlanIdMapVertices() const {
-    return _collectionPlanIdMapVertices;
-  }
-  [[nodiscard]] auto const& getAllShardsVertices() const {
-    return _allShardsVertices;
-  }
-
-  // edges related methods:
-  [[nodiscard]] auto const& getCollectionPlanIdMapEdges() const {
-    return _collectionPlanIdMapEdges;
-  }
-  [[nodiscard]] auto const& getAllShardsEdges() const {
-    return _allShardsEdges;
-  }
-
  public:
   // vertices related methods:
-  [[nodiscard]] auto const& getServerMapVertices() const {
-    return _serverMapVertices;
-  }
-
+  [[nodiscard]] virtual auto getServerMapVertices() const -> ServerMapping = 0;
   // edges related methods:
-  [[nodiscard]] auto const& getServerMapEdges() const {
-    return _serverMapEdges;
-  }
-
+  [[nodiscard]] virtual auto getServerMapEdges() const -> ServerMapping = 0;
   // both combined (vertices, edges) related methods:
-  [[nodiscard]] auto&& getAllShards() const {
-    ShardsMapping allShards;
-    allShards.reserve(getAllShardsVertices().size() +
-                      getAllShardsEdges().size());
-    allShards.insert(allShards.end(), getAllShardsVertices().begin(),
-                     getAllShardsVertices().end());
-    allShards.insert(allShards.end(), getAllShardsEdges().begin(),
-                     getAllShardsEdges().end());
-    return std::move(allShards);
-  }
-  [[nodiscard]] auto&& getCollectionPlanIdMapAll() const {
-    CollectionPlanIDMapping allMapping = getCollectionPlanIdMapVertices();
-    allMapping.insert(getCollectionPlanIdMapEdges().begin(),
-                      getCollectionPlanIdMapEdges().end());
-    return std::move(allMapping);
-  }
-
- protected:
-  CollectionPlanIDMapping _collectionPlanIdMapVertices;
-  ServerMapping _serverMapVertices;
-  ShardsMapping _allShardsVertices;
-
-  CollectionPlanIDMapping _collectionPlanIdMapEdges;
-  ServerMapping _serverMapEdges;
-  ShardsMapping _allShardsEdges;
+  [[nodiscard]] virtual auto getAllShards() const -> ShardsMapping = 0;
+  [[nodiscard]] virtual auto getCollectionPlanIdMapAll() const
+      -> CollectionPlanIDMapping = 0;
 };
 
 }  // namespace arangodb::pregel::conductor

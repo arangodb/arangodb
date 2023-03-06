@@ -87,6 +87,63 @@ struct VocbaseLookupInfo : LookupInfo {
     createMappingHelper(edgesCollectionIDs, _collectionPlanIdMapEdges,
                         _serverMapEdges, _allShardsEdges);
   }
+
+ private:
+  // vertices related methods:
+  [[nodiscard]] auto const& getCollectionPlanIdMapVertices() const {
+    return _collectionPlanIdMapVertices;
+  }
+  [[nodiscard]] auto const& getAllShardsVertices() const {
+    return _allShardsVertices;
+  }
+
+  // edges related methods:
+  [[nodiscard]] auto const& getCollectionPlanIdMapEdges() const {
+    return _collectionPlanIdMapEdges;
+  }
+  [[nodiscard]] auto const& getAllShardsEdges() const {
+    return _allShardsEdges;
+  }
+
+ public:
+  // vertices related methods:
+  [[nodiscard]] auto getServerMapVertices() const -> ServerMapping override {
+    return _serverMapVertices;
+  }
+
+  // edges related methods:
+  [[nodiscard]] auto getServerMapEdges() const -> ServerMapping override {
+    return _serverMapEdges;
+  }
+
+  // both combined (vertices, edges) related methods:
+  [[nodiscard]] auto getAllShards() const -> ShardsMapping override {
+    ShardsMapping allShards;
+    allShards.reserve(getAllShardsVertices().size() +
+                      getAllShardsEdges().size());
+    allShards.insert(allShards.end(), getAllShardsVertices().begin(),
+                     getAllShardsVertices().end());
+    allShards.insert(allShards.end(), getAllShardsEdges().begin(),
+                     getAllShardsEdges().end());
+    return allShards;
+  }
+
+  [[nodiscard]] auto getCollectionPlanIdMapAll() const
+      -> CollectionPlanIDMapping override {
+    CollectionPlanIDMapping allMapping = getCollectionPlanIdMapVertices();
+    allMapping.insert(getCollectionPlanIdMapEdges().begin(),
+                      getCollectionPlanIdMapEdges().end());
+    return allMapping;
+  }
+
+ private:
+  CollectionPlanIDMapping _collectionPlanIdMapVertices;
+  ServerMapping _serverMapVertices;
+  ShardsMapping _allShardsVertices;
+
+  CollectionPlanIDMapping _collectionPlanIdMapEdges;
+  ServerMapping _serverMapEdges;
+  ShardsMapping _allShardsEdges;
 };
 
 }  // namespace arangodb::pregel::conductor

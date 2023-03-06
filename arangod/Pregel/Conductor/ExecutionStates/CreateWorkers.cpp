@@ -52,18 +52,16 @@ auto CreateWorkers::_workerSpecifications() const
       std::unordered_map<ServerID, worker::message::CreateNewWorker>{};
   for (auto const& [server, vertexShards] :
        conductor._lookupInfo->getServerMapVertices()) {
-    auto const& edgeShards =
-        conductor._lookupInfo->getServerMapEdges().at(server);
+    auto edgeShards = conductor._lookupInfo->getServerMapEdges().at(server);
     createWorkers.emplace(
         server, worker::message::CreateNewWorker{
                     .executionSpecifications = conductor._specifications,
                     .collectionSpecifications = CollectionSpecifications{
                         .vertexShards = std::move(vertexShards),
                         .edgeShards = std::move(edgeShards),
-                        .collectionPlanIds = std::move(
-                            conductor._lookupInfo->getCollectionPlanIdMapAll()),
-                        .allShards =
-                            std::move(conductor._lookupInfo->getAllShards())}});
+                        .collectionPlanIds =
+                            conductor._lookupInfo->getCollectionPlanIdMapAll(),
+                        .allShards = conductor._lookupInfo->getAllShards()}});
   }
   return createWorkers;
 }

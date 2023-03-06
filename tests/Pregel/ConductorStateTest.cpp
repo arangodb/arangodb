@@ -24,37 +24,173 @@
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
 
+#include "Basics/ResultT.h"
+
 #include <gtest/gtest.h>
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 
 struct LookupInfoMock : conductor::LookupInfo {
+  LookupInfoMock(std::vector<std::string> serverIDs) : _servers(serverIDs) {}
   ~LookupInfoMock() = default;
-};
 
-class ConductorStateTest : public ::testing::Test {
- protected:
-  LookupInfoMock _lookupInfoMock{};
-
-  ConductorStateTest() {}
-
-  auto createLookupInfoMock() -> std::unique_ptr<conductor::LookupInfo> {
-    return std::make_unique<conductor::LookupInfo>(_lookupInfoMock);
+  [[nodiscard]] auto getServerMapVertices() const -> ServerMapping override {
+    ServerMapping mapping{};
+    for (auto const& serverID : _servers) {
+      mapping.emplace(serverID,
+                      std::map<std::string, std::vector<std::string>>{});
+    }
+    return mapping;
   }
+
+  // edges related methods:
+  [[nodiscard]] auto getServerMapEdges() const -> ServerMapping override {
+    ServerMapping mapping{};
+    for (auto const& serverID : _servers) {
+      mapping.emplace(serverID,
+                      std::map<std::string, std::vector<std::string>>{});
+    }
+    return mapping;
+  }
+
+  // both combined (vertices, edges) related methods:
+  [[nodiscard]] auto getAllShards() const -> ShardsMapping override {
+    return {};
+  }
+
+  [[nodiscard]] auto getCollectionPlanIdMapAll() const
+      -> CollectionPlanIDMapping override {
+    return {};
+  }
+
+  std::vector<std::string> _servers;
 };
 
-TEST_F(ConductorStateTest,
-       must_always_be_initialized_with_initial_execution_state) {
-  auto cState =
-      ConductorState(ExecutionSpecifications(), createLookupInfoMock());
+TEST(ConductorStateTest,
+     must_always_be_initialized_with_initial_execution_state) {
+  std::vector<std::string> emptyServers{};
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(emptyServers));
   ASSERT_EQ(cState._executionState->name(), "initial");
 }
 
-TEST_F(ConductorStateTest, create_workers_state) {
-  auto cState =
-      ConductorState(ExecutionSpecifications(), createLookupInfoMock());
-  auto createWorkersState = CreateWorkers(cState);
-  auto msgs = createWorkersState.messages();
-  ASSERT_TRUE(msgs.empty());
+TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
+  std::vector<std::vector<std::string>> amountOfServers = {
+      {}, {"ServerA"}, {"ServerA", "ServerB"}};
+
+  for (auto const& servers : amountOfServers) {
+    auto cState = ConductorState(ExecutionSpecifications(),
+                                 std::make_unique<LookupInfoMock>(servers));
+    auto createWorkersState = CreateWorkers(cState);
+    auto msgs = createWorkersState.messages();
+    ASSERT_EQ(msgs.size(), servers.size());
+
+    for (auto const& serverName : servers) {
+      ASSERT_TRUE(msgs.contains(serverName));
+    }
+  }
+}
+
+TEST(CreateWorkersStateTest, check_that_conductor_creates_all_worker_pids) {
+  std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
+
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(servers));
+  auto createWorkers = CreateWorkers(cState);
+  auto msgs = createWorkers.messages();
+
+  auto created = arangodb::ResultT<message::WorkerCreated>();
+  ASSERT_TRUE(created.ok());
+  {
+    createWorkers.receive({.server = servers.at(0)}, created);
+    createWorkers.receive({.server = servers.at(1)}, created);
+    createWorkers.receive({.server = servers.at(2)}, created);
+  }
+
+  ASSERT_EQ(createWorkers.conductor._workers.size(), servers.size());
+  ASSERT_EQ(cState._workers.size(), servers.size());
+  // for (auto const& serverID : servers) {
+  //  TODO check also if proper PIDs are inserted here
+  //   enable as soon as _workers ar a std::set instead of a std::vector
+  // }
+}
+
+TEST(CreateWorkersStateTest,
+     reply_with_loading_state_as_soon_as_all_servers_replied) {
+  std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(servers));
+  auto createWorkers = CreateWorkers(cState);
+  auto msgs = createWorkers.messages();
+  ASSERT_EQ(msgs.size(), servers.size());
+
+  {
+    actor::ActorPID actorPid{.server = servers.at(0)};
+    auto receiveResponse =
+        createWorkers.receive(actorPid, message::WorkerCreated{});
+    ASSERT_EQ(receiveResponse, std::nullopt);
+  }
+  {
+    actor::ActorPID actorPid{.server = servers.at(1)};
+    auto receiveResponse =
+        createWorkers.receive(actorPid, message::WorkerCreated{});
+    ASSERT_EQ(receiveResponse, std::nullopt);
+  }
+  {
+    actor::ActorPID actorPid{.server = servers.at(2)};
+    auto receiveResponse =
+        createWorkers.receive(actorPid, message::WorkerCreated{});
+    ASSERT_TRUE(receiveResponse.has_value());
+    ASSERT_EQ(receiveResponse->get()->name(), "loading");
+  }
+}
+
+TEST(CreateWorkersStateTest, send_invalid_message_type) {
+  std::vector<std::string> servers = {"ServerA"};
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(servers));
+  auto createWorkers = CreateWorkers(cState);
+  auto msgs = createWorkers.messages();
+
+  {
+    actor::ActorPID actorPid{.server = servers.at(0)};
+    auto invalidMessage = message::ConductorStart{};
+    auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
+    // Currenty returns nullopt. After (GORDO-1553) will return error state.
+    ASSERT_EQ(receiveResponse, std::nullopt);
+  }
+}
+
+TEST(CreateWorkersStateTest, send_valid_message_to_unknown_server) {
+  std::vector<std::string> servers = {"ServerA"};
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(servers));
+  auto createWorkers = CreateWorkers(cState);
+  auto msgs = createWorkers.messages();
+
+  {
+    actor::ActorPID unknownActorPid{.server = "UnknownServerX"};
+    auto receiveResponse =
+        createWorkers.receive(unknownActorPid, message::WorkerCreated{});
+    // Currenty returns nullopt. After (GORDO-1553) will return error state.
+    ASSERT_EQ(receiveResponse, std::nullopt);
+  }
+}
+
+TEST(CreateWorkersStateTest, receive_valid_error_message) {
+  std::vector<std::string> servers = {"ServerA"};
+  auto cState = ConductorState(ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(servers));
+  auto createWorkers = CreateWorkers(cState);
+  auto msgs = createWorkers.messages();
+
+  {
+    actor::ActorPID unknownActorPid{.server = servers.at(0)};
+    auto errorMessage = arangodb::ResultT<message::WorkerCreated>(
+        TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
+    // Currenty returns nullopt. After (GORDO-1553) will return error state.
+    ASSERT_EQ(receiveResponse, std::nullopt);
+  }
 }
