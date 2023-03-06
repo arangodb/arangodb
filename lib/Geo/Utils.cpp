@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,6 @@
 
 #include "Utils.h"
 
-#include <set>
-#include <string>
 #include <vector>
 
 #include <s2/s2latlng.h>
@@ -37,40 +35,38 @@
 #include "Geo/ShapeContainer.h"
 #include "Geo/karney/geodesic.h"
 
-namespace arangodb {
-namespace geo {
-namespace utils {
+namespace arangodb::geo::utils {
 
-Result indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
+Result indexCellsLatLng(velocypack::Slice data, bool geoJson,
                         std::vector<S2CellId>& cells, S2Point& centroid) {
-  if (!data.isArray() || data.length() < 2) {
-    return TRI_ERROR_BAD_PARAMETER;
+  if (ADB_UNLIKELY(!data.isArray())) {
+    return {TRI_ERROR_BAD_PARAMETER};
   }
-
-  VPackSlice lat = data.at(isGeoJson ? 1 : 0);
-  VPackSlice lon = data.at(isGeoJson ? 0 : 1);
-  if (!lat.isNumber() || !lon.isNumber()) {
-    return TRI_ERROR_BAD_PARAMETER;
+  velocypack::ArrayIterator it{data};
+  if (ADB_UNLIKELY(it.size() != 2)) {
+    return {TRI_ERROR_BAD_PARAMETER};
   }
-  S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                      lon.getNumericValue<double>());
-  if (!ll.is_valid()) {
-    return TRI_ERROR_BAD_PARAMETER;
+  auto const first = *it;
+  if (ADB_UNLIKELY(!first.isNumber<double>())) {
+    return {TRI_ERROR_BAD_PARAMETER};
   }
+  ++it;
+  auto const second = *it;
+  if (ADB_UNLIKELY(!second.isNumber<double>())) {
+    return {TRI_ERROR_BAD_PARAMETER};
+  }
+  double lat, lon;
+  if (geoJson) {
+    lon = first.getNumber<double>();
+    lat = second.getNumber<double>();
+  } else {
+    lat = first.getNumber<double>();
+    lon = second.getNumber<double>();
+  }
+  auto ll = S2LatLng::FromDegrees(lat, lon).Normalized();
   centroid = ll.ToPoint();
   cells.emplace_back(centroid);
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// generate intervalls of list of intervals to scan
-void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                   S2Region const& region,
-                   std::vector<Interval>& sortedIntervals) {
-  std::vector<S2CellId> cover;
-  coverer->GetCovering(region, &cover);
-  TRI_ASSERT(!cover.empty());
-  TRI_ASSERT(params.cover.worstIndexedLevel == coverer->options().min_level());
-  scanIntervals(params, cover, sortedIntervals);
+  return {};
 }
 
 /// will return all the intervals including the cells containing them
@@ -84,11 +80,12 @@ void scanIntervals(QueryParams const& params,
     return;
   }
   // reserve some space
-  int pl = std::max(cover[0].level() - params.cover.worstIndexedLevel, 0);
+  auto const pl = static_cast<size_t>(
+      std::max(cover[0].level() - params.cover.worstIndexedLevel, 0));
   sortedIntervals.reserve(cover.size() + pl * cover.size());
 
   // prefix matches
-  for (S2CellId const& prefix : cover) {
+  for (auto const& prefix : cover) {
     if (prefix.is_leaf()) {
       sortedIntervals.emplace_back(prefix, prefix);
     } else {
@@ -104,7 +101,7 @@ void scanIntervals(QueryParams const& params,
     // not need
     // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
     // but polygons indexed with exact cell id [47|11] still might.
-    ::arangodb::containers::HashSet<uint64_t> parentSet;
+    containers::HashSet<uint64_t> parentSet;
     for (const S2CellId& interval : cover) {
       S2CellId cell = interval;
 
@@ -121,7 +118,7 @@ void scanIntervals(QueryParams const& params,
     }
   }
 
-  // sort these disjunct intervals
+  // sort these disjunctive intervals
   std::sort(sortedIntervals.begin(), sortedIntervals.end(), Interval::compare);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -130,10 +127,11 @@ void scanIntervals(QueryParams const& params,
     TRI_ASSERT(sortedIntervals[i].range_min <= sortedIntervals[i].range_max);
     TRI_ASSERT(sortedIntervals[i].range_max < sortedIntervals[i + 1].range_min);
     /*
-     if (std::abs((sortedIntervals[i].max.id() -
-     sortedIntervals[i + 1].min.id())) < diff) {
-     sortedIntervals[i].max = sortedIntervals.min
-     }*/
+    if (std::abs((sortedIntervals[i].max.id() -
+                  sortedIntervals[i + 1].min.id())) < diff) {
+      sortedIntervals[i].max = sortedIntervals.min
+    }
+    */
   }
   TRI_ASSERT(!sortedIntervals.empty());
   TRI_ASSERT(sortedIntervals[0].range_min < sortedIntervals.back().range_max);
@@ -143,29 +141,14 @@ void scanIntervals(QueryParams const& params,
 double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2,
                         geo::Ellipsoid const& e) {
   // Use Karney's algorithm
-  struct geod_geodesic g;
+  geod_geodesic g{};
   geod_init(&g, e.equator_radius(), e.flattening());
 
   double dist;
   geod_inverse(&g, p1.lat().degrees(), p1.lng().degrees(), p2.lat().degrees(),
-               p2.lng().degrees(), &dist, NULL, NULL);
+               p2.lng().degrees(), &dist, nullptr, nullptr);
 
   return dist;
 }
 
-S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
-                             geo::Ellipsoid const& e) {
-  // Use Karney's algorithm
-  struct geod_geodesic g;
-  geod_init(&g, e.equator_radius(), e.flattening());
-
-  double lat, lon;
-  geod_direct(&g, p.lat().degrees(), p.lng().degrees(), azimuth, dist, &lat,
-              &lon, NULL);
-
-  return S2LatLng::FromDegrees(lat, lon);
-}
-
-}  // namespace utils
-}  // namespace geo
-}  // namespace arangodb
+}  // namespace arangodb::geo::utils
