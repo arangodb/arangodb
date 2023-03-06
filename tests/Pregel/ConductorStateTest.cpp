@@ -43,7 +43,8 @@ class ConductorStateTest : public ::testing::Test {
   }
 };
 
-TEST_F(ConductorStateTest, must_always_be_initialized_with_initial_state) {
+TEST_F(ConductorStateTest,
+       must_always_be_initialized_with_initial_execution_state) {
   auto dummy = ExecutionSpecifications();
   auto cState = ConductorState(dummy, createLookupInfoMock());
   ASSERT_EQ(cState._executionState->name(), "initial");
