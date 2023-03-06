@@ -220,7 +220,6 @@ function randomTestSuite() {
       do {
         try {
           stats = pregel.status(pid);
-          internal.print("stats: " + JSON.stringify(stats));
           assertEqual(pregelTestHelpers.runFinishedSuccessfully(stats), stats.state);
         } catch (err) {
           // run was garbage collected and therefore does not exist anymore
