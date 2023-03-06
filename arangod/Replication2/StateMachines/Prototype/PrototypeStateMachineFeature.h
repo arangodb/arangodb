@@ -32,8 +32,8 @@ struct PrototypeStateMachineFeature : public ArangodFeature {
   }
 
   explicit PrototypeStateMachineFeature(Server& server);
-  void prepare() override;
   void start() override;
+  void prepare() override;
 };
 
 }  // namespace arangodb::replication2::replicated_state::prototype

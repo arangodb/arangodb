@@ -29,10 +29,8 @@
 using namespace arangodb::replication2;
 
 MeasureTimeGuard::MeasureTimeGuard(
-    std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-        histogram) noexcept
-    : _start(std::chrono::steady_clock::now()),
-      _histogram(std::move(histogram)) {}
+    metrics::Histogram<metrics::LogScale<std::uint64_t>>& histogram) noexcept
+    : _start(std::chrono::steady_clock::now()), _histogram(&histogram) {}
 
 void MeasureTimeGuard::fire() {
   if (_histogram) {
@@ -45,18 +43,3 @@ void MeasureTimeGuard::fire() {
 }
 
 MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
-
-GaugeScopedCounter::GaugeScopedCounter(
-    std::shared_ptr<metrics::Gauge<std::uint64_t>> metric) noexcept
-    : _metric(std::move(metric)) {
-  _metric->fetch_add(1);
-}
-
-GaugeScopedCounter::~GaugeScopedCounter() { fire(); }
-
-void GaugeScopedCounter::fire() noexcept {
-  if (_metric != nullptr) {
-    _metric->fetch_sub(1);
-    _metric.reset();
-  }
-}

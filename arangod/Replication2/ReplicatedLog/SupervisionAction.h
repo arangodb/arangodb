@@ -33,7 +33,6 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
-#include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Supervision/ModifyContext.h"

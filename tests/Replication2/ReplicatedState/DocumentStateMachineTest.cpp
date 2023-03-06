@@ -34,7 +34,12 @@
 #include "Mocks/Death_Test.h"
 #include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
-#include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Transaction/Manager.h"
+#include "velocypack/Value.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "gmock/gmock.h"
 
@@ -43,9 +48,9 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
-using namespace arangodb::replication2::test;
 
 struct DocumentStateMachineTest : testing::Test {
   std::vector<std::string> collectionData;

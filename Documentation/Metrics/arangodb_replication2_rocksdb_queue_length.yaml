@@ -1,0 +1,13 @@
+name: arangodb_replication2_rocksdb_queue_length
+introducedIn: "3.10.0"
+help: |
+  Length of the queue of persistence requests issued by replicated logs towards RocksDB.
+unit: number
+type: gauge
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Length of the queue of persistence requests issued by replicated logs towards RocksDB. If this list grows, RocksDB
+  can't keep up with the replicated logs.

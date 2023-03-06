@@ -133,6 +133,7 @@ struct CompactionStatus {
   struct Compaction {
     clock::time_point time;
     LogRange range;
+    std::optional<result::Error> error;
 
     friend auto operator==(Compaction const& left,
                            Compaction const& right) noexcept -> bool = default;
@@ -147,6 +148,7 @@ struct CompactionStatus {
   };
 
   std::optional<Compaction> lastCompaction;
+  std::optional<Compaction> inProgress;
   std::optional<CompactionStopReason> stop;
 
   friend auto operator==(CompactionStatus const& left,
@@ -308,3 +310,12 @@ struct GlobalStatus {
 auto to_string(GlobalStatus::SpecificationSource source) -> std::string_view;
 
 }  // namespace arangodb::replication2::replicated_log
+
+namespace arangodb::replication2::maintenance {
+
+struct LogStatus {
+  arangodb::replication2::replicated_log::QuickLogStatus status;
+  arangodb::replication2::agency::ServerInstanceReference server;
+};
+
+}  // namespace arangodb::replication2::maintenance

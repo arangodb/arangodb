@@ -629,38 +629,11 @@ Collections::create(         // create collection
   auto config = vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   auto numberOfPublicCollections = collections.size();
   // NOTE: We use index access here, as collections may be modified
   // during this code
   for (size_t i = 0; i < numberOfPublicCollections; ++i) {
     auto& col = collections[i];
-    if (col.distributeShardsLike.has_value()) {
-      // Apply distributeShardsLike overwrites
-      // TODO: Make this piece unit-testable.
-      CollectionNameResolver resolver(vocbase);
-      auto myColToDistributeLike =
-          resolver.getCollection(col.distributeShardsLike.value());
-      if (myColToDistributeLike == nullptr) {
-        return Result{
-            TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-            "Collection not found: " + col.distributeShardsLike.value() +
-                " in database " + vocbase.name()};
-      }
-      col.numberOfShards = myColToDistributeLike->numberOfShards();
-      col.replicationFactor = myColToDistributeLike->replicationFactor();
-      // TODO: writeConcern is inherited when using replication2
-      // col.writeConcern = myColToDistributeLike->writeConcern();
-    }
-
-    // make sure we have enough servers available for the replication
-    // factor
-    if (config.enforceReplicationFactor &&
-        ServerState::instance()->isCoordinator() &&
-        col.replicationFactor > ci.getCurrentDBServers().size()) {
-      return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-    }
-
     {
       // Only validate computed values
       // we do not make use of the actual ComputedValueExecutor here
@@ -981,6 +954,35 @@ Result Collections::create(
   }
 
   return {};
+}
+
+void Collections::applySystemCollectionProperties(
+    CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+    DatabaseConfiguration const& config, bool isLegacyDatabase) {
+  col.isSystem = true;
+  // that forces all collections to be on the same physical DBserver
+  auto const& designatedLeaderName = vocbase.isSystem() && !isLegacyDatabase
+                                         ? StaticStrings::UsersCollection
+                                         : StaticStrings::GraphsCollection;
+  if (col.name == designatedLeaderName) {
+    // The leading collection needs to define sharding
+    col.replicationFactor = vocbase.replicationFactor();
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      col.replicationFactor =
+          (std::max)(col.replicationFactor.value(),
+                     static_cast<uint64_t>(vocbase.server()
+                                               .getFeature<ClusterFeature>()
+                                               .systemReplicationFactor()));
+    }
+  } else {
+    // Others only follow
+    col.distributeShardsLike = designatedLeaderName;
+  }
+  [[maybe_unused]] auto res =
+      col.applyDefaultsAndValidateDatabaseConfiguration(config);
+  ADB_PROD_ASSERT(!res.fail())
+      << "Created illegal default system collection attributes: "
+      << res.errorMessage();
 }
 
 void Collections::createSystemCollectionProperties(

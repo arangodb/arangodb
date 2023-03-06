@@ -613,11 +613,16 @@ void arangodb::maintenance::diffReplicatedLogs(
       } else {
         // check if the term is the same
         bool const requiresUpdate =
-            std::invoke([&, &status = localIt->second, &spec = spec] {
+            std::invoke([&, &logStatus = localIt->second, &spec = spec] {
+              auto const& [status, server] = logStatus;
               // check if term has changed
               auto currentTerm = status.getCurrentTerm();
               if (!currentTerm.has_value() ||
                   *currentTerm != spec.currentTerm->term) {
+                return true;
+              }
+              auto rebootId = ServerState::instance()->getRebootId();
+              if (rebootId != server.rebootId) {
                 return true;
               }
 
@@ -1950,7 +1955,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto logsIter = localLogs.find(dbName);
           logsIter != std::end(localLogs)) {
         for (auto const& [id, status] : logsIter->second) {
-          reportCurrentReplicatedLog(report, status, cur, id, dbName, serverId);
+          reportCurrentReplicatedLog(report, status.status, cur, id, dbName,
+                                     serverId);
         }
       }
     } catch (std::exception const& ex) {

@@ -744,7 +744,7 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
   auto const& target = log.target;
-
+  // TODO add status report for each exit point
   if (!log.current.has_value()) {
     return;
   }
@@ -755,12 +755,19 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
     return;
   }
 
-  if (log.plan->participantsConfig.generation !=
+  ADB_PROD_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+  if (not plan.currentTerm or not plan.currentTerm->leader) {
+    return;
+  }
+
+  if (plan.participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
     return;
   }
 
-  if (!current.leader->leadershipEstablished) {
+  if (current.leader->term != plan.currentTerm->term and
+      not current.leader->leadershipEstablished) {
     return;
   }
 
@@ -856,163 +863,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // Check whether we have converged, and if so, report and set version
   // to target version
   checkConverged(ctx, log);
-}
-
-auto executeCheckReplicatedLog(DatabaseID const& dbName,
-                               std::string const& logIdString, Log log,
-                               ParticipantsHealth const& health,
-                               arangodb::agency::envelope envelope) noexcept
-    -> arangodb::agency::envelope {
-  SupervisionContext sctx;
-  auto const now = std::chrono::system_clock::now();
-  auto const logId = log.target.id;
-  auto const hasStatusReport = log.current && log.current->supervision &&
-                               log.current->supervision->statusReport;
-
-  // check if error reporting is enabled
-  if (log.current && log.current->supervision &&
-      log.current->supervision->lastTimeModified.has_value()) {
-    auto const lastMod = *log.current->supervision->lastTimeModified;
-    if ((now - lastMod) > std::chrono::seconds{15}) {
-      sctx.enableErrorReporting();
-    }
-  }
-
-  auto maxActionsTraceLength = std::invoke([&log]() {
-    if (log.target.supervision.has_value()) {
-      return log.target.supervision->maxActionsTraceLength;
-    } else {
-      return static_cast<size_t>(0);
-    }
-  });
-
-  checkReplicatedLog(sctx, log, health);
-
-  bool const hasNoExecutableAction =
-      std::holds_alternative<EmptyAction>(sctx.getAction()) ||
-      std::holds_alternative<NoActionPossibleAction>(sctx.getAction());
-  // now check if there is status update
-  if (hasNoExecutableAction) {
-    // there is only a status update
-    if (sctx.isErrorReportingEnabled()) {
-      // now compare the new status with the old status
-      if (log.current && log.current->supervision) {
-        if (log.current->supervision->statusReport == sctx.getReport()) {
-          // report did not change, do not create a transaction
-          return envelope;
-        }
-      }
-    }
-  }
-
-  auto actionCtx = arangodb::replication2::replicated_log::executeAction(
-      std::move(log), sctx.getAction());
-
-  if (sctx.isErrorReportingEnabled()) {
-    if (sctx.getReport().empty()) {
-      if (hasStatusReport) {
-        actionCtx.modify<LogCurrentSupervision>(
-            [&](auto& supervision) { supervision.statusReport.reset(); });
-      }
-    } else {
-      actionCtx.modify<LogCurrentSupervision>([&](auto& supervision) {
-        supervision.statusReport = std::move(sctx.getReport());
-      });
-    }
-  } else if (std::holds_alternative<ConvergedToTargetAction>(
-                 sctx.getAction())) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.statusReport.reset(); });
-  }
-
-  // update last time modified
-  if (!hasNoExecutableAction) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.lastTimeModified = now; });
-  }
-
-  if (!actionCtx.hasModification()) {
-    return envelope;
-  }
-
-  return buildAgencyTransaction(dbName, logId, sctx, actionCtx,
-                                maxActionsTraceLength, std::move(envelope));
-}
-
-auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
-                            SupervisionContext& sctx, ActionContext& actx,
-                            size_t maxActionsTraceLength,
-                            arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(logId)->str();
-
-  auto currentSupervisionPath = paths::current()
-                                    ->replicatedLogs()
-                                    ->database(dbName)
-                                    ->log(logId)
-                                    ->supervision()
-                                    ->str();
-
-  // If we want to keep a trace of actions, then only record actions
-  // that actually modify the data structure. This excludes the EmptyAction
-  // and the NoActionPossibleAction.
-  if (sctx.hasModifyingAction() && maxActionsTraceLength > 0) {
-    envelope = envelope.write()
-                   .push_queue_emplace(
-                       arangodb::cluster::paths::aliases::current()
-                           ->replicatedLogs()
-                           ->database(dbName)
-                           ->log(logId)
-                           ->actions()
-                           ->str(),
-                       // TODO: struct + inspect + transformWith
-                       [&](velocypack::Builder& b) {
-                         VPackObjectBuilder ob(&b);
-                         b.add("time", VPackValue(timepointToString(
-                                           std::chrono::system_clock::now())));
-                         b.add(VPackValue("desc"));
-                         std::visit([&b](auto&& arg) { serialize(b, arg); },
-                                    sctx.getAction());
-                       },
-                       maxActionsTraceLength)
-                   .precs()
-                   .isNotEmpty(paths::target()
-                                   ->replicatedLogs()
-                                   ->database(dbName)
-                                   ->log(logId)
-                                   ->str())
-                   .end();
-  }
-
-  return envelope.write()
-      .cond(actx.hasModificationFor<LogPlanSpecification>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .inc(paths::plan()->version()->str())
-                  .emplace_object(planPath, [&](VPackBuilder& builder) {
-                    velocypack::serialize(
-                        builder, actx.getValue<LogPlanSpecification>());
-                  });
-            })
-      .cond(actx.hasModificationFor<LogCurrentSupervision>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(currentSupervisionPath,
-                                  [&](VPackBuilder& builder) {
-                                    velocypack::serialize(
-                                        builder,
-                                        actx.getValue<LogCurrentSupervision>());
-                                  })
-                  .inc(paths::current()->version()->str());
-            })
-      .precs()
-      .isNotEmpty(paths::target()
-                      ->replicatedLogs()
-                      ->database(dbName)
-                      ->log(logId)
-                      ->str())
-      .end();
 }
 
 }  // namespace arangodb::replication2::replicated_log

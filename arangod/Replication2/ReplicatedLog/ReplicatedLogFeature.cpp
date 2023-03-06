@@ -43,8 +43,9 @@ using namespace arangodb::replication2::replicated_log;
 
 ReplicatedLogFeature::ReplicatedLogFeature(Server& server)
     : ArangodFeature{server, *this},
-      _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
-          server.getFeature<metrics::MetricsFeature>())),
+      _replicatedLogMetrics(
+          std::make_shared<ReplicatedLogMetricsIndirect<false>>(
+              &server.getFeature<metrics::MetricsFeature>())),
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
   static_assert(
       Server::isCreatedAfter<ReplicatedLogFeature, metrics::MetricsFeature>());
@@ -105,3 +106,8 @@ void ReplicatedLogFeature::collectOptions(
 }
 
 ReplicatedLogFeature::~ReplicatedLogFeature() = default;
+
+#include "ReplicatedLogMetrics.tpp"
+
+template struct arangodb::replication2::replicated_log::
+    ReplicatedLogMetricsIndirect<false>;

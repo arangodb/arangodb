@@ -49,40 +49,6 @@ function makeTestSuites(testSuite) {
 }
 
 /**
- * TODO this function is here temporarily and is will be removed once we have a better solution.
- * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
- * This is needed because we're using the list of participants from two places.
- */
-const syncShardsWithLogs = function(dbn) {
-  const coordinator = lh.coordinators[0];
-  let logs = lhttp.listLogs(coordinator, dbn).result;
-  let collections = lh.readAgencyValueAt(`Plan/Collections/${dbn}`);
-  for (const [colId, colInfo] of Object.entries(collections)) {
-    const shardsToLogs = lh.getShardsToLogsMapping(database, colId);
-    for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardsToLogs[shardId];
-      if (logId in logs) {
-        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
-      }
-    }
-  }
-
-  const waitForCurrent  = lh.readAgencyValueAt("Current/Version");
-  helper.agency.increaseVersion(`Plan/Version`);
-
-  lh.waitFor(() => {
-    const currentVersion  = lh.readAgencyValueAt("Current/Version");
-    if (currentVersion > waitForCurrent) {
-      return true;
-    }
-    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
-  }, 30, (e) => {
-    // We ignore this and continue. Most probably current was increased before we could observe it.
-    print(e.message);
-  });
-};
-
-/**
  * Checks if a given key exists (or not) on all servers.
  */
 const checkFollowersValue = function (servers, shardId, logId, key, value, isReplication2) {
@@ -689,8 +655,6 @@ const replicatedStateRecoverySuite = function () {
       stopServerWait(leader);
       lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, followers));
 
-      syncShardsWithLogs(database);
-
       // Check if the universal abort command appears in the log during the current term.
       let logContents = lh.dumpLogHead(logId);
       let abortAllEntryFound = _.some(logContents, entry => {
@@ -715,7 +679,6 @@ const replicatedStateRecoverySuite = function () {
 
       // Resume the dead server.
       continueServerWait(leader);
-      syncShardsWithLogs(database);
 
       // Expect to find all values on the awakened server.
       servers = {[leader]: lh.getServerUrl(leader)};
@@ -839,8 +802,6 @@ const replicatedStateSnapshotTransferSuite = function () {
             JSON.stringify(current.leader));
         }
       });
-
-      syncShardsWithLogs(database);
 
       let checkKeys = [...documents1.map(doc => doc._key)].concat([...documents2.map(doc => doc._key)]);
       let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);

@@ -405,8 +405,9 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
-  auto callbackInfos =
-      writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
+  auto callbackInfos = writer.prepareCurrentWatcher(
+      databaseName, waitForSyncReplication,
+      server.getFeature<ClusterFeature>().agencyCache());
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
@@ -556,17 +557,46 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   results.reserve(collectionNamesToLoad.size());
 
   auto& ci = feature.clusterInfo();
-  for (auto const& name : collectionNamesToLoad) {
-    auto c = ci.getCollection(vocbase.name(), name);
-    TRI_ASSERT(c.get() != nullptr);
-    // We never get a nullptr here because an exception is thrown if the
-    // collection does not exist. Also, the createCollection should have
-    // failed before.
-    if (!c->isSmartChild()) {
-      // Smart Child collections should be visible after create.
-      results.emplace_back(std::move(c));
+  if (isNewDatabase) {
+    // Call dangerous method on ClusterInfo to generate only collection stubs to
+    // use here.
+    auto lookupList = ci.generateCollectionStubs(vocbase);
+    for (auto const& name : collectionNamesToLoad) {
+      try {
+        auto c = lookupList.at(name);
+        TRI_ASSERT(c.get() != nullptr) << "Collection created as nullptr. "
+                                          "Should be detected in ClusterInfo.";
+        TRI_ASSERT(!c->isSmartChild())
+            << "For now we do not have SmartGraphs during database creation, "
+               "if that ever changes remove this assertion.";
+
+        // NOTE: The if is not strictly necessary now, see above assertion, just
+        // future proof.
+        if (!c->isSmartChild()) {
+          // Smart Child collections should not be visible after create.
+          results.emplace_back(std::move(c));
+        }
+      } catch (...) {
+        TRI_ASSERT(false) << "Collection " << name
+                          << " was not created during Database creation.";
+        return Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                      "Required Collection " + name + " could not be created."};
+      }
+    }
+  } else {
+    for (auto const& name : collectionNamesToLoad) {
+      auto c = ci.getCollection(vocbase.name(), name);
+      TRI_ASSERT(c.get() != nullptr);
+      // We never get a nullptr here because an exception is thrown if the
+      // collection does not exist. Also, the createCollection should have
+      // failed before.
+      if (!c->isSmartChild()) {
+        // Smart Child collections should be visible after create.
+        results.emplace_back(std::move(c));
+      }
     }
   }
+
   return {std::move(results)};
 }
 }  // namespace

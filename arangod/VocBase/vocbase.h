@@ -69,9 +69,12 @@ struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 struct ParticipantsConfig;
 }  // namespace agency
+namespace maintenance {
+struct LogStatus;
+}
 namespace replicated_log {
-class LogLeader;
-class LogFollower;
+struct ILogLeader;
+struct ILogFollower;
 struct ILogParticipant;
 struct LogStatus;
 struct QuickLogStatus;
@@ -197,10 +200,9 @@ struct TRI_vocbase_t {
       arangodb::replication2::agency::ParticipantsConfig const&)
       -> arangodb::Result;
 
-  [[nodiscard]] auto getReplicatedStatesQuickStatus() const
-      -> std::unordered_map<
-          arangodb::replication2::LogId,
-          arangodb::replication2::replicated_log::QuickLogStatus>;
+  [[nodiscard]] auto getReplicatedLogsStatusMap() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::maintenance::LogStatus>;
 
   [[nodiscard]] auto getReplicatedStatesStatus() const
       -> std::unordered_map<arangodb::replication2::LogId,
@@ -211,9 +213,11 @@ struct TRI_vocbase_t {
   auto getReplicatedLogById(arangodb::replication2::LogId id)
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
   auto getReplicatedLogLeaderById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader>;
   auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogFollower>;
+
+  void shutdownReplicatedLogs() noexcept;
 
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;
