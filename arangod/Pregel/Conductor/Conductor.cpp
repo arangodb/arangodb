@@ -488,16 +488,6 @@ ErrorCode Conductor::_initializeWorkers() {
                      .collectionPlanIds = collectionPlanIdMap,
                      .allShards = shardList};
 
-    // TODO should be done inside conductor actor (this whole function will be
-    // moved into the conductor actor state)
-    _feature.spawnActor(
-        server,
-        // TODO will be the pid of the conductor actor
-        actor::ActorPID{.server = _feature._actorRuntime->myServerID,
-                        .database = _vocbaseGuard.database().name(),
-                        .id = {0}},
-        SpawnMessages{SpawnWorker{}});
-
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);

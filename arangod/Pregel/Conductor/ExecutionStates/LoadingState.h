@@ -22,20 +22,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/Handler.h"
+#include <unordered_map>
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/Worker/Messages.h"
+#include "State.h"
 
 namespace arangodb::pregel::conductor {
 
-struct ConductorActor {
-  using State = ConductorState;
-  using Message = message::ConductorMessages;
-  template<typename Runtime>
-  using Handler = ConductorHandler<Runtime>;
-  static constexpr auto typeName() -> std::string_view {
-    return "Conductor Actor";
+struct ConductorState;
+
+// TODO implement in GORDO-1548
+struct Loading : ExecutionState {
+  Loading(ConductorState& conductor) : conductor{conductor} {
+    conductor._timing.loading.start();
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
   }
+  ~Loading() {
+    conductor._timing.loading.finish();
+    // TODO GORDO-1510
+    // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
+  }
+  auto name() const -> std::string override { return "loading"; };
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
+  };
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  };
+  ConductorState& conductor;
 };
 
 }  // namespace arangodb::pregel::conductor
