@@ -17,7 +17,8 @@ target_link_libraries(arango_tests_pregel
   gtest
   arango_lightweight
   arango_actor
-  date_interface
+        arango_pregel_conductor
+        date_interface
   velocypack
   fmt)
 

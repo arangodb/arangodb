@@ -1,2 +1,2 @@
-target_sources(arango_pregel PRIVATE
-  CreateWorkers.cpp)
+target_sources(arango_pregel_conductor PRIVATE
+        CreateWorkers.cpp)

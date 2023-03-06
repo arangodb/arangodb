@@ -22,6 +22,7 @@
 
 #include "Pregel/Conductor/State.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
 
 #include <gtest/gtest.h>
 
@@ -45,7 +46,15 @@ class ConductorStateTest : public ::testing::Test {
 
 TEST_F(ConductorStateTest,
        must_always_be_initialized_with_initial_execution_state) {
-  auto dummy = ExecutionSpecifications();
-  auto cState = ConductorState(dummy, createLookupInfoMock());
+  auto cState =
+      ConductorState(ExecutionSpecifications(), createLookupInfoMock());
   ASSERT_EQ(cState._executionState->name(), "initial");
+}
+
+TEST_F(ConductorStateTest, create_workers_state) {
+  auto cState =
+      ConductorState(ExecutionSpecifications(), createLookupInfoMock());
+  auto createWorkersState = CreateWorkers(cState);
+  auto msgs = createWorkersState.messages();
+  ASSERT_TRUE(msgs.empty());
 }

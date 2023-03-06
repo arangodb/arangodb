@@ -1,11 +1,6 @@
 #include "CreateWorkers.h"
 
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ServerState.h"
-#include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
-#include "VocBase/LogicalCollection.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel::conductor;
@@ -55,12 +50,10 @@ auto CreateWorkers::_workerSpecifications() const
     -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
   auto createWorkers =
       std::unordered_map<ServerID, worker::message::CreateNewWorker>{};
-  TRI_ASSERT(!conductor._lookupInfo->getServerMapVertices().empty());
   for (auto const& [server, vertexShards] :
        conductor._lookupInfo->getServerMapVertices()) {
     auto const& edgeShards =
         conductor._lookupInfo->getServerMapEdges().at(server);
-    TRI_ASSERT(!edgeShards.empty());
     createWorkers.emplace(
         server, worker::message::CreateNewWorker{
                     .executionSpecifications = conductor._specifications,
