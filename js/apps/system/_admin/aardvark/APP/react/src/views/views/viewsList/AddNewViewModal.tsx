@@ -21,7 +21,26 @@ export const AddNewViewModal = ({
     <Modal size="6xl" onClose={onClose} isOpen={isOpen}>
       <ModalHeader>Create New View</ModalHeader>
       <Formik
-        initialValues={{ name: "", type: "" }}
+        initialValues={{
+          name: "",
+          type: "arangosearch",
+          primarySortCompression: "lz4",
+          primarySort: [
+            {
+              field: "",
+              direction: ""
+            }
+          ],
+          storedValues: [
+            {
+              fields: [],
+              compression: "lz4"
+            }
+          ],
+          writebufferIdle: "",
+          writebufferActive: "",
+          writebufferSizeMax: ""
+        }}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
