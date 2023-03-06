@@ -282,8 +282,8 @@ module.exports = {
                     }
                   }
                 ],
-                ["@babel/plugin-proposal-nullish-coalescing-operator"],
-                ["@babel/plugin-proposal-optional-chaining"]
+                ["@babel/plugin-proposal-optional-chaining"],
+                ["@babel/plugin-proposal-nullish-coalescing-operator"]
               ],
               cacheDirectory: true,
               // Save disk space when time isn't as important

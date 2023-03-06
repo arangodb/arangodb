@@ -213,8 +213,8 @@ module.exports = {
                     }
                   }
                 ],
-                ["@babel/plugin-proposal-nullish-coalescing-operator"],
-                ["@babel/plugin-proposal-optional-chaining"]
+                ["@babel/plugin-proposal-optional-chaining"],
+                ["@babel/plugin-proposal-nullish-coalescing-operator"]
               ],
               // This is a feature of `babel-loader` for webpack (not Babel itself).
               // It enables caching results in ./node_modules/.cache/babel-loader/
