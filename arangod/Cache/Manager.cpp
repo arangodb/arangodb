@@ -649,8 +649,7 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
 
 void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
   TRI_ASSERT(_lock.isLockedWrite());
-  for (auto& it : _caches) {
-    std::shared_ptr<Cache>& cache = it.second;
+  for (auto& [_, cache] : _caches) {
     // skip this cache if it is already resizing or shutdown!
     if (!cache->canResize()) {
       continue;
