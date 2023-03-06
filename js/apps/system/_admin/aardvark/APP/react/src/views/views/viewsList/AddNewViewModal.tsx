@@ -63,6 +63,7 @@ export const AddNewViewModal = ({
                 };
           onAdd(finalValues).then(() => {
             setSubmitting(false);
+            onClose();
           });
         }}
       >
