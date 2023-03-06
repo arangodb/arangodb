@@ -13,7 +13,6 @@ export type BaseFormControlProps = FormControlProps & {
   name: string;
   labelProps?: FormLabelProps;
   errorMessageProps?: FormErrorMessageProps;
-  labelDirection?: "row" | "column";
 };
 export const FormikFormControl = ({
   errorMessageProps,
@@ -21,20 +20,16 @@ export const FormikFormControl = ({
   children,
   label,
   labelProps,
-  labelDirection,
   ...rest
 }: BaseFormControlProps) => {
   const [, { error, touched }] = useField(name);
   return (
-    <FormControl
-      display={labelDirection === "row" ? "flex" : ""}
-      alignItems={labelDirection === "row" ? "center" : ""}
-      isInvalid={!!error && touched}
-      {...rest}
-    >
-      <FormLabel htmlFor={name} {...labelProps}>
-        {label}
-      </FormLabel>
+    <FormControl isInvalid={!!error && touched} {...rest}>
+      {label ? (
+        <FormLabel htmlFor={name} {...labelProps}>
+          {label}
+        </FormLabel>
+      ) : null}
       {children}
       <FormErrorMessage {...errorMessageProps}>{error}</FormErrorMessage>
     </FormControl>
