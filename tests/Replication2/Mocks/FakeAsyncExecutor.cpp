@@ -22,6 +22,8 @@
 
 #include "FakeAsyncExecutor.h"
 
+#include <gtest/gtest.h>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
@@ -70,7 +72,10 @@ void SyncExecutor::operator()(
   std::move(f).operator()();
 }
 
-DelayedExecutor::~DelayedExecutor() = default;
+DelayedExecutor::~DelayedExecutor() {
+  EXPECT_TRUE(queue.empty())
+      << "Unresolved item(s) in the DelayedExecutor queue";
+}
 
 DelayedExecutor::DelayedExecutor() = default;
 

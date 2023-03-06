@@ -136,6 +136,11 @@ struct DelayedScheduler : IScheduler {
 
   auto hasWork() const noexcept -> bool { return not _queue.empty(); }
 
+  ~DelayedScheduler() {
+    EXPECT_TRUE(_queue.empty())
+        << "Unresolved item(s) in the DelayedScheduler queue";
+  }
+
  private:
   std::deque<fu2::unique_function<void()>> _queue;
 };
@@ -280,16 +285,51 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
 }
 
 TEST_F(StateManagerTest, get_follower_state_machine_early) {
-  auto term = agency::LogPlanTermSpecification{LogTerm{1}, other};
-  auto config = agency::ParticipantsConfig{
+  auto const term = LogTerm{1};
+  auto const planTerm = agency::LogPlanTermSpecification{term, other};
+  auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(term, config, myself);
-  auto status = log->getQuickStatus();
+  log->updateConfig(planTerm, config, myself);
+  auto const status = log->getQuickStatus();
   ASSERT_EQ(status.role, ParticipantRole::kFollower);
 
-  auto stateMachine = state->getFollower();
+  auto const stateMachine = state->getFollower();
   EXPECT_EQ(stateMachine, nullptr);
+
+  auto const follower =
+      std::dynamic_pointer_cast<ILogFollower>(log->getParticipant());
+  ASSERT_NE(follower, nullptr);
+  auto const leaderId = other.serverId;
+  // send an append entries, only with the leader-establishling log entry.
+  // TODO try to access the follower state machine in between, and assert that
+  //      it's inaccessible
+  auto appendEntriesFuture = std::invoke([&] {
+    auto const waitForSync = true;
+    auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = leaderId,
+                                                 .participants = config};
+    auto payload = LogMetaPayload{std::move(meta)};
+    auto const termIndexPair = TermIndexPair(term, LogIndex(1));
+    auto logEntry = InMemoryLogEntry(
+        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+    auto request = AppendEntriesRequest(
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        LogIndex(0), MessageId(1), waitForSync,
+        AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
+    return follower->appendEntries(request);
+  });
+  EXPECT_FALSE(appendEntriesFuture.isReady());
+
+  executor->runOnce();
+  EXPECT_FALSE(executor->hasWork());
+  EXPECT_FALSE(scheduler->hasWork());
+
+  ASSERT_TRUE(appendEntriesFuture.isReady());
+  ASSERT_TRUE(appendEntriesFuture.hasValue());
+  auto const appendEntriesResponse = appendEntriesFuture.get();
+  EXPECT_TRUE(appendEntriesResponse.isSuccess())
+      << appendEntriesResponse.errorCode;
+  EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
   // TODO:
   //  - either:
   //    - start with a valid snapshot, then

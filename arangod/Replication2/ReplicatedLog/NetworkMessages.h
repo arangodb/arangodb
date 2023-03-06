@@ -103,6 +103,9 @@ struct AppendEntriesResult {
   ErrorCode errorCode;
   AppendEntriesErrorReason reason;
   MessageId messageId;
+  // TODO With some error reasons (at least kLostLogCore, i.e. when the follower
+  //      resigned already) information about the snapshot is unavailable. Maybe
+  //      this should be an optional<bool>.
   bool snapshotAvailable{false};
 
   std::optional<TermIndexPair> conflict;
