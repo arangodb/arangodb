@@ -47,13 +47,17 @@ export const AddNewViewModal = ({
           name: Yup.string().required("Name is required")
         })}
         onSubmit={(values, { setSubmitting }) => {
-          onAdd(values).then(() => {
+          const finalValues =
+            values.type === "arangosearch"
+              ? { ...values, indexes: undefined }
+              : {
+                  type: values.type,
+                  name: values.name,
+                  indexes: values.indexes
+                };
+          onAdd(finalValues).then(() => {
             setSubmitting(false);
           });
-          // setTimeout(() => {
-          //   alert(JSON.stringify(values, null, 2));
-          //   setSubmitting(false);
-          // }, 400);
         }}
       >
         {({ isSubmitting }) => (

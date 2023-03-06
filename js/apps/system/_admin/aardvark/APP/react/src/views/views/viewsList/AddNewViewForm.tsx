@@ -42,13 +42,6 @@ export const AddNewViewForm = () => {
             options: typeOptions
           }}
         />
-        <FormLabel htmlFor="primarySortCompression">Primary Sort Compression</FormLabel>
-        <SelectControl
-          name="primarySortCompression"
-          selectProps={{
-            options: compressionOptions
-          }}
-        />
       </Box>
       <ViewTypeForm />
     </Box>
@@ -59,9 +52,31 @@ const ViewTypeForm = () => {
   const { values } = useFormikContext<AddNewViewFormValues>();
   if (values.type === "arangosearch") {
     return (
-      <Accordion marginTop={"4"}>
-        <PrimarySortAccordionItem />
-      </Accordion>
+      <Box marginTop="5">
+        <Box display={"grid"} gridTemplateColumns={"200px 1fr"} rowGap="5">
+          <FormLabel htmlFor="primarySortCompression">
+            Primary Sort Compression
+          </FormLabel>
+          <SelectControl
+            name="primarySortCompression"
+            selectProps={{
+              options: compressionOptions
+            }}
+          />
+        </Box>
+        <Accordion
+          borderColor={"gray.200"}
+          borderRightWidth="1px solid"
+          borderLeftWidth="1px solid"
+          marginTop="4"
+          allowMultiple
+          allowToggle
+        >
+          <PrimarySortAccordionItem />
+          <StoredValuesAccordionItem />
+          <AdvancedAccordionItem />
+        </Accordion>
+      </Box>
     );
   }
   return <>search-alias</>;
