@@ -48,12 +48,3 @@ TEST_F(ConductorStateTest, must_always_be_initialized_with_initial_state) {
   auto cState = ConductorState(dummy, createLookupInfoMock());
   ASSERT_EQ(cState._executionState->name(), "initial");
 }
-
-/*
- * 0.) Create ConductorState (without vocbase) (Resolver struct ||
- * ClusterResolverTest || SingleServerResolverTest) 1.) Possibility to create
- * (initial state) 2.) Create loading state (loading state requires vocbase)
- * Create ConductorActor
- * => Handle Messages (create worker, simulate behaviour, etc.)
- *
- */
