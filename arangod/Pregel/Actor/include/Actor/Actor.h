@@ -55,8 +55,7 @@ concept MessageIsVariant = requires(ActorPID pid,
                                     typename A::Message message) {
   {std::visit(
       typename A::template Handler<Runtime>{
-          {pid, pid, std::unique_ptr<typename A::State>(),
-           runtime}},
+          {pid, pid, std::unique_ptr<typename A::State>(), runtime}},
       message)};
 };
 template<typename A>
