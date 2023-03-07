@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
 #include "Basics/debugging.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 #include "Transaction/Methods.h"
 #include "StorageEngine/TransactionState.h"
 

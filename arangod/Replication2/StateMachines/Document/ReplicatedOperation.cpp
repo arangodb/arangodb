@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 
 #include "Assertions/AssertionLogger.h"
 #include "Assertions/ProdAssert.h"

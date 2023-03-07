@@ -25,6 +25,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Inspection/Status.h"
 

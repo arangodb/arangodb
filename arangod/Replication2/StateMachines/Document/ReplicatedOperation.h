@@ -39,7 +39,6 @@ namespace arangodb::replication2::replicated_state::document {
 struct ReplicatedOperation {
   ReplicatedOperation() = default;
 
- private:
   struct DocumentOperation {
     TransactionId tid;
     ShardID shard;
@@ -49,13 +48,6 @@ struct ReplicatedOperation {
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 
-    template<class Inspector>
-    friend auto inspect(Inspector& f, DocumentOperation& x) {
-      return f.object(x).fields(f.field("tid", x.tid),
-                                f.field("shard", x.shard),
-                                f.field("payload", x.payload));
-    }
-
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
       return a.tid == b.tid && a.shard == b.shard &&
@@ -63,13 +55,7 @@ struct ReplicatedOperation {
     }
   };
 
- public:
   struct AbortAllOngoingTrx {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, AbortAllOngoingTrx& x) {
-      return f.object(x).fields();
-    }
-
     friend auto operator==(AbortAllOngoingTrx const&, AbortAllOngoingTrx const&)
         -> bool = default;
   };
@@ -77,21 +63,11 @@ struct ReplicatedOperation {
   struct Commit {
     TransactionId tid;
 
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Commit& x) {
-      return f.object(x).fields(f.field("tid", x.tid));
-    }
-
     friend auto operator==(Commit const&, Commit const&) -> bool = default;
   };
 
   struct IntermediateCommit {
     TransactionId tid;
-
-    template<class Inspector>
-    friend auto inspect(Inspector& f, IntermediateCommit& x) {
-      return f.object(x).fields(f.field("tid", x.tid));
-    }
 
     friend auto operator==(IntermediateCommit const&, IntermediateCommit const&)
         -> bool = default;
@@ -100,23 +76,12 @@ struct ReplicatedOperation {
   struct Abort {
     TransactionId tid;
 
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Abort& x) {
-      return f.object(x).fields(f.field("tid", x.tid));
-    }
-
     friend auto operator==(Abort const&, Abort const&) -> bool = default;
   };
 
   struct Truncate {
     TransactionId tid;
     ShardID shard;
-
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Truncate& x) {
-      return f.object(x).fields(f.field("tid", x.tid),
-                                f.field("shard", x.shard));
-    }
 
     friend auto operator==(Truncate const&, Truncate const&) -> bool = default;
   };
@@ -126,13 +91,6 @@ struct ReplicatedOperation {
     CollectionID collection;
     std::shared_ptr<VPackBuilder> properties;
 
-    template<class Inspector>
-    friend auto inspect(Inspector& f, CreateShard& x) {
-      return f.object(x).fields(f.field("shard", x.shard),
-                                f.field("collection", x.collection),
-                                f.field("properties", x.properties));
-    }
-
     friend auto operator==(CreateShard const&, CreateShard const&)
         -> bool = default;
   };
@@ -141,43 +99,17 @@ struct ReplicatedOperation {
     ShardID shard;
     CollectionID collection;
 
-    template<class Inspector>
-    friend auto inspect(Inspector& f, DropShard& x) {
-      return f.object(x).fields(f.field("shard", x.shard),
-                                f.field("collection", x.collection));
-    }
-
     friend auto operator==(DropShard const&, DropShard const&)
         -> bool = default;
   };
 
-  struct Insert : DocumentOperation {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Insert& x) {
-      return f.object(x).fields(f.template embedFields<DocumentOperation>(x));
-    }
-  };
+  struct Insert : DocumentOperation {};
 
-  struct Update : DocumentOperation {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Update& x) {
-      return f.object(x).fields(f.template embedFields<DocumentOperation>(x));
-    }
-  };
+  struct Update : DocumentOperation {};
 
-  struct Replace : DocumentOperation {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Replace& x) {
-      return f.object(x).fields(f.template embedFields<DocumentOperation>(x));
-    }
-  };
+  struct Replace : DocumentOperation {};
 
-  struct Remove : DocumentOperation {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, Remove& x) {
-      return f.object(x).fields(f.template embedFields<DocumentOperation>(x));
-    }
-  };
+  struct Remove : DocumentOperation {};
 
  public:
   using OperationType =
@@ -206,24 +138,6 @@ struct ReplicatedOperation {
                                      TransactionId tid, ShardID shard,
                                      velocypack::SharedSlice payload) noexcept
       -> ReplicatedOperation;
-
-  template<typename Inspector>
-  friend auto inspect(Inspector& f, ReplicatedOperation& x) {
-    return f.variant(x.operation)
-        .embedded("type")
-        .alternatives(
-            inspection::type<AbortAllOngoingTrx>("AbortAllOngoingTrx"),
-            inspection::type<Commit>("Commit"),
-            inspection::type<IntermediateCommit>("IntermediateCommit"),
-            inspection::type<Abort>("Abort"),
-            inspection::type<Truncate>("Truncate"),
-            inspection::type<CreateShard>("CreateShard"),
-            inspection::type<DropShard>("DropShard"),
-            inspection::type<Insert>("Insert"),
-            inspection::type<Update>("Update"),
-            inspection::type<Replace>("Replace"),
-            inspection::type<Remove>("Remove"));
-  }
 
   friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)
       -> bool = default;
@@ -259,8 +173,3 @@ constexpr bool always_false_v = false;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 }  // namespace arangodb::replication2::replicated_state::document
-
-template<>
-struct fmt::formatter<
-    arangodb::replication2::replicated_state::document::ReplicatedOperation>
-    : arangodb::inspection::inspection_formatter {};
