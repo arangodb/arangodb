@@ -8,13 +8,17 @@ import { getNumericFieldSetter } from "../../../utils/helpers";
 import ToolTip from "../../../components/arango/tootip";
 
 
+type BytesAccumConsolidationPolicyFormProps = Omit<
+  FormProps<BytesAccumConsolidationPolicy>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
 const BytesAccumConsolidationPolicyForm = ({
   formState,
   dispatch,
   disabled
-}: Omit<FormProps<BytesAccumConsolidationPolicy>, "dispatch"> & {
-  dispatch: FormDispatch<FormState>;
-}) => {
+}: BytesAccumConsolidationPolicyFormProps) => {
   const threshold = get(formState, ['consolidationPolicy', 'threshold'], '');
 
   return <tr className="tableRow" id="row_change-view-threshold">
@@ -36,13 +40,17 @@ const BytesAccumConsolidationPolicyForm = ({
   </tr>;
 };
 
+type TierConsolidationPolicyFormProps = Omit<
+  FormProps<TierConsolidationPolicy>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
 const TierConsolidationPolicyForm = ({
   formState,
   dispatch,
   disabled
-}: Omit<FormProps<TierConsolidationPolicy>, "dispatch"> & {
-  dispatch: FormDispatch<FormState>;
-}) => {
+}: TierConsolidationPolicyFormProps) => {
   const segmentsMin = get(formState, ['consolidationPolicy', 'segmentsMin'], '');
   const segmentsMax = get(formState, ['consolidationPolicy', 'segmentsMax'], '');
   const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax'], '');
@@ -122,13 +130,17 @@ const TierConsolidationPolicyForm = ({
   </>;
 };
 
+type ConsolidationPolicyFormProps = Omit<
+  FormProps<ViewProperties>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
 const ConsolidationPolicyForm = ({
   formState,
   dispatch,
   disabled
-}: Omit<FormProps<ViewProperties>, "dispatch"> & {
-  dispatch: FormDispatch<FormState>;
-}) => {
+}: ConsolidationPolicyFormProps) => {
   const updateConsolidationPolicyType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
