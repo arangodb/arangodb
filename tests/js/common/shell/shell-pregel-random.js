@@ -198,7 +198,7 @@ function randomTestSuite() {
       checkCancel(key);
     },
     
-    test_garbage_collects_job: function () {
+    testGarbageCollectsJob: function () {
       let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
       assertTrue(typeof pid === "string");
           
@@ -230,10 +230,16 @@ function randomTestSuite() {
       assertTrue(i > 0, "timeout in pregel execution");
     },
 
-    test_garbage_collects_all_jobs: function () {
+    testGarbageCollectsAllJobs: function () {
       let allNewRuns = [];
+      let maxJobCount = 5;
+      let sleepTime = 0.2;
+      if (require("@arangodb/test-helper").versionHas('coverage')) {
+        maxJobCount = 2;
+        sleepTime = 2;
+      }
 
-      for (let i = 0; i < 5; ++i) {
+      for (let i = 0; i < maxJobCount; ++i) {
         let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
 				allNewRuns.push(pid);
         assertTrue(typeof pid === "string");
@@ -247,7 +253,7 @@ function randomTestSuite() {
       let i = 1000;
       let runningNewRuns = [];
       do {
-        internal.sleep(0.2);
+        internal.sleep(sleepTime);
         let allStats = pregel.status();
         runningNewRuns = allStats.map((job) => job.id).filter((pid) => allNewRuns.includes(pid)).filter(unique);
         runningNewRuns.forEach((pid) => {
