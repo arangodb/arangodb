@@ -72,7 +72,7 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-We use `clang-format` to enfore consistent code formatting. Check 
+We use `clang-format` to enforce consistent code formatting. Check 
 [STYLEGUIDE.md](STYLEGUIDE.md) for a comprehensive description of ArangoDB's 
 Coding Guidelines.
 
@@ -237,7 +237,7 @@ Note: Make sure that your source path does not contain spaces otherwise the buil
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
 
-Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+Optimizations and limit of architecture (list of possible CPU instructions) are set using this `cmake` option
 in addition to the other options:
 
 ```
@@ -287,7 +287,7 @@ favorite browser and open the web interface.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
-### Cross Orogin Policy (CORS) ERROR
+### Cross Origin Policy (CORS) ERROR
 
 Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
 we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
@@ -411,7 +411,7 @@ You now will get log entries with the contents being passed between the blocks.
 
 ### Crashes
 
-The Linux builds of the arangod execuable contain a built-in crash handler
+The Linux builds of the arangod executable contain a built-in crash handler
 (introduced in v3.7.0).
 The crash handler is supposed to log basic crash information to the ArangoDB logfile in
 case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or
@@ -421,7 +421,7 @@ SIGABRT. SIGKILL signals, which the operating system can send to a process in ca
 In case the crash handler receives one of the mentioned interceptable signals, it will
 write basic crash information to the logfile and a backtrace of the call site.
 The backtrace can be provided to the ArangoDB support for further inspection. Note that
-backtaces are only usable if debug symbols for ArangoDB have been installed as well.
+backtraces are only usable if debug symbols for ArangoDB have been installed as well.
 
 After logging the crash information, the crash handler will execute the default action for
 the signal it has caught. If core dumps are enabled, the default action for these signals
@@ -783,8 +783,8 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
 | `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
 | `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools                                                                   |
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage                                               |
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
 | `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
@@ -1030,7 +1030,7 @@ The `rta_makedata` testsuite can be invoked with:
 
 - `--cluster false` - to be ran on a single server setup.
 - `--activefailover true` to be ran on an active failover setup.
-- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resillience with 2 remaining dbservers.
+- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
 Invoke it like this:
 
@@ -1053,7 +1053,7 @@ Once this is completed, you may run it like this:
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
-As an aditional parameter we pass `-timeout 100m` to the driver test.
+As an additional parameter we pass `-timeout 100m` to the driver test.
 
 The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
 the tests expect to have at least 3 DB-Servers.
@@ -1110,7 +1110,7 @@ At the time being phpunit version 6.5 is supported. Install it like this:
 
 Once this is completed, you may run it like this:
 
-    ./scipts/unittest php_driver --phpsource ../arangodb-php/ \
+    ./scripts/unittest php_driver --phpsource ../arangodb-php/ \
         --testCase testSaveVerticesAndEdgeBetweenThemAndRemoveOneByOne \
         --cluster true \
         --phpkeepalive false
@@ -1133,7 +1133,7 @@ All required data is passed as parameters:
 - driverOptions options to be passed on to the driver works in the form of
   `--driverOptions.argname value` evaluating to `--argname` `value`
 - `--test testcase` evaluates to `--testsuite testcase`
-- `--testCase testcaseExp` evalates to `--filter testcaseExp`
+- `--testCase testcaseExp` evaluates to `--filter testcaseExp`
 
 Statically provided options (with sample values):
 
@@ -1210,7 +1210,7 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniff true \
       --cleanup false \
       --sniffDevice 1 \
-      --sniffProgram 'c:/Programm Files/wireshark/tshark.exe' \
+      --sniffProgram 'c:/Program Files/wireshark/tshark.exe' \
       --forceJson true
 
 You can later on use Wireshark to inspect the capture files.
@@ -1232,7 +1232,7 @@ Currently available Analyzers are:
 - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
 
   - `duration` - the time spent in the complete testfile
-  - `status` - sucess/fail
+  - `status` - success/fail
   - `failed` - fail?
   - `total` - the time spent in the testcase
   - `totalSetUp` - the time spent in setup summarized

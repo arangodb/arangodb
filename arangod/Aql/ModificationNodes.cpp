@@ -26,19 +26,17 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/VariableGenerator.h"
-
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/Query.h"
 #include "Aql/SimpleModifier.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/UpsertModifier.h"
+#include "Aql/VariableGenerator.h"
 
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
@@ -593,5 +591,4 @@ void UpsertNode::replaceVariables(
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

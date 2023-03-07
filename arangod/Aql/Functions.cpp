@@ -5131,20 +5131,33 @@ AqlValue functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
   auto& server = expressionContext->vocbase().server();
 
   double const sleepValue = value.toDouble();
-  auto now = std::chrono::steady_clock::now();
-  auto const endTime = now + std::chrono::milliseconds(
-                                 static_cast<int64_t>(sleepValue * 1000.0));
 
-  while (now < endTime) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (sleepValue < 0.010) {
+    // less than 10 ms sleep time
+    std::this_thread::sleep_for(std::chrono::duration<double>(sleepValue));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
-    now = std::chrono::steady_clock::now();
+  } else {
+    auto now = std::chrono::steady_clock::now();
+    auto const endTime = now + std::chrono::milliseconds(
+                                   static_cast<int64_t>(sleepValue * 1000.0));
+
+    while (now < endTime) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+      if (expressionContext->killed()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      } else if (server.isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      now = std::chrono::steady_clock::now();
+    }
   }
+
   return AqlValue(AqlValueHintNull());
 }
 

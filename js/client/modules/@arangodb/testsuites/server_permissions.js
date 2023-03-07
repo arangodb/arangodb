@@ -38,8 +38,9 @@ const im = require('@arangodb/testutils/instance-manager');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
 const executeExternalAndWait = internal.executeExternalAndWait;
+const testHelper = require("@arangodb/test-helper");
 const ArangoError = require('@arangodb').ArangoError;
-const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const isEnterprise = testHelper.isEnterprise;
 
 const platform = internal.platform;
 
@@ -80,6 +81,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     let count = 0;
     let forceTerminate = false;
     for (let i = 0; i < this.testList.length; i++) {
+      testHelper.flushInstanceInfo();
       let te = this.testList[i];
       let filtered = {};
       if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
@@ -297,7 +299,7 @@ function server_secrets(options) {
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
 
-  fs.copyFile("./UnitTests/server.pem", keyfileName);
+  fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
 
   process.env["tls-keyfile"] = keyfileName;
 
@@ -316,7 +318,7 @@ function server_secrets(options) {
   };
   if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./UnitTests/tls.keyfile";
+      = "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
   let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {

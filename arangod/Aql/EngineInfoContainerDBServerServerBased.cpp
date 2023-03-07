@@ -37,6 +37,7 @@
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Collection.h>

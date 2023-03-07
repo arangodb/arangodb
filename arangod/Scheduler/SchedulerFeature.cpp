@@ -363,6 +363,10 @@ void SchedulerFeature::unprepare() {
   _scheduler.reset();
 }
 
+uint64_t SchedulerFeature::maximalThreads() const noexcept {
+  return _nrMaximalThreads;
+}
+
 // ---------------------------------------------------------------------------
 // Signal Handler stuff - no body knows what this has to do with scheduling
 // ---------------------------------------------------------------------------

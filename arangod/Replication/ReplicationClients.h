@@ -32,6 +32,8 @@
 #include <unordered_map>
 
 namespace arangodb {
+class ReplicationFeature;
+
 namespace velocypack {
 class Builder;
 }
@@ -69,7 +71,9 @@ struct ReplicationClientProgress {
 /// for a particular database
 class ReplicationClientsProgressTracker {
  public:
-  ReplicationClientsProgressTracker() = default;
+  // note: rf is a nullptr in unit tests
+  explicit ReplicationClientsProgressTracker(ReplicationFeature* rf);
+
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   ~ReplicationClientsProgressTracker() = default;
 #else
@@ -191,6 +195,9 @@ class ReplicationClientsProgressTracker {
   }
 
  private:
+  // pointer to replication feature. this is a nullptr during unit tests
+  ReplicationFeature* _feature;
+
   mutable basics::ReadWriteLock _lock;
 
   /// @brief mapping from (SyncerId | ClientServerId) -> progress
