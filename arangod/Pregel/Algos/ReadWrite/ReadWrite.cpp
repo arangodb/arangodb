@@ -114,12 +114,29 @@ struct ReadWriteMasterContext : public MasterContext {
       maxGss = value.getInt();
     }
   }
+  explicit ReadWriteMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators, VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
+    auto value = userParams.get(Utils::maxGSS);
+    if (not value.isNone()) {
+      maxGss = value.getInt();
+    }
+  }
 
   bool postGlobalSuperstep() override { return globalSuperstep() <= maxGss; };
 };
 
 MasterContext* ReadWrite::masterContext(VPackSlice userParams) const {
   return new ReadWriteMasterContext(userParams);
+}
+[[nodiscard]] auto ReadWrite::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ReadWriteMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* ReadWrite::aggregator(std::string const& name) const {

@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -127,4 +129,18 @@ IAggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }
   return nullptr;
+}
+
+struct ShortestPathMasterContext : public MasterContext {
+  ShortestPathMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                            std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ShortestPathAlgorithm::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ShortestPathMasterContext>(vertexCount, edgeCount,
+                                                     std::move(aggregators));
 }

@@ -317,6 +317,11 @@ struct HITSKleinbergMasterContext : public MasterContext {
 
   explicit HITSKleinbergMasterContext(VPackSlice userParams)
       : threshold(getThreshold(userParams)) {}
+  explicit HITSKleinbergMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators, VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)),
+        threshold(getThreshold(userParams)) {}
 
   bool postGlobalSuperstep() override {
     double const authMaxDiff =
@@ -334,6 +339,14 @@ struct HITSKleinbergMasterContext : public MasterContext {
 
 MasterContext* HITSKleinberg::masterContext(VPackSlice userParams) const {
   return new HITSKleinbergMasterContext(userParams);
+}
+[[nodiscard]] auto HITSKleinberg::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<HITSKleinbergMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* HITSKleinberg::aggregator(std::string const& name) const {

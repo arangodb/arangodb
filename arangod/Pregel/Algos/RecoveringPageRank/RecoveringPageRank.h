@@ -37,6 +37,11 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
       : SimpleAlgorithm(server, "pagerank", params) {}
 
   MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);

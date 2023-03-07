@@ -147,6 +147,21 @@ struct HITSMasterContext : public MasterContext {
       threshold = userParams.get(Utils::threshold).getNumber<double>();
     }
   }
+  HITSMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators,
+                    VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)),
+        authNorm(0),
+        hubNorm(0) {
+    if (userParams.hasKey(Utils::threshold)) {
+      if (!userParams.get(Utils::threshold).isNumber()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The threshold parameter should be a number.");
+      }
+      threshold = userParams.get(Utils::threshold).getNumber<double>();
+    }
+  }
 
   double threshold = 0.00001;
   double authNorm;
@@ -166,6 +181,14 @@ struct HITSMasterContext : public MasterContext {
 
 MasterContext* HITS::masterContext(VPackSlice userParams) const {
   return new HITSMasterContext(userParams);
+}
+[[nodiscard]] auto HITS::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<HITSMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* HITS::aggregator(std::string const& name) const {

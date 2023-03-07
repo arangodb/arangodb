@@ -120,6 +120,13 @@ struct RPRMasterContext : public MasterContext {
     VPackSlice t = params.get("convergenceThreshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   };
+  explicit RPRMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                            std::unique_ptr<AggregatorHandler> aggregators,
+                            VPackSlice params)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
+    VPackSlice t = params.get("convergenceThreshold");
+    _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
+  };
 
   int32_t recoveryStep = 0;
   float totalRank = 0;
@@ -159,4 +166,12 @@ struct RPRMasterContext : public MasterContext {
 
 MasterContext* RecoveringPageRank::masterContext(VPackSlice userParams) const {
   return new RPRMasterContext(userParams);
+}
+[[nodiscard]] auto RecoveringPageRank::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<RPRMasterContext>(vertexCount, edgeCount,
+                                            std::move(aggregators), userParams);
 }
