@@ -133,6 +133,8 @@ FollowerManager::FollowerManager(
   metrics->replicatedLogFollowerNumber->operator++();
   auto provider = std::make_unique<MethodsProvider>(*this);
   stateHandle->becomeFollower(std::move(provider));
+  // Follower state manager is there, now get a snapshot if we need one.
+  snapshot->acquireSnapshotIfNecessary();
 }
 
 FollowerManager::~FollowerManager() {

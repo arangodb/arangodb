@@ -101,9 +101,7 @@ SnapshotManager::SnapshotManager(
       termInfo(std::move(termInfo)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
-      guardedData(storage, stateHandle) {
-  acquireSnapshotIfNecessary();
-}
+      guardedData(storage, stateHandle) {}
 
 void SnapshotManager::acquireSnapshotIfNecessary() {
   auto guard = guardedData.getLockedGuard();
