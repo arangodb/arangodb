@@ -1,4 +1,4 @@
-#include "CreateWorkers.h"
+#include "CreateWorkersState.h"
 
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
@@ -41,7 +41,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     // TODO return error state (GORDO-1553)
     return std::nullopt;
   }
-  conductor.workers.emplace_back(sender);
+  conductor.workers.emplace(sender);
   respondedServers.emplace(sender.server);
   responseCount++;
 

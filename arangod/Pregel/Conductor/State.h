@@ -23,39 +23,48 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
+#include "Assertions/Assert.h"
+#include "Pregel/AggregatorHandler.h"
+#include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
 #include "Pregel/Conductor/ExecutionStates/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::pregel::conductor {
 
 struct ConductorState {
-  ConductorState(ExecutionSpecifications specifications, TRI_vocbase_t& vocbase)
-      : specifications{std::move(specifications)}, vocbaseGuard{vocbase} {}
+  ConductorState(std::unique_ptr<IAlgorithm> algorithm,
+                 ExecutionSpecifications specifications, TRI_vocbase_t& vocbase)
+      : algorithm{std::move(algorithm)},
+        specifications{std::move(specifications)},
+        vocbaseGuard{vocbase} {}
 
   ExecutionTimings timing;
-  uint64_t globalSuperstep = 0;
   std::unique_ptr<ExecutionState> executionState = std::make_unique<Initial>();
-  // TODO how to update metrics in feature (needed for 'loading' and subsequent
-  // states)
+  uint64_t globalSuperstep = 0;
   ConductorStatus status;
-  std::vector<actor::ActorPID> workers;
+  std::unordered_set<actor::ActorPID> workers;
+  std::unique_ptr<IAlgorithm> algorithm;
   const ExecutionSpecifications specifications;
   const DatabaseGuard vocbaseGuard;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorState& x) {
-  return f.object(x).fields(f.field("timing", x.timing),
-                            f.field("globalSuperstep", x.globalSuperstep),
-                            f.field("executionState", x.executionState->name()),
-                            f.field("status", x.status),
-                            f.field("workers", x.workers),
-                            f.field("specifications", x.specifications));
+  return f.object(x).fields(
+      f.field("timing", x.timing),
+      f.field("globalSuperstep", x.globalSuperstep),
+      f.field("executionState", x.executionState->name()),
+      f.field("status", x.status),
+      // f.field("workers", x._workers), TODO make set inspectionable
+      f.field("specifications", x.specifications));
 }
 
 }  // namespace arangodb::pregel::conductor

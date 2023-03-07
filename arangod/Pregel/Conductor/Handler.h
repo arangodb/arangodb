@@ -25,7 +25,7 @@
 #include <memory>
 #include <variant>
 #include "Actor/HandlerBase.h"
-#include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
+#include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/Conductor/Messages.h"
@@ -85,6 +85,19 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
+  auto operator()(ResultT<message::GraphLoaded> start)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("17915", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Graph was loaded in worker {}", this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(start));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+      sendMessageToWorkers();
+    }
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)
@@ -123,10 +136,9 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
   auto sendMessageToWorkers() -> void {
     auto message = this->state->executionState->message();
-    // TODO activate when loading state is implemented (GORDO-1548)
-    // for (auto& worker : this->state->_workers) {
-    //   this->dispatch(worker, message);
-    // }
+    for (auto& worker : this->state->workers) {
+      this->dispatch(worker, message);
+    }
   }
 };
 
