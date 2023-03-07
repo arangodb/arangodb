@@ -1,4 +1,3 @@
-
 @startDocuBlock get_admin_server_jwt
 @brief Retrieve JWT secrets info
 

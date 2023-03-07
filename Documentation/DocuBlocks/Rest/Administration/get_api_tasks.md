@@ -1,43 +1,30 @@
 
 @startDocuBlock get_api_tasks
-@brief Retrieves one currently active server task
+@brief Retrieves all currently active server tasks
 
-@RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id, getTask}
-
-@RESTURLPARAM{id,string,required}
-The id of the task to fetch.
+@RESTHEADER{GET /_api/tasks/, Fetch all tasks or one task, getTasks}
 
 @RESTDESCRIPTION
-fetches one existing task on the server specified by *id*
+fetches all existing tasks on the server
 
 @RESTRETURNCODE{200}
-The requested task
+The list of tasks
 
-@RESTREPLYBODY{,object,required,api_task_struct}
-The function in question
+@RESTREPLYBODY{,array,required,api_task_struct}
+a list of all tasks
 
 @EXAMPLES
 
-Fetching a single task by its id
-@EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
+Fetching all tasks
+@EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
     var url = "/_api/tasks";
-    var response = logCurlRequest('POST', url, JSON.stringify({ id: "testTask", command: "console.log('Hello from task!');", offset: 10000 }));
-
-    var response = logCurlRequest('GET', url + "/testTask");
-
-    assert(response.code === 200);
-    logJsonResponse(response);
-
-@END_EXAMPLE_ARANGOSH_RUN
-
-Trying to fetch a non-existing task
-@EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
-    var url = "/_api/tasks/non-existing-task";
 
     var response = logCurlRequest('GET', url);
 
-    assert(response.code === 404);
+    assert(response.code === 200);
+
     logJsonResponse(response);
 
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

@@ -39,4 +39,5 @@ superuser rights.
 
 @RESTRETURNCODE{404}
 This API will return HTTP 404 in case encryption key rotation is disabled.
+
 @endDocuBlock

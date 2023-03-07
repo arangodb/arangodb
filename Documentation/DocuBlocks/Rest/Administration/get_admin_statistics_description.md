@@ -89,4 +89,5 @@ the error, *false* in this case
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

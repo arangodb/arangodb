@@ -95,5 +95,4 @@ A list of the percent-encoded URL path suffixes
 @RESTREPLYBODY{path,string,required,}
 The relative path of this request (decoded, excluding `/_admin/echo`)
 
-
 @endDocuBlock

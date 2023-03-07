@@ -318,4 +318,5 @@ If the `collection-name` is unknown, then an *HTTP 404* is returned.
     db._flushCache();
     db._drop("testCollectionUsers");
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
