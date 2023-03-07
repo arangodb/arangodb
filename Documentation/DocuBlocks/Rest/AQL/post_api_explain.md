@@ -11,8 +11,11 @@ the query which you want explained; If the query references any bind variables,
 these must also be passed in the attribute *bindVars*. Additional
 options for the query can be passed in the *options* attribute.
 
-@RESTBODYPARAM{bindVars,array,optional,object}
-key/value pairs representing the bind parameters.
+@RESTBODYPARAM{bindVars,object,optional,}
+An object with key/value pairs representing the bind parameters.
+For a bind variable `@var` in the query, specify the value using an attribute
+with the name `var`. For a collection bind variable `@@coll`, use `@coll` as the
+attribute name. For example: `"bindVars": { "var": 42, "@coll": "products" }`.
 
 @RESTBODYPARAM{options,object,optional,explain_options}
 Options for the query
