@@ -128,8 +128,9 @@ TEST_F(SnapshotManagerTest, create_with_invalid_snapshot) {
     return state;
   });
 
-  EXPECT_CALL(stateHandleManagerMock, acquireSnapshot("LEADER", 1));
   auto snapMan = constructSnapshotManager();
+  EXPECT_CALL(stateHandleManagerMock, acquireSnapshot("LEADER", 1));
+  snapMan->acquireSnapshotIfNecessary();
 }
 
 TEST_F(SnapshotManagerTest, invalidate_snapshot) {
