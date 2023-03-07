@@ -1,4 +1,3 @@
-
 @startDocuBlock get_admin_server_mode
 @brief Return the mode of this server (read-only or default)
 
@@ -16,4 +15,5 @@ This API requires authentication.
 
 @RESTRETURNCODE{200}
 This API will return HTTP 200 if everything is ok
+
 @endDocuBlock

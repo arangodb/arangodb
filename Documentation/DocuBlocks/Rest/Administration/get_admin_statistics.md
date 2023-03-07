@@ -240,4 +240,5 @@ Statistics are disabled on the instance.
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

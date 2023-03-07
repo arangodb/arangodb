@@ -34,4 +34,5 @@ This API requires authentication.
 
 @RESTRETURNCODE{200}
 This API will return HTTP 200 if everything is ok
+
 @endDocuBlock

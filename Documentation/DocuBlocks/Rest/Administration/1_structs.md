@@ -1,5 +1,3 @@
-
-
 @RESTSTRUCT{name,api_task_struct,string,required,}
 The fully qualified name of the user function
 

@@ -43,4 +43,5 @@ to be not found.
 
     logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

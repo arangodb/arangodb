@@ -1,4 +1,3 @@
-
 @startDocuBlock delete_api_shutdown
 @brief initiates the shutdown sequence
 

@@ -1,5 +1,5 @@
 
-@startDocuBlock get_read_document_MULTI
+@startDocuBlock get_api_document_collection
 @brief reads a single document
 
 @RESTHEADER{PUT /_api/document/{collection}#get,Read multiple documents,readDocuments}

@@ -46,4 +46,5 @@ Return information about all indexes
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
