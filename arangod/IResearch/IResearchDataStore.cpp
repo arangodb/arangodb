@@ -185,7 +185,8 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
   auto const oldTime = oldTimeNum >> 32U;
   auto const oldNum = oldTimeNum & std::numeric_limits<uint32_t>::max();
   if (oldNum >= kWindowSize) {
-    timeNum.fetch_sub((oldTime / oldNum) + 1, std::memory_order_relaxed);
+    timeNum.fetch_sub(((oldTime / oldNum) << 32U) + 1,
+                      std::memory_order_relaxed);
   }
   return (oldTime + newTime) / (oldNum + 1);
 }
@@ -1308,7 +1309,7 @@ Result IResearchDataStore::initDataStore(
   if (pathExists) {
     try {
       _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
-                                                       nullptr, readerOptions);
+                                                       _format, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
