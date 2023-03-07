@@ -68,10 +68,8 @@ network::Headers buildHeaders(
 bool isOutdated(
     GeneralRequest const& oldData,
     std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
-  if (!data || !data->packed) {
-    TRI_ASSERT(!data);
-    return false;
-  }
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data->packed != nullptr);
   velocypack::Slice newData{data->packed->data()};
   auto const& oldVersion = oldData.value("MetricsVersion");
   TRI_ASSERT(!oldVersion.empty());
@@ -209,7 +207,7 @@ RestStatus RestMetricsHandler::execute() {
     if (isOutdated(*_request, data)) {
       _response->addPayload(VPackSlice{data->packed->data()});
     } else {
-      _response->addPayload(VPackSlice::noneSlice());
+      _response->addPayload(VPackSlice::nullSlice());
     }
     return RestStatus::DONE;
   }
