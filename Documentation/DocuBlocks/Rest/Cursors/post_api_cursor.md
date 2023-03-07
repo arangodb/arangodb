@@ -55,8 +55,11 @@ use. If set, then the query will fail with error "resource limit exceeded" in
 case it allocates too much memory. A value of *0* indicates that there is no
 memory limit.
 
-@RESTBODYPARAM{bindVars,array,optional,object}
-key/value pairs representing the bind parameters.
+@RESTBODYPARAM{bindVars,object,optional,}
+An object with key/value pairs representing the bind parameters.
+For a bind variable `@var` in the query, specify the value using an attribute
+with the name `var`. For a collection bind variable `@@coll`, use `@coll` as the
+attribute name. For example: `"bindVars": { "var": 42, "@coll": "products" }`.
 
 @RESTBODYPARAM{options,object,optional,post_api_cursor_opts}
 key/value object with extra options for the query.
