@@ -192,8 +192,8 @@ bool ColorPropagationGraphFormat::buildVertexDocument(
 GraphFormat<ColorPropagationValue, int8_t>* ColorPropagation::inputFormat()
     const {
   return new ColorPropagationGraphFormat(
-      _server, _inputColorsFieldName, _outputColorsFieldName,
-      _equivalenceClassFieldName, _numColors);
+      _inputColorsFieldName, _outputColorsFieldName, _equivalenceClassFieldName,
+      _numColors);
 }
 
 IAggregator* ColorPropagation::aggregator(std::string const& name) const {
