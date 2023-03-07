@@ -78,11 +78,11 @@ struct DocumentFollowerState
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
+    ActiveTransactionsQueue activeTransactions;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

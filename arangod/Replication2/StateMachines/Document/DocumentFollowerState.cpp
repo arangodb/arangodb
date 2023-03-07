@@ -121,26 +121,26 @@ auto DocumentFollowerState::applyEntries(
                   return validationRes;
                 }
 
-                self->_activeTransactions.markAsActive(op.tid, entry->first);
+                data.activeTransactions.markAsActive(op.tid, entry->first);
                 return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (std::is_same_v<T, ReplicatedOperation::
                                                          IntermediateCommit>) {
-                if (!self->_activeTransactions.getTransactions().contains(
+                if (!data.activeTransactions.getTransactions().contains(
                         op.tid)) {
                   return Result{};
                 }
                 return transactionHandler->applyEntry(doc.operation);
               } else if constexpr (FinishesUserTransaction<T>) {
-                if (!self->_activeTransactions.getTransactions().contains(
+                if (!data.activeTransactions.getTransactions().contains(
                         op.tid)) {
                   // Single commit/abort operations are possible.
                   return Result{};
                 }
                 auto applyRes = transactionHandler->applyEntry(doc.operation);
                 if (applyRes.ok()) {
-                  self->_activeTransactions.markAsInactive(op.tid);
+                  data.activeTransactions.markAsInactive(op.tid);
                   releaseIndex =
-                      self->_activeTransactions.getReleaseIndex().value_or(
+                      data.activeTransactions.getReleaseIndex().value_or(
                           entry->first);
                 }
                 return applyRes;
@@ -148,7 +148,7 @@ auto DocumentFollowerState::applyEntries(
                                                          AbortAllOngoingTrx>) {
                 auto applyRes = transactionHandler->applyEntry(doc.operation);
                 if (applyRes.ok()) {
-                  self->_activeTransactions.clear();
+                  data.activeTransactions.clear();
                   releaseIndex = entry->first;
                 }
                 return applyRes;
@@ -166,13 +166,13 @@ auto DocumentFollowerState::applyEntries(
                         << " during recovery: " << abortRes;
                     return abortRes;
                   }
-                  self->_activeTransactions.markAsInactive(tid);
+                  data.activeTransactions.markAsInactive(tid);
                 }
 
                 auto applyRes = transactionHandler->applyEntry(doc.operation);
                 if (applyRes.ok()) {
                   releaseIndex =
-                      self->_activeTransactions.getReleaseIndex().value_or(
+                      data.activeTransactions.getReleaseIndex().value_or(
                           entry->first);
                 }
                 return applyRes;
@@ -181,7 +181,7 @@ auto DocumentFollowerState::applyEntries(
                 auto applyRes = transactionHandler->applyEntry(doc.operation);
                 if (applyRes.ok()) {
                   releaseIndex =
-                      self->_activeTransactions.getReleaseIndex().value_or(
+                      data.activeTransactions.getReleaseIndex().value_or(
                           entry->first);
                 }
                 return applyRes;

@@ -40,9 +40,8 @@ void ActiveTransactionsQueue::markAsActive(TransactionId tid, LogIndex index) {
 }
 
 void ActiveTransactionsQueue::markAsActive(LogIndex index) {
-  TRI_ASSERT(_logIndices.empty() || index > _logIndices.back().first)
-      << "Trying to add index " << index << " after "
-      << _logIndices.back().first;
+  ADB_PROD_ASSERT(_logIndices.empty() || index > _logIndices.back().first)
+      << "Trying to add index " << index << " after " << _logIndices;
   _logIndices.emplace_back(index, Status::kActive);
 }
 
@@ -55,7 +54,7 @@ void ActiveTransactionsQueue::markAsInactive(TransactionId tid) {
   // tid was first marked as active. Then, mark it as inactive.
   // We assume that the log indices are always given in increasing order.
   auto it = _transactions.find(tid);
-  TRI_ASSERT(it != std::end(_transactions))
+  ADB_PROD_ASSERT(it != std::end(_transactions))
       << "Could not find transaction " << tid;
   markAsInactive(it->second);
   _transactions.erase(it);
@@ -65,8 +64,8 @@ void ActiveTransactionsQueue::markAsInactive(LogIndex index) {
   auto deactivateIdx =
       std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
                        std::make_pair(index, Status::kActive));
-  TRI_ASSERT(deactivateIdx != std::end(_logIndices) &&
-             deactivateIdx->first == index)
+  ADB_PROD_ASSERT(deactivateIdx != std::end(_logIndices) &&
+                  deactivateIdx->first == index)
       << "Could not find log index " << index
       << " in the active transactions queue";
   deactivateIdx->second = Status::kInactive;
@@ -82,7 +81,7 @@ std::optional<LogIndex> ActiveTransactionsQueue::getReleaseIndex() const {
     return std::nullopt;
   }
   auto const& idx = _logIndices.front();
-  TRI_ASSERT(idx.second == Status::kActive)
+  ADB_PROD_ASSERT(idx.second == Status::kActive)
       << "An inactive index was found at the front of the dequeue: "
       << idx.first;
   return idx.first.saturatedDecrement();

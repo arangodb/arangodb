@@ -184,10 +184,12 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
           return Result{};
         } else if constexpr (std::is_same_v<T,
                                             ReplicatedOperation::DropShard>) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto transactions = getTransactionsForShard(op.shard);
           TRI_ASSERT(transactions.empty())
               << "Some transactions were not aborted before dropping shard "
               << op.shard << ": " << transactions;
+#endif
           return _shardHandler->dropShard(op.shard).result();
         } else {
           static_assert(always_false_v<T>,

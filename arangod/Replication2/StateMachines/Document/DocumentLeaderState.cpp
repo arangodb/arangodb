@@ -225,7 +225,10 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
       },
       entry.getInnerOperation());
 
-  // Insert and emplace must happen atomically
+  // Insert and emplace must happen atomically. The idx is strictly increasing,
+  // which is required by markAsActive. Keeping the stream insertion and the
+  // markAsActive call under the same lock ensures that we never call
+  // markAsActive on a log index that is lower than the latest inserted one.
   auto&& insertionRes = basics::catchToResultT([&] {
     return _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       auto idx = stream->insert(entry);
