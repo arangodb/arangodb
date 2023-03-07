@@ -121,9 +121,6 @@ class PregelFeature final : public ArangodFeature {
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
-  void spawnActor(actor::ServerID server, actor::ActorPID sender,
-                  SpawnMessages msg);
-
  private:
   void scheduleGarbageCollection();
 
