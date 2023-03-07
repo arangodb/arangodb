@@ -1,6 +1,5 @@
 /*jshint strict: false */
 /*global arango, db, assertTrue, assertFalse, assertEqual */
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief helper for JavaScript Tests
 // /
@@ -29,7 +28,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
-const { 
+const {
   helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
@@ -37,12 +36,10 @@ const {
   isEqual,
   compareStringIds,
   endpointToURL,
-  getInstanceInfo,
   versionHas,
   isEnterprise,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
-const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
@@ -61,6 +58,24 @@ exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
+
+let instanceInfo = null;
+
+exports.flushInstanceInfo = () => {
+  instanceInfo = null;
+};
+
+function getInstanceInfo() {
+  if (instanceInfo === null) {
+    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    if (instanceInfo.arangods.length > 2) {
+      instanceInfo.arangods.forEach(arangod => {
+        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+      });
+    }
+  }
+  return instanceInfo;
+}
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
@@ -411,7 +426,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
@@ -476,24 +491,7 @@ exports.triggerMetrics = function () {
 };
 
 exports.getEndpoints = function (role) {
-  const endpointToURL = (instance) => {
-    let protocol = instance.endpoint.split('://')[0];
-    switch(protocol) {
-    case 'ssl':
-      return 'https://' + instance.endpoint.substr(6);
-      break;
-    case 'tcp':
-      return 'http://' + instance.endpoint.substr(6);
-      break;
-    default:
-      var pos = instance.endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + instance.endpoint;
-      }
-      return 'http' + instance.endpoint.substr(pos);
-    }
-  };
-  return exports.getServers(role).map(endpointToURL);
+  return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
 
 exports.getCoordinatorEndpoints = function () {
