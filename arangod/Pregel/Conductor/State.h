@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
-#include "Pregel/Conductor/ExecutionStates/LookupInfo.h"
+#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -35,7 +35,7 @@ struct Initial;
 
 struct ConductorState {
   ConductorState(ExecutionSpecifications specifications,
-                 std::unique_ptr<LookupInfo>&& lookupInfo)
+                 std::unique_ptr<CollectionLookup>&& lookupInfo)
       : _specifications{std::move(specifications)},
         _lookupInfo(std::move(lookupInfo)) {}
 
@@ -47,7 +47,7 @@ struct ConductorState {
   ConductorStatus _status;
   std::vector<actor::ActorPID> _workers;
   const ExecutionSpecifications _specifications;
-  std::unique_ptr<LookupInfo> _lookupInfo;
+  std::unique_ptr<CollectionLookup> _lookupInfo;
 };
 
 template<typename Inspector>

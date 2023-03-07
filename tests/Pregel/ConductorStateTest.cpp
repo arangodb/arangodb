@@ -33,7 +33,7 @@ using namespace arangodb::pregel::conductor;
 
 static const std::string databaseName = "dontCare";
 
-struct LookupInfoMock : conductor::LookupInfo {
+struct LookupInfoMock : conductor::CollectionLookup {
   LookupInfoMock(std::vector<std::string> serverIDs) : _servers(serverIDs) {}
   ~LookupInfoMock() = default;
 
@@ -94,7 +94,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
   }
 }
 
-TEST(CreateWorkersStateTest, check_that_conductor_creates_all_worker_pids) {
+TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
 
   auto cState = ConductorState(ExecutionSpecifications(),
@@ -116,7 +116,6 @@ TEST(CreateWorkersStateTest, check_that_conductor_creates_all_worker_pids) {
         created);
   }
 
-  ASSERT_EQ(createWorkers.conductor._workers.size(), servers.size());
   ASSERT_EQ(cState._workers.size(), servers.size());
   // for (auto const& serverID : servers) {
   //  TODO check also if proper PIDs are inserted here
@@ -157,7 +156,7 @@ TEST(CreateWorkersStateTest,
   }
 }
 
-TEST(CreateWorkersStateTest, send_invalid_message_type) {
+TEST(CreateWorkersStateTest, receive_invalid_message_type) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(ExecutionSpecifications(),
                                std::make_unique<LookupInfoMock>(servers));
@@ -174,7 +173,7 @@ TEST(CreateWorkersStateTest, send_invalid_message_type) {
   }
 }
 
-TEST(CreateWorkersStateTest, send_valid_message_to_unknown_server) {
+TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(ExecutionSpecifications(),
                                std::make_unique<LookupInfoMock>(servers));

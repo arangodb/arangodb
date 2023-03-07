@@ -29,8 +29,8 @@
 
 namespace arangodb::pregel::conductor {
 
-struct LookupInfo {
-  virtual ~LookupInfo() = default;
+struct CollectionLookup {
+  virtual ~CollectionLookup() = default;
 
   using CollectionPlanIDMapping = std::unordered_map<CollectionID, std::string>;
   using ServerMapping =

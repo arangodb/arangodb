@@ -16,7 +16,6 @@ target_link_libraries(arango_tests_pregel
   PRIVATE
   arango_inspection
   gtest
-  arango_lightweight
   arango_actor
   arango_pregel_conductor
   date_interface
@@ -27,6 +26,7 @@ add_executable(arangodbtests_pregel
   EXCLUDE_FROM_ALL)
 
 target_link_libraries(arangodbtests_pregel
+  arango_lightweight
   gtest_main
   arango_tests_pregel
   arango_assertions)

@@ -22,17 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/ExecutionStates/LookupInfo.h"
+#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "VocBase/LogicalCollection.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel::conductor {
 
-struct VocbaseLookupInfo : LookupInfo {
-  VocbaseLookupInfo(TRI_vocbase_t& vocbase,
-                    std::vector<CollectionID> const& verticesCollectionIDs,
-                    std::vector<CollectionID> const& edgesCollectionIDs) {
+struct DatabaseCollectionLookup : CollectionLookup {
+  DatabaseCollectionLookup(
+      TRI_vocbase_t& vocbase,
+      std::vector<CollectionID> const& verticesCollectionIDs,
+      std::vector<CollectionID> const& edgesCollectionIDs) {
     ServerState* ss = ServerState::instance();
     auto createMappingHelper =
         [&](std::vector<CollectionID> const& collectionIDs,
