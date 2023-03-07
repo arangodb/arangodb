@@ -139,7 +139,7 @@ source = sys.argv[1]
 
 # read input file
 
-erros = []
+errors = []
 with io.open(source, encoding="utf-8", newline=None) as source_fh:
     errors = csv.reader(io.open(source, encoding="utf-8", newline=None))
 

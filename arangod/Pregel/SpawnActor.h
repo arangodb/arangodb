@@ -25,7 +25,6 @@
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
-#include "Pregel/Conductor/Actor.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/SpawnMessages.h"
 #include "fmt/core.h"
@@ -40,42 +39,39 @@ auto inspect(Inspector& f, SpawnState& x) {
 
 template<typename Runtime>
 struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
-  auto operator()(SpawnStart start) -> std::unique_ptr<SpawnState> {
+  auto operator()(message::SpawnStart start) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("4a414", INFO, Logger::PREGEL)
         << fmt::format("Spawn Actor {} started", this->self);
     return std::move(this->state);
   }
 
-  auto operator()(SpawnConductor msg) -> std::unique_ptr<SpawnState> {
-    LOG_TOPIC("ed212", INFO, Logger::PREGEL)
-        << "Spawn Actor: Spawn conductor actor";
-    this->template spawn<ConductorActor>(ConductorState{}, ConductorStart{});
-    return std::move(this->state);
-  }
-
-  auto operator()(SpawnWorker msg) -> std::unique_ptr<SpawnState> {
+  auto operator()(message::SpawnWorker msg) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("2452c", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn worker actor";
-    this->template spawn<WorkerActor>(
-        WorkerState{}, WorkerStart{});  //.conductor = msg.conductor});
+    this->template spawn<worker::WorkerActor>(
+        std::make_unique<worker::WorkerState>(
+            msg.conductor, msg.message.executionSpecifications,
+            msg.message.collectionSpecifications),
+        worker::message::WorkerStart{});
     return std::move(this->state);
   }
 
-  auto operator()(actor::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("7b602", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound notFound)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("03156", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
-  auto operator()(actor::NetworkError notFound) -> std::unique_ptr<SpawnState> {
+  auto operator()(actor::message::NetworkError notFound)
+      -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("a87b3", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
@@ -90,7 +86,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
 
 struct SpawnActor {
   using State = SpawnState;
-  using Message = SpawnMessages;
+  using Message = message::SpawnMessages;
   template<typename Runtime>
   using Handler = SpawnHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "Spawn Actor"; }
