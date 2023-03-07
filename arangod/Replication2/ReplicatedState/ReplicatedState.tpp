@@ -804,6 +804,8 @@ auto FollowerStateManager<S>::getQuickStatus() const
 template<typename S>
 auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
+#if 0
+  // new code
   return _guardedData.doUnderLock(
       [](auto& data) -> std::shared_ptr<IReplicatedFollowerState<S>> {
         auto& stream = *data._stream;
@@ -819,6 +821,10 @@ auto FollowerStateManager<S>::getStateMachine() const
           return nullptr;
         }
       });
+#else
+  // old code
+  return _guardedData.getLockedGuard()->_followerState;
+#endif
 }
 
 template<typename S>
