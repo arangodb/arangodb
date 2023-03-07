@@ -28,6 +28,7 @@
 
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/SyncerId.h"
 #include "VocBase/Identifiers/ServerId.h"
 
@@ -42,7 +43,7 @@ namespace replication {
 class ReplicationClientsProgressTrackerTest_SingleClient
     : public ::testing::TestWithParam<std::pair<SyncerId, ServerId>> {
  protected:
-  ReplicationClientsProgressTracker testee{};
+  ReplicationClientsProgressTracker testee{nullptr};
   SyncerId syncerId{};
   ServerId clientId{};
 
@@ -260,7 +261,7 @@ INSTANTIATE_TEST_CASE_P(ReplicationClientsProgressTrackerTest_SingleClient,
 class ReplicationClientsProgressTrackerTest_MultiClient
     : public ::testing::Test {
  protected:
-  ReplicationClientsProgressTracker testee{};
+  ReplicationClientsProgressTracker testee{nullptr};
 
   double const ttl = 7200;
 

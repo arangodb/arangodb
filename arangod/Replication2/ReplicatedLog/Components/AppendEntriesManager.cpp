@@ -33,17 +33,12 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
-  auto buildResignedResponse = [&] {
-    return AppendEntriesResult::withRejection(
-        request.leaderTerm, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kLostLogCore}, true);
-  };
-
   MeasureTimeGuard timer(*metrics->replicatedLogFollowerAppendEntriesRtUs);
   // TODO more metrics?
 
@@ -54,7 +49,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   if (guard->resigned) {
-    co_return buildResignedResponse();
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
   auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
@@ -104,7 +100,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto result = co_await asResult(std::move(f));
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
-        co_return buildResignedResponse();
+        throw ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
       }
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
@@ -125,7 +122,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto result = co_await asResult(std::move(f));
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
-        co_return buildResignedResponse();
+        throw ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
       }
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)

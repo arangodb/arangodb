@@ -8,6 +8,7 @@ target_include_directories(arango_tests_actor PRIVATE
   ${PROJECT_SOURCE_DIR}/lib)
 target_link_libraries(arango_tests_actor PRIVATE
   arango_actor_standalone
+  arango_inspection
   gtest
   velocypack_utils)
 

@@ -71,7 +71,7 @@ The response body contains an error document in this case.
 @RESTRETURNCODE{409}
 is returned if we fail to lock the document key due to some
 concurrent operation that is operating on the same document.
-This also also referred to as a write-write conflict.
+This is also referred to as a write-write conflict.
 The response body contains an error document in this case with the
 errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
 
