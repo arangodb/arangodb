@@ -211,9 +211,11 @@ workflows:
           name: build-ce
           preset: community-pr
           edition: x64-community
+          enterprise: false
   enterprise-pr:
     jobs:
       - compile-linux:
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise
+          enterprise: true
