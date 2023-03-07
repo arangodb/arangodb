@@ -1,6 +1,9 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Fix potential memory under-accounting on cache shutdown for in-memory caches
+  for edge indexes.
+
 * Added new geo_s2 ArangoSearch analyzer (Enterprise Only).
 
 * GORDO-1554: Fixes invalid document insertion with invalid user-specified keys
