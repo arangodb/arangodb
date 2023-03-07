@@ -41,6 +41,7 @@ let {
   typeName,
   isEqual,
   compareStringIds,
+  endpointToURL,
   versionHas,
   isEnterprise,
 } = require('@arangodb/test-helper-common');
@@ -184,7 +185,6 @@ exports.waitForShardsInSync = function(cn, timeout) {
     internal.wait(1);
   }
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
-  return;
 };
 
 exports.getCoordinators = function () {
