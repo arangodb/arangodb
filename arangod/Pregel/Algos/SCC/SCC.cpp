@@ -160,10 +160,8 @@ namespace {
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
 
-  explicit SCCGraphFormat(application_features::ApplicationServer& server,
-                          std::string result)
-      : GraphFormat<SCCValue, int8_t>(server),
-        _resultField(std::move(result)) {}
+  explicit SCCGraphFormat(std::string result)
+      : GraphFormat<SCCValue, int8_t>(), _resultField(std::move(result)) {}
 
   [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
@@ -188,7 +186,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 }  // namespace
 
 GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
-  return new SCCGraphFormat(_server, _resultField);
+  return new SCCGraphFormat(_resultField);
 }
 
 struct SCCMasterContext : public MasterContext {

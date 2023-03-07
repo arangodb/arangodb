@@ -77,8 +77,7 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
  public:
   SSSPGraphFormat(application_features::ApplicationServer& server,
                   std::string const& source, std::string const& result)
-      : InitGraphFormat<int64_t, int64_t>(server, result, 0, 1),
-        _sourceDocId(source) {}
+      : InitGraphFormat<int64_t, int64_t>(result, 0, 1), _sourceDocId(source) {}
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
