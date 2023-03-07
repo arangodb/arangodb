@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,51 +23,70 @@
 
 #pragma once
 
+#include "Geo/Coding.h"
+
 #include <s2/s2region_term_indexer.h>
 
 namespace arangodb {
-
 namespace velocypack {
+
 class Slice;
 class Builder;
+
 }  // namespace velocypack
-
 namespace geo {
-class ShapeContainer;
-}
 
+class ShapeContainer;
+
+}  // namespace geo
 namespace iresearch {
 
 struct GeoOptions {
-  static constexpr int32_t MAX_CELLS =
-      S2RegionCoverer::Options::kDefaultMaxCells;
-  static constexpr int32_t MIN_LEVEL = 0;
-  static constexpr int32_t MAX_LEVEL = S2CellId::kMaxLevel;
+  static constexpr int32_t kMinCells = 0;  // TODO(MBkkt) It's looks incorrect
+  static constexpr int32_t kMaxCells = std::numeric_limits<int32_t>::max();
+  static constexpr int32_t kMinLevel = 0;  // TODO(MBkkt) Is it correct?
+  static constexpr int32_t kMaxLevel = S2CellId::kMaxLevel;
+  static constexpr int32_t kMinLevelMod = 1;
+  static constexpr int32_t kMaxLevelMod = 3;
 
-  static constexpr int32_t DEFAULT_MAX_CELLS = 20;
-  static constexpr int32_t DEFAULT_MIN_LEVEL = 4;
-  static constexpr int32_t DEFAULT_MAX_LEVEL = 23;  // ~1m
+  static constexpr int32_t kDefaultMaxCells = 20;
+  static constexpr int32_t kDefaultMinLevel = 4;
+  static constexpr int32_t kDefaultMaxLevel = 23;  // ~1m
+  static constexpr int8_t kDefaultLevelMod = 1;
 
-  int32_t maxCells{DEFAULT_MAX_CELLS};
-  int32_t minLevel{DEFAULT_MIN_LEVEL};
-  int32_t maxLevel{DEFAULT_MAX_LEVEL};
+  // TODO(MBkkt) different maxCells can be set on every insertion/querying
+  int32_t maxCells{kDefaultMaxCells};
+  int32_t minLevel{kDefaultMinLevel};
+  int32_t maxLevel{kDefaultMaxLevel};
+  int8_t levelMod{kDefaultLevelMod};
+  bool optimizeForSpace{false};
 };
 
-inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
+inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts,
+                                              bool pointsOnly) {
   S2RegionTermIndexer::Options s2opts;
   s2opts.set_max_cells(opts.maxCells);
   s2opts.set_min_level(opts.minLevel);
   s2opts.set_max_level(opts.maxLevel);
+  s2opts.set_level_mod(opts.levelMod);
+  s2opts.set_optimize_for_space(opts.optimizeForSpace);
+  s2opts.set_index_contains_points_only(pointsOnly);
 
   return s2opts;
 }
 
-bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
-                bool onlyPoint);
-bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice,
-                S2LatLng& out);
+enum class Parsing : uint8_t {
+  FromIndex = 0,
+  OnlyPoint,
+  GeoJson,
+};
 
-void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
+template<Parsing p>
+bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
+                std::vector<S2LatLng>& cache, bool legacy,
+                geo::coding::Options options, Encoder* encoder);
+
+void toVelocyPack(velocypack::Builder& builder, S2LatLng point);
 
 }  // namespace iresearch
 }  // namespace arangodb

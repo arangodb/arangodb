@@ -107,12 +107,14 @@ class S2Loop final : public S2Region {
   // The main reason to use this constructor is if you intend to call
   // IsValid() explicitly.  See set_s2debug_override() for details.
   S2Loop(absl::Span<const S2Point> vertices, S2Debug override);
+  S2Loop(absl::Span<const S2LatLng> vertices, S2Debug override);
 
   // Initialize a loop with given vertices.  The last vertex is implicitly
   // connected to the first.  All points should be unit length.  Loops must
   // have at least 3 vertices (except for the empty and full loops, see
   // kEmpty and kFull).  This method may be called multiple times.
   void Init(absl::Span<const S2Point> vertices);
+  void Init(absl::Span<const S2LatLng> vertices);
 
   // A special vertex chain of length 1 that creates an empty loop (i.e., a
   // loop with no edges that contains no points).  Example usage:

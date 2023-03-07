@@ -47,7 +47,7 @@ using namespace arangodb::tests;
 namespace {
 
 struct custom_sort : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "custom_sort";
   }
 
@@ -134,8 +134,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_field_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::field_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
     virtual irs::ScoreFunction prepare_scorer(
@@ -172,8 +171,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_term_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::term_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::term_collector>(sort_);
     }
 
    private:
@@ -237,7 +235,7 @@ TEST(GeoDistanceFilterTest, ctor) {
 
 TEST(GeoDistanceFilterTest, equal) {
   GeoDistanceFilter q;
-  q.mutable_options()->origin = S2Point{1., 2., 3.};
+  q.mutable_options()->origin = S2Point{1., 0., 0.};
   q.mutable_options()->range.min = 5000.;
   q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q.mutable_options()->range.max = 7000.;
@@ -246,7 +244,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -260,7 +258,7 @@ TEST(GeoDistanceFilterTest, equal) {
   {
     GeoDistanceFilter q1;
     q1.boost(1.5);
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -274,7 +272,7 @@ TEST(GeoDistanceFilterTest, equal) {
   {
     GeoDistanceFilter q1;
     q1.boost(1.5);
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -286,7 +284,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -298,7 +296,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 6000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -310,7 +308,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -322,7 +320,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{1., 2., 3.};
+    q1.mutable_options()->origin = S2Point{1., 0., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q1.mutable_options()->range.max = 6000.;
@@ -334,7 +332,7 @@ TEST(GeoDistanceFilterTest, equal) {
 
   {
     GeoDistanceFilter q1;
-    q1.mutable_options()->origin = S2Point{2., 2., 3.};
+    q1.mutable_options()->origin = S2Point{0., 1., 0.};
     q1.mutable_options()->range.min = 5000.;
     q1.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q1.mutable_options()->range.max = 7000.;
@@ -436,6 +434,7 @@ TEST(GeoDistanceFilterTest, query) {
   ])");
 
   irs::memory_directory dir;
+  irs::directory_reader reader;
 
   // index data
   {
@@ -467,9 +466,9 @@ TEST(GeoDistanceFilterTest, query) {
       }
     }
     writer->commit();
+    reader = irs::directory_reader::open(dir);
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2U, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
@@ -520,8 +519,7 @@ TEST(GeoDistanceFilterTest, query) {
         EXPECT_EQ(docId, values->seek(docId));
         EXPECT_FALSE(value->value.null());
 
-        actualResults.emplace(
-            irs::to_string<std::string>(value->value.c_str()));
+        actualResults.emplace(irs::to_string<std::string>(value->value.data()));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
@@ -544,7 +542,7 @@ TEST(GeoDistanceFilterTest, query) {
             if (!irs::doc_limits::eof(column_it->value())) {
               EXPECT_NE(actualResults.end(),
                         actualResults.find(irs::to_string<std::string>(
-                            payload->value.c_str())));
+                            payload->value.data())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
@@ -685,12 +683,19 @@ TEST(GeoDistanceFilterTest, query) {
     auto origin = docs->slice().at(7).get("geometry");
     ASSERT_TRUE(origin.isObject());
     arangodb::geo::ShapeContainer lhs, rhs;
-    ASSERT_TRUE(arangodb::iresearch::parseShape(origin, lhs, true));
+    std::vector<S2LatLng> cache;
+    ASSERT_TRUE(arangodb::iresearch::parseShape<
+                arangodb::iresearch::Parsing::OnlyPoint>(
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+        nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
-      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, rhs, true));
+      ASSERT_TRUE(arangodb::iresearch::parseShape<
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist < 100 || dist > 2000) {
         continue;
@@ -718,12 +723,19 @@ TEST(GeoDistanceFilterTest, query) {
     auto origin = docs->slice().at(7).get("geometry");
     ASSERT_TRUE(origin.isObject());
     arangodb::geo::ShapeContainer lhs, rhs;
-    ASSERT_TRUE(arangodb::iresearch::parseShape(origin, lhs, true));
+    std::vector<S2LatLng> cache;
+    ASSERT_TRUE(arangodb::iresearch::parseShape<
+                arangodb::iresearch::Parsing::OnlyPoint>(
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+        nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
-      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, rhs, true));
+      ASSERT_TRUE(arangodb::iresearch::parseShape<
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist >= 2000) {
         continue;
@@ -842,12 +854,19 @@ TEST(GeoDistanceFilterTest, query) {
     auto origin = docs->slice().at(7).get("geometry");
     ASSERT_TRUE(origin.isObject());
     arangodb::geo::ShapeContainer lhs, rhs;
-    ASSERT_TRUE(arangodb::iresearch::parseShape(origin, lhs, true));
+    std::vector<S2LatLng> cache;
+    ASSERT_TRUE(arangodb::iresearch::parseShape<
+                arangodb::iresearch::Parsing::OnlyPoint>(
+        origin, lhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+        nullptr));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
-      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, rhs, true));
+      ASSERT_TRUE(arangodb::iresearch::parseShape<
+                  arangodb::iresearch::Parsing::OnlyPoint>(
+          geo, rhs, cache, false, arangodb::geo::coding::Options::kInvalid,
+          nullptr));
       auto const dist = lhs.distanceFromCentroid(rhs.centroid());
       if (dist <= 2000) {
         continue;
@@ -935,6 +954,7 @@ TEST(GeoDistanceFilterTest, checkScorer) {
   ])");
 
   irs::memory_directory dir;
+  irs::directory_reader reader;
 
   // index data
   {
@@ -966,9 +986,9 @@ TEST(GeoDistanceFilterTest, checkScorer) {
       }
     }
     writer->commit();
+    reader = irs::directory_reader::open(dir);
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
@@ -1023,7 +1043,7 @@ TEST(GeoDistanceFilterTest, checkScorer) {
         EXPECT_EQ(score_value, seek_score_value);
 
         actualResults.emplace(
-            irs::to_string<std::string>(payload->value.c_str()),
+            irs::to_string<std::string>(payload->value.data()),
             std::move(score_value));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
@@ -1047,7 +1067,7 @@ TEST(GeoDistanceFilterTest, checkScorer) {
             if (!irs::doc_limits::eof(column_it->value())) {
               EXPECT_NE(actualResults.end(),
                         actualResults.find(irs::to_string<std::string>(
-                            payload->value.c_str())));
+                            payload->value.data())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
