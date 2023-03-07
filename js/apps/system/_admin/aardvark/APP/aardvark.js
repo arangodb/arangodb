@@ -1591,6 +1591,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const barnesHutOptions = {
       interaction: interactionOptions,
       layout: {
+          randomSeed: 0,
           hierarchical: false
       },
       edges: {
@@ -1610,6 +1611,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const hierarchicalOptions = {
       interaction: interactionOptions,
         layout: {
+          randomSeed: 0,
           hierarchical: {
             levelSeparation: 150,
             nodeSpacing: 300,
@@ -1632,6 +1634,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const forceAtlas2BasedOptions = {
       interaction: interactionOptions,
           layout: {
+              randomSeed: 0,
               hierarchical: false
           },
           edges: {
@@ -1668,6 +1671,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         configlayout: config.layout,
         layout: layoutObject,
         vertexCollections: vertexCollections,
+        edgesCollections: edgesCollections,
         startVertex: startVertex,
         nodesColorAttributes: nodesColorAttributes,
         edgesColorAttributes: edgesColorAttributes,
