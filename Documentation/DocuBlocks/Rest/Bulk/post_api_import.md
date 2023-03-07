@@ -2,7 +2,15 @@
 @startDocuBlock post_api_import
 @brief imports documents from JSON
 
-@RESTHEADER{POST /_api/import,imports documents from JSON, RestImportHandler}
+@RESTHEADER{POST /_api/import,Import JSON data as documents, RestImportHandler}
+
+@RESTDESCRIPTION
+Creates documents in the collection identified by `collection-name`.
+
+The request body can have different JSON formats:
+- One JSON object per line (JSONL)
+- A JSON array of objects
+- One JSON array per line (CSV-like)
 
 @RESTALLBODYPARAM{documents,string,required}
 The body must either be a JSON-encoded array of objects or a string with
@@ -10,19 +18,44 @@ multiple JSON objects separated by newlines.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{type,string,required}
-Determines how the body of the request will be interpreted. `type` can have
-the following values:
-- `documents`: when this type is used, each line in the request body is
-  expected to be an individual JSON-encoded document. Multiple JSON objects
-  in the request body need to be separated by newlines.
-- `list`: when this type is used, the request body must contain a single
-  JSON-encoded array of individual objects to import.
-- `auto`: if set, this will automatically determine the body type (either
-  `documents` or `list`).
-
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
+
+@RESTQUERYPARAM{type,string,optional}
+Determines how the body of the request is interpreted.
+
+- `documents`: JSON Lines (JSONL) format. Each line is expected to be one
+  JSON object. Example:
+
+  ```json
+  {"_key":"john","name":"John Smith","age":35}
+  {"_key":"katie","name":"Katie Foster","age":28}
+  ```
+
+- `array` (or `list`): JSON format. The request body is expected to be a
+  JSON array of objects. Example:
+
+  ```json
+  [
+    {"_key":"john","name":"John Smith","age":35},
+    {"_key":"katie","name":"Katie Foster","age":28}
+  ]
+  ```
+
+- `auto`: automatically determines the type (either `documents` or `array`).
+
+- Omit the `type` parameter entirely to import JSON arrays of tabular data,
+  similar to CSV.
+  
+  The first line is an array of strings that defines the attribute keys. The
+  subsequent lines are arrays with the attribute values. The keys and values
+  are matched by the order of the array elements. Example:
+
+  ```json
+  ["_key","name","age"]
+  ["john","John Smith",35]
+  ["katie","Katie Foster",28]
+  ```
 
 @RESTQUERYPARAM{fromPrefix,string,optional}
 An optional prefix for the values in `_from` attributes. If specified, the
@@ -69,36 +102,34 @@ be imported.
 If set to `true` or `yes`, the result will include an attribute `details`
 with details about documents that could not be imported.
 
-@RESTDESCRIPTION
-Creates documents in the collection identified by `collection-name`.
-The JSON representations of the documents must be passed as the body of the
-POST request. The request body can either consist of multiple lines, with
-each line being a single stand-alone JSON object, or a singe JSON array with
-sub-objects.
-
-The response is a JSON object with the following attributes:
-
-- `created`: number of documents imported.
-
-- `errors`: number of documents that were not imported due to an error.
-
-- `empty`: number of empty lines found in the input (will only contain a
-  value greater zero for types `documents` or `auto`).
-
-- `updated`: number of updated/replaced documents (in case `onDuplicate`
-  was set to either `update` or `replace`).
-
-- `ignored`: number of failed but ignored insert operations (in case
-  `onDuplicate` was set to `ignore`).
-
-- `details`: if query parameter `details` is set to true, the result will
-  contain a `details` attribute which is an array with more detailed
-  information about which documents could not be inserted.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
 is returned if all documents could be imported successfully.
+
+The response is a JSON object with the following attributes:
+
+@RESTREPLYBODY{created,integer,required,}
+The number of imported documents.
+
+@RESTREPLYBODY{errors,integer,required,}
+The number of documents that were not imported due to errors.
+
+@RESTREPLYBODY{empty,integer,required,}
+The number of empty lines found in the input. Only greater than zero for the
+types `documents` and `auto`.
+
+@RESTREPLYBODY{updated,integer,required,}
+The number of updated/replaced documents. Only greater than zero if `onDuplicate`
+is set to either `update` or `replace`.
+
+@RESTREPLYBODY{ignored,integer,required,}
+The number of failed but ignored insert operations. Only greater than zero if
+`onDuplicate` is set to `ignore`.
+
+@RESTREPLYBODY{details,array,optional,string}
+An array with the error messages caused by documents that could not be imported.
+Only present if `details` is set to `true`.
 
 @RESTRETURNCODE{400}
 is returned if `type` contains an invalid value, no `collection` is
@@ -119,7 +150,7 @@ error) for a document with no user-defined key.
 
 @EXAMPLES
 
-Importing documents with heterogenous attributes from a JSON array
+Importing documents with heterogenous attributes from an array of JSON objects:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonList}
     db._flushCache();
@@ -145,7 +176,7 @@ Importing documents with heterogenous attributes from a JSON array
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Importing documents from individual JSON lines
+Importing documents using JSON objects separated by new lines (JSONL):
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonLines}
     db._flushCache();
@@ -171,7 +202,7 @@ Importing documents from individual JSON lines
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Using the auto type detection
+Using the `auto` type detection:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonType}
     db._flushCache();
@@ -197,7 +228,8 @@ Using the auto type detection
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Importing into an edge collection, with attributes `_from`, `_to` and `name`
+Importing JSONL into an edge collection, with `_from`, `_to` and `name`
+attributes:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdge}
     db._flushCache();
@@ -224,7 +256,8 @@ Importing into an edge collection, with attributes `_from`, `_to` and `name`
     db._drop("products");
 @END_EXAMPLE_ARANGOSH_RUN
 
-Importing into an edge collection, omitting `_from` or `_to`
+Importing an array of JSON objects into an edge collection,
+omitting `_from` or `_to`:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdgeInvalid}
     db._flushCache();
@@ -246,7 +279,7 @@ Importing into an edge collection, omitting `_from` or `_to`
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Violating a unique constraint, but allow partial imports
+Violating a unique constraint, but allowing partial imports:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonUniqueContinue}
     var cn = "products";
@@ -269,7 +302,7 @@ Violating a unique constraint, but allow partial imports
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Violating a unique constraint, not allowing partial imports
+Violating a unique constraint, not allowing partial imports:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonUniqueFail}
     var cn = "products";
@@ -288,7 +321,7 @@ Violating a unique constraint, not allowing partial imports
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Using a non-existing collection
+Using a non-existing collection:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonInvalidCollection}
     var cn = "products";
@@ -303,7 +336,7 @@ Using a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Using a malformed body
+Using a malformed body with an array of JSON objects being expected:
 
 @EXAMPLE_ARANGOSH_RUN{RestImportJsonInvalidBody}
     var cn = "products";
@@ -320,4 +353,92 @@ Using a malformed body
     logJsonResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Importing two documents using the JSON arrays format. The documents have a
+`_key`, `value1`, and `value2` attribute each. One line in the import data is
+empty and skipped:
+
+@EXAMPLE_ARANGOSH_RUN{RestImportCsvExample}
+    var cn = "products";
+    db._drop(cn);
+    db._create(cn);
+
+    var body = '[ "_key", "value1", "value2" ]\n' +
+               '[ "abc", 25, "test" ]\n\n' +
+               '[ "foo", "bar", "baz" ]';
+
+    var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
+
+    assert(response.code === 201);
+    assert(response.parsedBody.created === 2);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 1);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+Importing JSON arrays into an edge collection, with `_from`, `_to`, and `name`
+attributes:
+
+@EXAMPLE_ARANGOSH_RUN{RestImportCsvEdge}
+    var cn = "links";
+    db._drop(cn);
+    db._createEdgeCollection(cn);
+    db._drop("products");
+    db._create("products");
+
+    var body = '[ "_from", "_to", "name" ]\n' +
+               '[ "products/123","products/234", "some name" ]\n' +
+               '[ "products/332", "products/abc", "other name" ]';
+
+    var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
+
+    assert(response.code === 201);
+    assert(response.parsedBody.created === 2);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 0);
+
+    logJsonResponse(response);
+    db._drop(cn);
+    db._drop("products");
+@END_EXAMPLE_ARANGOSH_RUN
+
+Importing JSON arrays into an edge collection, omitting `_from` or `_to`:
+
+@EXAMPLE_ARANGOSH_RUN{RestImportCsvEdgeInvalid}
+    var cn = "links";
+    db._drop(cn);
+    db._createEdgeCollection(cn);
+
+    var body = '[ "name" ]\n[ "some name" ]\n[ "other name" ]';
+
+    var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
+
+    assert(response.code === 201);
+    assert(response.parsedBody.created === 0);
+    assert(response.parsedBody.errors === 2);
+    assert(response.parsedBody.empty === 0);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+Using a malformed body with JSON arrays being expected:
+
+@EXAMPLE_ARANGOSH_RUN{RestImportCsvInvalidBody}
+    var cn = "products";
+    db._drop(cn);
+    db._create(cn);
+
+    var body = '{ "_key": "foo", "value1": "bar" }';
+
+    var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
+
+    assert(response.code === 400);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
