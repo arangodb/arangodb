@@ -360,13 +360,14 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
+  auto vocbaseLookupInfo = std::make_unique<conductor::VocbaseLookupInfo>(
+      vocbase, executionSpecifications.vertexCollections,
+      executionSpecifications.edgeCollections);
+
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
-         auto vocbaseLookupInfo = std::make_unique<conductor::VocbaseLookupInfo>(
-              vocbase, executionSpecifications.vertexCollections,
-              executionSpecifications.edgeCollections); 
-         std::make_unique<conductor::ConductorState>(
-          executionSpecifications, std::move(vocbaseLookupInfo),
+      std::make_unique<conductor::ConductorState>(executionSpecifications,
+                                                  std::move(vocbaseLookupInfo)),
       conductor::message::ConductorStart{});
 
   return en;
