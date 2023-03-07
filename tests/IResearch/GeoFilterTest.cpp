@@ -423,7 +423,7 @@ TEST(GeoFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -799,7 +799,7 @@ TEST(GeoFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(*score != irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);

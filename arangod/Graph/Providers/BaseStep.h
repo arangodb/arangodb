@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/ResultT.h"
-
 #include <velocypack/HashedStringRef.h>
 #include "Basics/ResultT.h"
 
