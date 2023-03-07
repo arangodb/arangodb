@@ -1090,33 +1090,24 @@ authRouter.get('/visgraph/:name', function (req, res) {
   }
 
   var getPseudoRandomStartVertex = function () {
+    var vertexCandidates = [];
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      let maxDoc = db[vertexCollection.name()].count();
-
-      if (maxDoc === 0) {
-        continue;
-      }
-
-      if (maxDoc > 1000) {
-        maxDoc = 1000;
-      }
-
-      let randDoc = Math.floor(Math.random() * maxDoc);
-
-      let potentialVertex = db._query(
-        'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
-        {
-          '@vertexCollection': vertexCollection.name(),
-          'skipN': randDoc
-        }
-      ).toArray()[0];
-
-      if (potentialVertex) {
-        return potentialVertex;
+      if (db[vertexCollection.name()].count()) {
+        let randomVertex = db._query(
+          'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
+          {
+            '@vertexCollection': vertexCollection.name()
+          }
+        ).next();
+        
+        vertexCandidates.push(randomVertex);
       }
     }
-
+    
+    if (vertexCandidates.length) {
+      return _.sample(vertexCandidates);
+    }
     return null;
   };
 
