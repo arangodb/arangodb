@@ -102,14 +102,18 @@ SnapshotManager::SnapshotManager(
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
       guardedData(storage, stateHandle) {
+  acquireSnapshotIfNecessary();
+}
+
+void SnapshotManager::acquireSnapshotIfNecessary() {
   auto guard = guardedData.getLockedGuard();
-  if (this->termInfo->leader.has_value() and
-      guard->state == SnapshotState::MISSING) {
+  if (termInfo->leader.has_value() and guard->state == SnapshotState::MISSING) {
     auto version = ++guard->lastSnapshotVersion;
+    auto& stateHandle = guard->stateHandle;
     guard.unlock();
     LOG_CTX("5426a", INFO, loggerContext)
         << "detected missing snapshot - acquire new one";
-    stateHandle.acquireSnapshot(*this->termInfo->leader, version);
+    stateHandle.acquireSnapshot(*termInfo->leader, version);
   }
 }
 
