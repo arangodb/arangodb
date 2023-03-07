@@ -39,6 +39,8 @@ struct TwoSidedEnumeratorOptions {
 
   ~TwoSidedEnumeratorOptions();
 
+  void setMinDepth(size_t min);
+  void setMaxDepth(size_t max);
   [[nodiscard]] size_t getMinDepth() const;
   [[nodiscard]] size_t getMaxDepth() const;
   [[nodiscard]] PathType::Type getPathType() const;

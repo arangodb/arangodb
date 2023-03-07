@@ -43,9 +43,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Graph/PathManagement/PathResult.h"
@@ -146,16 +144,16 @@ class TokenTranslator : public TraverserCache {
 // sequences of outputs can be found. It also stores which paths it has been
 // asked for to verify later whether the outputs produced by the
 // ShortestPathExecutor are the ones we expected.
-class FakePathFinder : public ShortestPathFinder {
+class FakePathFinder {
  public:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
   FakePathFinder(ShortestPathOptions& opts, TokenTranslator& translator)
-      : ShortestPathFinder(opts), _paths(), _translator(translator) {}
+      : _paths(), _translator(translator) {}
 
   ~FakePathFinder() = default;
 
-  void clear() override{};
+  void clear(){};
 
   aql::TraversalStats stealStats() { return {}; }
 
@@ -177,7 +175,7 @@ class FakePathFinder : public ShortestPathFinder {
     VPackSlice sourceSlice = s.slice().at(0);
     VPackSlice targetSlice = s.slice().at(1);
 
-    bool foundPath = shortestPath(sourceSlice, targetSlice, _result);
+    bool foundPath = shortestPath(sourceSlice, targetSlice);
     result = _tmpPathBuilder;
 
     return foundPath;
@@ -187,8 +185,7 @@ class FakePathFinder : public ShortestPathFinder {
     _paths.emplace_back(std::move(path));
   }
 
-  bool shortestPath(VPackSlice source, VPackSlice target,
-                    arangodb::graph::ShortestPathResult& result) override {
+  bool shortestPath(VPackSlice source, VPackSlice target) {
     TRI_ASSERT(source.isString());
     TRI_ASSERT(target.isString());
     _calledWith.emplace_back(
@@ -253,10 +250,6 @@ class FakePathFinder : public ShortestPathFinder {
   VertexRef _source;
   VertexRef _target;
   VPackBuilder _tmpPathBuilder;
-
-  // Still there because of OLD API interface, but not required anymore. Can be
-  // deleted as soon as we drop the "ShortestPathFinder" class / interface.
-  arangodb::graph::ShortestPathResult _result;
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {

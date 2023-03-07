@@ -301,10 +301,11 @@ struct BoostScorer : public irs::sort {
         irs::score_t boost;
       };
 
-      return {std::make_unique<ScoreCtx>(boost),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                *res = static_cast<ScoreCtx*>(ctx)->boost;
-              }};
+      return irs::ScoreFunction::Make<ScoreCtx>(
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            *res = static_cast<ScoreCtx*>(ctx)->boost;
+          },
+          boost);
     }
   };  // namespace
 
@@ -361,10 +362,12 @@ struct CustomScorer : public irs::sort {
         float_t scoreValue;
       };
 
-      return {std::make_unique<ScoreCtx>(this->i),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
-              }};
+      return irs::ScoreFunction::Make<ScoreCtx>(
+
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
+          },
+          this->i);
     }
 
     float_t i;

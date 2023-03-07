@@ -52,7 +52,7 @@ struct QueryEntryCopy {
       std::string&& queryString,
       std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
       std::vector<std::string> dataSources, double started, double runTime,
-      QueryExecutionState::ValueType state, bool stream,
+      size_t peakMemoryUsage, QueryExecutionState::ValueType state, bool stream,
       std::optional<ErrorCode> resultCode);
 
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
@@ -65,6 +65,7 @@ struct QueryEntryCopy {
   std::vector<std::string> dataSources;
   double const started;
   double const runTime;
+  size_t peakMemoryUsage;
   QueryExecutionState::ValueType const state;
   std::optional<ErrorCode> resultCode;
   bool stream;

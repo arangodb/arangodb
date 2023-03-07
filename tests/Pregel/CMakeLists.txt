@@ -13,6 +13,7 @@ target_include_directories(arango_tests_pregel
 
 target_link_libraries(arango_tests_pregel
   PRIVATE
+  arango_inspection
   gtest
   date_interface
   velocypack

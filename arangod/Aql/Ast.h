@@ -108,9 +108,11 @@ class Ast {
   static constexpr uint64_t maxExpressionNesting = 500;
 
   /// @brief return the query
-  QueryContext& query() const { return _query; }
+  QueryContext const& query() const noexcept { return _query; }
+  QueryContext& query() noexcept { return _query; }
 
-  AstResources& resources() { return _resources; }
+  AstResources const& resources() const noexcept { return _resources; }
+  AstResources& resources() noexcept { return _resources; }
 
   /// @brief return the variable generator
   VariableGenerator* variables();
@@ -138,7 +140,7 @@ class Ast {
   void addWriteCollection(AstNode const* node, bool isExclusiveAccess);
 
   /// @brief whether or not function calls may access collection documents
-  bool functionsMayAccessDocuments() const;
+  bool functionsMayAccessDocuments() const noexcept;
 
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const noexcept;

@@ -36,6 +36,7 @@ struct IAppendEntriesManager {
   virtual ~IAppendEntriesManager() = default;
   virtual auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> = 0;
+  virtual auto resign() && noexcept -> void = 0;
 };
 
 }  // namespace comp

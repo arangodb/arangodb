@@ -372,6 +372,7 @@ TEST_F(AppendEntriesFollowerTest, resigned_follower) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{2};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    EXPECT_ANY_THROW({ std::ignore = follower->appendEntries(request).get(); });
+    EXPECT_THROW({ std::ignore = follower->appendEntries(request).get(); },
+                 ParticipantResignedException);
   }
 }

@@ -124,7 +124,14 @@ function gtestRunner (testname, options) {
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
-      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+
+      let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
+      if (filter.length > 0) {
+        if (filter.length > 1) {
+          throw "Found more than one gtest_filter argument";
+        }
+        argv.push('--' + filter[0]);
+      } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
