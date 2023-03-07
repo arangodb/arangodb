@@ -37,7 +37,7 @@ struct ConnectedComponents
  public:
   explicit ConnectedComponents(application_features::ApplicationServer& server,
                                VPackSlice userParams)
-      : SimpleAlgorithm(server, "connectedcomponents", userParams) {}
+      : SimpleAlgorithm("connectedcomponents", userParams) {}
 
   GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 
