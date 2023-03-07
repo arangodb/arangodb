@@ -68,7 +68,9 @@ auto DocumentLeaderState::resign() && noexcept
     TRI_ASSERT(false) << "Double-resign in document leader state " << gid;
   }
 
-  // We are taking a copy of active transactions to avoid a deadlock in doAbort
+  // We are taking a copy of active transactions to avoid a deadlock in doAbort.
+  // doAbort is called within abortManagedTrx below, and requires it's own lock
+  // on the guarded data.
   auto activeTransactions =
       _activeTransactions.doUnderLock([&](auto& activeTransactions) {
         return activeTransactions.getTransactions();
