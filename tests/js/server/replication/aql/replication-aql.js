@@ -176,10 +176,6 @@ function ReplicationSuite() {
     tearDownAll: function() {
       connectToLeader();
       db._useDatabase("_system");
-
-      db._dropDatabase(cn);
-      connectToFollower();
-      db._useDatabase("_system");
       db._dropDatabase(cn);
     },
     

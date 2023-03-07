@@ -319,8 +319,8 @@ class MockGraphProvider {
   std::string getEdgeId(Step::Edge const& edge);
   velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 
-  void prepareIndexExpressions(aql::Ast* ast);
-  void prepareContext(aql::InputAqlItemRow input);
+  void prepareIndexExpressions(arangodb::aql::Ast* ast);
+  void prepareContext(arangodb::aql::InputAqlItemRow input);
   void unPrepareContext();
   bool isResponsible(Step const& step) const;
 
@@ -329,7 +329,7 @@ class MockGraphProvider {
   [[nodiscard]] transaction::Methods* trx();
   [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
-  aql::TraversalStats stealStats();
+  arangodb::aql::TraversalStats stealStats();
 
   void setWeightEdgeCallback(WeightCallback callback) {
     _weightCallback = std::move(callback);

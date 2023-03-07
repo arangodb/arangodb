@@ -23,6 +23,8 @@ database. Each query is a JSON object with the following attributes:
 - *runTime*: the query's run time up to the point the list of queries was
   queried
 
+- *peakMemoryUsage*: the query's peak memory usage in bytes (in increments of 32KB)
+
 - *state*: the query's current execution state (as a string). One of:
   - `"initializing"`
   - `"parsing"`

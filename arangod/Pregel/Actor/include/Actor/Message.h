@@ -50,6 +50,8 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
   return f.object(x).fields(f.field("payload", x.payload));
 }
 
+namespace message {
+
 struct UnknownMessage {
   ActorPID sender;
   ActorPID receiver;
@@ -68,24 +70,23 @@ auto inspect(Inspector& f, ActorNotFound& x) {
   return f.object(x).fields(f.field("actor", x.actor));
 }
 
-struct ServerNotFound {
-  ServerID server;
+struct NetworkError {
+  std::string message;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, ServerNotFound& x) {
-  return f.object(x).fields(f.field("server", x.server));
+auto inspect(Inspector& f, NetworkError& x) {
+  return f.object(x).fields(f.field("server", x.message));
 }
 
-struct ActorError
-    : std::variant<UnknownMessage, ActorNotFound, ServerNotFound> {
-  using std::variant<UnknownMessage, ActorNotFound, ServerNotFound>::variant;
+struct ActorError : std::variant<UnknownMessage, ActorNotFound, NetworkError> {
+  using std::variant<UnknownMessage, ActorNotFound, NetworkError>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorError& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<UnknownMessage>("UnknownMessage"),
       arangodb::inspection::type<ActorNotFound>("ActorNotFound"),
-      arangodb::inspection::type<ServerNotFound>("ServerNotFound"));
+      arangodb::inspection::type<NetworkError>("NetworkError"));
 }
 
 template<typename T, typename U>
@@ -107,6 +108,7 @@ template<typename T>
 struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
   using concatenator<typename T::variant, ActorError::variant>::concatenator;
 };
+}  // namespace message
 
 }  // namespace arangodb::pregel::actor
 
@@ -114,11 +116,11 @@ template<typename Payload>
 struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::UnknownMessage>
+struct fmt::formatter<arangodb::pregel::actor::message::UnknownMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::ActorNotFound>
+struct fmt::formatter<arangodb::pregel::actor::message::ActorNotFound>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::ServerNotFound>
+struct fmt::formatter<arangodb::pregel::actor::message::NetworkError>
     : arangodb::inspection::inspection_formatter {};

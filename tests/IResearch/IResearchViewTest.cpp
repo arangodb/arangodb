@@ -130,11 +130,12 @@ struct DocIdScorer : public irs::sort {
       auto* doc = irs::get<irs::document>(doc_attrs);
       EXPECT_NE(nullptr, doc);
 
-      return {std::make_unique<ScoreCtx>(doc),
-              [](irs::score_ctx* ctx, irs::score_t* res) {
-                auto* state = static_cast<ScoreCtx*>(ctx);
-                *res = static_cast<irs::score_t>(state->_doc->value);
-              }};
+      return irs::ScoreFunction::Make<ScoreCtx>(
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            auto* state = static_cast<ScoreCtx*>(ctx);
+            *res = static_cast<irs::score_t>(state->_doc->value);
+          },
+          doc);
     }
   };
 

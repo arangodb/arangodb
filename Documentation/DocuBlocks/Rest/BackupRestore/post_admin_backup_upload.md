@@ -48,11 +48,11 @@ operation is aborted.
 If all is well, code 202 is returned if a new operation is scheduled.
 
 @RESTRETURNCODE{400}
-If the upload command is invoced with bad parameters or any HTTP
+If the upload command is invoked with bad parameters or any HTTP
 method other than `POST`, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{401}
-If the authentication to the rempote repository fails, then an *HTTP
+If the authentication to the remote repository fails, then an *HTTP
 400* is returned.
 
 @RESTRETURNCODE{404}
