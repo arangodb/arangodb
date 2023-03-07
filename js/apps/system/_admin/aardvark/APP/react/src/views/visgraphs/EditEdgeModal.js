@@ -60,7 +60,11 @@ export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, 
     onRequestClose();
   }
 
-  return shouldShow ? (
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
     <ModalBackground onClick={onRequestClose}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
@@ -87,5 +91,5 @@ export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, 
         </div>
       </ModalBody>
     </ModalBackground>
-  ) : null;
+  );
 };

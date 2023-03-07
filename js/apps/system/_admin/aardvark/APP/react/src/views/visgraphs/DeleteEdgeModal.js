@@ -57,7 +57,11 @@ export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge
     onDeleteEdge(deleteEdgeId);
   }
 
-  return shouldShow ? (
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
     <ModalBackground onClick={onRequestClose}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
@@ -70,5 +74,5 @@ export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge
         </div>
       </ModalBody>
     </ModalBackground>
-  ) : null;
+  );
 };

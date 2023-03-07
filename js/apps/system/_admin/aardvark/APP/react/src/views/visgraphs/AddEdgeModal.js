@@ -78,7 +78,11 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
     setCollection(event.target.value);
   }
 
-  return shouldShow ? (
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
     <ModalBackground onClick={() => onRequestClose(false)}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
@@ -150,5 +154,5 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
         </div>
       </ModalBody>
     </ModalBackground>
-  ) : null;
+  );
 };

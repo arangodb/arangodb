@@ -72,7 +72,11 @@ const StyledButton = styled.button`
     setCollection(event.target.value);
   }
 
-  return shouldShow ? (
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
     <ModalBackground onClick={onRequestClose}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
@@ -139,5 +143,5 @@ const StyledButton = styled.button`
         </div>
       </ModalBody>
     </ModalBackground>
-  ) : null;
+  );
 };
