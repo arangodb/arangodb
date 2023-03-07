@@ -1,9 +1,8 @@
-import { Box, ChakraProvider } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { cloneDeep, isEqual, uniqueId } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
-import { theme } from "../../theme/theme";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
 import {
@@ -11,8 +10,6 @@ import {
   isAdminUser as userIsAdmin,
   usePermissions
 } from "../../utils/helpers";
-import { useDisableNavBar } from "../../utils/useDisableNavBar";
-import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
 import "./split-pane-styles.css";
@@ -26,8 +23,6 @@ export const ViewSettings = ({
   name: string;
   isCluster: boolean;
 }) => {
-  useDisableNavBar();
-  useGlobalStyleReset();
   const [editName, setEditName] = useState(false);
 
   const handleEditName = () => {
@@ -40,7 +35,7 @@ export const ViewSettings = ({
 
   // if we try to fix this by using inital values for id, type,
   // it causes the navigation to break
-  const initFormState = { name } as any; 
+  const initFormState = { name } as any;
 
   const initialState = useRef<State<FormState>>({
     formState: initFormState,
@@ -118,23 +113,21 @@ export const ViewSettings = ({
       }}
     >
       <HashRouter basename={`view/${name}`} hashType={"noslash"}>
-        <ChakraProvider theme={theme}>
-          <ViewSettingsInner
-            editName={editName}
-            formState={formState}
-            handleEditName={handleEditName}
-            updateName={updateName}
-            nameEditDisabled={nameEditDisabled}
-            closeEditName={closeEditName}
-            isAdminUser={isAdminUser}
-            views={views}
-            dispatch={dispatch}
-            changed={changed}
-            name={name}
-            setChanged={setChanged}
-            state={state}
-          />
-        </ChakraProvider>
+        <ViewSettingsInner
+          editName={editName}
+          formState={formState}
+          handleEditName={handleEditName}
+          updateName={updateName}
+          nameEditDisabled={nameEditDisabled}
+          closeEditName={closeEditName}
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+          state={state}
+        />
       </HashRouter>
     </ViewContext.Provider>
   );
