@@ -32,8 +32,8 @@ const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
   const { dispatch, formState: fs, isAdminUser } = viewContext;
   const formState = fs as FormState;
-  const { data } = useSWR(["/collection", "excludeSystem=true"], ([path, qs]) =>
-    getApiRouteForCurrentDB().get(path, qs)
+  const { data } = useSWR("/collection?excludeSystetm=true", () =>
+    getApiRouteForCurrentDB().get("/collection", "excludeSystetm=true")
   );
   const [options, setOptions] = useState<{ label: string; value: string }[]>(
     []
