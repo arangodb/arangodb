@@ -103,7 +103,7 @@ showing the basic operation of ArangoDB. To learn ArangoDB's query language chec
 Stay in Contact
 ---------------
 
-We really appreciate feature requests and bug reports. Please use our Github
+We really appreciate feature requests and bug reports. Please use our GitHub
 issue tracker for reporting them:
 
 [https://github.com/arangodb/arangodb/issues](https://github.com/arangodb/arangodb/issues)
