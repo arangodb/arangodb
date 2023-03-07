@@ -1058,12 +1058,21 @@ authRouter.get('/visgraph/:name', function (req, res) {
     res.throw('bad request', e.errorMessage);
   }
 
-  var verticesCollections = graph._vertexCollections();
-  if (!verticesCollections || verticesCollections.length === 0) {
+  var edgesCollections = [];
+
+  _.each(graph._edgeCollections(), function (edge) {
+    edgesCollections.push({
+      name: edge.name(),
+      id: edge._id
+    });
+  });
+
+  let vertexCollections = graph._vertexCollections();
+  if (!vertexCollections || vertexCollections.length === 0) {
     res.throw('404 NOT FOUND', 'no vertex collections found for graph');
   }
 
-  var vertexCollections = [];
+  vertexCollections = [];
 
   _.each(graph._vertexCollections(), function (vertex) {
     vertexCollections.push({
