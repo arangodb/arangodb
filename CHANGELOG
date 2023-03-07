@@ -3,8 +3,8 @@ v3.10.5 (XXXX-XX-XX)
 
 * Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
   control whether automatic refilling of in-memory caches should happen on
-  followers or just leaders. The default value is `true`, i.e. refilling
-  happens on followers too.
+  followers or just leaders. The default value is `true`, i.e. refilling happens
+  on followers too.
 
 * Added new geo_s2 ArangoSearch analyzer (Enterprise Only).
 
