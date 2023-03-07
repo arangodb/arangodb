@@ -47,6 +47,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
@@ -335,15 +336,15 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto ttl = TTL{.duration = std::chrono::seconds(
                      basics::VelocyPackHelper::getNumericValue(
                          options.userParameters.slice(), "ttl", 600))};
-  auto algorithm = std::move(options.algorithm);
-  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
-                 ::tolower);
+  auto algorithmName = std::move(options.algorithm);
+  std::transform(algorithmName.begin(), algorithmName.end(),
+                 algorithmName.begin(), ::tolower);
 
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = std::move(algorithm),
+      .algorithm = std::move(algorithmName),
       .vertexCollections = std::move(vertexCollections),
       .edgeCollections = std::move(edgeColls),
       .edgeCollectionRestrictions =
@@ -362,10 +363,18 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
+  auto algorithm = AlgoRegistry::createAlgorithmNew(
+      vocbase.server(), executionSpecifications.algorithm,
+      executionSpecifications.userParameters.slice());
+  if (not algorithm.has_value()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  fmt::format("Unsupported Algorithm: {}",
+                              executionSpecifications.algorithm)};
+  }
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
-      std::make_unique<conductor::ConductorState>(executionSpecifications,
-                                                  vocbase),
+      std::make_unique<conductor::ConductorState>(
+          std::move(algorithm.value()), executionSpecifications, vocbase),
       conductor::message::ConductorStart{});
 
   return en;

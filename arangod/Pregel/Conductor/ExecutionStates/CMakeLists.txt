@@ -1,2 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  CreateWorkers.cpp)
+  CreateWorkersState.cpp
+  LoadingState.cpp
+  ComputingState.cpp)
