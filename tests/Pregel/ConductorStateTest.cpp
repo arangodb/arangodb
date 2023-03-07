@@ -31,6 +31,8 @@
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 
+static const std::string databaseName = "dontCare";
+
 struct LookupInfoMock : conductor::LookupInfo {
   LookupInfoMock(std::vector<std::string> serverIDs) : _servers(serverIDs) {}
   ~LookupInfoMock() = default;
@@ -103,9 +105,15 @@ TEST(CreateWorkersStateTest, check_that_conductor_creates_all_worker_pids) {
   auto created = arangodb::ResultT<message::WorkerCreated>();
   ASSERT_TRUE(created.ok());
   {
-    createWorkers.receive({.server = servers.at(0)}, created);
-    createWorkers.receive({.server = servers.at(1)}, created);
-    createWorkers.receive({.server = servers.at(2)}, created);
+    createWorkers.receive(
+        {.server = servers.at(0), .database = databaseName, .id = {0}},
+        created);
+    createWorkers.receive(
+        {.server = servers.at(1), .database = databaseName, .id = {1}},
+        created);
+    createWorkers.receive(
+        {.server = servers.at(2), .database = databaseName, .id = {2}},
+        created);
   }
 
   ASSERT_EQ(createWorkers.conductor._workers.size(), servers.size());
@@ -126,19 +134,22 @@ TEST(CreateWorkersStateTest,
   ASSERT_EQ(msgs.size(), servers.size());
 
   {
-    actor::ActorPID actorPid{.server = servers.at(0)};
+    actor::ActorPID actorPid{
+        .server = servers.at(0), .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(actorPid, message::WorkerCreated{});
     ASSERT_EQ(receiveResponse, std::nullopt);
   }
   {
-    actor::ActorPID actorPid{.server = servers.at(1)};
+    actor::ActorPID actorPid{
+        .server = servers.at(1), .database = databaseName, .id = {1}};
     auto receiveResponse =
         createWorkers.receive(actorPid, message::WorkerCreated{});
     ASSERT_EQ(receiveResponse, std::nullopt);
   }
   {
-    actor::ActorPID actorPid{.server = servers.at(2)};
+    actor::ActorPID actorPid{
+        .server = servers.at(2), .database = databaseName, .id = {2}};
     auto receiveResponse =
         createWorkers.receive(actorPid, message::WorkerCreated{});
     ASSERT_TRUE(receiveResponse.has_value());
@@ -154,7 +165,8 @@ TEST(CreateWorkersStateTest, send_invalid_message_type) {
   auto msgs = createWorkers.messages();
 
   {
-    actor::ActorPID actorPid{.server = servers.at(0)};
+    actor::ActorPID actorPid{
+        .server = servers.at(0), .database = databaseName, .id = {0}};
     auto invalidMessage = message::ConductorStart{};
     auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
     // Currenty returns nullopt. After (GORDO-1553) will return error state.
@@ -170,7 +182,8 @@ TEST(CreateWorkersStateTest, send_valid_message_to_unknown_server) {
   auto msgs = createWorkers.messages();
 
   {
-    actor::ActorPID unknownActorPid{.server = "UnknownServerX"};
+    actor::ActorPID unknownActorPid{
+        .server = "UnknownServerX", .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(unknownActorPid, message::WorkerCreated{});
     // Currenty returns nullopt. After (GORDO-1553) will return error state.
@@ -186,7 +199,8 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
   auto msgs = createWorkers.messages();
 
   {
-    actor::ActorPID unknownActorPid{.server = servers.at(0)};
+    actor::ActorPID unknownActorPid{
+        .server = servers.at(0), .database = databaseName, .id = {0}};
     auto errorMessage = arangodb::ResultT<message::WorkerCreated>(
         TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
