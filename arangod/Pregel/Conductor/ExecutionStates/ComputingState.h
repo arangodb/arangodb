@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/Worker/Messages.h"
 #include "State.h"
 
@@ -32,18 +33,18 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct Loading : ExecutionState {
-  Loading(ConductorState& conductor);
-  ~Loading();
-  auto name() const -> std::string override { return "loading"; };
+// TODO implement in GORDO-1548
+struct Computing : ExecutionState {
+  Computing(ConductorState& conductor,
+            std::unique_ptr<MasterContext> masterContext);
+  ~Computing();
+  auto name() const -> std::string override { return "computing"; };
   auto message() -> worker::message::WorkerMessages override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 
   ConductorState& conductor;
-  std::unordered_set<actor::ActorPID> respondedWorkers;
-  uint64_t totalVerticesCount = 0;
-  uint64_t totalEdgesCount = 0;
+  std::unique_ptr<MasterContext> masterContext;
 };
 
 }  // namespace arangodb::pregel::conductor

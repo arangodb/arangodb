@@ -1,4 +1,4 @@
-#include "CreateWorkers.h"
+#include "CreateWorkersState.h"
 
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 
@@ -36,7 +36,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     // TODO return error state (GORDO-1553)
     return std::nullopt;
   }
-  conductor.workers.emplace_back(sender);
+  conductor.workers.emplace(sender);
   respondedServers.emplace(sender.server);
   responseCount++;
 
