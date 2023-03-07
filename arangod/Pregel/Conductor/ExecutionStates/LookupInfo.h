@@ -37,7 +37,6 @@ struct LookupInfo {
       std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>;
   using ShardsMapping = std::vector<ShardID>;
 
- public:
   // vertices related methods:
   [[nodiscard]] virtual auto getServerMapVertices() const -> ServerMapping = 0;
   // edges related methods:
