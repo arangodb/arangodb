@@ -134,7 +134,7 @@ index. The response body contains an error document in
 this case with the errorNum set to 1210 (`ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED`).
 2) if we fail to lock the document key or some unique index entry
 due to some concurrent operation that is operating on the same
-document. This also also referred to as a write-write conflict.
+document. This is also referred to as a write-write conflict.
 The response body contains an error document in this case with the
 errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
 

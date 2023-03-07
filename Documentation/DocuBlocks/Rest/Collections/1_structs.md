@@ -75,7 +75,7 @@ for a SatelliteCollection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 Determines how many copies of each shard are required to be
-in sync on the different DB-Servers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less than these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 `writeConcern` cannot be larger than `replicationFactor`. _(cluster only)_

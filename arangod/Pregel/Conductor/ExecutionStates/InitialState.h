@@ -22,20 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/Handler.h"
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
+#include <unordered_map>
+#include "Pregel/Conductor/ExecutionStates/State.h"
 
 namespace arangodb::pregel::conductor {
 
-struct ConductorActor {
-  using State = ConductorState;
-  using Message = message::ConductorMessages;
-  template<typename Runtime>
-  using Handler = ConductorHandler<Runtime>;
-  static constexpr auto typeName() -> std::string_view {
-    return "Conductor Actor";
-  }
+struct ConductorState;
+
+/*
+  This is the initial state the conductor is in when created. It does not do
+  anything on its own and needs to be changed from outside.
+ */
+
+struct Initial : ExecutionState {
+  Initial() = default;
+  auto name() const -> std::string override { return "initial"; };
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
+  };
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  };
 };
 
 }  // namespace arangodb::pregel::conductor

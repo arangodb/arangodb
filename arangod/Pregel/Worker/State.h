@@ -22,35 +22,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <variant>
 #include "Actor/ActorPID.h"
-#include "Inspection/Types.h"
-#include "Pregel/Worker/Messages.h"
+#include "Pregel/CollectionSpecifications.h"
+#include "Pregel/PregelOptions.h"
 
-namespace arangodb::pregel::message {
+namespace arangodb::pregel::worker {
 
-struct SpawnStart {};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnStart& x) {
-  return f.object(x).fields();
-}
-struct SpawnWorker {
+struct WorkerState {
+  WorkerState(actor::ActorPID conductor,
+              ExecutionSpecifications executionSpecifications,
+              CollectionSpecifications collectionSpecifications)
+      : conductor{std::move(conductor)},
+        executionSpecifications{std::move(executionSpecifications)},
+        collectionSpecifications{std::move(collectionSpecifications)} {};
   actor::ActorPID conductor;
-  worker::message::CreateNewWorker message;
+  const ExecutionSpecifications executionSpecifications;
+  const CollectionSpecifications collectionSpecifications;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("conductor", x.conductor),
-                            f.field("message", x.message));
-}
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnMessages& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
+auto inspect(Inspector& f, WorkerState& x) {
+  return f.object(x).fields(
+      f.field("conductor", x.conductor),
+      f.field("executionSpecifications", x.executionSpecifications),
+      f.field("collectionSpecifications", x.collectionSpecifications));
 }
 
-}  // namespace arangodb::pregel::message
+}  // namespace arangodb::pregel::worker
+
+template<>
+struct fmt::formatter<arangodb::pregel::worker::WorkerState>
+    : arangodb::inspection::inspection_formatter {};
