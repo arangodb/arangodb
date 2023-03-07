@@ -2328,9 +2328,9 @@ void RocksDBEngine::determineWalFilesInitial() {
 
     ++archivedFiles;
   }
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
@@ -2491,11 +2491,12 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     }
   }
 
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
-  _metricsWalPruningActive.operator=(1);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
+  _metricsWalPruningActive.store(1, std::memory_order_relaxed);
 }
 
 RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
@@ -2578,7 +2579,8 @@ void RocksDBEngine::pruneWalFiles() {
     ++it;
   }
 
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
 
   LOG_TOPIC("82a4c", TRACE, Logger::ENGINES)
       << "prune WAL files started with " << initialSize
@@ -3742,7 +3744,8 @@ void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
     }
   }
 
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
 }
 
 }  // namespace arangodb
