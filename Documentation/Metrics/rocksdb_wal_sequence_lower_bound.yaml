@@ -14,5 +14,5 @@ exposedBy:
 description: |
   This metric exposes the RocksDB WAL sequence number until which the
   ArangoDB background sync thread has fully caught up to. The value exposed
-  here should be monotically increasing and always progress if there are
+  here should be monotonically increasing and always progress if there are
   write operations executing.

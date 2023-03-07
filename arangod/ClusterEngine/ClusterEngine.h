@@ -168,7 +168,6 @@ class ClusterEngine final : public StorageEngine {
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 
- public:
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -222,6 +221,9 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
+
+  bool autoRefillIndexCaches() const override { return false; }
+  bool autoRefillIndexCachesOnFollowers() const override { return false; }
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() final { return nullptr; }
 

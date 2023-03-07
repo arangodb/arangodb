@@ -28,6 +28,7 @@
 #include <Inspection/VPackWithErrorT.h>
 #include <CrashHandler/CrashHandler.h>
 #include <Assertions/ProdAssert.h>
+#include <velocypack/Builder.h>
 
 namespace arangodb::pregel {
 
@@ -70,5 +71,36 @@ struct ExecutionTimings {
 
   std::vector<Duration> gss;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ExecutionTimings& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status::Success{};
+  } else {
+    VPackBuilder b;
+    {
+      VPackObjectBuilder ob(&b);
+      if (x.total.hasStarted()) {
+        b.add("totalRuntime", x.total.elapsedSeconds().count());
+      }
+      if (x.loading.hasStarted()) {
+        b.add("startupTime", x.loading.elapsedSeconds().count());
+      }
+      if (x.computation.hasStarted()) {
+        b.add("computationTime", x.computation.elapsedSeconds().count());
+      }
+      if (x.storing.hasStarted()) {
+        b.add("storageTime", x.storing.elapsedSeconds().count());
+      }
+      b.add(VPackValue("gssTimes"));
+      {
+        VPackArrayBuilder array(&b);
+        for (auto const& gssTime : x.gss) {
+          b.add(VPackValue(gssTime.elapsedSeconds().count()));
+        }
+      }
+    }
+    return f.apply(b.slice());
+  }
+}
 
 }  // namespace arangodb::pregel

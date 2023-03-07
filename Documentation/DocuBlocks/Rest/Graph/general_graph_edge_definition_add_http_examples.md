@@ -74,7 +74,7 @@ The information about the modified graph.
 @RESTRETURNCODE{400}
 Returned if the definition could not be added.
 This could be because it is ill-formed, or
-if the definition is used in an other graph with a different signature.
+if the definition is used in another graph with a different signature.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
