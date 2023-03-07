@@ -37,15 +37,17 @@ class SupportInfoBuilder {
   SupportInfoBuilder() = delete;
   static void buildInfoMessage(velocypack::Builder& result,
                                std::string const& dbName, ArangodServer& server,
-                               bool isLocal);
-  static void buildDbServerInfo(velocypack::Builder& result,
-                                ArangodServer& server);
+                               bool isLocal, bool isTemeletricsReq = false);
+  static void buildDbServerDataStoredInfo(velocypack::Builder& result,
+                                          ArangodServer& server);
 
  private:
   static void addDatabaseInfo(velocypack::Builder& result,
                               velocypack::Slice infoSlice,
                               ArangodServer& server);
-  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);
+  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server,
+                            bool isTelemetricsReq);
+  static void normalizeKeyForTelemetrics(std::string& key);
 };
 
 }  // namespace arangodb

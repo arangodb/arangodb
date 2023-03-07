@@ -29,6 +29,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -56,6 +57,7 @@
 #include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
+#include <absl/strings/str_replace.h>
 
 #include "Logger/LogMacros.h"
 
@@ -96,32 +98,126 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            });
   }
 
-  for (auto const it : velocypack::ArrayIterator(infoSlice.get("databases"))) {
-    result.openObject();
-    for (auto const it : velocypack::ObjectIterator(it)) {
-      std::string_view name = it.key.stringView();
-      // must fetch the numViews by the database name because we must get it
-      // from the coordinator and not add the database name to the result for
-      // privacy reasons
-      if (name == "name") {
-        result.add("nViews", VPackValue(dbViews[it.value.stringView()]));
+  struct DbCollStats {
+    size_t numDocColls;
+    size_t numGraphColls;
+    size_t numSmartColls;
+    size_t numDisjointGraphs;
+    VPackBuilder builder;
+  };
+
+  std::unordered_map<std::string_view, DbCollStats> visitedDatabases;
+  containers::FlatHashMap<size_t, containers::FlatHashSet<std::string_view>>
+      visitedColls;
+  containers::FlatHashMap<size_t, size_t> collNumDocs;
+  // merge all collections belonging to the database into
+  // the same object, as the database might be in more
+  // than one dbserver
+
+  for (auto const dbIt : velocypack::ArrayIterator(infoSlice)) {
+    std::string_view dbName = dbIt.get("name").stringView();
+    if (visitedDatabases.find(dbName) == visitedDatabases.end()) {
+      visitedDatabases.insert(std::make_pair(dbName, DbCollStats()));
+      visitedDatabases[dbName].builder.openObject();
+      visitedDatabases[dbName].builder.add(
+          "n_views", VPackValue(dbViews[dbIt.get("name").stringView()]));
+      visitedDatabases[dbName].builder.add(
+          "single_shard", VPackValue(dbIt.get("single_shard").getBoolean()));
+      visitedDatabases[dbName].builder.add("colls",
+                                           VPackValue(VPackValueType::Array));
+    }
+
+    for (auto const collIt : velocypack::ArrayIterator(dbIt.get("colls"))) {
+      size_t planId = collIt.get("plan_id").getUInt();
+
+      std::string_view collName = collIt.get("name").stringView();
+      if (auto const visitedCollIt = visitedColls.find(planId);
+          visitedCollIt != visitedColls.end()) {
+        if (visitedCollIt->second.find(collName) ==
+            visitedCollIt->second.end()) {
+          collNumDocs[planId] += collIt.get("n_docs").getUInt();
+        }
       } else {
-        result.add(name, it.value);
+        collNumDocs[planId] += collIt.get("n_docs").getUInt();
+        visitedDatabases[dbName].builder.add(collIt);
       }
     }
 
+    auto const allDbValues = dbIt.value();
+    visitedDatabases[dbName].numDocColls +=
+        allDbValues.get("n_doc_colls").getUInt();
+
+    visitedDatabases[dbName].numGraphColls +=
+        allDbValues.get("n_graph_colls").getUInt();
+
+    visitedDatabases[dbName].numSmartColls +=
+        allDbValues.get("n_smart_colls").getUInt();
+
+    visitedDatabases[dbName].numDisjointGraphs +=
+        allDbValues.get("n_disjoint_graphs").getUInt();
+  }
+
+  for (auto& [dbName, dbInfo] : visitedDatabases) {
+    if (!dbInfo.builder.isEmpty() && dbInfo.builder.isOpenArray()) {
+      dbInfo.builder.close();
+    }
+    if (!dbInfo.builder.isEmpty() && !dbInfo.builder.isClosed()) {
+      dbInfo.builder.close();
+    }
+    result.openObject();
+    result.add("n_doc_colls", VPackValue(dbInfo.numDocColls));
+    result.add("n_graph_colls", VPackValue(dbInfo.numGraphColls));
+    result.add("n_smart_colls", VPackValue(dbInfo.numSmartColls));
+    result.add("n_disjoint_graphs", VPackValue(dbInfo.numDisjointGraphs));
+
+    for (auto const dbIt : velocypack::ObjectIterator(dbInfo.builder.slice())) {
+      std::string_view key = dbIt.key.stringView();
+      auto const value = dbIt.value;
+      if (key == "colls") {
+        result.add("colls", VPackValue(VPackValueType::Array));
+        for (auto const collIt : velocypack::ArrayIterator(value)) {
+          result.openObject();
+          for (auto const collIt2 : velocypack::ObjectIterator(collIt)) {
+            std::string_view key2 = collIt2.key.stringView();
+            auto const value2 = collIt2.value;
+            if (key2 == "n_docs") {
+              auto foundIt = collNumDocs.find(collIt.get("plan_id").getUInt());
+              if (foundIt != collNumDocs.end()) {
+                result.add(key2, VPackValue(foundIt->second));
+              }
+            } else if (key2 != "name") {
+              result.add(key2, value2);
+            }
+          }
+          result.close();
+        }
+        result.close();
+
+      } else {
+        result.add(key, value);
+      }
+    }
     result.close();
   }
 }
 
+// if it's a telemetrics request, keys can only have lowercase letters and
+// underscores
+void SupportInfoBuilder::normalizeKeyForTelemetrics(std::string& key) {
+  key = arangodb::basics::StringUtils::tolower(key.data());
+  key = absl::StrReplaceAll(std::move(key), {{".", "_"}, {"-", "_"}});
+}
+
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                                           std::string const& dbName,
-                                          ArangodServer& server, bool isLocal) {
+                                          ArangodServer& server, bool isLocal,
+                                          bool isTelemetricsReq) {
   bool isSingleServer = ServerState::instance()->isSingleServer();
+  auto const serverId = ServerIdFeature::getId().id();
   // used for all types of responses
   VPackBuilder hostInfo;
 
-  buildHostInfo(hostInfo, server);
+  buildHostInfo(hostInfo, server, isTelemetricsReq);
 
   std::string timeString;
   LogTimeFormats::writeTime(timeString,
@@ -137,21 +233,44 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   result.openObject();
 
   if (isSingleServer && !isActiveFailover) {
-    result.add("id", VPackValue(ServerIdFeature::getId().id()));
+    if (!isTelemetricsReq) {
+      result.add("id", VPackValue(serverId));
+    }
     result.add("deployment", VPackValue(VPackValueType::Object));
+    std::string persistedId;
+    if (isTelemetricsReq && ServerState::instance()->hasPersistedId()) {
+      persistedId = ServerState::instance()->getPersistedId();
+      normalizeKeyForTelemetrics(persistedId);
+    } else {
+      persistedId = "single_" + std::to_string(serverId);
+    }
+    result.add("persistedId", VPackValue(persistedId));
+    if (isTelemetricsReq) {
+      result.add("id", VPackValue("single_" + std::to_string(serverId)));
+    }
     result.add("type", VPackValue("single"));
 #ifdef USE_ENTERPRISE
     result.add("license", VPackValue("enterprise"));
 #else
     result.add("license", VPackValue("community"));
 #endif
+    if (isTelemetricsReq) {
+      // it's single server, but we maintain the format the same as cluster
+      result.add("servers", VPackValue(VPackValueType::Array));
+      result.openObject();
+      result.add("instance", hostInfo.slice());
+      result.close();
+      result.close();  // servers
+    } else {
+      result.add(persistedId, hostInfo.slice());
+    }
     result.close();  // deployment
-    result.add("host", hostInfo.slice());
     result.add("date", VPackValue(timeString));
     VPackBuilder serverInfo;
-    buildDbServerInfo(serverInfo, server);
-    addDatabaseInfo(result, serverInfo.slice(), server);
-
+    buildDbServerDataStoredInfo(serverInfo, server);
+    result.add("databases", VPackValue(VPackValueType::Array));
+    addDatabaseInfo(result, serverInfo.slice().get("databases"), server);
+    result.close();
   } else {
     // cluster or active failover
     if (fanout) {
@@ -162,22 +281,30 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 #else
       result.add("license", VPackValue("community"));
 #endif
-      if (ServerState::instance()->hasPersistedId()) {
+      if (isTelemetricsReq && ServerState::instance()->hasPersistedId()) {
         result.add("persistedId",
-                   VPackValue(ServerState::instance()->getPersistedId()));
+                   VPackValue(arangodb::basics::StringUtils::tolower(
+                       ServerState::instance()->getPersistedId())));
       }
       if (isActiveFailover) {
         TRI_ASSERT(!ServerState::instance()->isCoordinator());
-        result.add("type", VPackValue("active-failover"));
+        result.add("type", VPackValue("active_failover"));
       } else {
         TRI_ASSERT(ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("cluster"));
       }
 
       // build results for all servers
-      result.add("servers", VPackValue(VPackValueType::Object));
+      result.add("servers", VPackValue(VPackValueType::Array));
       // we come first!
-      result.add(ServerState::instance()->getId(), hostInfo.slice());
+      auto serverId = ServerState::instance()->getId();
+      if (isTelemetricsReq) {
+        serverId = arangodb::basics::StringUtils::tolower(serverId.data());
+        normalizeKeyForTelemetrics(serverId);
+      }
+      result.openObject();
+      result.add(serverId, hostInfo.slice());
+      result.close();
 
       // now all other servers
       NetworkFeature const& nf = server.getFeature<NetworkFeature>();
@@ -216,13 +343,15 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           continue;
         }
 
+        std::string reqUrl =
+            isTelemetricsReq ? "/_admin/server-info" : "/_admin/support-info";
         auto f = network::sendRequestRetry(
-            pool, "server:" + server.first, fuerte::RestVerb::Get,
-            "/_admin/support-info", VPackBuffer<uint8_t>{}, options,
-            ::buildHeaders());
+            pool, "server:" + server.first, fuerte::RestVerb::Get, reqUrl,
+            VPackBuffer<uint8_t>{}, options, ::buildHeaders());
         futures.emplace_back(std::move(f));
       }
 
+      VPackBuilder dbInfoBuilder;
       if (!futures.empty()) {
         auto responses = futures::collectAll(futures).get();
         for (auto const& it : responses) {
@@ -235,9 +364,20 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
             auto slice = resp.slice();
             // copy results from other server
             if (slice.isObject()) {
-              result.add(
-                  basics::StringUtils::replace(resp.destination, "server:", ""),
-                  slice.get("host"));
+              std::string hostId =
+                  basics::StringUtils::replace(resp.destination, "server:", "");
+              if (isTelemetricsReq) {
+                normalizeKeyForTelemetrics(hostId);
+              }
+              result.openObject();
+              result.add(hostId, slice.get("host"));
+              result.close();
+              if (isTelemetricsReq) {
+                auto const databasesSlice = slice.get("databases");
+                if (!databasesSlice.isNone()) {
+                  dbInfoBuilder.add(slice.get("databases"));
+                }
+              }
             }
           }
         }
@@ -252,65 +392,48 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
       result.add("agents", VPackValue(agents));
       result.add("coordinators", VPackValue(coordinators));
-      result.add("dbServers", VPackValue(dbServers));
+      result.add("db_servers", VPackValue(dbServers));
 
       if (ServerState::instance()->isCoordinator()) {
-        result.add(VPackValue("shardsStatistics"));
+        result.add(VPackValue("shards_statistics"));
         ci.getShardStatisticsGlobal("", result);
       }
       result.close();  // deployment
       result.add("date", VPackValue(timeString));
 
-      futures.clear();
-      for (auto const& serverName : dbServerNames) {
-        auto f = network::sendRequestRetry(
-            pool, "server:" + serverName, fuerte::RestVerb::Get,
-            "/_admin/server-info", VPackBuffer<uint8_t>{}, options,
-            ::buildHeaders());
-        futures.emplace_back(std::move(f));
-      }
-
-      if (!futures.empty()) {
+      if (isTelemetricsReq && !dbInfoBuilder.isEmpty()) {
         result.add("databases", VPackValue(VPackValueType::Array));
-
-        auto responses = futures::collectAll(futures).get();
-        for (auto const& it : responses) {
-          auto& resp = it.get();
-          auto res = resp.combinedResult();
-          if (res.fail()) {
-            LOG_TOPIC("2cde0", WARN, Logger::STATISTICS)
-                << "Failed to get server info: " << res.errorMessage();
-          } else {
-            auto slice = resp.slice();
-            // copy results from other server
-            if (slice.isObject()) {
-              LOG_DEVEL << "IS OBJECT";
-              addDatabaseInfo(result, slice, server);
-            }
-          }
-        }
+        addDatabaseInfo(result, dbInfoBuilder.slice(), server);
         result.close();
       }
+
     } else {
       // DB server or other coordinator
       result.add("host", hostInfo.slice());
-      VPackBuilder serverInfo;
-      buildDbServerInfo(serverInfo, server);
-      addDatabaseInfo(result, serverInfo.slice(), server);
+      if (isTelemetricsReq && !ServerState::instance()->isCoordinator()) {
+        VPackBuilder serverInfo;
+        buildDbServerDataStoredInfo(serverInfo, server);
+        result.add("databases", serverInfo.slice().get("databases"));
+      }
     }
   }
   result.close();
 }
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
-                                       ArangodServer& server) {
+                                       ArangodServer& server,
+                                       bool isTelemetricsReq) {
   bool const isActiveFailover =
       server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
 
   result.openObject();
 
   if (ServerState::instance()->isRunningInCluster() || isActiveFailover) {
-    result.add("id", VPackValue(ServerState::instance()->getId()));
+    auto serverId = ServerState::instance()->getId();
+    if (isTelemetricsReq) {
+      normalizeKeyForTelemetrics(serverId);
+    }
+    result.add("id", VPackValue(serverId));
     result.add("alias", VPackValue(ServerState::instance()->getShortName()));
     result.add("endpoint", VPackValue(ServerState::instance()->getEndpoint()));
   }
@@ -319,7 +442,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                          ServerState::instance()->getRole())));
   result.add("maintenance",
              VPackValue(ServerState::instance()->isStartupOrMaintenance()));
-  result.add("readOnly", VPackValue(ServerState::instance()->readOnly()));
+  result.add("read_only", VPackValue(ServerState::instance()->readOnly()));
 
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("build", VPackValue(Version::getBuildRepository()));
@@ -328,40 +451,40 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.add("os", VPackValue(ef.operatingSystem()));
   result.add("platform", VPackValue(Version::getPlatform()));
 
-  result.add("physMem", VPackValue(VPackValueType::Object));
+  result.add("phys_mem", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(PhysicalMemory::getValue()));
   result.add("overridden", VPackValue(PhysicalMemory::overridden()));
   result.close();  // physical memory
 
-  result.add("nCores", VPackValue(VPackValueType::Object));
+  result.add("n_cores", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(NumberOfCores::getValue()));
   result.add("overridden", VPackValue(NumberOfCores::overridden()));
   result.close();  // number of cores
 
-  result.add("processStats", VPackValue(VPackValueType::Object));
+  result.add("process_stats", VPackValue(VPackValueType::Object));
   ServerStatistics const& serverInfo =
       server.getFeature<metrics::MetricsFeature>().serverStatistics();
-  result.add("processUptime", VPackValue(serverInfo.uptime()));
+  result.add("process_uptime", VPackValue(serverInfo.uptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
-  result.add("nThreads", VPackValue(info._numberThreads));
-  result.add("virtualSize", VPackValue(info._virtualSize));
-  result.add("residentSetSize", VPackValue(info._residentSize));
+  result.add("n_threads", VPackValue(info._numberThreads));
+  result.add("virtual_size", VPackValue(info._virtualSize));
+  result.add("resident_set_size", VPackValue(info._residentSize));
   result.close();  // processStats
 
   CpuUsageFeature& cpuUsage = server.getFeature<CpuUsageFeature>();
-  if (cpuUsage.isEnabled()) {
+  if (cpuUsage.isEnabled() && !isTelemetricsReq) {
     auto snapshot = cpuUsage.snapshot();
-    result.add("cpuStats", VPackValue(VPackValueType::Object));
-    result.add("userPercent", VPackValue(snapshot.userPercent()));
-    result.add("systemPercent", VPackValue(snapshot.systemPercent()));
-    result.add("idlePercent", VPackValue(snapshot.idlePercent()));
-    result.add("iowaitPercent", VPackValue(snapshot.iowaitPercent()));
+    result.add("cpu_stats", VPackValue(VPackValueType::Object));
+    result.add("user_percent", VPackValue(snapshot.userPercent()));
+    result.add("system_percent", VPackValue(snapshot.systemPercent()));
+    result.add("idle_percent", VPackValue(snapshot.idlePercent()));
+    result.add("iowait_percent", VPackValue(snapshot.iowaitPercent()));
     result.close();  // cpustats
   }
 
   if (!ServerState::instance()->isCoordinator()) {
-    result.add("engineStats", VPackValue(VPackValueType::Object));
+    result.add("engine_stats", VPackValue(VPackValueType::Object));
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
@@ -381,9 +504,15 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
         "rocksdb.free-disk-space",
         "rocksdb.total-disk-space",
     };
-    for (auto const& name : names) {
+    for (auto& name : names) {
+      std::string newName(name);
+      if (isTelemetricsReq) {
+        normalizeKeyForTelemetrics(newName);
+      }
       if (auto slice = stats.slice().get(name); !slice.isNone()) {
-        result.add(name, slice);
+        result.add(newName, slice);
+      } else if (isTelemetricsReq) {
+        result.add(newName, VPackValue(0));
       }
     }
     result.close();  // engineStats
@@ -392,8 +521,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.close();
 }
 
-void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
-                                           ArangodServer& server) {
+void SupportInfoBuilder::buildDbServerDataStoredInfo(
+    velocypack::Builder& result, ArangodServer& server) {
   DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
   std::vector<std::string> databases = methods::Databases::list(server, "");
 
@@ -415,16 +544,22 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
 
     result.add("colls", VPackValue(VPackValueType::Array));
 
+    containers::FlatHashSet<size_t> collsAlreadyVisited;
+
     DatabaseGuard guard(dbFeature, database);
     methods::Collections::enumerate(
         &guard.database(), [&](std::shared_ptr<LogicalCollection> const& coll) {
           result.openObject();
           size_t numShards = coll->numberOfShards();
-          result.add("nShards", VPackValue(numShards));
+          result.add("n_shards", VPackValue(numShards));
+          result.add("rep_factor", VPackValue(coll->replicationFactor()));
 
           auto ctx = transaction::StandaloneContext::Create(*vocbase);
 
           auto& collName = coll->name();
+          result.add("name", VPackValue(collName));
+          size_t planId = coll->planId().id();
+          result.add("plan_id", VPackValue(planId));
 
           SingleCollectionTransaction trx(ctx, collName,
                                           AccessMode::Type::READ);
@@ -442,7 +577,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                   << "Failed to get number of documents: "
                   << res.errorMessage();
             } else {
-              result.add("nDocs", VPackSlice(opResult.buffer->data()));
+              result.add("n_docs", VPackSlice(opResult.buffer->data()));
             }
 
           } else {
@@ -452,18 +587,22 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                 << res.errorMessage();
           }
 
-          auto collType = coll->type();
-          if (collType == TRI_COL_TYPE_DOCUMENT) {
-            numDocColls++;
-            result.add("type", VPackValue("document"));
-          } else if (collType == TRI_COL_TYPE_EDGE) {
-            result.add("type", VPackValue("edge"));
-            numGraphColls++;
+          if (collsAlreadyVisited.find(planId) == collsAlreadyVisited.end()) {
+            auto collType = coll->type();
+            if (collType == TRI_COL_TYPE_DOCUMENT) {
+              numDocColls++;
+              result.add("type", VPackValue("document"));
+            } else if (collType == TRI_COL_TYPE_EDGE) {
+              result.add("type", VPackValue("edge"));
+              numGraphColls++;
+            } else {
+              result.add("type", VPackValue("unknown"));
+            }
             if (coll->isSmart()) {
               numSmartColls++;
-              result.add("smartGraph", VPackValue(true));
+              result.add("smart_graph", VPackValue(true));
             } else {
-              result.add("smartGraph", VPackValue(false));
+              result.add("smart_graph", VPackValue(false));
             }
             if (coll->isDisjoint()) {
               numDisjointGraphs++;
@@ -471,82 +610,70 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
             } else {
               result.add("disjoint", VPackValue(false));
             }
-          } else {
-            result.add("type", VPackValue("unknown"));
-          }
 
-          std::unordered_map<std::string, size_t> idxTypesToAmounts;
+            //  std::unordered_map<std::string, size_t> idxTypesToAmounts;
+            containers::FlatHashMap<std::string, size_t> idxTypesToAmounts;
 
-          auto flags = Index::makeFlags(Index::Serialize::Estimates,
-                                        Index::Serialize::Figures);
-
-          VPackBuilder output;
-          std::ignore =
-              methods::Indexes::getAll(coll.get(), flags, false, output);
-          velocypack::Slice outSlice = output.slice();
-
-          result.add("idxs", VPackValue(VPackValueType::Array));
-          for (auto const it : velocypack::ArrayIterator(outSlice)) {
-            result.openObject();
-
-            if (auto figures = it.get("figures"); !figures.isNone()) {
-              auto idxSlice = figures.get("memory");
-              if (!idxSlice.isNone()) {
-                result.add("mem", VPackValue(idxSlice.getUInt()));
-              }
-              idxSlice = figures.get("cacheInUse");
-              bool cacheInUse = false;
-              if (!idxSlice.isNone()) {
-                cacheInUse = idxSlice.getBoolean();
-              }
-              if (cacheInUse) {
-                result.add("cacheSize",
-                           VPackValue(figures.get("cacheSize").getUInt()));
-                result.add("cacheUsage",
-                           VPackValue(figures.get("cacheUsage").getUInt()));
-              }
+            auto flags = Index::makeFlags(Index::Serialize::Estimates,
+                                          Index::Serialize::Figures);
+            std::vector<std::string_view> idxTypes = {
+                "edge",      "geo",        "hash",      "fulltext", "inverted",
+                "no-access", "persistent", "iresearch", "skiplist", "ttl",
+                "zkd",       "primary",    "unknown"};
+            for (auto const& type : idxTypes) {
+              idxTypesToAmounts.try_emplace(type, 0);
             }
 
-            auto idxType = it.get("type").stringView();
-            result.add("type", VPackValue(idxType));
-            bool isSparse = it.get("sparse").getBoolean();
-            bool isUnique = it.get("unique").getBoolean();
-            result.add("sparse", VPackValue(isSparse));
-            result.add("unique", VPackValue(isUnique));
-            if (idxType.compare("edge"sv) == 0) {
-              idxTypesToAmounts["edge"]++;
-            } else if (idxType.compare("geo"sv) == 0) {
-              idxTypesToAmounts["geo"]++;
-            } else if (idxType.compare("hash"sv) == 0) {
-              idxTypesToAmounts["hash"]++;
-            } else if (idxType.compare("fulltext"sv) == 0) {
-              idxTypesToAmounts["fulltext"]++;
-            } else if (idxType.compare("inverted"sv) == 0) {
-              idxTypesToAmounts["inverted"]++;
-            } else if (idxType.compare("no-access"sv) == 0) {
-              idxTypesToAmounts["no-access"]++;
-            } else if (idxType.compare("persistent"sv) == 0) {
-              idxTypesToAmounts["persistent"]++;
-            } else if (idxType.compare("iresearch"sv) == 0) {
-              idxTypesToAmounts["iresearch"]++;
-            } else if (idxType.compare("skiplist"sv) == 0) {
-              idxTypesToAmounts["skiplist"]++;
-            } else if (idxType.compare("ttl"sv) == 0) {
-              idxTypesToAmounts["ttl"]++;
-            } else if (idxType.compare("zkd"sv) == 0) {
-              idxTypesToAmounts["zkd"]++;
-            } else if (idxType.compare("primary"sv) == 0) {
-              idxTypesToAmounts["primary"]++;
-            } else {
-              idxTypesToAmounts["unknown"]++;
-            }
+            VPackBuilder output;
+            std::ignore =
+                methods::Indexes::getAll(coll.get(), flags, false, output);
+            velocypack::Slice outSlice = output.slice();
 
+            result.add("idxs", VPackValue(VPackValueType::Array));
+            for (auto const it : velocypack::ArrayIterator(outSlice)) {
+              result.openObject();
+
+              if (auto figures = it.get("figures"); !figures.isNone()) {
+                auto idxSlice = figures.get("memory");
+                uint64_t memUsage = 0;
+                if (!idxSlice.isNone()) {
+                  memUsage = idxSlice.getUInt();
+                }
+                result.add("mem", VPackValue(memUsage));
+                idxSlice = figures.get("cache_in_use");
+                bool cacheInUse = false;
+                if (!idxSlice.isNone()) {
+                  cacheInUse = idxSlice.getBoolean();
+                }
+                uint64_t cacheSize = 0;
+                uint64_t cacheUsage = 0;
+                if (cacheInUse) {
+                  cacheSize = figures.get("cache_size").getUInt();
+                  cacheUsage = figures.get("cache_usage").getUInt();
+                }
+                result.add("cache_size", VPackValue(cacheSize));
+                result.add("cache_usage", VPackValue(cacheUsage));
+              }
+
+              auto idxType = it.get("type").stringView();
+              result.add("type", VPackValue(idxType));
+              bool isSparse = it.get("sparse").getBoolean();
+              bool isUnique = it.get("unique").getBoolean();
+              result.add("sparse", VPackValue(isSparse));
+              result.add("unique", VPackValue(isUnique));
+              idxTypesToAmounts[idxType]++;
+
+              result.close();
+            }
             result.close();
-          }
-          result.close();
-
-          for (auto const& [type, amount] : idxTypesToAmounts) {
-            result.add(std::string("num-" + type), VPackValue(amount));
+            collsAlreadyVisited.insert(planId);
+            for (auto const& [type, amount] : idxTypesToAmounts) {
+              if (type == "no-access") {
+                result.add("n_no_access", VPackValue(amount));
+              } else {
+                result.add({"n_" + type}, VPackValue(amount));
+              }
+            }
           }
 
           result.close();
@@ -554,11 +681,11 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
 
     result.close();
 
-    result.add("isSingleShard", VPackValue(vocbase->isOneShard()));
-    result.add("nColls", VPackValue(numDocColls));
-    result.add("nGraphColls", VPackValue(numGraphColls));
-    result.add("nSmartColls", VPackValue(numSmartColls));
-    result.add("nDisjointGraphs", VPackValue(numDisjointGraphs));
+    result.add("single_shard", VPackValue(vocbase->isOneShard()));
+    result.add("n_doc_colls", VPackValue(numDocColls));
+    result.add("n_graph_colls", VPackValue(numGraphColls));
+    result.add("n_smart_colls", VPackValue(numSmartColls));
+    result.add("n_disjoint_graphs", VPackValue(numDisjointGraphs));
 
     result.close();
   }

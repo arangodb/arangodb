@@ -95,11 +95,11 @@ void ShellFeature::validateOptions(
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
-    client.disable();
+    client.disable();  // SET
   }
 
   if (!_jslint.empty()) {
-    client.disable();
+    client.disable();  // SET
   }
 
   size_t n = 0;
@@ -202,13 +202,21 @@ void ShellFeature::beginShutdown() {
 
 void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
   if (_telemetricsHandler != nullptr) {
-    return _telemetricsHandler->getTelemetricsInfo(builder);
+    _telemetricsHandler->getTelemetricsInfo(builder);
   }
 }
 
 void ShellFeature::startTelemetrics() {
   _telemetricsHandler = std::make_unique<TelemetricsHandler>(server());
   _telemetricsHandler->runTelemetrics();
+}
+
+void ShellFeature::restartTelemetrics() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+    _telemetricsHandler.reset();
+  }
+  startTelemetrics();
 }
 
 }  // namespace arangodb

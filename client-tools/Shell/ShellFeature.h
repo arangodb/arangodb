@@ -55,6 +55,7 @@ class ShellFeature final : public ArangoshFeature {
   void setExitCode(int code) { *_result = code; }
 
   void startTelemetrics();
+  void restartTelemetrics();
 
  private:
   std::vector<std::string> _jslint;

@@ -59,7 +59,7 @@ class TelemetricsHandler {
   arangodb::Result checkHttpResponse(
       std::unique_ptr<httpclient::SimpleHttpResult> const& response);
   void fetchTelemetricsFromServer();
-  void SendTelemetricsToEndpoint();
+  void sendTelemetricsToEndpoint();
   void arrangeTelemetrics();
 
   ArangoshServer& _server;

@@ -668,7 +668,7 @@ static void ClientConnection_reconnect(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to connect to this endpoint") + endpoint);
   }
-
+  // SET
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);
@@ -1040,6 +1040,37 @@ static void ClientConnection_startTelemetrics(
   auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
 
   shellFeature.startTelemetrics();
+
+  TRI_V8_RETURN_TRUE();
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "restartTelemetrics"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_restartTelemetrics(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "startTelemetrics() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  shellFeature.restartTelemetrics();
 
   TRI_V8_RETURN_TRUE();
 
@@ -1991,7 +2022,7 @@ static void ClientConnection_setDatabaseName(
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
   v8connection->setDatabaseName(dbName);
-  client->setDatabaseName(dbName);
+  client->setDatabaseName(dbName);  // SET
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2691,6 +2722,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "startTelemetrics",
       v8::FunctionTemplate::New(isolate, ClientConnection_startTelemetrics));
+  connection_proto->Set(
+      isolate, "restartTelemetrics",
+      v8::FunctionTemplate::New(isolate, ClientConnection_restartTelemetrics));
 #endif
 
   connection_proto->Set(isolate, "getEndpoint",

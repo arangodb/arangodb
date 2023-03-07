@@ -71,7 +71,7 @@ RestStatus RestServerInfoHandler::execute() {
   bool isLocal = _request->parsedValue("local", false);
 
   SupportInfoBuilder::buildInfoMessage(result, _request->databaseName(),
-                                       _server, isLocal);
+                                       _server, isLocal, true);
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
