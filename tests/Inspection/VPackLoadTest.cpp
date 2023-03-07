@@ -27,8 +27,7 @@
 
 #include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
-
-#include "InspectionTestHelper.h"
+#include "Inspection/InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;

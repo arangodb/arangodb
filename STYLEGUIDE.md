@@ -37,7 +37,7 @@ You are expected to format your local changes via clang-format. Here are your op
 3. Lint with your **custom clang-format setup**
     * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.
 
-Once your changes are pushed, a [Github Action CI](https://github.com/arangodb/clang-format-action) will be triggered to validate that your changes comply to the [established clang-format standard](https://github.com/arangodb/arangodb/blob/devel/.clang-format). Should you be missing any format specifications, your push’s CI will fail.
+Once your changes are pushed, a [GitHub Action CI](https://github.com/arangodb/clang-format-action) will be triggered to validate that your changes comply to the [established clang-format standard](https://github.com/arangodb/arangodb/blob/devel/.clang-format). Should you be missing any format specifications, your push’s CI will fail.
 
 
 # ArangoDB coding guidelines

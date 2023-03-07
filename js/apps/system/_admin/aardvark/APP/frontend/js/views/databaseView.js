@@ -137,10 +137,16 @@
     handleError: function (err, dbname) {
       if (err.status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + _.escape(dbname) + ' already exists.');
-      } else if (err.status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + _.escape(err.responseJSON.errorMessage));
-      } else if (err.status === 403) {
-        arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
+      } else {
+        // catch-all error reason
+        var prefix = 'Error during database creation';
+        // more specific reasons to follow
+        if (err.status === 400) {
+          prefix = 'Invalid parameters';
+        } else if (err.status === 403) {
+          prefix = 'Insufficient rights';
+        }
+        arangoHelper.arangoError('DB', prefix + ': ' + _.escape(err.responseJSON.errorMessage));
       }
     },
 
