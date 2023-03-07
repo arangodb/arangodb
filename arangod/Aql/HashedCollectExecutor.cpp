@@ -334,7 +334,8 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   if (it != _allGroups.end()) {
     // group already exists
     if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
-      auto& builder = *((*it).second.second);
+      TRI_ASSERT(it->second.second != nullptr);
+      auto& builder = *(it->second.second);
       if (_infos.getExpressionVariable() != nullptr) {
         input.getValue(_infos.getExpressionRegister())
             .toVelocyPack(_infos.getVPackOptions(), builder,
