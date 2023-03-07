@@ -55,6 +55,12 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
+
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos

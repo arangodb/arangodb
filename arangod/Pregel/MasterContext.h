@@ -40,9 +40,15 @@ class MasterContext {
   uint64_t _edgeCount = 0;
   // Should cause the master to tell everyone to enter the next phase
   AggregatorHandler* _aggregators = nullptr;
+  std::unique_ptr<AggregatorHandler> _aggregatorsUnique = nullptr;
 
  public:
-  MasterContext() {}
+  MasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                std::unique_ptr<AggregatorHandler> aggregators)
+      : _vertexCount{vertexCount},
+        _edgeCount{edgeCount},
+        _aggregatorsUnique{std::move(aggregators)} {}
+  MasterContext() = default;
   virtual ~MasterContext() = default;
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }

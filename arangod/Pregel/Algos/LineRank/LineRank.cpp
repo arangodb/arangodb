@@ -47,6 +47,10 @@ LineRank::LineRank(application_features::ApplicationServer& server,
 }
 
 struct LRMasterContext : MasterContext {
+  LRMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                  std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+  LRMasterContext() = default;
   bool _stopNext = false;
   bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kDiff);
@@ -120,6 +124,14 @@ WorkerContext* LineRank::workerContext(VPackSlice params) const {
 
 MasterContext* LineRank::masterContext(VPackSlice params) const {
   return new LRMasterContext();
+}
+[[nodiscard]] auto LineRank::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<LRMasterContext>(vertexCount, edgeCount,
+                                           std::move(aggregators));
 }
 
 IAggregator* LineRank::aggregator(std::string const& name) const {

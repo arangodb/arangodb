@@ -51,5 +51,11 @@ struct ConnectedComponents
       WorkerConfig const*) const override;
   VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
       WorkerConfig const*) const override;
+
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos

@@ -93,6 +93,48 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
   }
   return nullptr;
 }
+auto AlgoRegistry::createAlgorithmNew(
+    application_features::ApplicationServer& server,
+    std::string const& algorithm, VPackSlice userParams)
+    -> std::optional<std::unique_ptr<IAlgorithm>> {
+  if (algorithm == "sssp") {
+    return std::make_unique<algos::SSSPAlgorithm>(server, userParams);
+  } else if (algorithm == "pagerank") {
+    return std::make_unique<algos::PageRank>(server, userParams);
+  } else if (algorithm == "recoveringpagerank") {
+    return std::make_unique<algos::RecoveringPageRank>(server, userParams);
+  } else if (algorithm == "shortestpath") {
+    return std::make_unique<algos::ShortestPathAlgorithm>(server, userParams);
+  } else if (algorithm == "linerank") {
+    return std::make_unique<algos::LineRank>(server, userParams);
+  } else if (algorithm == "effectivecloseness") {
+    return std::make_unique<algos::EffectiveCloseness>(server, userParams);
+  } else if (algorithm == "connectedcomponents") {
+    return std::make_unique<algos::ConnectedComponents>(server, userParams);
+  } else if (algorithm == "scc") {
+    return std::make_unique<algos::SCC>(server, userParams);
+  } else if (algorithm == "hits") {
+    return std::make_unique<algos::HITS>(server, userParams);
+  } else if (algorithm == "hitskleinberg") {
+    return std::make_unique<algos::HITSKleinberg>(server, userParams);
+  } else if (algorithm == "labelpropagation") {
+    return std::make_unique<algos::LabelPropagation>(server, userParams);
+  } else if (algorithm == "slpa") {
+    return std::make_unique<algos::SLPA>(server, userParams);
+  } else if (algorithm == "dmid") {
+    return std::make_unique<algos::DMID>(server, userParams);
+  } else if (algorithm == "wcc") {
+    return std::make_unique<algos::WCC>(server, userParams);
+  } else if (algorithm == "colorpropagation") {
+    return std::make_unique<algos::ColorPropagation>(server, userParams);
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return std::make_unique<algos::ReadWrite>(server, userParams);
+  }
+#endif
+  return std::nullopt;
+}
 
 template<typename V, typename E, typename M>
 std::shared_ptr<IWorker> AlgoRegistry::createWorker(

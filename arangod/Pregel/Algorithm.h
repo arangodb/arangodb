@@ -63,6 +63,11 @@ struct IAlgorithm {
       arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
+  [[nodiscard]] virtual auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> = 0;
 
   // ============= Configure runtime parameters ============
 

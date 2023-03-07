@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EffectiveCloseness.h"
+#include <memory>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounterFormat.h"
@@ -125,4 +126,19 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 
 GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
   return new ECGraphFormat(_resultField);
+}
+
+struct EffectiveClosenessMasterContext : public MasterContext {
+  EffectiveClosenessMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto EffectiveCloseness::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<EffectiveClosenessMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }

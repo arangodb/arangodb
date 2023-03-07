@@ -53,6 +53,11 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
 
   [[nodiscard]] MasterContext* masterContext(
       VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };

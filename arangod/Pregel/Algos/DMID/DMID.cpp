@@ -667,7 +667,11 @@ GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threshold
+  DMIDMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
+  }  // TODO use _threshold
+  DMIDMasterContext() = default;
 
   void preGlobalSuperstep() override {
     /**
@@ -787,6 +791,14 @@ struct DMIDMasterContext : public MasterContext {
 
 MasterContext* DMID::masterContext(VPackSlice userParams) const {
   return new DMIDMasterContext();
+}
+[[nodiscard]] auto DMID::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<DMIDMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }
 
 IAggregator* DMID::aggregator(std::string const& name) const {

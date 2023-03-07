@@ -205,3 +205,17 @@ GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
   return new SLPAWorkerContext();
 }
+
+struct SLPAMasterContext : public MasterContext {
+  SLPAMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto SLPA::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<SLPAMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
+}

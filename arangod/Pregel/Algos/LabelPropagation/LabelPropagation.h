@@ -50,5 +50,11 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
 
   VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
       WorkerConfig const*) const override;
+
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos
