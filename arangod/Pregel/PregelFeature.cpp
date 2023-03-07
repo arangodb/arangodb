@@ -362,11 +362,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
-      std::make_unique<conductor::ConductorState>(
-          executionSpecifications,
-          std::make_unique<conductor::VocbaseLookupInfo>(
+         auto vocbaseLookupInfo = std::make_unique<conductor::VocbaseLookupInfo>(
               vocbase, executionSpecifications.vertexCollections,
-              executionSpecifications.edgeCollections)),
+              executionSpecifications.edgeCollections); 
+         std::make_unique<conductor::ConductorState>(
+          executionSpecifications, std::move(vocbaseLookupInfo),
       conductor::message::ConductorStart{});
 
   return en;
