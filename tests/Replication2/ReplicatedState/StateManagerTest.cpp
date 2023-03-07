@@ -172,16 +172,12 @@ struct StateManagerTest : testing::Test {
                                        "documentStateMachineTestDb", 2);
   std::shared_ptr<test::DelayedExecutor> executor =
       std::make_shared<test::DelayedExecutor>();
+  // Note that this purposefully does not initialize the PersistedStateInfo that
+  // is returned by the StorageEngineMethods. readMetadata() will return a
+  // document not found error unless you initialize it in your test.
   std::shared_ptr<test::FakeStorageEngineMethodsContext> storageContext =
       std::make_shared<test::FakeStorageEngineMethodsContext>(
-          12, gid.id, executor, LogRange{},
-          replicated_state::PersistedStateInfo{
-              .stateId = gid.id,
-              .snapshot = {.status = SnapshotStatus::kCompleted,
-                           .timestamp = {},
-                           .error = {}},
-              .generation = {},
-              .specification = {}});
+          12, gid.id, executor, LogRange{});
   replicated_state::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
   std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
@@ -228,6 +224,9 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   // - let recovery finish
   // - check leader state machine again: should now be available
 
+  storageContext->meta = replicated_state::PersistedStateInfo{
+      .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
+
   auto const term = agency::LogPlanTermSpecification{LogTerm{1}, myself};
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
@@ -249,14 +248,14 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   EXPECT_FALSE(log->getQuickStatus().leadershipEstablished);
   EXPECT_TRUE(executor->hasWork() or scheduler->hasWork());
   bool runAtLeastOnce = false;
-  while (not log->getQuickStatus().leadershipEstablished and
-         (executor->hasWork() or scheduler->hasWork())) {
+  for (auto status = log->getQuickStatus();
+       not status.leadershipEstablished and
+       (executor->hasWork() or scheduler->hasWork());
+       status = log->getQuickStatus()) {
     runAtLeastOnce = true;
-    // while leadership isn't established yet, the leader state manager isn't
-    // instantiated yet, so it can't return a status.
-    auto stateStatus = state->getStatus();
-    ASSERT_TRUE(stateStatus.has_value());
-    EXPECT_EQ(stateStatus->asLeaderStatus(), nullptr);
+    // While leadership isn't established, the leader state manager isn't yet
+    // instantiated.
+    EXPECT_EQ(status.localState, LocalStateMachineStatus::kUnconfigured);
     // the state machine must not be available until after recovery
     auto stateMachine = state->getLeader();
     EXPECT_EQ(stateMachine, nullptr);
@@ -269,41 +268,81 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   }
   EXPECT_TRUE(runAtLeastOnce);
 
-  // leadership was established, but recovery hasn't been completed. That means
-  // the status should be available (as a leader status), but the state machine
-  // must still be inaccessible.
-  EXPECT_EQ(log->getQuickStatus().localState,
-            LocalStateMachineStatus::kRecovery);
-  auto stateStatus = state->getStatus();
-  ASSERT_TRUE(stateStatus.has_value());
-  ASSERT_NE(stateStatus->asLeaderStatus(), nullptr);
-  EXPECT_EQ(state->getLeader(), nullptr);
+  // Leadership was established, but recovery hasn't been completed. That means
+  // the state machine must still be inaccessible.
+  {
+    auto status = log->getQuickStatus();
+    EXPECT_EQ(status.localState, LocalStateMachineStatus::kRecovery);
+    auto stateMachine = state->getLeader();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
   scheduler->runOnce();
-  EXPECT_EQ(log->getQuickStatus().localState,
-            LocalStateMachineStatus::kOperational);
-  EXPECT_NE(state->getLeader(), nullptr);
+  // Now we should be operational.
+  {
+    EXPECT_EQ(log->getQuickStatus().localState,
+              LocalStateMachineStatus::kOperational);
+    EXPECT_NE(state->getLeader(), nullptr);
+  }
+  // Run the rest for completeness' sake.
+  scheduler->runAll();
+  // We should have converged to a stable state now.
+  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_FALSE(executor->hasWork());
+  // Nothing should have changed:
+  {
+    EXPECT_EQ(log->getQuickStatus().localState,
+              LocalStateMachineStatus::kOperational);
+    EXPECT_NE(state->getLeader(), nullptr);
+  }
 }
 
-TEST_F(StateManagerTest, get_follower_state_machine_early) {
+// TODO follower tests
+//  - either:
+//    - start with a valid snapshot, then
+//      - send a truncating append entries (invalidating the snapshot)
+//    - or start with an invalid snapshot
+//    - or start with a valid snapshot and don't truncate it
+//  - in either order:
+//    - send a (successful) append entries
+//    - finish acquiring the snapshot (if one was started)
+//  At every point, check that the stateMachine is not available until the
+//  very end.
+
+TEST_F(StateManagerTest,
+       get_follower_state_machine_early_with_snapshot_without_truncate) {
+  // Overview:
+  //  - start with a valid snapshot
+  //  - check follower state machine: should be inaccessible
+  //  - send successful append entries request
+  //  - check follower state machine: should now be accessible
+  storageContext->meta = replicated_state::PersistedStateInfo{
+      .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
+
   auto const term = LogTerm{1};
   auto const planTerm = agency::LogPlanTermSpecification{term, other};
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
   log->updateConfig(planTerm, config, myself);
-  auto const status = log->getQuickStatus();
-  ASSERT_EQ(status.role, ParticipantRole::kFollower);
+  {
+    auto const logStatus = log->getQuickStatus();
+    ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
+    EXPECT_TRUE(logStatus.snapshotAvailable);
 
-  auto const stateMachine = state->getFollower();
-  EXPECT_EQ(stateMachine, nullptr);
+    // The state machine should be constructed, but without knowledge whether
+    // the snapshot will be valid in the current term, and thus report
+    // unconfigured.
+    EXPECT_NE(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
 
   auto const follower =
       std::dynamic_pointer_cast<ILogFollower>(log->getParticipant());
   ASSERT_NE(follower, nullptr);
   auto const leaderId = other.serverId;
-  // send an append entries, only with the leader-establishling log entry.
-  // TODO try to access the follower state machine in between, and assert that
-  //      it's inaccessible
+  // Send an append entries request, just with the leader-establishing log
+  // entry.
   auto appendEntriesFuture = std::invoke([&] {
     auto const waitForSync = true;
     auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = leaderId,
@@ -320,26 +359,40 @@ TEST_F(StateManagerTest, get_follower_state_machine_early) {
   });
   EXPECT_FALSE(appendEntriesFuture.isReady());
 
+  // The append entries request has now been received, but not processed (i.e.
+  // not written to disk) yet.
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    // Should still be waiting whether the snapshot will be valid in the current
+    // term.
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  // Process the append entries request, i.e. write to disk.
   executor->runOnce();
+  // We should have converged to a stable state now.
   EXPECT_FALSE(executor->hasWork());
   EXPECT_FALSE(scheduler->hasWork());
 
-  ASSERT_TRUE(appendEntriesFuture.isReady());
-  ASSERT_TRUE(appendEntriesFuture.hasValue());
-  auto const appendEntriesResponse = appendEntriesFuture.get();
-  EXPECT_TRUE(appendEntriesResponse.isSuccess())
-      << appendEntriesResponse.errorCode;
-  EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
-  // TODO:
-  //  - either:
-  //    - start with a valid snapshot, then
-  //      - send a truncating append entries (invalidating the snapshot)
-  //    - or start with an invalid snapshot
-  //    - or start with a valid snapshot and don't truncate it
-  //  - in either order:
-  //    - send a (successful) append entries
-  //    - finish acquiring the snapshot (if one was started)
-  //  At every point, check that the stateMachine is not available until the
-  //  very end.
-  ASSERT_TRUE(false) << "Finish writing the test!";
+  // The append entries response should be ready.
+  {
+    ASSERT_TRUE(appendEntriesFuture.isReady());
+    ASSERT_TRUE(appendEntriesFuture.hasValue());
+    auto const appendEntriesResponse = appendEntriesFuture.get();
+    EXPECT_TRUE(appendEntriesResponse.isSuccess())
+        << appendEntriesResponse.errorCode;
+    EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
+  }
+
+  {
+    // The state machine should now be operational and accessible.
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kOperational);
+    auto const stateMachine = state->getFollower();
+    EXPECT_NE(stateMachine, nullptr);
+  }
 }
