@@ -71,7 +71,7 @@ struct ActorPID {
   ServerID server;
   DatabaseName database;
   ActorID id;
-  auto operator<=>(ActorPID const& other) const = default;
+  bool operator==(const ActorPID&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
