@@ -183,7 +183,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    TRI_ASSERT(transactionHandler->applyEntry(abortAll).ok());
+    auto abortAllResult = transactionHandler->applyEntry(abortAll);
+    TRI_ASSERT(abortAllResult.ok());
 
     self->release(abortAllRes.get());
 
