@@ -21,9 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -60,6 +57,9 @@
 #include "V8Server/V8DealerFeature.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -2976,6 +2976,8 @@ AstNode* Ast::clone(AstNode const* node) {
 }
 
 AstNode* Ast::shallowCopyForModify(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
   AstNodeType const type = node->type;
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
@@ -2994,7 +2996,7 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
   // copy payload...
   copyPayload(node, copy);
 
-  // recursively add subnodes
+  // add subnodes, non-recursively
   size_t const n = node->numMembers();
   copy->members.reserve(n);
   for (size_t i = 0; i < n; ++i) {
@@ -4377,7 +4379,7 @@ void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
   _writeCollections.emplace_back(node, isExclusiveAccess);
 }
 
-bool Ast::functionsMayAccessDocuments() const {
+bool Ast::functionsMayAccessDocuments() const noexcept {
   return _functionsMayAccessDocuments;
 }
 

@@ -39,7 +39,7 @@ The response sent by the server is a multipart response, too. It contains
 the individual HTTP responses for all batch parts, including the full HTTP
 result header (with status code and other potential headers) and an
 optional result body. The individual batch parts in the result are
-seperated using the same boundary value as specified in the request.
+separated using the same boundary value as specified in the request.
 
 The order of batch parts in the response will be the same as in the
 original client request. Client can additionally use the `Content-Id`
@@ -121,9 +121,9 @@ in this case try to find the boundary at the beginning of the request body).
 @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
     var parts = [
       "Content-Type: application/x-arango-batchpart\r\n\r\n" +
-         "DELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
+         "DELETE /_api/collection/nonexistent1 HTTP/1.1\r\n",
       "Content-Type: application/x-arango-batchpart\r\n\r\n" +
-         "DELETE _api/collection/notexisting2 HTTP/1.1\r\n"
+         "DELETE _api/collection/nonexistent2 HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
     var body = "--" + boundary + "\r\n" +

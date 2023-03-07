@@ -40,6 +40,8 @@ TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
 
 TwoSidedEnumeratorOptions::~TwoSidedEnumeratorOptions() = default;
 
+void TwoSidedEnumeratorOptions::setMinDepth(size_t min) { _minDepth = min; }
+void TwoSidedEnumeratorOptions::setMaxDepth(size_t max) { _maxDepth = max; }
 size_t TwoSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
 size_t TwoSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
 

@@ -83,7 +83,7 @@ class endpointRunner extends tu.runInArangoshRunner {
     this.instanceManager['arangods'] = [this.instance];
     this.instanceManager.rootDir = this.instance.rootDir;
     
-    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
+    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'etc', 'testing', 'server.pem');
 
     let endpoints = {
       ssl: {

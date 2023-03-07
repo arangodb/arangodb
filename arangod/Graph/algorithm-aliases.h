@@ -85,6 +85,25 @@ using TracedKPathEnumerator = TracedTwoSidedEnumeratorWithProvider<Provider>;
 template<class Provider>
 using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
+// K_SHORTEST_PATHS implementation
+template<class Provider>
+using KShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// K_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedKShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// WEIGHTED_K_SHORTEST_PATHS implementation
+template<class Provider>
+using WeightedKShortestPathsEnumerator =
+    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+
+// WEIGHTED_K_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedWeightedKShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
+
 // ALL_SHORTEST_PATHS implementation using Tracing
 template<class Provider>
 using TracedAllShortestPathsEnumerator =

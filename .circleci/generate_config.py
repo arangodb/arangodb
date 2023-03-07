@@ -200,10 +200,10 @@ def filter_tests(args, tests):
     else:
         filters.append(lambda test: "full" not in test["flags"])
 
-    if args.gtest:
-        filters.append(lambda test: "gtest" == test["name"])
-    else:
-        filters.append(lambda test: "gtest" != test["name"])
+    # if args.gtest:
+    #     filters.append(lambda test: "gtest" == test["name"])
+    #else:
+    #   filters.append(lambda test: "gtest" != test["name"])
 
     filters.append(lambda test: "enterprise" not in test["flags"])
 
@@ -256,12 +256,12 @@ def generate_output(args, tests):
             for test in tests:
                 print(f"test: {test}")
                 if "cluster" in test["flags"]:
-                    jobs.append({"run-js-tests": create_test_job(test, True)})
+                    jobs.append({"run-tests": create_test_job(test, True)})
                 elif "single" in test["flags"]:
-                    jobs.append({"run-js-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, False)})
                 else:
-                    jobs.append({"run-js-tests": create_test_job(test, True)})
-                    jobs.append({"run-js-tests": create_test_job(test, False)})
+                    jobs.append({"run-tests": create_test_job(test, True)})
+                    jobs.append({"run-tests": create_test_job(test, False)})
             yaml.dump(config, outstream)
 
 
@@ -272,6 +272,7 @@ def main():
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
+        print("args", args)
         tests = filter_tests(args, tests)
         generate_output(args, tests)
     except Exception as exc:
