@@ -94,12 +94,13 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(actor->getState(), (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(actor->getState(), (TrivialState("", 0)));
 
-  auto message = MessagePayload<TrivialMessages>(TrivialMessage{"Hello"});
+  auto message = MessagePayload<test::message::TrivialMessages>(
+      test::message::TrivialMessage{"Hello"});
   actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
                  message);
-  ASSERT_EQ(actor->getState(), (TrivialState{.state = "Hello", .called = 1}));
+  ASSERT_EQ(actor->getState(), (TrivialState("Hello", 1)));
 }
 
 TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
@@ -110,13 +111,14 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
       ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
-  ASSERT_EQ(actor->getState(), (TrivialState{.state = "", .called = 0}));
+  ASSERT_EQ(actor->getState(), (TrivialState("", 0)));
 
-  auto message = TrivialMessages{TrivialMessage{"Hello"}};
+  auto message =
+      test::message::TrivialMessages{test::message::TrivialMessage{"Hello"}};
   actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
                  arangodb::inspection::serializeWithErrorT(message).get());
 
-  ASSERT_EQ(actor->getState(), (TrivialState{.state = "Hello", .called = 1}));
+  ASSERT_EQ(actor->getState(), (TrivialState("Hello", 1)));
 }
 
 TEST(ActorTest, sets_itself_to_finish) {
@@ -145,7 +147,8 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   actor->finish();
 
   // send message to actor
-  auto message = TrivialMessages{TrivialMessage{"Hello"}};
+  auto message =
+      test::message::TrivialMessages{test::message::TrivialMessage{"Hello"}};
   actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
                  arangodb::inspection::serializeWithErrorT(message).get());
 
@@ -166,9 +169,10 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
 //       std::make_unique<TrivialState>());
 
 //   // send a lot of messages to actor
-//   auto message = TrivialMessages{TrivialMessage{"A"}};
-//   size_t sent_message_count = 1000;
-//   for (size_t i = 0; i < sent_message_count; i++) {
+//   auto message =
+//   test::message::TrivialMessages{test::message::TrivialMessage{"A"}}; size_t
+//   sent_message_count = 1000; for (size_t i = 0; i < sent_message_count; i++)
+//   {
 //     actor->process(ActorPID{.server = "A", .database = "database", .id =
 //     {5}},
 //                    arangodb::inspection::serializeWithErrorT(message).get());
@@ -182,6 +186,6 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
 //   }
 //   this->scheduler->stop();
 //   ASSERT_EQ(actor->getState(),
-//             (TrivialState{.state = std::string(sent_message_count, 'A'),
-//                           .called = sent_message_count}));
+//             (TrivialState(std::string(sent_message_count,
+//             'A'),sent_message_count)));
 // }

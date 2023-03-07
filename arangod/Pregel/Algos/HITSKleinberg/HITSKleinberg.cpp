@@ -284,10 +284,8 @@ HITSKleinberg::createComputation(WorkerConfig const* config) const {
 struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   std::string const _resultField;
 
-  explicit HITSKleinbergGraphFormat(
-      application_features::ApplicationServer& server, std::string result)
-      : GraphFormat<VertexType, int8_t>(server),
-        _resultField(std::move(result)) {}
+  explicit HITSKleinbergGraphFormat(std::string result)
+      : GraphFormat<VertexType, int8_t>(), _resultField(std::move(result)) {}
 
   [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
@@ -306,7 +304,7 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
 };
 
 GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
-  return new HITSKleinbergGraphFormat(_server, _resultField);
+  return new HITSKleinbergGraphFormat(_resultField);
 }
 
 WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {

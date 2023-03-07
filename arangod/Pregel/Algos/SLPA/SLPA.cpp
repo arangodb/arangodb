@@ -138,9 +138,8 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   double threshold;
   unsigned maxCommunities;
 
-  explicit SLPAGraphFormat(application_features::ApplicationServer& server,
-                           std::string const& result, double thr, unsigned mc)
-      : GraphFormat<SLPAValue, int8_t>(server),
+  explicit SLPAGraphFormat(std::string const& result, double thr, unsigned mc)
+      : GraphFormat<SLPAValue, int8_t>(),
         resField(result),
         threshold(thr),
         maxCommunities(mc) {}
@@ -200,8 +199,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_server, _resultField, _threshold,
-                             _maxCommunities);
+  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
 }
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {

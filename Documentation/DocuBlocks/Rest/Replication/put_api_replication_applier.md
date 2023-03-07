@@ -64,7 +64,7 @@ following attributes may be present in the configuration:
   will give up waiting for a response and fail. This value is relevant even
   for continuous replication when *autoResync* is set to *true* because this
   may re-start the initial synchronization when the leader cannot provide
-  log data the follwer requires.
+  log data the follower requires.
   This value will be ignored if set to *0*.
 
 - *connectionRetryWaitTime*: the time (in seconds) that the applier will
