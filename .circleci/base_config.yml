@@ -132,6 +132,7 @@ jobs:
             - enterprise/js
             - etc/
             - tests/js
+            - enterprise/tests/js
             - utils
             - UnitTests
             - 3rdParty/iresearch/tests/resources
