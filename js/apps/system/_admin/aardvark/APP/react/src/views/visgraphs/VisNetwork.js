@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { Network } from "vis-network";
 import { isEqual } from "lodash";
 import { ProgressBar } from "./ProgressBar";
+import { DataSet } from "vis-data";
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
@@ -21,10 +22,14 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const nodes = [
 		...graphData.nodes
 	];
+	const nodesDataset = new DataSet(...graphData.nodes);
+	console.log("nodesDataset: ", nodesDataset);
 
 	const edges = [
 		...graphData.edges
 	];
+	const edgesDataset = new DataSet(...graphData.edges);
+	console.log("edgesDataset: ", edgesDataset);
 
 	const visJsRef = useRef(null);
 
@@ -92,26 +97,36 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		}
 
 		network.on("stabilizationProgress", function (params) {
-			const maxWidth = 496;
-			const minWidth = 20;
-			const widthFactor = params.iterations / params.total;
-			const width = Math.max(minWidth, maxWidth * widthFactor);
+			if(nodes.length > 1) {
+				const maxWidth = 496;
+				const minWidth = 20;
+				const widthFactor = params.iterations / params.total;
+				const width = Math.max(minWidth, maxWidth * widthFactor);
 
-			const progressValue = Math.round(widthFactor * 100);
-		
-			document.getElementById("graphViewerProgressBar").style.width = width + "px";
-			document.getElementById("graphViewerLoadingText").innerText = progressValue + "%";
+				console.log("params.iterations: ", params.iterations);
+				console.log("params.total: ", params.total);
+				
+				const progressValue = Math.round(widthFactor * 100);
+				console.log("progressValue: ", progressValue);
+			
+				document.getElementById("graphViewerProgressBar").style.width = width + "px";
+				document.getElementById("graphViewerLoadingText").innerText = progressValue + "%";
 
-			if(progressValue === 100) {
-				document.getElementById("graphViewerLoadingBar").style.opacity = 0;
-				setTimeout(function () {
-					document.getElementById("graphViewerLoadingBar").style.display = "none";
-				}, 500);
+				document.getElementById("graphViewerLoadingBar").style.opacity = 100;
+				document.getElementById("graphViewerLoadingBar").style.display = "block";
 			}
 		});
 
 		network.on("stabilizationIterationsDone", function () {
 			network.setOptions( { physics: false } );
+		});
+
+		network.on("stabilized", function () {
+			console.log("####### stabilized #######");
+			document.getElementById("graphViewerLoadingBar").style.opacity = 0;
+			setTimeout(function () {
+				document.getElementById("graphViewerLoadingBar").style.display = "none";
+			}, 500);
 		});
 
 		network.on("selectNode", (event, params) => {

@@ -1,5 +1,4 @@
-/* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import "./progressBar.css";
 
   export const ProgressBar = () => {
