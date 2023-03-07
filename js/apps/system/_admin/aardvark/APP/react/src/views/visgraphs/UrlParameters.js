@@ -10,6 +10,7 @@ const URLPARAMETERS = {
   edgeColorAttribute: "",
   nodeLabel: "",
   edgeLabel: "",
+  edgeDirection: false,
   edgeType: "line",
   nodeSize: "",
   nodeSizeByEdges: false,

@@ -16,6 +16,7 @@ import ParameterEdgeColor from "./ParameterEdgeColor";
 import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
+import ParameterEdgeDirection from "./ParameterEdgeDirection";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
 import AccordionView from './components/Accordion/Accordion';
@@ -80,6 +81,8 @@ export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onG
         <ParameterEdgeColorByCollection />
         <br />
         <ParameterEdgeColorAttribute />
+        <br />
+        <ParameterEdgeDirection />
         <br />
         <EdgeStyleSelector />
       </>)

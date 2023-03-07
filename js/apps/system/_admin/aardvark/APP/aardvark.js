@@ -1595,7 +1595,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
           hierarchical: false
       },
       edges: {
-        smooth: false
+        smooth: false,
+        arrows: {
+          to: {
+            enabled: (config.edgeDirection === "true"),
+            type: "arrow"
+          },
+        },
       },
       physics: {
           barnesHut: {
@@ -1619,7 +1625,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
           },
         },
         edges: {
-          smooth: false
+          smooth: false,
+          arrows: {
+            to: {
+              enabled: (config.edgeDirection === "true"),
+              type: "arrow"
+            },
+          },
         },
         physics: {
           barnesHut: {
@@ -1638,7 +1650,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
               hierarchical: false
           },
           edges: {
-            smooth: false
+            smooth: false,
+            arrows: {
+              to: {
+                enabled: (config.edgeDirection === "true"),
+                type: "arrow"
+              },
+            },
           },
           physics: {
               forceAtlas2Based: {
