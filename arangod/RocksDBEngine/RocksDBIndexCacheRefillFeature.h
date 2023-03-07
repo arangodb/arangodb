@@ -74,6 +74,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
 
+  // auto-refill in-memory cache also on followers
+  bool autoRefillOnFollowers() const noexcept;
+
  private:
   void stopThread();
 
@@ -113,6 +116,10 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // whether or not in-memory cache values for indexes are automatically
   // populated on server start
   bool _fillOnStartup;
+
+  // whether or not in-memory cache values for indexes are automatically
+  // refilled on followers
+  bool _autoRefillOnFollowers;
 
   // total number of full index refills completed
   metrics::Counter& _totalFullIndexRefills;

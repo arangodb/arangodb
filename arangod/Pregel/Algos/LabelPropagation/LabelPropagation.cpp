@@ -112,9 +112,8 @@ LabelPropagation::createComputation(WorkerConfig const* config) const {
 struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
 
-  explicit LPGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<LPValue, int8_t>(server), _resultField(result) {}
+  explicit LPGraphFormat(std::string const& result)
+      : GraphFormat<LPValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
@@ -135,5 +134,5 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 };
 
 GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
-  return new LPGraphFormat(_server, _resultField);
+  return new LPGraphFormat(_resultField);
 }

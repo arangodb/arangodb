@@ -3,6 +3,21 @@ devel
 
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
+* Allow usage of projections and covering indexes in more cases.
+  Previously, projections were not used if there were complex filter conditions
+  on the index attribute(s) that contained the `[*]` expansion operator
+  with inline FILTERs or RETURNs, e.g. 
+  `FILTER doc.addrs[* FILTER CURRENT.country == 'US'].zip`.
+
+* PRESUPP-546: make AQL optimizer rule `simplify-conditions` correctly report
+  that it was triggered. Previously that rule never reported that it was 
+  triggered although even though it actually was.
+
+* Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
+  control whether automatic refilling of in-memory caches should happen on
+  followers or just leaders. The default value is `true`, i.e. refilling
+  happens on followers too.
+
 * Added new geo_s2 ArangoSearch analyzer (Enterprise Only).
 
 * GORDO-1554: Fixes invalid document insertion with invalid user-specified

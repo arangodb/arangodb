@@ -1754,8 +1754,13 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         }
       }
     }
-  } catch (...) {
-    // simply ignore any errors and return false
+  } catch (std::exception const& ex) {
+    // simply ignore any errors (except trace-logging) and return false.
+    // this is not an error, but just means we cannot compare the two
+    // conditions for equality because there is no implemented way for
+    // comparing some of their components.
+    LOG_TOPIC("9f37b", TRACE, Logger::QUERIES)
+        << "caught exception in Condition::canRemove(): " << ex.what();
   }
 
   return false;
