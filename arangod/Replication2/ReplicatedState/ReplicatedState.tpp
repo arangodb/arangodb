@@ -189,17 +189,6 @@ void ReplicatedStateManager<S>::dropEntries() {
 }
 
 template<typename S>
-auto ReplicatedStateManager<S>::getStatus() const
-    -> std::optional<StateStatus> {
-  auto guard = _guarded.getLockedGuard();
-  auto status =
-      std::visit([](auto const& manager) { return manager->getStatus(); },
-                 guard->_currentManager);
-
-  return status;
-}
-
-template<typename S>
 auto ReplicatedStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto manager = _guarded.getLockedGuard()->_currentManager;
@@ -431,14 +420,6 @@ auto LeaderStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   return std::move(_guardedData.getLockedGuard().get()).resign();
-}
-
-template<typename S>
-auto LeaderStateManager<S>::getStatus() const -> StateStatus {
-  LeaderStatus status;
-
-  // TODO remove
-  return StateStatus{.variant = std::move(status)};
 }
 
 template<typename S>
@@ -810,13 +791,6 @@ auto FollowerStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getStatus() const -> StateStatus {
-  auto followerStatus = FollowerStatus();
-  // TODO remove
-  return StateStatus{.variant = std::move(followerStatus)};
-}
-
-template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
@@ -865,13 +839,6 @@ auto UnconfiguredStateManager<S>::resign() && noexcept
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
   return {std::move(guard.get()).resign(), nullptr};
-}
-
-template<typename S>
-auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
-  auto unconfiguredStatus = UnconfiguredStatus();
-  // TODO remove
-  return StateStatus{.variant = std::move(unconfiguredStatus)};
 }
 
 template<typename S>
@@ -951,12 +918,6 @@ template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
   ADB_PROD_ASSERT(manager.has_value());
   return basics::downCast<LeaderType>(manager->getLeader());
-}
-
-template<typename S>
-auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
-  ADB_PROD_ASSERT(manager.has_value());
-  return manager->getStatus();
 }
 
 template<typename S>

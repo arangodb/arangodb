@@ -94,7 +94,6 @@ struct ReplicatedStateBase {
 
   virtual void drop(
       std::shared_ptr<replicated_log::IReplicatedStateHandle>) && = 0;
-  [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
@@ -198,7 +197,6 @@ struct LeaderStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -243,7 +241,6 @@ struct FollowerStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -295,7 +292,6 @@ struct UnconfiguredStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -346,7 +342,6 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus override;
-  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus>;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
   // the stunts for covariance here.
@@ -404,8 +399,6 @@ struct ReplicatedState final
    * machine is present. (i.e. this server is not a leader)
    */
   [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
-
-  [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   auto createStateHandle(
       TRI_vocbase_t& vocbase,
