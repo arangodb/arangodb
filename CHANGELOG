@@ -3,6 +3,8 @@ devel
 
 * Upgraded OpenSSL to 3.0.8.
 
+* FE-174: Change ViewsUI layout to single-page instead of tabs.
+
 * Allow usage of projections and covering indexes in more cases.
   Previously, projections were not used if there were complex filter conditions
   on the index attribute(s) that contained the `[*]` expansion operator
