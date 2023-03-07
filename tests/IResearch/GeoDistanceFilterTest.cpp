@@ -504,7 +504,7 @@ TEST(GeoDistanceFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -1018,10 +1018,10 @@ TEST(GeoDistanceFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(*score != irs::ScoreFunction::DefaultScore);
       auto* seek_score = irs::get<irs::score>(*seek_it);
       EXPECT_NE(nullptr, seek_score);
-      EXPECT_NE(*seek_score, irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(*seek_score != irs::ScoreFunction::DefaultScore);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
