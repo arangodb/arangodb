@@ -8,6 +8,7 @@ target_include_directories(arango_pregel_conductor
 
 target_link_libraries(arango_pregel_conductor
         PRIVATE
+        arango_inspection
         arango_actor)
 
 target_link_libraries(arango_pregel

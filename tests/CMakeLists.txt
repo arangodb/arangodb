@@ -61,6 +61,7 @@ target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_ire
 
 add_subdirectory(IResearch)
 
+
 set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
@@ -70,6 +71,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
+  Agency/NodeLoadTest.cpp
   Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
@@ -155,45 +157,6 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
-  Basics/ConversionsTest.cpp
-  Basics/CsvTest.cpp
-  Basics/datetime.cpp
-  Basics/FilesTest.cpp
-  Basics/FpConvTest.cpp
-  Basics/HashesTest.cpp
-  Basics/HybridLogicalClockTest.cpp
-  Basics/OverloadTest.cpp
-  Basics/PriorityQueueTest.cpp
-  Basics/StringBufferTest.cpp
-  Basics/StringBufferInternalTest.cpp
-  Basics/StringTest.cpp
-  Basics/StringUtf8NormalizeTest.cpp
-  Basics/StringUtf8Test.cpp
-  Basics/ApplicationServerTest.cpp
-  Basics/AttributeNameParserTest.cpp
-  Basics/CpuUsageSnapshotTest.cpp
-  Basics/EncodingUtilsTest.cpp
-  Basics/EndpointTest.cpp
-  Basics/FixedSizeAllocatorTest.cpp
-  Basics/GuardedTest.cpp
-  Basics/Inspection/InspectionTest.cpp
-  Basics/Inspection/JsonPrintTest.cpp
-  Basics/Inspection/NodeLoadTest.cpp
-  Basics/Inspection/ValidateTest.cpp
-  Basics/Inspection/ValidateTest.cpp
-  Basics/Inspection/VPackLoadTest.cpp
-  Basics/Inspection/VPackSaveTest.cpp
-  Basics/LoggerTest.cpp
-  Basics/MemoryUsageTest.cpp
-  Basics/NumberUtilsTest.cpp
-  Basics/RandomTest.cpp
-  Basics/ReadWriteLockTest.cpp
-  Basics/RecursiveLockerTest.cpp
-  Basics/SpinLockTest.cpp
-  Basics/StringBufferTest.cpp
-  Basics/StringUtilsTest.cpp
-  Basics/UnshackledMutexTest.cpp
-  Basics/VelocyPackHelperTest.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -302,6 +265,8 @@ endif ()
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
+add_subdirectory(Basics)
+add_subdirectory(Inspection)
 
 # This is the default from the Jenkins setup
 add_test(NAME arangodbtests
@@ -334,6 +299,8 @@ target_link_libraries(arangodbtests
   arango_tests_zkd
   arango_tests_pregel
   arango_tests_actor
+  arango_tests_inspection
+  arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
   arango_rocksdb
