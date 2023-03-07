@@ -2868,6 +2868,18 @@ void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
   f.scheduleFullIndexRefill(database, collection, iid);
 }
 
+bool RocksDBEngine::autoRefillIndexCaches() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefill();
+}
+
+bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefillOnFollowers();
+}
+
 void RocksDBEngine::syncIndexCaches() {
   RocksDBIndexCacheRefillFeature& f =
       server().getFeature<RocksDBIndexCacheRefillFeature>();
