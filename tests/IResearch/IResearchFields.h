@@ -82,7 +82,7 @@ struct GeoField final {
     return irs::IndexFeatures::NONE;
   }
 
-  mutable iresearch::GeoJSONAnalyzer stream{{}};
+  mutable iresearch::GeoVPackAnalyzer stream{{}};
   VPackSlice shapeSlice;
   irs::string_ref fieldName;
   irs::features_t _featuresRange;

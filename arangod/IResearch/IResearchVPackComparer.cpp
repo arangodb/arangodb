@@ -43,7 +43,8 @@ template<typename Sort>
 VPackComparer<Sort>::VPackComparer() : _sort{nullptr}, _size{0} {}
 
 template<typename Sort>
-bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+int VPackComparer<Sort>::CompareImpl(irs::bytes_ref lhs,
+                                     irs::bytes_ref rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
@@ -57,8 +58,8 @@ bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
     TRI_ASSERT(!rhsSlice.isNone());
 
     auto const r = basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
-    if (r) {
-      return (kMultiplier[size_t{_sort->direction(i)}] * r) < 0;
+    if (r != 0) {
+      return kMultiplier[size_t{_sort->direction(i)}] * r;
     }
 
     // move to the next value
@@ -66,7 +67,7 @@ bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
     rhsSlice = VPackSlice{rhsSlice.start() + rhsSlice.byteSize()};
   }
 
-  return false;
+  return 0;
 }
 
 template class VPackComparer<IResearchSortBase>;
