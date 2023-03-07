@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
+  control whether automatic refilling of in-memory caches should happen on
+  followers or just leaders. The default value is `true`, i.e. refilling
+  happens on followers too.
+
 * Added new geo_s2 ArangoSearch analyzer (Enterprise Only).
 
 * GORDO-1554: Fixes invalid document insertion with invalid user-specified

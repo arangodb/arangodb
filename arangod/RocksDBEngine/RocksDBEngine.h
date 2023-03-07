@@ -365,6 +365,9 @@ class RocksDBEngine final : public StorageEngine {
                                std::string const& collection,
                                IndexId iid) override;
 
+  bool autoRefillIndexCaches() const override;
+  bool autoRefillIndexCachesOnFollowers() const override;
+
   void syncIndexCaches() override;
 
   /// @brief whether or not the database existed at startup. this function
