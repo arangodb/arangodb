@@ -3,6 +3,9 @@ devel
 
 * Updated ArangoDB logo in web interface.
 
+* Make the hashed variant of AQL COLLECT support INTO clauses too.
+  Previously only the sorted variant of AQL COLLECT supported INTO clauses.
+
 * Upgraded OpenSSL to 3.0.8.
 
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
