@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-19: Updated ArangoDB logo in web interface.
+
 * Make the hashed variant of AQL COLLECT support INTO clauses too.
   Previously only the sorted variant of AQL COLLECT supported INTO clauses.
 
