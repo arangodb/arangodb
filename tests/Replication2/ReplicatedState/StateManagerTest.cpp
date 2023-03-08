@@ -379,8 +379,14 @@ TEST_F(StateManagerTest,
     EXPECT_EQ(stateMachine, nullptr);
   }
 
+  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_TRUE(executor->hasWork());
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
+  // An apply entries has been scheduled
+  EXPECT_TRUE(scheduler->hasWork());
+  scheduler->runOnce();
+
   // We should have converged to a stable state now.
   EXPECT_FALSE(executor->hasWork());
   EXPECT_FALSE(scheduler->hasWork());
@@ -482,7 +488,6 @@ TEST_F(
 
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
-  // We should have converged to a stable state now.
   EXPECT_FALSE(executor->hasWork());
 
   // The append entries response should be ready.
@@ -513,7 +518,7 @@ TEST_F(
       .WillOnce([&](MessageId) { return p.getFuture(); });
   // Acquire the snapshot
   p.setValue(Result{});
-  scheduler->runOnce();
+  scheduler->runAll();
   // We should have converged to a stable state now.
   EXPECT_FALSE(scheduler->hasWork());
   EXPECT_FALSE(executor->hasWork());
@@ -637,10 +642,6 @@ TEST_F(
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
   }
 
-  // We should have converged to a stable state now.
-  EXPECT_FALSE(scheduler->hasWork());
-  EXPECT_FALSE(executor->hasWork());
-
   {
     // The state machine should now be operational and accessible.
     auto const logStatus = log->getQuickStatus();
@@ -649,6 +650,8 @@ TEST_F(
     auto const stateMachine = state->getFollower();
     EXPECT_NE(stateMachine, nullptr);
   }
+
+  scheduler->runAll();
 }
 
 TEST_F(
@@ -751,7 +754,7 @@ TEST_F(
 
   // Acquire the snapshot
   p.setValue(Result{});
-  scheduler->runOnce();
+  scheduler->runAll();
   // We should have converged to a stable state now.
   EXPECT_FALSE(scheduler->hasWork());
   EXPECT_FALSE(executor->hasWork());
@@ -876,10 +879,6 @@ TEST_F(
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
   }
 
-  // We should have converged to a stable state now.
-  EXPECT_FALSE(scheduler->hasWork());
-  EXPECT_FALSE(executor->hasWork());
-
   {
     // The state machine should now be operational and accessible.
     auto const logStatus = log->getQuickStatus();
@@ -888,4 +887,6 @@ TEST_F(
     auto const stateMachine = state->getFollower();
     EXPECT_NE(stateMachine, nullptr);
   }
+
+  scheduler->runAll();
 }
