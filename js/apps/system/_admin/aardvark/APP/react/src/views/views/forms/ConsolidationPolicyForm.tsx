@@ -1,5 +1,5 @@
-import { FormProps } from "../../../utils/constants";
-import { BytesAccumConsolidationPolicy, TierConsolidationPolicy, ViewProperties } from "../constants";
+import { FormDispatch, FormProps } from "../../../utils/constants";
+import { BytesAccumConsolidationPolicy, FormState, TierConsolidationPolicy, ViewProperties } from "../constants";
 import React, { ChangeEvent } from "react";
 import { get } from "lodash";
 import Select from "../../../components/pure-css/form/Select";
@@ -7,11 +7,18 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter } from "../../../utils/helpers";
 import ToolTip from "../../../components/arango/tootip";
 
+
+type BytesAccumConsolidationPolicyFormProps = Omit<
+  FormProps<BytesAccumConsolidationPolicy>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
 const BytesAccumConsolidationPolicyForm = ({
-                                             formState,
-                                             dispatch,
-                                             disabled
-                                           }: FormProps<BytesAccumConsolidationPolicy>) => {
+  formState,
+  dispatch,
+  disabled
+}: BytesAccumConsolidationPolicyFormProps) => {
   const threshold = get(formState, ['consolidationPolicy', 'threshold'], '');
 
   return <tr className="tableRow" id="row_change-view-threshold">
@@ -27,17 +34,23 @@ const BytesAccumConsolidationPolicyForm = ({
         title="Consolidation is performed on segments which accumulated size in bytes is less than all segments’ byte size multiplied by the threshold."
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>;
 };
 
+type TierConsolidationPolicyFormProps = Omit<
+  FormProps<TierConsolidationPolicy>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
 const TierConsolidationPolicyForm = ({
-                                       formState,
-                                       dispatch,
-                                       disabled
-                                     }: FormProps<TierConsolidationPolicy>) => {
+  formState,
+  dispatch,
+  disabled
+}: TierConsolidationPolicyFormProps) => {
   const segmentsMin = get(formState, ['consolidationPolicy', 'segmentsMin'], '');
   const segmentsMax = get(formState, ['consolidationPolicy', 'segmentsMax'], '');
   const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax'], '');
@@ -57,7 +70,7 @@ const TierConsolidationPolicyForm = ({
           title="The minimum number of segments that will be evaluated as candidates for consolidation."
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info"></span>
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
         </ToolTip>
       </th>
     </tr>
@@ -75,7 +88,7 @@ const TierConsolidationPolicyForm = ({
           title="The maximum number of segments that will be evaluated as candidates for consolidation."
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info"></span>
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
         </ToolTip>
       </th>
     </tr>
@@ -92,7 +105,7 @@ const TierConsolidationPolicyForm = ({
           title="Maximum allowed size of all consolidated segments in bytes."
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info"></span>
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
         </ToolTip>
       </th>
     </tr>
@@ -110,14 +123,24 @@ const TierConsolidationPolicyForm = ({
           title="Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info"></span>
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
         </ToolTip>
       </th>
     </tr>
   </>;
 };
 
-const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<ViewProperties>) => {
+type ConsolidationPolicyFormProps = Omit<
+  FormProps<ViewProperties>,
+  "dispatch"
+> & {
+  dispatch: FormDispatch<FormState>;
+};
+const ConsolidationPolicyForm = ({
+  formState,
+  dispatch,
+  disabled
+}: ConsolidationPolicyFormProps) => {
   const updateConsolidationPolicyType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
@@ -137,9 +160,11 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
         Policy Type:
       </th>
       <th className="collectionTh">
-        <Select disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
+        <Select style={{
+          marginBottom: '10px'
+        }} disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
           <option key={'tier'} value={'tier'}>Tier</option>
-          <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
+          <option disabled key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
         </Select>
       </th>
       <th className="collectionTh">
@@ -147,7 +172,7 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
           title="Represents the type of policy."
           setArrow={true}
         >
-          <span className="arangoicon icon_arangodb_info"></span>
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
         </ToolTip>
       </th>
     </tr>

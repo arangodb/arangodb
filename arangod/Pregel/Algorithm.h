@@ -37,9 +37,6 @@
 #include "Pregel/WorkerContext.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace pregel {
 
 template<typename V, typename E, typename M>
@@ -122,10 +119,7 @@ struct Algorithm : IAlgorithm {
   }
 
  protected:
-  Algorithm(application_features::ApplicationServer& server,
-            std::string const& name)
-      : IAlgorithm(name), _server(server) {}
-  application_features::ApplicationServer& _server;
+  Algorithm(std::string const& name) : IAlgorithm(name) {}
 };
 
 template<typename V, typename E, typename M>
@@ -133,9 +127,8 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
  protected:
   std::string _sourceField, _resultField;
 
-  SimpleAlgorithm(application_features::ApplicationServer& server,
-                  std::string const& name, VPackSlice userParams)
-      : Algorithm<V, E, M>(server, name) {
+  SimpleAlgorithm(std::string const& name, VPackSlice userParams)
+      : Algorithm<V, E, M>(name) {
     arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
     field = userParams.get("resultField");

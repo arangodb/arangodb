@@ -279,10 +279,15 @@ function saveToJunitXML(options, results) {
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
-
+      let msg = "";
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        msg = testSuite.message;
+        errors = 1;
+      }
       state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+        errors: errors,
+        failures: msg,
         tests: total,
         name: state.xmlName,
         // time is in seconds
