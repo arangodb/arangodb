@@ -804,7 +804,10 @@ auto FollowerStateManager<S>::getQuickStatus() const
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     // already resigned
     return replicated_log::LocalStateMachineStatus::kUnconfigured;
-  } else if (not guard->_stream->methods().followerEstablished()) {
+  } else if (not guard->_stream->methods().leaderConnectionEstablished()) {
+    // Note that if we neither have a snapshot nor the connection established,
+    // we deliberately prefer to return kConnecting rather than
+    // kAcquiringSnapshot.
     return replicated_log::LocalStateMachineStatus::kConnecting;
   } else if (guard->_stream->methods().checkSnapshotState() ==
              replicated_log::SnapshotState::MISSING) {
@@ -821,8 +824,22 @@ auto FollowerStateManager<S>::getStateMachine() const
       [](auto& data) -> std::shared_ptr<IReplicatedFollowerState<S>> {
         auto& stream = *data._stream;
 
+        // A follower is established if it
+        //  a) has a snapshot, and
+        //  b) knows the snapshot won't be invalidated in the current term.
         bool const followerEstablished =
-            stream.isResigned() or stream.methods().followerEstablished();
+            stream.isResigned() or
+            (stream.methods().leaderConnectionEstablished() and
+             stream.methods().checkSnapshotState() ==
+                 replicated_log::SnapshotState::AVAILABLE);
+        // It is essential that, in the lines above this comment, the snapshot
+        // state is checked *after* the leader connection to prevent races. Note
+        // that a log truncate will set the snapshot to missing. After a
+        // successful append entries, the log won't be truncated again -- during
+        // the current term at least. So the snapshot state can toggle from
+        // AVAILABLE to MISSING and back to AVAILABLE, but only once; and the
+        // commit index will be updated only after the (possible) switch from
+        // AVAILABLE to MISSING.
 
         // Disallow access unless we have a snapshot and are sure the log
         // won't be truncated (and thus the snapshot invalidated) in this
