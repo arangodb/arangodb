@@ -3,6 +3,8 @@ devel
 
 * Updated ArangoDB logo in web interface.
 
+* Upgraded OpenSSL to 3.0.8.
+
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
 * Allow usage of projections and covering indexes in more cases.
