@@ -163,6 +163,11 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
 
   ei._isOpen = true;
   if (ei._queryInfo) {
+    if (ei._queryInfo->_query->killed()) {
+      ei._isOpen = false;
+      return nullptr;
+    }
+    TRI_ASSERT(ei._queryInfo->_expires != 0);
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
 
@@ -276,10 +281,8 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(
     if (q->second->_numOpen > 0) {
       TRI_ASSERT(!q->second->_isTombstone);
 
-      // query in use by another thread/request
-      if (errorCode == TRI_ERROR_QUERY_KILLED) {
-        q->second->_query->kill();
-      }
+      // nobody is interested in this query anymore -> die!
+      q->second->_query->kill();
       q->second->_expires = 0.0;
       return nullptr;
     }

@@ -382,6 +382,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   TRI_ASSERT(_engine != nullptr);
   TRI_ASSERT(std::to_string(_engine->engineId()) == idString);
+  QueryGuard guard(_engine);
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
@@ -815,4 +816,17 @@ RequestLane RestAqlHandler::lane() const {
       PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::LOW,
       "invalid request lane priority");
   return RequestLane::CLUSTER_AQL;
+}
+
+RestAqlHandler::QueryGuard::QueryGuard(aql::ExecutionEngine* engine) {
+  if (engine) {
+    engine->getQuery().lock();
+    _engine = engine;
+  }
+}
+
+RestAqlHandler::QueryGuard::~QueryGuard() {
+  if (_engine) {
+    _engine->getQuery().unlock();
+  }
 }

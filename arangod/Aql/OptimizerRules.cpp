@@ -8000,11 +8000,7 @@ namespace {
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(bool parallelizeWrites)
-      : _parallelizeWrites(parallelizeWrites), _isParallelizable(true) {}
+  bool _isParallelizable = true;
 
   ~ParallelizableFinder() = default;
 
@@ -8013,13 +8009,6 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::ENUMERATE_PATHS) {
@@ -8030,30 +8019,19 @@ struct ParallelizableFinder final
       }
     }
 
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
-                                 node->getType() != ExecutionNode::REPLACE &&
-                                 node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
     // continue inspecting
     return false;
   }
 };
 
 /// no modification nodes, ScatterNodes etc
-bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
+bool isParallelizable(GatherNode* node) {
   if (node->parallelism() == GatherNode::Parallelism::Serial) {
     // node already defined to be serial
     return false;
   }
 
-  ParallelizableFinder finder(parallelizeWrites);
+  ParallelizableFinder finder;
   for (ExecutionNode* e : node->getDependencies()) {
     e->walk(finder);
     if (!finder._isParallelizable) {
@@ -8399,15 +8377,10 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
-      !plan->contains(EN::SCATTER)) {
-    TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
-    bool parallelizeWrites = vocbase.server()
-                                 .getFeature<OptimizerRulesFeature>()
-                                 .parallelizeGatherWrites();
+  if (!nodes.empty()) {
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
-    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
+    if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
       nodes.clear();
       plan->findNodesOfType(

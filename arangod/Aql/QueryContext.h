@@ -103,6 +103,9 @@ class QueryContext {
 
   aql::Ast* ast();
 
+  void lock();
+  void unlock();
+
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
@@ -180,6 +183,12 @@ class QueryContext {
   std::unique_ptr<Ast> _ast;
 
   std::atomic<unsigned> _numRequests;
+
+  /// @brief this mutex is used to serialize execution of potentially concurrent
+  /// snippets as a result of using parallel gather.
+  /// In the future we might want to consider using an rwlock instead so that
+  /// read-only snippets can actually run concurrently.
+  std::mutex _mutex;
 };
 
 }  // namespace aql
