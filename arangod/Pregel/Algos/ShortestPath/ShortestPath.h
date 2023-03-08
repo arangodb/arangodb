@@ -36,8 +36,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _source, _target;
 
  public:
-  explicit ShortestPathAlgorithm(
-      application_features::ApplicationServer& server, VPackSlice userParams);
+  explicit ShortestPathAlgorithm(VPackSlice userParams);
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override {

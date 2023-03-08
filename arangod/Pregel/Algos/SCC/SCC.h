@@ -95,10 +95,9 @@ namespace arangodb::pregel::algos {
 
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  explicit SCC(application_features::ApplicationServer& server,
-               VPackSlice userParams)
+  explicit SCC(VPackSlice userParams)
       : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
-            server, "scc", userParams) {}
+            "scc", userParams) {}
 
   [[nodiscard]] GraphFormat<SCCValue, int8_t>* inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<uint64_t>>* messageFormat()
