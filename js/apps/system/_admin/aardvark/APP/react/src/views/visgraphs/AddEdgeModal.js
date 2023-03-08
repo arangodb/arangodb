@@ -1,5 +1,5 @@
 /* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import ToolTip from '../../components/arango/tootip';
@@ -33,6 +33,14 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
   const jsonEditorRef = useRef();
   const [json, setJson] = useState(edgeData);
   const [collection, setCollection] = useState([]);
+
+  useEffect(() => {
+    if(shouldShow && edgeCollections.length){
+      setCollection(edgeCollections[0].name)
+    }
+   
+  }, [edgeCollections, shouldShow]);
+
   const openNotificationWithIcon = edgeName => {
     arangoHelper.arangoNotification(`The edge ${edgeName} was successfully created`);
   };

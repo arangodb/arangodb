@@ -1,5 +1,5 @@
 /* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import ToolTip from '../../components/arango/tootip';
@@ -33,6 +33,13 @@ const StyledButton = styled.button`
   const jsonEditorRef = useRef();
   const [json, setJson] = useState(nodeData);
   const [collection, setCollection] = useState([]);
+
+  useEffect(() => {
+    if(shouldShow && vertexCollections.length){
+      setCollection(vertexCollections[0].name)
+    }
+   
+  }, [vertexCollections, shouldShow]);
 
   const openNotificationWithIcon = nodeName => {
     arangoHelper.arangoNotification(`The node ${nodeName} was successfully created`);
