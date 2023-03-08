@@ -38,16 +38,14 @@ template<typename Runtime>
 struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
   void spawnActorOnServer(actor::ServerID server,
                           pregel::message::SpawnMessages msg) {
-    if (server == this->self.server) {
-      this->template spawn<SpawnActor>(
-          std::make_unique<SpawnState>(this->state->vocbaseGuard.database()),
-          msg);
-    } else {
-      this->dispatch(
-          actor::ActorPID{
-              .server = server, .database = this->self.database, .id = {0}},
-          msg);
-    }
+    // dispatch externally because worker needs the vocbase which it can only
+    // get via the RestHandler
+    // ActorID 0 is a reserved ID that is used here to tell the RestHandler that
+    // it needs to spawn a new actor instead of searching for an existing actor
+    this->dispatchExternally(
+        actor::ActorPID{
+            .server = server, .database = this->self.database, .id = {0}},
+        msg);
   }
 
   auto operator()(message::ConductorStart start)

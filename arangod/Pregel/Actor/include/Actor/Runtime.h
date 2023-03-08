@@ -151,6 +151,14 @@ struct Runtime
     }
   }
 
+  template<typename ActorMessage>
+  auto dispatchExternally(ActorPID sender, ActorPID receiver,
+                          ActorMessage const& message) -> void {
+    auto payload = inspection::serializeWithErrorT(message);
+    ACTOR_ASSERT(payload.ok());
+    (*externalDispatcher)(sender, receiver, payload.get());
+  }
+
   auto areAllActorsIdle() -> bool {
     return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
       return actor->isIdle();
@@ -200,14 +208,6 @@ struct Runtime
       dispatch(receiver, sender,
                message::ActorError{message::ActorNotFound{.actor = receiver}});
     }
-  }
-
-  template<typename ActorMessage>
-  auto dispatchExternally(ActorPID sender, ActorPID receiver,
-                          ActorMessage const& message) -> void {
-    auto payload = inspection::serializeWithErrorT(message);
-    ACTOR_ASSERT(payload.ok());
-    (*externalDispatcher)(sender, receiver, payload.get());
   }
 };
 template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,
