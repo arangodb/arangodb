@@ -149,7 +149,6 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
     if (deflateRes == TRI_ERROR_NO_ERROR) {
       headers.emplace(StaticStrings::ContentEncoding,
                       StaticStrings::EncodingDeflate);
-      headers.emplace(StaticStrings::ContentEncoding, "deflate");
       headers.emplace(StaticStrings::ContentLength,
                       std::to_string(resultDeflated.size()));
     } else {
