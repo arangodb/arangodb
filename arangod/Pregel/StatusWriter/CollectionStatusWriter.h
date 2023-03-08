@@ -165,6 +165,9 @@ struct CollectionStatusWriter : StatusWriterInterface {
         TRI_ASSERT(false);
       }
     }
+
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
   [[nodiscard]] std::shared_ptr<transaction::Context> ctx() const {
