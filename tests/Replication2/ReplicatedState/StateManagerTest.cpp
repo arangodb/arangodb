@@ -273,7 +273,7 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
     }
   }
   EXPECT_TRUE(runAtLeastOnce);
-  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_TRUE(scheduler->hasWork());
   EXPECT_FALSE(executor->hasWork());
 
   // Leadership was established, but recovery hasn't been completed. That means
