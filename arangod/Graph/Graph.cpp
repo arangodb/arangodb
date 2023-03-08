@@ -873,3 +873,20 @@ auto Graph::injectShardingToCollectionBody(
   body.replicationFactor = replicationFactor();
   return {};
 }
+
+auto Graph::getLeadingCollection(std::unordered_set<std::string> const&,
+                                 std::unordered_set<std::string> const&)
+    const noexcept -> std::optional<std::string_view> {
+  // Community Graphs have no leading collection
+  return std::nullopt;
+}
+
+auto Graph::requiresInitialUpdate() const noexcept -> bool { return false; }
+
+auto Graph::updateInitial(
+    std::vector<std::shared_ptr<LogicalCollection>> const&,
+    std::optional<std::string_view> const& leadingCollection) -> void {
+  TRI_ASSERT(false)
+      << "Called illegal internal function, other implementations of this "
+         "class should have covered this call (Enterprise Edition)";
+}

@@ -303,6 +303,17 @@ class Graph {
       std::unordered_set<std::string> const& satellites) const noexcept
       -> ResultT<CreateCollectionBody>;
 
+  virtual auto getLeadingCollection(
+      std::unordered_set<std::string> const& documentCollectionsToCreate,
+      std::unordered_set<std::string> const& satellites) const noexcept
+      -> std::optional<std::string_view>;
+
+  virtual auto requiresInitialUpdate() const noexcept -> bool;
+
+  virtual auto updateInitial(
+      std::vector<std::shared_ptr<LogicalCollection>> const&,
+      std::optional<std::string_view> const& leadingCollection) -> void;
+
  protected:
   virtual auto injectShardingToCollectionBody(
       CreateCollectionBody& body,

@@ -588,8 +588,8 @@ Result GraphManager::ensureCollections(
 
   std::vector<CreateCollectionBody> createRequests;
   // This will only have effect in Enterprise Version
-  // TODO: Pick a correct leader
-  std::optional<std::string_view> leadingCollection{std::nullopt};
+  std::optional<std::string_view> leadingCollection =
+      graph.getLeadingCollection(documentCollectionsToCreate, satellites);
   auto const& config = _vocbase.getDatabaseConfiguration();
 
   for (auto const& c : documentCollectionsToCreate) {
@@ -616,6 +616,11 @@ Result GraphManager::ensureCollections(
     createRequests.emplace_back(std::move(col.get()));
   }
 
+  if (createRequests.empty()) {
+    // Nothing to do.
+    return {};
+  }
+
 #ifdef USE_ENTERPRISE
   bool const allowEnterpriseCollectionsOnSingleServer =
       ServerState::instance()->isSingleServer() &&
@@ -630,6 +635,11 @@ Result GraphManager::ensureCollections(
 
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
+
+  if (finalResult.ok() && leadingCollection.has_value() &&
+      graph.requiresInitialUpdate()) {
+    graph.updateInitial(finalResult.get(), leadingCollection);
+  }
   return finalResult.result();
 }
 #else
