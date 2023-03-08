@@ -52,7 +52,7 @@ function pregelStatusWriterSuite() {
     }
 
     return [pid, stats];
-  }
+  };
 
   return {
 
@@ -94,11 +94,10 @@ function pregelStatusWriterSuite() {
       const pid = result[0];
       const stats = result[1];
 
-      print(pid);
-      //print(stats);
-
       assertEqual(db[pregelSystemCollectionName].count(), 1);
-      print(db[pregelSystemCollectionName].all().toArray());
+      const persistedState = db[pregelSystemCollectionName].document(pid);
+      assertTrue(persistedState);
+      assertEqual(persistedState.data.state, "done");
     }
   };
 }
