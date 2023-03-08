@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cluster/ClusterFeature.h"
 #include "Pregel/Conductor/Messages.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Worker/WorkerConfig.h"

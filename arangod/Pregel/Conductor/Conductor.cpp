@@ -25,6 +25,7 @@
 
 #include <fmt/core.h>
 
+#include "Cluster/ClusterFeature.h"
 #include "Conductor.h"
 
 #include "Inspection/VPackWithErrorT.h"
