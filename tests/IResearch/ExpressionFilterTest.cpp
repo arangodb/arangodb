@@ -1121,7 +1121,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
 
     // set reachable filter condition
     {
@@ -1266,7 +1266,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_NE(*score, irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(*score != irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1387,7 +1387,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),

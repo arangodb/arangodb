@@ -32,9 +32,8 @@ namespace algos {
 
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
-  explicit RecoveringPageRank(application_features::ApplicationServer& server,
-                              arangodb::velocypack::Slice params)
-      : SimpleAlgorithm(server, "pagerank", params) {}
+  explicit RecoveringPageRank(arangodb::velocypack::Slice params)
+      : SimpleAlgorithm("pagerank", params) {}
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 
