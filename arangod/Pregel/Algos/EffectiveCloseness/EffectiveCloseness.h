@@ -34,10 +34,9 @@ namespace algos {
 /// Effective Closeness
 struct EffectiveCloseness
     : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
+  explicit EffectiveCloseness(VPackSlice params)
+      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>("effectivecloseness",
+                                                     params) {}
 
   GraphFormat<ECValue, int8_t>* inputFormat() const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
