@@ -411,7 +411,7 @@ TEST_F(
   // Overview:
   //  - start with a valid snapshot
   //  - send a truncating append entries request
-  //  - answer the append entries request successfully
+  //  - process the append entries request
   //  - let the state machine acquire a snapshot
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
@@ -514,6 +514,129 @@ TEST_F(
   // Acquire the snapshot
   p.setValue(Result{});
   scheduler->runOnce();
+  // We should have converged to a stable state now.
+  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_FALSE(executor->hasWork());
+
+  {
+    // The state machine should now be operational and accessible.
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kOperational);
+    auto const stateMachine = state->getFollower();
+    EXPECT_NE(stateMachine, nullptr);
+  }
+}
+
+TEST_F(
+    StateManagerTest,
+    get_follower_state_machine_early_with_snapshot_with_truncate_append_entries_after_snapshot) {
+  // Overview:
+  //  - start with a valid snapshot
+  //  - send a truncating append entries request, invalidating the snapshot
+  //  - let the state machine acquire a snapshot
+  //  - process the append entries request
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
+
+  storageContext->meta = replicated_state::PersistedStateInfo{
+      .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
+  auto const leaderComm =
+      std::make_shared<replication2::tests::LeaderCommunicatorMock>();
+  fakeFollowerFactory->leaderComm = leaderComm;
+
+  auto const term = LogTerm{1};
+  auto const planTerm = agency::LogPlanTermSpecification{term, other};
+  auto const config = agency::ParticipantsConfig{
+      1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
+      agency::LogPlanConfig{}};
+  log->updateConfig(planTerm, config, myself);
+  {
+    auto const logStatus = log->getQuickStatus();
+    ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+
+    // The state machine should be constructed, but without knowledge whether
+    // the snapshot will be valid in the current term, and thus report
+    // unconfigured.
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kConnecting);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  auto const follower =
+      std::dynamic_pointer_cast<ILogFollower>(log->getParticipant());
+  ASSERT_NE(follower, nullptr);
+  auto const leaderId = other.serverId;
+  // Send an append entries request, just with the leader-establishing log
+  // entry.
+  auto appendEntriesFuture = std::invoke([&] {
+    auto const waitForSync = true;
+    auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = leaderId,
+                                                 .participants = config};
+    auto payload = LogMetaPayload{std::move(meta)};
+    // This should result in a truncate
+    auto const termIndexPair = TermIndexPair(term, LogIndex(2));
+    auto logEntry = InMemoryLogEntry(
+        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+    auto request = AppendEntriesRequest(
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        LogIndex(0), MessageId(1), waitForSync,
+        AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
+    return follower->appendEntries(request);
+  });
+  EXPECT_FALSE(appendEntriesFuture.isReady());
+
+  // The append entries request has now been received, but not processed (i.e.
+  // not written to disk) yet.
+  {
+    auto const logStatus = log->getQuickStatus();
+    // Snapshot is now missing due to log truncation
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    // Should still be waiting whether the snapshot will be valid in the current
+    // term.
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kConnecting);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  EXPECT_TRUE(executor->hasWork());
+  EXPECT_TRUE(scheduler->hasWork());
+
+  futures::Promise<Result> p;
+  EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{1}))
+      .WillOnce([&](MessageId) { return p.getFuture(); });
+  // Acquire the snapshot
+  p.setValue(Result{});
+  scheduler->runOnce();
+
+  // The snapshot was acquired, but the append entries request wasn't processed
+  // successfully, so the state machine must not be accessible.
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    // Should still be waiting whether the snapshot will be valid in the current
+    // term.
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kConnecting);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  // Process the append entries request, i.e. write to disk.
+  executor->runOnce();
+  // We should have converged to a stable state now.
+  EXPECT_FALSE(executor->hasWork());
+
+  // The append entries response should be ready.
+  {
+    ASSERT_TRUE(appendEntriesFuture.isReady());
+    ASSERT_TRUE(appendEntriesFuture.hasValue());
+    auto const appendEntriesResponse = appendEntriesFuture.get();
+    EXPECT_TRUE(appendEntriesResponse.isSuccess())
+        << appendEntriesResponse.errorCode;
+    EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
+  }
+
   // We should have converged to a stable state now.
   EXPECT_FALSE(scheduler->hasWork());
   EXPECT_FALSE(executor->hasWork());
