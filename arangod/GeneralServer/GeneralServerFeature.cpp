@@ -157,7 +157,11 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
 #endif
       _allowEarlyConnections(false),
       _allowMethodOverride(false),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _enableTelemetrics(false),
+#else
       _enableTelemetrics(true),
+#endif
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),

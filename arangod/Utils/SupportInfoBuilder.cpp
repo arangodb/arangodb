@@ -25,6 +25,7 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
@@ -237,17 +238,15 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("id", VPackValue(serverId));
     }
     result.add("deployment", VPackValue(VPackValueType::Object));
+    std::string envValue;
+    TRI_GETENV("STARTUP_MODE", envValue);
+    result.add("startup_mode", VPackValue(envValue));
     std::string persistedId;
-    if (isTelemetricsReq && ServerState::instance()->hasPersistedId()) {
-      persistedId = ServerState::instance()->getPersistedId();
-      normalizeKeyForTelemetrics(persistedId);
-    } else {
-      persistedId = "single_" + std::to_string(serverId);
-    }
-    result.add("persistedId", VPackValue(persistedId));
     if (isTelemetricsReq) {
-      result.add("id", VPackValue("single_" + std::to_string(serverId)));
+      result.add("persistedId",
+                 VPackValue("single_" + std::to_string(serverId)));
     }
+
     result.add("type", VPackValue("single"));
 #ifdef USE_ENTERPRISE
     result.add("license", VPackValue("enterprise"));
@@ -257,25 +256,29 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     if (isTelemetricsReq) {
       // it's single server, but we maintain the format the same as cluster
       result.add("servers", VPackValue(VPackValueType::Array));
-      result.openObject();
-      result.add("instance", hostInfo.slice());
-      result.close();
+      result.add(hostInfo.slice());
       result.close();  // servers
+      result.add("date", VPackValue(timeString));
+      VPackBuilder serverInfo;
+      buildDbServerDataStoredInfo(serverInfo, server);
+      result.add("databases", VPackValue(VPackValueType::Array));
+      addDatabaseInfo(result, serverInfo.slice().get("databases"), server);
+      result.close();
     } else {
       result.add(persistedId, hostInfo.slice());
     }
     result.close();  // deployment
-    result.add("date", VPackValue(timeString));
-    VPackBuilder serverInfo;
-    buildDbServerDataStoredInfo(serverInfo, server);
-    result.add("databases", VPackValue(VPackValueType::Array));
-    addDatabaseInfo(result, serverInfo.slice().get("databases"), server);
-    result.close();
+    if (!isTelemetricsReq) {
+      result.add("date", VPackValue(timeString));
+    }
   } else {
     // cluster or active failover
     if (fanout) {
       // cluster coordinator or active failover case, fan out to other servers!
       result.add("deployment", VPackValue(VPackValueType::Object));
+      std::string envValue;
+      TRI_GETENV("STARTUP_MODE", envValue);
+      result.add("startup_mode", VPackValue(envValue));
 #ifdef USE_ENTERPRISE
       result.add("license", VPackValue("enterprise"));
 #else
@@ -302,9 +305,13 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         serverId = arangodb::basics::StringUtils::tolower(serverId.data());
         normalizeKeyForTelemetrics(serverId);
       }
-      result.openObject();
-      result.add(serverId, hostInfo.slice());
-      result.close();
+      if (isTelemetricsReq) {
+        result.add(hostInfo.slice());
+      } else {
+        result.openObject();
+        result.add(serverId, hostInfo.slice());
+        result.close();
+      }
 
       // now all other servers
       NetworkFeature const& nf = server.getFeature<NetworkFeature>();
@@ -367,11 +374,12 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
               std::string hostId =
                   basics::StringUtils::replace(resp.destination, "server:", "");
               if (isTelemetricsReq) {
-                normalizeKeyForTelemetrics(hostId);
+                result.add(slice.get("host"));
+              } else {
+                result.openObject();
+                result.add(hostId, slice.get("host"));
+                result.close();
               }
-              result.openObject();
-              result.add(hostId, slice.get("host"));
-              result.close();
               if (isTelemetricsReq) {
                 auto const databasesSlice = slice.get("databases");
                 if (!databasesSlice.isNone()) {
@@ -398,13 +406,17 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         result.add(VPackValue("shards_statistics"));
         ci.getShardStatisticsGlobal("", result);
       }
-      result.close();  // deployment
-      result.add("date", VPackValue(timeString));
-
-      if (isTelemetricsReq && !dbInfoBuilder.isEmpty()) {
+      if (isTelemetricsReq) {
+        result.add("date", VPackValue(timeString));
         result.add("databases", VPackValue(VPackValueType::Array));
-        addDatabaseInfo(result, dbInfoBuilder.slice(), server);
+        if (!dbInfoBuilder.isEmpty()) {
+          addDatabaseInfo(result, dbInfoBuilder.slice(), server);
+        }
         result.close();
+      }
+      result.close();  // deployment
+      if (!isTelemetricsReq) {
+        result.add("date", VPackValue(timeString));
       }
 
     } else {
@@ -428,12 +440,22 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
 
   result.openObject();
 
-  if (ServerState::instance()->isRunningInCluster() || isActiveFailover) {
+  if (isTelemetricsReq || ServerState::instance()->isRunningInCluster() ||
+      isActiveFailover) {
     auto serverId = ServerState::instance()->getId();
     if (isTelemetricsReq) {
-      normalizeKeyForTelemetrics(serverId);
+      bool isSingleServer = ServerState::instance()->isSingleServer();
+      if (isSingleServer) {
+        auto const serverIdSingle = ServerIdFeature::getId().id();
+        result.add("id",
+                   VPackValue("single_" + std::to_string(serverIdSingle)));
+      } else {
+        normalizeKeyForTelemetrics(serverId);
+        result.add("id", VPackValue(serverId));
+      }
+    } else {
+      result.add("id", VPackValue(serverId));
     }
-    result.add("id", VPackValue(serverId));
     result.add("alias", VPackValue(ServerState::instance()->getShortName()));
     result.add("endpoint", VPackValue(ServerState::instance()->getEndpoint()));
   }

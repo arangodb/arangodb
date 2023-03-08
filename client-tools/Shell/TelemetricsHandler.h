@@ -57,7 +57,8 @@ class TelemetricsHandler {
 
  private:
   arangodb::Result checkHttpResponse(
-      std::unique_ptr<httpclient::SimpleHttpResult> const& response);
+      std::unique_ptr<httpclient::SimpleHttpResult> const& response,
+      bool storeResult);
   void fetchTelemetricsFromServer();
   void sendTelemetricsToEndpoint();
   void arrangeTelemetrics();

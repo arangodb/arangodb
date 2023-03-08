@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/Exceptions.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
@@ -34,7 +35,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
 #include "Rest/GeneralRequest.h"
@@ -43,10 +43,6 @@
 
 #include "Logger/LogMacros.h"
 
-#include "V8/v8-buffer.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-vpack.h"
 #include "V8/v8-deadline.h"
 
 namespace arangodb {
@@ -60,13 +56,11 @@ TelemetricsHandler::~TelemetricsHandler() {
 }
 
 Result TelemetricsHandler::checkHttpResponse(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response) {
+    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
+    bool storeResult) {
   using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
-  // this shouldn't happen
   if (response == nullptr || !response->isComplete()) {
-    LOG_DEVEL << "response " << (response == nullptr) << " "
-              << response->isComplete();
     return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
                                     this->_httpClient->getErrorMessage()};
   }
@@ -89,10 +83,10 @@ Result TelemetricsHandler::checkHttpResponse(
             concatT("got invalid response from server: HTTP ",
                     itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
-  _telemetricsResult.clear();
-  _telemetricsResult.openObject();
-  _telemetricsResult.add("telemetrics", response->getBodyVelocyPack()->slice());
-  _telemetricsResult.close();
+  if (storeResult) {
+    _telemetricsResult.clear();
+    _telemetricsResult.add(response->getBodyVelocyPack()->slice());
+  }
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -115,7 +109,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       std::unique_ptr<httpclient::SimpleHttpResult> response(
           _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
       lk.lock();
-      result = this->checkHttpResponse(response);
+      result = this->checkHttpResponse(response, true);
       if (result.ok() || result.is(TRI_ERROR_HTTP_FORBIDDEN)) {
         _telemetricsResponse = std::move(result);
         break;
@@ -134,102 +128,69 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
   std::string const relative = "/telemetrics-cf-3";
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 1;
-  // uint32_t maxRedirects = 5;
   uint64_t sslProtocol = TLS_V12;
-  LOG_DEVEL << "before while" << _telemetricsResult.isClosed();
-  std::string const body =
-      _telemetricsResult.slice().get("telemetrics").toJson();
-  LOG_DEVEL << "body is " << body;
+
+  std::string const body = _telemetricsResult.slice().toJson();
+  auto bodyData = body.data();
+  size_t bodySize = body.size();
+
   httpclient::SimpleHttpClientParams const params(30, false);
 
   while (!_server.isStopping()) {
-    LOG_DEVEL << "INSIDE WHILE";
+    std::unordered_map<std::string, std::string> headers;
+    headers.emplace(StaticStrings::ContentTypeHeader,
+                    StaticStrings::MimeTypeJson);
+
+    basics::StringBuffer resultDeflated;
+
+    ErrorCode deflateRes = encoding::gzipDeflate(
+        reinterpret_cast<uint8_t const*>(bodyData), bodySize, resultDeflated);
+
+    if (deflateRes == TRI_ERROR_NO_ERROR) {
+      headers.emplace(StaticStrings::ContentEncoding,
+                      StaticStrings::EncodingDeflate);
+      headers.emplace(StaticStrings::ContentEncoding, "deflate");
+      headers.emplace(StaticStrings::ContentLength,
+                      std::to_string(resultDeflated.size()));
+    } else {
+      // send the body instead
+      //  headers.emplace(StaticStrings::ContentLength,
+      //                std::to_string(body.size()));
+    }
+
     ClientFeature& client =
         _server.getFeature<HttpEndpointProvider, ClientFeature>();
     std::unique_ptr<Endpoint> newEndpoint(Endpoint::clientFactory(url));
 
     std::unique_lock lk(_mtx);
 
-    /*
-    v8::Isolate* isolate =
-    _server.getFeature<V8PlatformFeature>().createIsolate();
-
-    TRI_GET_GLOBALS();
-
-    httpclient::GeneralClientConnection::factory(v8g->_comm,
-                                                 newEndpoint, 30, 30,
-                                                 */
     TRI_ASSERT(newEndpoint.get() != nullptr);
-    //     TRI_GET_GLOBALS();
     std::unique_ptr<httpclient::GeneralClientConnection> connection(
         httpclient::GeneralClientConnection::factory(
             client.getCommFeaturePhase(), newEndpoint, 30, 30, 3, sslProtocol));
 
-    LOG_DEVEL << "created connection";
-
     TRI_ASSERT(connection != nullptr);
 
     if (_httpClient != nullptr) {
-      LOG_DEVEL << "will reset";
       _httpClient.reset(nullptr);
     }
     _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
         connection.get(), params);
     TRI_ASSERT(_httpClient != nullptr);
-    LOG_DEVEL << "new endpoint " << connection->getEndpointSpecification();
-    LOG_DEVEL << _httpClient->params().getRequestTimeout();
-    LOG_DEVEL << _httpClient->getEndpointSpecification();
-    LOG_DEVEL << "INSIDE IF";
 
     lk.unlock();
 
-    LOG_DEVEL << "after unlock";
-    /*
-        clientParams.setLocationRewriter(static_cast<void*>(&client), []
-    (void* data, std::string const& location) -> std::string { return
-    {location};});
-                                                                     */
-
-    std::unordered_map<std::string, std::string> headers;
-    headers.emplace(StaticStrings::ContentTypeHeader,
-                    StaticStrings::MimeTypeJson);
-
-    LOG_DEVEL << "will send request to "
-              << _httpClient->getEndpointSpecification();
-    auto httpResult = _httpClient->request(rest::RequestType::POST, relative,
-                                           body.c_str(), body.size(), headers);
-    //  nullptr, 0, headers);
-    LOG_DEVEL << "response body " << httpResult->getBody();
-
-    std::unique_ptr<httpclient::SimpleHttpResult> response(httpResult);
+    std::unique_ptr<httpclient::SimpleHttpResult> response(_httpClient->request(
+        rest::RequestType::POST, relative, resultDeflated.data(),
+        resultDeflated.size(), headers));
     lk.lock();
-    if (!response->wasHttpError()) {
-      LOG_DEVEL << "was not http error";
+    result = this->checkHttpResponse(response, false);
+    if (result.ok()) {
       break;
     } else {
-      LOG_DEVEL << "was http error response "
-                << response->getHttpReturnMessage();
+      // just for debugging for now
+      LOG_DEVEL << "ERROR " << result.errorMessage();
     }
-
-    /*
-    try {
-      LOG_DEVEL << "response " << httpResult->isComplete() << " " <<
-    httpResult->getHttpReturnMessage() << " " << httpResult->getHttpReturnCode()
-    << " " << httpResult->getBody();
-      std::unique_ptr<httpclient::SimpleHttpResult> response(httpResult);
-
-      lk.lock();
-      result = this->checkHttpResponse(response);
-
-      LOG_DEVEL << "result " << result.errorMessage();
-      if (!response->wasHttpError()) {
-        break;
-      }
-    } catch (std::exception const& err) {
-      LOG_DEVEL << "CATCH";
-      LOG_DEVEL << err.what();
-    }
-    */
 
     _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
                            [this] { return _server.isStopping(); });
@@ -266,7 +227,7 @@ void TelemetricsHandler::arrangeTelemetrics() {
 
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
-        << "Exception on fetching telemetrics " << err.what();
+        << "Exception on handling telemetrics " << err.what();
   }
 }
 
@@ -276,13 +237,11 @@ void TelemetricsHandler::runTelemetrics() {
 }
 
 void TelemetricsHandler::beginShutdown() {
-  LOG_DEVEL << "begin shutdown";
   std::unique_lock lk(_mtx);
   if (_httpClient != nullptr) {
     _httpClient->setAborted(true);
   }
   _runCondition.notify_one();
-  LOG_DEVEL << "notified";
 }
 
 }  // namespace arangodb
