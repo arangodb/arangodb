@@ -221,10 +221,9 @@ struct StateManagerTest : testing::Test {
 TEST_F(StateManagerTest, get_leader_state_machine_early) {
   // Overview:
   // - establish leadership
-  // - check leader state machine: it should still be nullptr, but the leader
-  //   status should be available at this point
   // - let recovery finish
-  // - check leader state machine again: should now be available
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
 
   storageContext->meta = replicated_state::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
@@ -321,9 +320,9 @@ TEST_F(StateManagerTest,
        get_follower_state_machine_early_with_snapshot_without_truncate) {
   // Overview:
   //  - start with a valid snapshot
-  //  - check follower state machine: should be inaccessible
   //  - send successful append entries request
-  //  - check follower state machine: should now be accessible
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
   storageContext->meta = replicated_state::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
 
@@ -411,10 +410,10 @@ TEST_F(
     get_follower_state_machine_early_without_snapshot_append_entries_before_snapshot) {
   // Overview:
   //  - start without a snapshot
-  //  - check follower state machine: should be inaccessible
   //  - send successful append entries request
   //  - let the state machine acquire a snapshot
-  //  - check follower state machine: should now be accessible
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
   storageContext->meta = replicated_state::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
@@ -526,10 +525,10 @@ TEST_F(
     get_follower_state_machine_early_without_snapshot_append_entries_after_snapshot) {
   // Overview:
   //  - start without a snapshot
-  //  - check follower state machine: should be inaccessible
   //  - let the state machine acquire a snapshot
   //  - send successful append entries request
-  //  - check follower state machine: should now be accessible
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
   storageContext->meta = replicated_state::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
