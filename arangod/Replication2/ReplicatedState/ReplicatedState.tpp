@@ -439,7 +439,12 @@ auto LeaderStateManager<S>::getQuickStatus() const
 template<typename S>
 auto LeaderStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
-  return _guardedData.getLockedGuard()->_leaderState;
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_recoveryCompleted) {
+    return guard->_leaderState;
+  } else {
+    return nullptr;
+  }
 }
 
 template<typename S>
