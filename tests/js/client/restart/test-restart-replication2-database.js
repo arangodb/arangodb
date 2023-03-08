@@ -66,7 +66,7 @@ const compareAllDocuments = function (col, expectedKeys) {
     }
   }
   assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
-}
+};
 
 function testSuite () {
   const databaseName = 'replication2_restart_test_db';
