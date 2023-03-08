@@ -10,9 +10,6 @@ const GraphLayoutSelector = () => {
 
   const layouts = [
     {
-      layout: 'barnesHut'
-    },
-    {
       layout: 'forceAtlas2'
     },
     {
