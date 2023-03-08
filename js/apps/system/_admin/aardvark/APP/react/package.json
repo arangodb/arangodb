@@ -43,6 +43,7 @@
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
     "parse-prometheus-text-format": "^1.1.1",
+    "patch-package": "^6.5.1",
     "postcss-flexbugs-fixes": "4.1.0",
     "postcss-loader": "3.0.0",
     "postcss-preset-env": "6.0.6",
@@ -80,7 +81,8 @@
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
     "test": "node scripts/test.js",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": "react-app"
