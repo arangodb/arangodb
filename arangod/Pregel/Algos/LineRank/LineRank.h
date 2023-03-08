@@ -68,6 +68,12 @@ namespace arangodb::pregel::algos {
  * each other.
  */
 
+struct LineRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
   explicit LineRank(arangodb::velocypack::Slice params);

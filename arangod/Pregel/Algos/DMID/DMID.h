@@ -32,6 +32,13 @@ namespace pregel {
 namespace algos {
 
 /// https://github.com/Rofti/DMID
+
+struct DMIDType {
+  using Vertex = DMIDValue;
+  using Edge = float;
+  using Message = DMIDMessage;
+};
+
 struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   unsigned _maxCommunities = 1;
 

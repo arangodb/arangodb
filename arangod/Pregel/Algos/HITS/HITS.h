@@ -44,6 +44,12 @@ namespace arangodb::pregel::algos {
 /// color as you.
 ///    All nodes visited belongs to the SCC identified by the root color.
 
+struct HITSType {
+  using Vertex = HITSValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<double>;
+};
+
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   explicit HITS(VPackSlice userParams)

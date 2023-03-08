@@ -27,6 +27,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct ConnectedComponentsType {
+  using Vertex = uint64_t;
+  using Edge = uint8_t;
+  using Message = uint64_t;
+};
+
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum

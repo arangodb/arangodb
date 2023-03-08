@@ -35,6 +35,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct HITSKleinbergType {
+  using Vertex = HITSKleinbergValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<double>;
+};
+
 struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
                                               SenderMessage<double>> {
  public:

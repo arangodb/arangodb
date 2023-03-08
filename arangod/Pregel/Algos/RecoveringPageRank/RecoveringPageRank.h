@@ -30,6 +30,12 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct RecoveringPageRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   explicit RecoveringPageRank(arangodb::velocypack::Slice params)

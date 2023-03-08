@@ -28,6 +28,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct ReadWriteType {
+  using Vertex = float;
+  using Edge = uint8_t;
+  using Message = float;
+};
+
 using V = float;  // need to simulate MaxAggregator
 using E = uint8_t;
 

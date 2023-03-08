@@ -89,6 +89,13 @@ namespace arangodb::pregel::algos {
  * this accumulated sum reaches r (the randomly generated number), choose the
  * current ID and send it.
  */
+
+struct SLPAType {
+  using Vertex = SLPAValue;
+  using Edge = int8_t;
+  using Message = uint64_t;
+};
+
 struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
   double _threshold = 0.15;
   unsigned _maxCommunities = 1;

@@ -93,6 +93,12 @@ namespace arangodb::pregel::algos {
  * (3) Propagate also a color backwards (as suggested in the paper).
  */
 
+struct SCCType {
+  using Vertex = SCCValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<uint64_t>;
+};
+
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
   explicit SCC(VPackSlice userParams)

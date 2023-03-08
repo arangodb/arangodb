@@ -31,6 +31,12 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct EffectiveClosenessType {
+  using Vertex = ECValue;
+  using Edge = int8_t;
+  using Message = HLLCounter;
+};
+
 /// Effective Closeness
 struct EffectiveCloseness
     : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {

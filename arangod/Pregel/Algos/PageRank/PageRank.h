@@ -28,6 +28,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct PageRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
   explicit PageRank(arangodb::velocypack::Slice const& params);

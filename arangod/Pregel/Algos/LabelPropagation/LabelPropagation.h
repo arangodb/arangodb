@@ -36,6 +36,13 @@ namespace arangodb::pregel::algos {
 /// most frequently. Tries to avoid osscilation, usually won't converge so
 /// specify a
 /// maximum superstep number.
+
+struct LabelPropagationType {
+  using Vertex = LPValue;
+  using Edge = int8_t;
+  using Message = uint64_t;
+};
+
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   explicit LabelPropagation(VPackSlice userParams)

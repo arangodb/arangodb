@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include <cstdint>
 #include "Pregel/Algorithm.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
+
+struct SSSPType {
+  using Vertex = int64_t;
+  using Edge = int64_t;
+  using Message = int64_t;
+};
 
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
 /// should have

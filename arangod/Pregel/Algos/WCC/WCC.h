@@ -29,10 +29,18 @@
 #include "Pregel/SenderMessageFormat.h"
 
 namespace arangodb::pregel::algos {
+
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
+
+struct WCCType {
+  using Vertex = WCCValue;
+  using Edge = uint64_t;
+  using Message = SenderMessage<uint64_t>;
+};
+
 struct WCC
     : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
  public:

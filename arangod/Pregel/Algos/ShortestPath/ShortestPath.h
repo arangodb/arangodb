@@ -27,6 +27,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct ShortestPathType {
+  using Vertex = int64_t;
+  using Edge = int64_t;
+  using Message = int64_t;
+};
+
 struct SPGraphFormat;
 
 /// Single Source Shortest Path. Uses integer attribute 'value', the source

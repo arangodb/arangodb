@@ -97,6 +97,12 @@ namespace arangodb::pregel::algos {
  *    - send the new colors to all successors outside our own collection.
  */
 
+struct ColorPropagationType {
+  using Vertex = ColorPropagationValue;
+  using Edge = int8_t;
+  using Message = ColorPropagationMessageValue;
+};
+
 struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
