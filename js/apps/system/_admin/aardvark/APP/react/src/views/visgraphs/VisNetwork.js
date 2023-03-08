@@ -294,7 +294,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		</StyledContextComponent>
 		}
 		<ProgressBar />
-		<div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '100%', background: '#fff' }} />
+		<div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '97%', background: '#fff', margin: 'auto' }} />
 	</>;
 };
 
