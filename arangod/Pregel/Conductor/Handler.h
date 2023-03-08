@@ -36,20 +36,6 @@ namespace arangodb::pregel::conductor {
 
 template<typename Runtime>
 struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
-  void spawnActorOnServer(actor::ServerID server,
-                          pregel::message::SpawnMessages msg) {
-    if (server == this->self.server) {
-      this->template spawn<SpawnActor>(
-          std::make_unique<SpawnState>(this->state->vocbaseGuard.database()),
-          msg);
-    } else {
-      this->dispatch(
-          actor::ActorPID{
-              .server = server, .database = this->self.database, .id = {0}},
-          msg);
-    }
-  }
-
   auto operator()(message::ConductorStart start)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("5adb0", INFO, Logger::PREGEL) << fmt::format(
@@ -65,9 +51,12 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         static_cast<CreateWorkers*>(this->state->executionState.get());
     auto messages = createWorkers->messages();
     for (auto& [server, message] : messages) {
-      spawnActorOnServer(
-          server, pregel::message::SpawnMessages{pregel::message::SpawnWorker{
-                      .conductor = this->self, .message = message}});
+      this->dispatch(
+          this->state->spawnActor,
+          pregel::message::SpawnMessages{
+              pregel::message::SpawnWorker{.destinationServer = server,
+                                           .conductor = this->self,
+                                           .message = message}});
     }
     return std::move(this->state);
   }

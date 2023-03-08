@@ -367,11 +367,16 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       std::make_unique<conductor::DatabaseCollectionLookup>(
           vocbase, executionSpecifications.vertexCollections,
           executionSpecifications.edgeCollections);
-
+  auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+      vocbase.name(), std::make_unique<SpawnState>(vocbase),
+      message::SpawnMessages{message::SpawnStart{}});
+  auto spawnActor = actor::ActorPID{
+      .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
       std::make_unique<conductor::ConductorState>(executionSpecifications,
-                                                  std::move(vocbaseLookupInfo)),
+                                                  std::move(vocbaseLookupInfo),
+                                                  std::move(spawnActor)),
       conductor::message::ConductorStart{});
 
   return en;

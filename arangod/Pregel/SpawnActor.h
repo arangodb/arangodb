@@ -178,7 +178,17 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
   auto operator()(message::SpawnWorker msg) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("2452c", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn worker actor";
-    spawnWorker(std::move(msg));
+    if (msg.destinationServer == this->self.server) {
+      spawnWorker(std::move(msg));
+    } else {
+      // ActorID 0 is a reserved ID that is used here to tell the RestHandler
+      // that it needs to spawn a new actor instead of searching for an existing
+      // actor
+      this->dispatch(actor::ActorPID{.server = msg.destinationServer,
+                                     .database = this->self.database,
+                                     .id = {0}},
+                     message::SpawnMessages{msg});
+    }
     return std::move(this->state);
   }
 

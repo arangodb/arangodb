@@ -35,9 +35,11 @@ struct Initial;
 
 struct ConductorState {
   ConductorState(ExecutionSpecifications specifications,
-                 std::unique_ptr<CollectionLookup>&& lookupInfo)
+                 std::unique_ptr<CollectionLookup>&& lookupInfo,
+                 actor::ActorPID spawnActor)
       : specifications{std::move(specifications)},
-        lookupInfo(std::move(lookupInfo)) {}
+        lookupInfo(std::move(lookupInfo)),
+        spawnActor{std::move(spawnActor)} {}
 
   ExecutionTimings timing;
   uint64_t globalSuperstep = 0;
@@ -48,6 +50,7 @@ struct ConductorState {
   std::vector<actor::ActorPID> workers;
   const ExecutionSpecifications specifications;
   std::unique_ptr<CollectionLookup> lookupInfo;
+  actor::ActorPID spawnActor;
 };
 
 template<typename Inspector>

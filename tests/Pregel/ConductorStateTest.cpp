@@ -20,6 +20,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Actor/ActorPID.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
@@ -71,19 +72,26 @@ struct LookupInfoMock : conductor::CollectionLookup {
 
 TEST(ConductorStateTest,
      must_always_be_initialized_with_initial_execution_state) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::string> emptyServers{};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(emptyServers));
+                               std::make_unique<LookupInfoMock>(emptyServers),
+                               std::move(fakeActorPID));
   ASSERT_EQ(cState.executionState->name(), "initial");
 }
 
 TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::vector<std::string>> amountOfServers = {
       {}, {"ServerA"}, {"ServerA", "ServerB"}};
-
   for (auto const& servers : amountOfServers) {
     auto cState = ConductorState(ExecutionSpecifications(),
-                                 std::make_unique<LookupInfoMock>(servers));
+                                 std::make_unique<LookupInfoMock>(servers),
+                                 std::move(fakeActorPID));
     auto createWorkersState = CreateWorkers(cState);
     auto msgs = createWorkersState.messages();
     ASSERT_EQ(msgs.size(), servers.size());
@@ -95,10 +103,13 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
 }
 
 TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
-  std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
 
+  std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers));
+                               std::make_unique<LookupInfoMock>(servers),
+                               std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -125,9 +136,13 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
 
 TEST(CreateWorkersStateTest,
      reply_with_loading_state_as_soon_as_all_servers_replied) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers));
+                               std::make_unique<LookupInfoMock>(servers),
+                               std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
   ASSERT_EQ(msgs.size(), servers.size());
@@ -157,9 +172,13 @@ TEST(CreateWorkersStateTest,
 }
 
 TEST(CreateWorkersStateTest, receive_invalid_message_type) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers));
+                               std::make_unique<LookupInfoMock>(servers),
+                               std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -174,9 +193,13 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
 }
 
 TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers));
+                               std::make_unique<LookupInfoMock>(servers),
+                               std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -191,9 +214,13 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
 }
 
 TEST(CreateWorkersStateTest, receive_valid_error_message) {
+  auto fakeActorPID = actor::ActorPID{
+      .server = "A", .database = "database", .id = actor::ActorID{4}};
+
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers));
+                               std::make_unique<LookupInfoMock>(servers),
+                               std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
