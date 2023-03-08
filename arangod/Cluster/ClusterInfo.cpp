@@ -6215,20 +6215,46 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
   }
 
-  auto logId = LogicalCollection::shardIdToStateId(shardID);
   auto result = std::shared_ptr<std::vector<ServerID>>{nullptr};
 
   while (true) {
     {
       READ_LOCKER(readLocker, _planProt.lock);
-      // if we find a replicated log for this shard, then this is a
-      // replication 2.0 db, in which case we want to use the participant
-      // information from the log instead
-      auto it = _replicatedLogs.find(logId);
-      if (it == _replicatedLogs.end()) {
-        // we are not in a replication2 database
-        break;
+
+      // TODO we have to simplify this by using some adequate data structures
+      // lookup the collection name
+      auto colName = _shardToName.find(shardID);
+      ADB_PROD_ASSERT(colName != _shardToName.end());
+
+      // fetch the logical collection containing the shard
+      std::shared_ptr<LogicalCollection> logical{nullptr};
+      for (auto const& [dbID, col] : _plannedCollections) {
+        if (auto colWithHash = col->find(colName->second);
+            colWithHash != col->end()) {
+          logical = colWithHash->second.collection;
+          break;
+        }
       }
+      ADB_PROD_ASSERT(logical != nullptr);
+      if (logical->replicationVersion() == replication::Version::ONE) {
+        return nullptr;
+      }
+
+      // lookup the log id corresponding to the group id
+      auto groupId = logical->groupID();
+      auto id = logical->id();
+      ADB_PROD_ASSERT(_collectionGroups.contains(groupId));
+      auto const& colGroup = _collectionGroups.at(groupId);
+      auto shards = _shards.find(CollectionID{std::to_string(id.id())});
+      ADB_PROD_ASSERT(shards != _shards.end());
+      auto shardIt =
+          std::find(shards->second->begin(), shards->second->end(), shardID);
+      ADB_PROD_ASSERT(shardIt != std::end(*shards->second));
+      auto shardIdx = std::distance(shards->second->begin(), shardIt);
+      auto logId = colGroup->shardSheaves[shardIdx].replicatedLog;
+
+      auto it = _replicatedLogs.find(logId);
+      ADB_PROD_ASSERT(it != _replicatedLogs.end());
 
       if (it->second->currentTerm.has_value() &&
           it->second->currentTerm->leader.has_value()) {
@@ -6257,8 +6283,8 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: " << logId
-        << " shard = " << shardID << "did not find leader,"
+        << "getResponsibleServerReplication2: shard = " << shardID
+        << "did not find log leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -6369,42 +6395,57 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
   }
 
-  bool isReplicationTwo = false;
   while (true) {
     TRI_ASSERT(result.empty());
     {
       READ_LOCKER(readLocker, _planProt.lock);
 
       for (auto const& shardId : shardIds) {
-        auto logId = LogicalCollection::tryShardIdToStateId(shardId);
-        if (!logId.has_value()) {
-          // could not convert shardId to logId, but this implies that
-          // the shardId is not valid.
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                         "invalid shard " + shardId);
-        }
-        // if we find a replicated log for this shard, then this is a
-        // replication 2.0 db, in which case we want to use the leader
-        // information from the log instead
-        auto it = _replicatedLogs.find(*logId);
-        if (it != _replicatedLogs.end()) {
-          isReplicationTwo = true;
-          if (it->second->currentTerm.has_value() &&
-              it->second->currentTerm->leader.has_value()) {
-            result.emplace(shardId, it->second->currentTerm->leader->serverId);
-          } else {
-            // no leader found, will retry
-            ++tries;
-            result.clear();
+        // TODO we have to simplify this by using some adequate data structures
+        // lookup the collection name
+        auto colName = _shardToName.find(shardId);
+        ADB_PROD_ASSERT(colName != _shardToName.end());
+
+        // fetch the logical collection containing the shard
+        std::shared_ptr<LogicalCollection> logical{nullptr};
+        for (auto const& [dbID, col] : _plannedCollections) {
+          if (auto colWithHash = col->find(colName->second);
+              colWithHash != col->end()) {
+            logical = colWithHash->second.collection;
             break;
           }
-        } else if (isReplicationTwo) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              "no replicated log found for shard " + shardId);
-        } else {
+        }
+        ADB_PROD_ASSERT(logical != nullptr);
+
+        if (logical->replicationVersion() == replication::Version::ONE) {
           // this seems to be no replication 2.0 db -> skip the remaining shards
           return false;
+        }
+
+        // lookup the log id corresponding to the group id
+        auto groupId = logical->groupID();
+        auto id = logical->id();
+        ADB_PROD_ASSERT(_collectionGroups.contains(groupId));
+        auto const& colGroup = _collectionGroups.at(groupId);
+        auto shards = _shards.find(CollectionID{std::to_string(id.id())});
+        ADB_PROD_ASSERT(shards != _shards.end());
+        auto shardIt =
+            std::find(shards->second->begin(), shards->second->end(), shardId);
+        ADB_PROD_ASSERT(shardIt != std::end(*shards->second));
+        auto shardIdx = std::distance(shards->second->begin(), shardIt);
+        auto logId = colGroup->shardSheaves[shardIdx].replicatedLog;
+
+        auto it = _replicatedLogs.find(logId);
+        ADB_PROD_ASSERT(it != _replicatedLogs.end());
+
+        if (it->second->currentTerm.has_value() &&
+            it->second->currentTerm->leader.has_value()) {
+          result.emplace(shardId, it->second->currentTerm->leader->serverId);
+        } else {
+          // no leader found, will retry
+          ++tries;
+          result.clear();
+          break;
         }
       }
     }
