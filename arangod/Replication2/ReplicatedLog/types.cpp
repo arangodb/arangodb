@@ -287,6 +287,8 @@ auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
   switch (status) {
     case LocalStateMachineStatus::kUnconfigured:
       return kStringUnconfigured;
+    case LocalStateMachineStatus::kConnecting:
+      return kStringConnecting;
     case LocalStateMachineStatus::kRecovery:
       return kStringRecovery;
     case LocalStateMachineStatus::kAcquiringSnapshot:

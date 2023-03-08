@@ -238,6 +238,7 @@ struct QuorumData {
 
 namespace {
 constexpr std::string_view kStringUnconfigured = "Unconfigured";
+constexpr std::string_view kStringConnecting = "Connecting";
 constexpr std::string_view kStringRecovery = "RecoveryInProgress";
 constexpr std::string_view kStringAcquiringSnapshot = "AcquiringSnapshot";
 constexpr std::string_view kStringOperational = "ServiceOperational";
@@ -245,10 +246,12 @@ constexpr std::string_view kStringOperational = "ServiceOperational";
 
 enum class LocalStateMachineStatus {
   kUnconfigured,
+  kConnecting,
   kRecovery,
   kAcquiringSnapshot,
   kOperational
 };
+
 auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
 auto operator<<(std::ostream& ostream, LocalStateMachineStatus const& status)
     -> std::ostream&;
@@ -257,6 +260,7 @@ template<class Inspector>
 auto inspect(Inspector& f, LocalStateMachineStatus& x) {
   return f.enumeration(x).values(
       LocalStateMachineStatus::kUnconfigured, kStringUnconfigured,
+      LocalStateMachineStatus::kConnecting, kStringConnecting,
       LocalStateMachineStatus::kRecovery, kStringRecovery,
       LocalStateMachineStatus::kAcquiringSnapshot, kStringAcquiringSnapshot,
       LocalStateMachineStatus::kOperational, kStringOperational);
