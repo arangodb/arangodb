@@ -93,6 +93,11 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
     return leaderConnectionEstablished and snapshotAvailable;
   }
 
+  auto checkSnapshotState() const noexcept
+      -> replicated_log::SnapshotState override {
+    return follower.snapshot->checkSnapshotState();
+  }
+
  private:
   FollowerManager& follower;
 };

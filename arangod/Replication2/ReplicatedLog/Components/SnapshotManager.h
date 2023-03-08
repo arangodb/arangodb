@@ -44,7 +44,7 @@ struct SnapshotManager : ISnapshotManager {
       LoggerContext const& loggerContext);
 
   auto invalidateSnapshotState() -> Result override;
-  auto checkSnapshotState() noexcept -> SnapshotState override;
+  auto checkSnapshotState() const noexcept -> SnapshotState override;
 
   // should be called once after construction
   void acquireSnapshotIfNecessary();

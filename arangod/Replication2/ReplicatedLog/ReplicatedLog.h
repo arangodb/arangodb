@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
@@ -84,6 +85,8 @@ struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
   //  a) has a snapshot, and
   //  b) knows the snapshot won't be invalidated in the current term.
   [[nodiscard]] virtual auto followerEstablished() const -> bool = 0;
+  [[nodiscard]] virtual auto checkSnapshotState() const noexcept
+      -> replicated_log::SnapshotState = 0;
 };
 
 // TODO Move to namespace replicated_state (and different file?)

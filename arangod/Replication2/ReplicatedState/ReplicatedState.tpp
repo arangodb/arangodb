@@ -799,11 +799,17 @@ template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->_followerState == nullptr) {
+  if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     // already resigned
     return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  } else if (not guard->_stream->methods().followerEstablished()) {
+    return replicated_log::LocalStateMachineStatus::kConnecting;
+  } else if (guard->_stream->methods().checkSnapshotState() ==
+             replicated_log::SnapshotState::MISSING) {
+    return replicated_log::LocalStateMachineStatus::kAcquiringSnapshot;
+  } else {
+    return replicated_log::LocalStateMachineStatus::kOperational;
   }
-  return replicated_log::LocalStateMachineStatus::kOperational;
 }
 
 template<typename S>
