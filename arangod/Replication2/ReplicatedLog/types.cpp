@@ -298,3 +298,9 @@ auto replicated_log::to_string(LocalStateMachineStatus status) noexcept
   TRI_ASSERT(false);
   return "(unknown status code)";
 }
+
+auto replicated_log::operator<<(std::ostream& ostream,
+                                LocalStateMachineStatus const& status)
+    -> std::ostream& {
+  return ostream << to_string(status);
+}

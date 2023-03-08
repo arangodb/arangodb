@@ -19,6 +19,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <immer/flex_vector_transient.hpp>
@@ -28,6 +29,7 @@
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
+#include "Replication2/Mocks/StorageEngineMethodsMock.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -226,29 +228,9 @@ TEST_F(StorageManagerTest, update_meta_data_abort) {
   }
 }
 
-struct StorageEngineMethodsGMock : IStorageEngineMethods {
-  MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
-  MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
-  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, read, (LogIndex),
-              (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, insert,
-              (std::unique_ptr<PersistedLogIterator>, WriteOptions const&),
-              (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeFront,
-              (LogIndex stop, WriteOptions const&), (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeBack,
-              (LogIndex start, WriteOptions const&), (override));
-  MOCK_METHOD(std::uint64_t, getObjectId, (), (override));
-  MOCK_METHOD(LogId, getLogId, (), (override));
-  MOCK_METHOD(SequenceNumber, getSyncedSequenceNumber, (), (override));
-  MOCK_METHOD(futures::Future<futures::Unit>, waitForSync, (SequenceNumber),
-              (override));
-  MOCK_METHOD(void, waitForCompletion, (), (noexcept, override));
-};
-
 struct StorageEngineMethodsMockFactory {
-  auto create() -> std::unique_ptr<StorageEngineMethodsGMock> {
-    auto ptr = std::make_unique<StorageEngineMethodsGMock>();
+  auto create() -> std::unique_ptr<tests::StorageEngineMethodsGMock> {
+    auto ptr = std::make_unique<tests::StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
 
     EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
@@ -265,11 +247,15 @@ struct StorageEngineMethodsMockFactory {
 
     return ptr;
   }
-  auto operator->() noexcept -> StorageEngineMethodsGMock* { return lastPtr; }
-  auto operator*() noexcept -> StorageEngineMethodsGMock& { return *lastPtr; }
+  auto operator->() noexcept -> tests::StorageEngineMethodsGMock* {
+    return lastPtr;
+  }
+  auto operator*() noexcept -> tests::StorageEngineMethodsGMock& {
+    return *lastPtr;
+  }
 
  private:
-  StorageEngineMethodsGMock* lastPtr{nullptr};
+  tests::StorageEngineMethodsGMock* lastPtr{nullptr};
 };
 
 struct StorageManagerGMockTest : ::testing::Test {

@@ -220,11 +220,18 @@ auto FakeFollowerType<S>::resign() && noexcept
  */
 template<typename LeaderType, typename FollowerType>
 struct DefaultFactory {
-  auto constructLeader() -> std::shared_ptr<LeaderType> {
-    return std::make_shared<LeaderType>();
+  using CoreType = typename LeaderType::CoreType;
+  auto constructLeader(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<LeaderType> {
+    return std::make_shared<LeaderType>(std::move(core));
   }
-  auto constructFollower() -> std::shared_ptr<FollowerType> {
-    return std::make_shared<FollowerType>();
+  auto constructFollower(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<FollowerType> {
+    return std::make_shared<FollowerType>(std::move(core));
+  }
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+      -> std::unique_ptr<CoreType> {
+    return std::make_unique<CoreType>();
   }
 };
 

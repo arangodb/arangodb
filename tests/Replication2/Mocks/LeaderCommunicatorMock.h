@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +20,22 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedStateMetricsMock.h"
+#pragma once
+
+#include <gmock/gmock.h>
+
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 
 using namespace arangodb;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 
-namespace arangodb::replication2::test {
-ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
-    : ReplicatedStateMetrics(nullptr, impl) {}
-}  // namespace arangodb::replication2::test
+namespace arangodb::replication2::tests {
+
+struct LeaderCommunicatorMock : ILeaderCommunicator {
+  MOCK_METHOD(ParticipantId const&, getParticipantId, (),
+              (const, noexcept, override));
+  MOCK_METHOD(futures::Future<Result>, reportSnapshotAvailable, (MessageId mid),
+              (noexcept, override));
+};
+}  // namespace arangodb::replication2::tests

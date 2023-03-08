@@ -36,12 +36,16 @@
 #include "Basics/system-compiler.h"
 #include "AssertionLogger.h"
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
-  (ADB_LIKELY(expr))                                                          \
-      ? (void)nullptr                                                         \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
-                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                   \
+  (ADB_LIKELY(expr))                                                           \
+      ? (void)nullptr                                                          \
+      : ::arangodb::debug::AssertionLogger{ADB_HERE, ARANGODB_PRETTY_FUNCTION, \
+                                           #expr} &                            \
             ::arangodb::debug::AssertionLogger::assertionStringStream
+
+#define ADB_MAINTAINER_CRASH()                                             \
+  ::arangodb::debug::AssertionLogger{ADB_HERE, ARANGODB_PRETTY_FUNCTION} & \
+      ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #else  // Production
 
@@ -51,5 +55,7 @@
   (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
          : ::arangodb::debug::AssertionNoOpLogger{} & \
                ::arangodb::debug::NoOpStream {}
+
+#define ADB_MAINTAINER_CRASH() TRI_ASSERT(false)
 
 #endif

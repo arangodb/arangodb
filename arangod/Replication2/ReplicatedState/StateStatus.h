@@ -136,6 +136,8 @@ struct FollowerStatus {
   LogIndex lastAppliedIndex;
 };
 
+auto to_string(FollowerStatus const& status) -> std::string;
+
 template<class Inspector>
 auto inspect(Inspector& f, FollowerStatus& x) {
   auto role = std::string{static_strings::StringFollower};

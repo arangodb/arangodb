@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +20,27 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedStateMetricsMock.h"
+#pragma once
 
-using namespace arangodb;
+#include <chrono>
+#include <function2.hpp>
+#include "Futures/Future.h"
 
-namespace arangodb::replication2::test {
-ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
-    : ReplicatedStateMetrics(nullptr, impl) {}
-}  // namespace arangodb::replication2::test
+struct IScheduler {
+  virtual ~IScheduler() = default;
+  virtual auto delayedFuture(std::chrono::nanoseconds duration,
+                             std::string_view name = {})
+      -> arangodb::futures::Future<arangodb::futures::Unit> = 0;
+
+  struct WorkItem {
+    virtual ~WorkItem() = default;
+  };
+
+  using WorkItemHandle = std::shared_ptr<WorkItem>;
+
+  virtual auto queueDelayed(
+      std::string_view name, std::chrono::nanoseconds delay,
+      fu2::unique_function<void(bool canceled)> handler) noexcept
+      -> WorkItemHandle = 0;
+  virtual void queue(fu2::unique_function<void()>) noexcept = 0;
+};

@@ -244,6 +244,8 @@ constexpr std::string_view kStringOperational = "ServiceOperational";
 
 enum class LocalStateMachineStatus { kUnconfigured, kRecovery, kOperational };
 auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
+auto operator<<(std::ostream& ostream, LocalStateMachineStatus const& status)
+    -> std::ostream&;
 
 template<class Inspector>
 auto inspect(Inspector& f, LocalStateMachineStatus& x) {
