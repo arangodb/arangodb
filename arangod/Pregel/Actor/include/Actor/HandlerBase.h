@@ -42,6 +42,12 @@ struct HandlerBase {
     runtime->dispatch(self, receiver, message);
   }
 
+  // is needed to spawn a new actor
+  template<typename ActorMessage>
+  auto dispatchExternally(ActorPID receiver, ActorMessage message) -> void {
+    runtime->dispatchExternally(self, receiver, message);
+  }
+
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
