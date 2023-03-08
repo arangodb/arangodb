@@ -63,7 +63,7 @@ struct Vertex {
 
   // TODO: maybe we should hence use the construtor to set them
   //       at creation time and not any time later
-  void setKey(char const* key, uint16_t keyLength) noexcept {
+  void setKey(char const* key, size_t keyLength) noexcept {
     _key = std::string(key, keyLength);
   }
 
