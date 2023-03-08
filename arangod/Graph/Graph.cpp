@@ -829,29 +829,38 @@ auto Graph::addSatellites(VPackSlice const&) -> Result {
 
 auto Graph::prepareCreateCollectionBodyEdge(
     std::string_view name,
-    std::optional<std::string_view> const& leadingCollection) const noexcept
-    -> CreateCollectionBody {
+    std::optional<std::string_view> const& leadingCollection,
+    std::unordered_set<std::string> const& satellites) const noexcept
+    -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-  injectShardingToCollectionBody(body, leadingCollection);
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites);
+  if (res.fail()) {
+    return res;
+  }
   return body;
 }
 
 auto Graph::prepareCreateCollectionBodyVertex(
     std::string_view name,
-    std::optional<std::string_view> const& leadingCollection) const noexcept
-    -> CreateCollectionBody {
+    std::optional<std::string_view> const& leadingCollection,
+    std::unordered_set<std::string> const& satellites) const noexcept
+    -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  injectShardingToCollectionBody(body, leadingCollection);
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites);
+  if (res.fail()) {
+    return res;
+  }
   return body;
 }
 
 auto Graph::injectShardingToCollectionBody(
     CreateCollectionBody& body,
-    std::optional<std::string_view> const&) const noexcept -> void {
+    std::optional<std::string_view> const&,
+    std::unordered_set<std::string> const&) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection
   body.numberOfShards = numberOfShards();
@@ -862,4 +871,5 @@ auto Graph::injectShardingToCollectionBody(
     TRI_ASSERT(replicationFactor() == 0);
   }
   body.replicationFactor = replicationFactor();
+  return {};
 }

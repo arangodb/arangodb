@@ -57,6 +57,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -558,6 +559,80 @@ Result GraphManager::ensureAllCollections(Graph* graph,
                            existentEdgeCollections, satellites, waitForSync);
 }
 
+#if true
+Result GraphManager::ensureCollections(
+    Graph& graph, std::unordered_set<std::string>& documentCollectionsToCreate,
+    std::unordered_set<std::string> const& edgeCollectionsToCreate,
+    std::unordered_set<std::shared_ptr<LogicalCollection>> const&
+        existentDocumentCollections,
+    std::unordered_set<std::shared_ptr<LogicalCollection>> const&
+        existentEdgeCollections,
+    std::unordered_set<std::string> const& satellites, bool waitForSync) const {
+
+  // Validate if the existing collections can be used within this graph type.
+
+  // document collections
+  for (auto const& col : existentDocumentCollections) {
+    Result res = graph.validateCollection(*col);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  // edge collections
+  for (auto const& col : existentEdgeCollections) {
+    Result res = graph.validateCollection(*col);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  std::vector<CreateCollectionBody> createRequests;
+  // This will only have effect in Enterprise Version
+  // TODO: Pick a correct leader
+  std::optional<std::string_view> leadingCollection{std::nullopt};
+  auto const& config = _vocbase.getDatabaseConfiguration();
+
+  for (auto const& c : documentCollectionsToCreate) {
+    auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection, satellites);
+    if (col.fail()) {
+      return col.result();
+    }
+    auto res = col->applyDefaultsAndValidateDatabaseConfiguration(config);
+    if (res.fail()) {
+      return res;
+    }
+    createRequests.emplace_back(std::move(col.get()));
+  }
+
+  for (auto const& c : edgeCollectionsToCreate) {
+    auto col = graph.prepareCreateCollectionBodyEdge(c, leadingCollection, satellites);
+    if (col.fail()) {
+      return col.result();
+    }
+    auto res = col->applyDefaultsAndValidateDatabaseConfiguration(config);
+    if (res.fail()) {
+      return res;
+    }
+    createRequests.emplace_back(std::move(col.get()));
+  }
+
+#ifdef USE_ENTERPRISE
+  bool const allowEnterpriseCollectionsOnSingleServer =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
+#else
+  bool const allowEnterpriseCollectionsOnSingleServer = false;
+#endif
+  OperationOptions opOptions(ExecContext::current());
+  auto finalResult = methods::Collections::create(
+      ctx()->vocbase(), opOptions, std::move(createRequests), waitForSync, true,
+      false, allowEnterpriseCollectionsOnSingleServer);
+
+  // We do not care for the Collections here, just forward the result
+  // API guarantees all or none.
+  return finalResult.result();
+}
+#else
 Result GraphManager::ensureCollections(
     Graph& graph, std::unordered_set<std::string>& documentCollectionsToCreate,
     std::unordered_set<std::string> const& edgeCollectionsToCreate,
@@ -666,6 +741,7 @@ Result GraphManager::ensureCollections(
 
   return finalResult;
 }
+#endif
 
 #ifndef USE_ENTERPRISE
 ResultT<std::vector<CollectionCreationInfo>>

@@ -293,18 +293,21 @@ class Graph {
 
   auto prepareCreateCollectionBodyEdge(
       std::string_view name,
-      std::optional<std::string_view> const& leadingCollection) const noexcept
-      -> CreateCollectionBody;
+      std::optional<std::string_view> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites) const noexcept
+      -> ResultT<CreateCollectionBody>;
 
   auto prepareCreateCollectionBodyVertex(
       std::string_view name,
-      std::optional<std::string_view> const& leadingCollection) const noexcept
-      -> CreateCollectionBody;
+      std::optional<std::string_view> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites) const noexcept
+      -> ResultT<CreateCollectionBody>;
 
  protected:
   virtual auto injectShardingToCollectionBody(
       CreateCollectionBody& body,
-      std::optional<std::string_view> const&) const noexcept -> void;
+      std::optional<std::string_view> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites) const noexcept -> Result;
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph
