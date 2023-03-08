@@ -9,7 +9,7 @@ RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl 
 RUN apk --no-cache add perl
 COPY install-openssl.sh /tools/
 RUN [ "/tools/install-openssl.sh", "3.0", ".8" ]
-ENV OPENSSL_ROOT_DIR=/opt/openssl-3.0.8
+ENV OPENSSL_ROOT_DIR=/opt/openssl-3.0
 RUN apk --no-cache del perl
 
 RUN ln /usr/bin/sccache /usr/local/bin/gcc && \
