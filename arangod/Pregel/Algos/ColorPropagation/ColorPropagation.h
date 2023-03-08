@@ -100,10 +100,9 @@ namespace arangodb::pregel::algos {
 struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
-  explicit ColorPropagation(application_features::ApplicationServer& server,
-                            VPackSlice userParams)
+  explicit ColorPropagation(VPackSlice userParams)
       : Algorithm<ColorPropagationValue, int8_t, ColorPropagationMessageValue>(
-            server, "colorpropagation"),
+            "colorpropagation"),
         _numColors{getNumColors(userParams)},
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),

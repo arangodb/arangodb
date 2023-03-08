@@ -46,10 +46,9 @@ namespace arangodb::pregel::algos {
 
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
-  explicit HITS(application_features::ApplicationServer& server,
-                VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
-            server, "hits", userParams) {}
+  explicit HITS(VPackSlice userParams)
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("hits",
+                                                                  userParams) {}
 
   [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()

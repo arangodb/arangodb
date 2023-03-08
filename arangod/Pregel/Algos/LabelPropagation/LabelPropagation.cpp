@@ -23,12 +23,10 @@
 
 #include "LabelPropagation.h"
 #include <cmath>
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Worker/GraphStore.h"
-#include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 #include "Random/RandomGenerator.h"
