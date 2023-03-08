@@ -64,13 +64,8 @@ struct Vertex {
   // TODO: maybe we should hence use the construtor to set them
   //       at creation time and not any time later
   void setKey(char const* key, uint16_t keyLength) noexcept {
-    // must only be called during initial vertex creation
-    TRI_ASSERT(this->keyLength() == 0);
     _key = std::string(key, keyLength);
-    TRI_ASSERT(this->keyLength() == keyLength);
   }
-
-  [[nodiscard]] uint16_t keyLength() const noexcept { return _key.length(); }
 
   [[nodiscard]] std::string_view key() const { return std::string_view(_key); }
   V const& data() const& { return _data; }
