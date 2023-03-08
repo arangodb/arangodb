@@ -13,6 +13,7 @@ target_link_libraries(arango_pregel
   arango
   arango_agency
   boost_boost
+  arango_actor
   boost_system)
 
 target_include_directories(arango_pregel PRIVATE

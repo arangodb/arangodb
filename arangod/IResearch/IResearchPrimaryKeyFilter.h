@@ -67,10 +67,10 @@ class PrimaryKeyFilter final : public irs::filter,
   bool equals(filter const& rhs) const noexcept override;
 
  private:
-  struct PrimaryKeyIterator final : public irs::doc_iterator {
+  struct PrimaryKeyIterator : public irs::doc_iterator {
     PrimaryKeyIterator() = default;
 
-    bool next() noexcept override {
+    bool next() noexcept final {
       if (_count != 0) {
         ++_doc.value;
         --_count;
@@ -81,7 +81,7 @@ class PrimaryKeyFilter final : public irs::filter,
       return false;
     }
 
-    irs::doc_id_t seek(irs::doc_id_t) noexcept override {
+    irs::doc_id_t seek(irs::doc_id_t) noexcept final {
       TRI_ASSERT(false);
       // We don't expect this is ever called for removals.
       _count = 0;
@@ -89,9 +89,9 @@ class PrimaryKeyFilter final : public irs::filter,
       return irs::doc_limits::eof();
     }
 
-    irs::doc_id_t value() const noexcept override { return _doc.value; }
+    irs::doc_id_t value() const noexcept final { return _doc.value; }
 
-    irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
       return irs::type<irs::document>::id() == id ? &_doc : nullptr;
     }
 
@@ -113,7 +113,7 @@ class PrimaryKeyFilter final : public irs::filter,
     // We intentionally violate iresearch iterator specification
     // to keep memory footprint as small as possible.
     irs::document _doc;
-    irs::doc_id_t _count;
+    irs::doc_id_t _count{0};
   };
 
   mutable LocalDocumentId::BaseType _pk;

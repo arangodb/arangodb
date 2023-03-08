@@ -353,7 +353,6 @@ void RocksDBThrottle::recalculateThrottle() {
         tempRate -= (tempRate - newThrottle) / _scalingFactor;
       }
 
-      // +2 can make this go negative
       if (tempRate < 0) {
         tempRate = 0;
       }
@@ -366,6 +365,7 @@ void RocksDBThrottle::recalculateThrottle() {
       _throttleBps =
           std::max(_lowerBoundThrottleBps,
                    std::min(static_cast<uint64_t>(tempRate), _maxWriteRate));
+      TRI_ASSERT(_throttleBps >= _lowerBoundThrottleBps);
 
       // prepare for next interval
       throttleData[0] = ThrottleData_t{};
@@ -379,6 +379,7 @@ void RocksDBThrottle::recalculateThrottle() {
           << "RecalculateThrottle(): first " << _throttleBps;
 
       _firstThrottle = false;
+      TRI_ASSERT(_throttleBps >= _lowerBoundThrottleBps);
     }
   }
 }

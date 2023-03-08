@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, templateEngine */
+/* global Backbone, $, window, arangoHelper, templateEngine, prettyBytes */
 
 (function () {
   'use strict';
@@ -57,9 +57,9 @@
 
     tableDescription: {
       id: 'arangoQueryManagementTable',
-      titles: ['ID', 'Query String', 'Bind parameters', 'User', 'Runtime', 'Started', ''],
+      titles: ['ID', 'Query String', 'Bind parameters', 'User', 'Peak memory usage', 'Runtime', 'Started', ''],
       rows: [],
-      unescaped: [false, false, false, false, false, false, true]
+      unescaped: [false, false, false, false, false, false, false, true]
     },
 
     deleteRunningQueryModal: function (e) {
@@ -213,6 +213,7 @@
               model.get('query'),
               JSON.stringify(model.get('bindVars'), null, 2),
               model.get('user'),
+              prettyBytes(model.get('peakMemoryUsage')),
               model.get('runTime').toFixed(2) + 's',
               model.get('started'),
               button
@@ -227,6 +228,7 @@
           if (rowsArray.length === 0) {
             rowsArray.push([
               message,
+              '',
               '',
               '',
               '',

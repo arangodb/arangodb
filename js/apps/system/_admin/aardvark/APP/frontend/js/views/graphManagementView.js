@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig, localStorage */
 
 (function () {
   'use strict';
@@ -1572,6 +1572,9 @@
 
     resetDisplaySettings: function () {
       var graphName = $('#editGraphName').val();
+
+      const localStorageKey = graphName + "-gv-urlparameters";
+      localStorage.removeItem(localStorageKey);
 
       var test = new window.GraphSettingsView({
         name: graphName,

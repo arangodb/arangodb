@@ -38,13 +38,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
-#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
