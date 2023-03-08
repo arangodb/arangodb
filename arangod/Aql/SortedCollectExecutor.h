@@ -58,7 +58,7 @@ class SortedCollectExecutorInfos {
       RegisterId collectRegister, RegisterId expressionRegister,
       Variable const* expressionVariable,
       std::vector<std::string> aggregateTypes,
-      std::vector<std::pair<std::string, RegisterId>>&& variables,
+      std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       velocypack::Options const*);
 
@@ -83,7 +83,7 @@ class SortedCollectExecutorInfos {
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
     return _expressionRegister;
-  };
+  }
   Variable const* getExpressionVariable() const { return _expressionVariable; }
 
   std::vector<std::pair<std::string, RegisterId>> const& getInputVariables()
