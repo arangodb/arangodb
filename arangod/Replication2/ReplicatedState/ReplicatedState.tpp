@@ -809,8 +809,6 @@ auto FollowerStateManager<S>::getQuickStatus() const
 template<typename S>
 auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-#if 0
-  // new code
   return _guardedData.doUnderLock(
       [](auto& data) -> std::shared_ptr<IReplicatedFollowerState<S>> {
         auto& stream = *data._stream;
@@ -818,18 +816,15 @@ auto FollowerStateManager<S>::getStateMachine() const
         bool const followerEstablished =
             stream.isResigned() or stream.methods().followerEstablished();
 
-        // Disallow access unless we have a snapshot and are sure the log won't
-        // be truncated (and thus the snapshot invalidated) in this term.
+        // Disallow access unless we have a snapshot and are sure the log
+        // won't be truncated (and thus the snapshot invalidated) in this
+        // term.
         if (followerEstablished) {
           return data._followerState;
         } else {
           return nullptr;
         }
       });
-#else
-  // old code
-  return _guardedData.getLockedGuard()->_followerState;
-#endif
 }
 
 template<typename S>

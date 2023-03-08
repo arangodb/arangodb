@@ -70,7 +70,10 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
 
   [[nodiscard]] auto followerEstablished() const -> bool override {
     // Having a commit index means we've got at least one append entries request
-    // which was also applied *successfully*
+    // which was also applied *successfully*.
+    // Note that this is pessimistic, in the sense that it actually waits for an
+    // append entries request that was sent after leadership was established,
+    // which we don't necessarily need.
     auto const leaderConnectionEstablished =
         follower.commit->getCommitIndex() > LogIndex{0};
     // Check whether a snapshot is available.

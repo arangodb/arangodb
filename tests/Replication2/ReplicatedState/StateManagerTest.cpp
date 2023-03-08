@@ -360,7 +360,7 @@ TEST_F(StateManagerTest,
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
-        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
         AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
     return follower->appendEntries(request);
@@ -457,7 +457,7 @@ TEST_F(
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
-        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
         AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
     return follower->appendEntries(request);
@@ -580,7 +580,7 @@ TEST_F(
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
-        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
         AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
     return follower->appendEntries(request);
@@ -703,7 +703,7 @@ TEST_F(
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
-        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
         AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
     return follower->appendEntries(request);
@@ -843,7 +843,7 @@ TEST_F(
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
-        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
         AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
     return follower->appendEntries(request);
