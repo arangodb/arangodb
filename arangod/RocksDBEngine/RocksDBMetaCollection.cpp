@@ -1211,7 +1211,7 @@ void RocksDBMetaCollection::bufferUpdates(
   }
 
   LOG_TOPIC("bafcf", TRACE, Logger::ENGINES)
-      << "buffering " << inserts.size() << "inserts and " << removals.size()
+      << "buffering " << inserts.size() << " inserts and " << removals.size()
       << " removals "
       << "for collection " << _logicalCollection.name();
 

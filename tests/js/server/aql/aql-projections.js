@@ -143,6 +143,26 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN 1`, 'persistent', [], false ],
         [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false ],
         [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[*].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[**].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*]`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**]`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].abc`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].abc`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].value2`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].value2`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].foo.bar`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN CURRENT].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1 RETURN CURRENT].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value2 == 1].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1 RETURN doc.value2].abc`, 'persistent', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value1[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value1[* FILTER doc.value1 == 1 RETURN doc.value2].abc`, 'persistent', ['value1', 'value2'], false ],
       ];
 
       queries.forEach(function(query) {
@@ -187,6 +207,26 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true ],
         [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false ],
         [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[*].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[**].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*]`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**]`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].abc`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].abc`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].value2`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].value2`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].foo.bar`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN CURRENT].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1 RETURN CURRENT].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value2 == 1].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1 RETURN doc.value2].abc`, 'persistent', ['value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 && doc.value2 == 2].abc`, 'persistent', ['value1', 'value2'], true ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value3 == 1 && doc.value4 == 2].abc`, 'persistent', ['value2', 'value3', 'value4'], false ],
       ];
 
       queries.forEach(function(query) {
@@ -197,7 +237,11 @@ function projectionsPlansTestSuite () {
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
-        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
       });
       
       queries = [
@@ -225,6 +269,14 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.bar.baz]`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[*].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND() RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
       ];
 
       queries.forEach(function(query) {
@@ -245,9 +297,15 @@ function projectionsPlansTestSuite () {
       queries = [
         [`FOR doc IN ${cn} RETURN doc.boo`, ['boo'] ],
         [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc`, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo`, ['foo'] ],
         [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']] ],
         [`FOR doc IN ${cn} RETURN doc.boo.far`, [['boo', 'far']] ],
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.unrelated]`, [['foo', 'bar'], 'unrelated'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo == 1].sub == 1 RETURN 1`, ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.baz == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.baz == 1].sub == 1 RETURN 1`, ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.value1 == 1 RETURN doc.value2 == 1].sub == 1 RETURN 1`, [['foo', 'bar'], 'value1', 'value2'] ],
       ];
 
       queries.forEach(function(query) {
@@ -255,7 +313,11 @@ function projectionsPlansTestSuite () {
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(query[1], nodes[0].projections, query);
-        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        if (query[1].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
       });
     },
     
