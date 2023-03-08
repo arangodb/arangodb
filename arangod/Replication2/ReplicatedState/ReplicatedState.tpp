@@ -799,6 +799,8 @@ template<typename S>
 auto FollowerStateManager<S>::getQuickStatus() const
     -> replicated_log::LocalStateMachineStatus {
   auto guard = _guardedData.getLockedGuard();
+  // TODO maybe this logic should be moved into the replicated log instead, it
+  //      seems to contain all the information.
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     // already resigned
     return replicated_log::LocalStateMachineStatus::kUnconfigured;
