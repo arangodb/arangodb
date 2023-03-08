@@ -40,7 +40,7 @@ static const float RESTART_PROB = 0.15f;
 static const float EPS = 0.0000001f;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("linerank", params) {}
+    : SimpleAlgorithm(params) {}
 
 struct LRMasterContext : MasterContext {
   bool _stopNext = false;

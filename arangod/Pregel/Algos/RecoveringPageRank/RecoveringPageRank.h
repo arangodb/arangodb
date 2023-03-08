@@ -39,7 +39,11 @@ struct RecoveringPageRankType {
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   explicit RecoveringPageRank(arangodb::velocypack::Slice params)
-      : SimpleAlgorithm("pagerank", params) {}
+      : SimpleAlgorithm(params) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "pagerank";
+  };
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 

@@ -42,7 +42,7 @@ struct ReadWriteWorkerContext : public WorkerContext {
 };
 
 ReadWrite::ReadWrite(VPackSlice const& userParams)
-    : SimpleAlgorithm("readwrite", userParams) {}
+    : SimpleAlgorithm(userParams) {}
 
 struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   ReadWriteGraphFormat(std::string sourceFieldName, std::string resultFieldName)

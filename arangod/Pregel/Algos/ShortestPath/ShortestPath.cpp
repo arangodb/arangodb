@@ -93,8 +93,7 @@ struct arangodb::pregel::algos::SPGraphFormat
   }
 };
 
-ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
-    : Algorithm("ShortestPath") {
+ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams) {
   VPackSlice val1 = userParams.get("source");
   VPackSlice val2 = userParams.get("target");
   if (val1.isNone() || val2.isNone()) {

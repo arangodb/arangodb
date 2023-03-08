@@ -38,6 +38,10 @@ struct PageRankType {
 struct PageRank : public SimpleAlgorithm<float, float, float> {
   explicit PageRank(arangodb::velocypack::Slice const& params);
 
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "pagerank";
+  };
+
   GraphFormat<float, float>* inputFormat() const override;
 
   MessageFormat<float>* messageFormat() const override {

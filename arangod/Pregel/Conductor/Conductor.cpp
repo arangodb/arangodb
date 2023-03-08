@@ -469,7 +469,7 @@ ErrorCode Conductor::_initializeWorkers() {
 
     auto createWorker =
         CreateWorker{.executionNumber = _specifications.executionNumber,
-                     .algorithm = _algorithm->name(),
+                     .algorithm = std::string{_algorithm->name()},
                      .userParameters = _specifications.userParameters,
                      .coordinatorId = coordinatorId,
                      .useMemoryMaps = _specifications.useMemoryMaps,

@@ -61,15 +61,7 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  // ============= Configure runtime parameters ============
-
-  [[nodiscard]] std::string const& name() const { return _name; }
-
- protected:
-  explicit IAlgorithm(std::string name) : _name(std::move(name)) {}
-
- private:
-  std::string _name;
+  [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };
 
 // specify serialization, whatever
@@ -120,9 +112,6 @@ struct Algorithm : IAlgorithm {
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }
   }
-
- protected:
-  Algorithm(std::string const& name) : IAlgorithm(name) {}
 };
 
 template<typename V, typename E, typename M>
@@ -130,8 +119,7 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
  protected:
   std::string _sourceField, _resultField;
 
-  SimpleAlgorithm(std::string const& name, VPackSlice userParams)
-      : Algorithm<V, E, M>(name) {
+  SimpleAlgorithm(VPackSlice userParams) {
     arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
     field = userParams.get("resultField");

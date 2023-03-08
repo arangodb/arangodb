@@ -44,7 +44,11 @@ struct WCCType {
 struct WCC
     : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
  public:
-  explicit WCC(VPackSlice userParams) : SimpleAlgorithm("wcc", userParams) {}
+  explicit WCC(VPackSlice userParams) : SimpleAlgorithm(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "wcc";
+  };
 
   GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
 

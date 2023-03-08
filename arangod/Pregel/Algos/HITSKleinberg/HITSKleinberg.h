@@ -46,7 +46,7 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
  public:
   HITSKleinberg(VPackSlice userParams)
       : SimpleAlgorithm<HITSKleinbergValue, int8_t, SenderMessage<double>>(
-            "HITSKleinberg", userParams) {
+            userParams) {
     if (userParams.hasKey(Utils::maxNumIterations)) {
       numIterations = userParams.get(Utils::maxNumIterations).getInt();
     }
@@ -54,6 +54,10 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
       maxGSS = userParams.get(Utils::maxGSS).getInt();
     }
   }
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "HITSKleinberg";
+  };
 
   [[nodiscard]] GraphFormat<HITSKleinbergValue, int8_t>* inputFormat()
       const override;

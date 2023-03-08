@@ -41,8 +41,11 @@ struct EffectiveClosenessType {
 struct EffectiveCloseness
     : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
   explicit EffectiveCloseness(VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>("effectivecloseness",
-                                                     params) {}
+      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(params) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "effectivecloseness";
+  };
 
   GraphFormat<ECValue, int8_t>* inputFormat() const override;
   MessageFormat<HLLCounter>* messageFormat() const override;

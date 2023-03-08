@@ -46,8 +46,11 @@ struct LabelPropagationType {
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   explicit LabelPropagation(VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("labelpropagation",
-                                                   userParams) {}
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "labelpropagation";
+  };
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {

@@ -42,7 +42,11 @@ struct ConnectedComponents
     : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
   explicit ConnectedComponents(VPackSlice userParams)
-      : SimpleAlgorithm("connectedcomponents", userParams) {}
+      : SimpleAlgorithm(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "connectedcomponents";
+  };
 
   GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 

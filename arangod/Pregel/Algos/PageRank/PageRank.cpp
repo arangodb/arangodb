@@ -52,8 +52,7 @@ struct PRWorkerContext : public WorkerContext {
 };
 
 PageRank::PageRank(VPackSlice const& params)
-    : SimpleAlgorithm("pagerank", params),
-      _useSource(params.hasKey("sourceField")) {}
+    : SimpleAlgorithm(params), _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {

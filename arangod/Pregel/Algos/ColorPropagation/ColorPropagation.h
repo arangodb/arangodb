@@ -107,13 +107,15 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
   explicit ColorPropagation(VPackSlice userParams)
-      : Algorithm<ColorPropagationValue, int8_t, ColorPropagationMessageValue>(
-            "colorpropagation"),
-        _numColors{getNumColors(userParams)},
+      : _numColors{getNumColors(userParams)},
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
         _equivalenceClassFieldName(getEquivalenceClassFieldName(userParams)),
         _maxGss{getMaxGss(userParams)} {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "colorpropagation";
+  };
 
   [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
       const override;

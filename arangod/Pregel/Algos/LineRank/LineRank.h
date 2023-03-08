@@ -78,6 +78,10 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
   explicit LineRank(arangodb::velocypack::Slice params);
 
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "linerank";
+  };
+
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
   }

@@ -44,13 +44,17 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
 
  public:
   explicit DMID(VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {
+      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(userParams) {
     arangodb::velocypack::Slice val = userParams.get("maxCommunities");
     if (val.isInteger()) {
       _maxCommunities = (unsigned)std::min(
           (uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
     }
   }
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "DMID";
+  };
 
   GraphFormat<DMIDValue, float>* inputFormat() const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;

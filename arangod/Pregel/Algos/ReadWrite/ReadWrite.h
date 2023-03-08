@@ -40,6 +40,10 @@ using E = uint8_t;
 struct ReadWrite : public SimpleAlgorithm<V, E, V> {
   explicit ReadWrite(arangodb::velocypack::Slice const& params);
 
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "readwrite";
+  };
+
   [[nodiscard]] GraphFormat<V, E>* inputFormat() const override;
 
   [[nodiscard]] MessageFormat<V>* messageFormat() const override {

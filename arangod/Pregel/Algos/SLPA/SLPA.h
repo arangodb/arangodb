@@ -102,7 +102,7 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
 
  public:
   explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>(userParams) {
     arangodb::velocypack::Slice val = userParams.get("threshold");
     if (val.isNumber()) {
       _threshold = std::min(1.0, std::max(val.getDouble(), 0.0));
@@ -113,6 +113,10 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
           (uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
     }
   }
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "slpa";
+  };
 
   GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {

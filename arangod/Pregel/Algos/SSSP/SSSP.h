@@ -43,24 +43,11 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  explicit SSSPAlgorithm(VPackSlice userParams) : Algorithm("sssp") {
-    if (!userParams.isObject() || !userParams.hasKey("source")) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "You need to specify the source document id");
-    }
-    _sourceDocumentId = userParams.get("source").copyString();
+  explicit SSSPAlgorithm(VPackSlice userParams);
 
-    VPackSlice slice = userParams.get("resultField");
-    if (slice.isString()) {
-      _resultField = slice.copyString();
-    } else {
-      VPackSlice slice = userParams.get("_resultField");
-      if (slice.isString()) {
-        _resultField = slice.copyString();
-      }
-    }
-  }
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "sssp";
+  };
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
 

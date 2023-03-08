@@ -53,8 +53,11 @@ struct HITSType {
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   explicit HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("hits",
-                                                                  userParams) {}
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "hits";
+  };
 
   [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
