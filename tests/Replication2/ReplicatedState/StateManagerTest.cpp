@@ -29,13 +29,14 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
+#include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
-#include "Replication2/Mocks/FakeAsyncExecutor.h"
-#include "Replication2/Mocks/ParticipantsFactoryMock.h"
+#include "Replication2/Mocks/LeaderCommunicatorMock.h"
 #include "Replication2/Mocks/MockVocbase.h"
+#include "Replication2/Mocks/ParticipantsFactoryMock.h"
+#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
 
@@ -156,11 +157,12 @@ struct FakeFollowerFactory
 
   auto constructLeaderCommunicator(ParticipantId const& participantId)
       -> std::shared_ptr<replicated_log::ILeaderCommunicator> override {
-    return nullptr;
+    return leaderComm;
   }
 
   TRI_vocbase_t& vocbase;
   replication2::LogId id;
+  std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
 };
 
 struct StateManagerTest : testing::Test {
@@ -386,6 +388,122 @@ TEST_F(StateManagerTest,
         << appendEntriesResponse.errorCode;
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
   }
+
+  {
+    // The state machine should now be operational and accessible.
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kOperational);
+    auto const stateMachine = state->getFollower();
+    EXPECT_NE(stateMachine, nullptr);
+  }
+}
+
+TEST_F(
+    StateManagerTest,
+    get_follower_state_machine_early_without_snapshot_append_entries_before_snapshot) {
+  // Overview:
+  //  - start without a snapshot
+  //  - check follower state machine: should be inaccessible
+  //  - send successful append entries request
+  //  - let the state machine acquire a snapshot
+  //  - check follower state machine: should now be accessible
+  storageContext->meta = replicated_state::PersistedStateInfo{
+      .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
+  auto const leaderComm =
+      std::make_shared<replication2::tests::LeaderCommunicatorMock>();
+  fakeFollowerFactory->leaderComm = leaderComm;
+
+  auto const term = LogTerm{1};
+  auto const planTerm = agency::LogPlanTermSpecification{term, other};
+  auto const config = agency::ParticipantsConfig{
+      1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
+      agency::LogPlanConfig{}};
+
+  futures::Promise<Result> p;
+  EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{1}))
+      .WillOnce([&](MessageId) { return p.getFuture(); });
+  log->updateConfig(planTerm, config, myself);
+  {
+    auto const logStatus = log->getQuickStatus();
+    ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+
+    // The state machine should be constructed, but is without a snapshot. It
+    // must not be accessible and should return unconfigured.
+    // TODO maybe we want to introduce some "initializing" state?
+    EXPECT_NE(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  auto const follower =
+      std::dynamic_pointer_cast<ILogFollower>(log->getParticipant());
+  ASSERT_NE(follower, nullptr);
+  auto const leaderId = other.serverId;
+  // Send an append entries request, just with the leader-establishing log
+  // entry.
+  auto appendEntriesFuture = std::invoke([&] {
+    auto const waitForSync = true;
+    auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = leaderId,
+                                                 .participants = config};
+    auto payload = LogMetaPayload{std::move(meta)};
+    auto const termIndexPair = TermIndexPair(term, LogIndex(1));
+    auto logEntry = InMemoryLogEntry(
+        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+    auto request = AppendEntriesRequest(
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(0),
+        LogIndex(0), MessageId(1), waitForSync,
+        AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
+    return follower->appendEntries(request);
+  });
+  EXPECT_FALSE(appendEntriesFuture.isReady());
+
+  // The append entries request has now been received, but not processed (i.e.
+  // not written to disk) yet.
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    // Should still be waiting whether the snapshot will be valid in the current
+    // term.
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kUnconfigured);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  // Process the append entries request, i.e. write to disk.
+  executor->runOnce();
+  EXPECT_FALSE(executor->hasWork());
+
+  // The append entries response should be ready.
+  {
+    ASSERT_TRUE(appendEntriesFuture.isReady());
+    ASSERT_TRUE(appendEntriesFuture.hasValue());
+    auto const appendEntriesResponse = appendEntriesFuture.get();
+    EXPECT_TRUE(appendEntriesResponse.isSuccess())
+        << appendEntriesResponse.errorCode;
+    EXPECT_FALSE(appendEntriesResponse.snapshotAvailable);
+  }
+
+  // The snapshot wasn't acquired yet, so the state machine must not be
+  // accessible.
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    // Should still be waiting whether the snapshot will be valid in the current
+    // term.
+    EXPECT_EQ(logStatus.localState,
+              LocalStateMachineStatus::kAcquiringSnapshot);
+    auto const stateMachine = state->getFollower();
+    EXPECT_EQ(stateMachine, nullptr);
+  }
+
+  // Acquire the snapshot
+  p.setValue(Result{});
+  scheduler->runOnce();
+  // We should have converged to a stable state now.
+  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_FALSE(executor->hasWork());
 
   {
     // The state machine should now be operational and accessible.
