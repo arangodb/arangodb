@@ -704,8 +704,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
     auto filter = [&eslintPath, &binDirectory,
                    &copied](std::string const& filename) -> bool {
-      if (filename.size() >= 4 &&
-          filename.compare(filename.size() - 4, 4, ".map") == 0) {
+      if (filename.ends_with(".map")) {
         // filename ends with ".map". filter it out!
         return true;
       }
