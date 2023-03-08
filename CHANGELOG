@@ -1,6 +1,15 @@
 devel
 -----
 
+* APM-283: Use parallel gather in almost all queries. The only case were we
+  still cannot use parallel gather is when using traversals. All other queries
+  should now be able to parallelize the gather node. This can not only speed up
+  queries quite significantly, but also reduce the memory required by the
+  coordinator for queries like `FOR i IN @n INSERT {} INTO collection`. The
+  serial gather node processes one db server after the other, but since the new
+  documents should be distributed evenly over all shards, the coordinator has
+  to buffer documents that need to be sent to other servers.
+
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
 * Allow usage of projections and covering indexes in more cases.
