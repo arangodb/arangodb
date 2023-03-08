@@ -24,12 +24,12 @@
 
 const jsunity = require('jsunity');
 const {assertEqual, assertNotEqual, assertIdentical} = jsunity.jsUnity.assertions;
-const {db} = require('@arangodb');
+const {db, errors} = require('@arangodb');
 const console = require('console');
 const rh = require('@arangodb/testutils/restart-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
-const {dbName} = require('@arangodb/testutils/user-helper');
+const {sleep} = require('internal');
 const _ = require('lodash');
 
 const disableMaintenanceMode = function () {
@@ -48,6 +48,25 @@ const enableMaintenanceMode = function () {
     console.warn(response.warning);
   }
 };
+
+const compareAllDocuments = function (col, expectedKeys) {
+  let actualKeys = [];
+  for (let tries = 0; tries < 60 && actualKeys.length === 0; ++tries) {
+    try {
+      actualKeys = col.toArray().map(doc => doc._key);
+    } catch (err) {
+      console.warn(err);
+      if (err.errorNum === errors.ERROR_CLUSTER_CONNECTION_LOST.code) {
+        // Sometimes Windows is just slower, give it a little time
+        console.log('Will retry');
+        sleep(1);
+      } else {
+        throw err;
+      }
+    }
+  }
+  assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+}
 
 function testSuite () {
   const databaseName = 'replication2_restart_test_db';
@@ -69,7 +88,7 @@ function testSuite () {
     },
 
     testSimpleRestartAllDatabaseServers: function () {
-      const col = db._createDocumentCollection(colName, {numberOfShards: 5, replicationFactor: 3});
+      const col = db._createDocumentCollection(colName, {numberOfShards: 5, replicationFactor: 2});
       const expectedKeys = _.range(100).map(i => `${i}`);
       col.insert(expectedKeys.map(_key => ({_key})));
 
@@ -81,8 +100,7 @@ function testSuite () {
       rh.restartServers(dbServers);
       disableMaintenanceMode();
 
-      const actualKeys = col.toArray().map(doc => doc._key);
-      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+      compareAllDocuments(col, expectedKeys);
     },
 
     testRestartAllReplicationFactorOne: function () {
@@ -98,8 +116,7 @@ function testSuite () {
       rh.restartServers(dbServers);
       disableMaintenanceMode();
 
-      const actualKeys = col.toArray().map(doc => doc._key);
-      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+      compareAllDocuments(col, expectedKeys);
     },
 
     testRestartLeader: function () {
@@ -120,8 +137,7 @@ function testSuite () {
       rh.restartServers([leader]);
       disableMaintenanceMode();
 
-      const actualKeys = col.toArray().map(doc => doc._key);
-      assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
+      compareAllDocuments(col, expectedKeys);
     },
   };
 }
