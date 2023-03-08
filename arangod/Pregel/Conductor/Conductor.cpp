@@ -769,6 +769,7 @@ void Conductor::persistPregelState(ExecutionState state) {
 
   VPackBuilder debugOut;
   debugOut.openObject();
+  debugOut.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   debugOut.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(debugOut);
   debugOut.close();
