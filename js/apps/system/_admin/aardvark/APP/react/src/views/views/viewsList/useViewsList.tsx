@@ -8,10 +8,13 @@ export type SearchViewType = {
   id: string;
   name: string;
   type: "search-alias" | "arangosearch";
-  isLocked?: boolean;
 };
+
+export interface SearchViewTypeWithLock extends SearchViewType {
+  isLocked?: boolean;
+}
 interface ViewsListResponse extends ArangojsResponse {
-  body: { result: Array<SearchViewType> };
+  body: { result: Array<SearchViewTypeWithLock> };
 }
 
 export const useViewsList = ({

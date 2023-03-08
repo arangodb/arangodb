@@ -1,9 +1,9 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
 import { useHistory } from "react-router-dom";
-import { SearchViewType } from "./useViewsList";
+import { SearchViewTypeWithLock } from "./useViewsList";
 
-export const ViewTile = ({ view }: { view: SearchViewType }) => {
+export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
   const history = useHistory();
   return (
     <Box
