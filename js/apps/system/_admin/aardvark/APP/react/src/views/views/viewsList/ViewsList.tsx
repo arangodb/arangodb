@@ -24,11 +24,11 @@ export const ViewsList = () => {
 const ViewsListInner = () => {
   const [searchValue, setSearchValue] = useState("");
   const [sortDescending, setSortDescending] = useState(false);
-  const { viewsList, isValidating } = useViewsList({
+  const { viewsList, isLoading } = useViewsList({
     searchValue,
     sortDescending
   });
-  if (!viewsList && isValidating) {
+  if (!viewsList && isLoading) {
     return <Spinner />;
   }
   if (!viewsList) {
