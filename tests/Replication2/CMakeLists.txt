@@ -1,31 +1,31 @@
 set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
-        #Helper/WaitForQueue.cpp
-        #Mocks/AsyncFollower.cpp
-        #Mocks/AsyncFollower.h
-        #Mocks/AsyncLeader.cpp
-        #Mocks/FakeAbstractFollower.h
-        #Mocks/FakeFailureOracle.cpp
-        #Mocks/FakeFailureOracle.h
-        Mocks/FakeFollower.cpp
-        Mocks/FakeFollower.h
-        #Mocks/FakeLeader.cpp
-        #Mocks/FakeLeader.h
-        #Mocks/FakeReplicatedLog.cpp
-        #Mocks/FakeReplicatedLog.h
-        #Mocks/PersistedLog.cpp
-        #Mocks/PersistedLog.cpp
-        #Mocks/PersistedLog.h
-        #Mocks/PersistedLog.h
-        #ReplicatedLog/TestHelper.cpp
+  #Helper/WaitForQueue.cpp
+  #Mocks/AsyncFollower.cpp
+  #Mocks/AsyncFollower.h
+  #Mocks/AsyncLeader.cpp
+  #Mocks/FakeAbstractFollower.h
+  #Mocks/FakeFailureOracle.cpp
+  #Mocks/FakeFailureOracle.h
+  Mocks/FakeFollower.cpp
+  Mocks/FakeFollower.h
+  #Mocks/FakeLeader.cpp
+  #Mocks/FakeLeader.h
+  #Mocks/FakeReplicatedLog.cpp
+  #Mocks/FakeReplicatedLog.h
+  #Mocks/PersistedLog.cpp
+  #Mocks/PersistedLog.cpp
+  #Mocks/PersistedLog.h
+  #Mocks/PersistedLog.h
+  #ReplicatedLog/TestHelper.cpp
 
-        Mocks/ParticipantsFactoryMock.h
-        Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
-        Mocks/ReplicatedStateMetricsMock.cpp Mocks/ReplicatedStateMetricsMock.h
+  Mocks/ParticipantsFactoryMock.h
+  Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
+  Mocks/ReplicatedStateMetricsMock.cpp Mocks/ReplicatedStateMetricsMock.h
 
-        Mocks/DocumentStateMocks.cpp Mocks/DocumentStateMocks.h
-        Mocks/MockVocbase.h
-        Mocks/LeaderCommunicatorMock.h
-        )
+  Mocks/DocumentStateMocks.cpp Mocks/DocumentStateMocks.h
+  Mocks/MockVocbase.h
+  Mocks/LeaderCommunicatorMock.h
+  )
 
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
