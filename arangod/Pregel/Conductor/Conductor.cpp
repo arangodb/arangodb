@@ -56,6 +56,7 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -754,6 +755,59 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.close();
 }
 
+void Conductor::persistPregelState(ExecutionState state) {
+  // Persist current pregel state into historic pregel system collection.
+
+  statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
+                                               _specifications.executionNumber};
+  // Replace this later
+  // TODO: ongoing <WIP>
+  // Note: I wanted to just use the toVelocyPack method. This fails because of
+  // the mutex there. Therefore temporarly, I'll write data that works for now.
+  // VPackBuilder b;
+  // toVelocyPack(b);
+
+  VPackBuilder debugOut;
+  debugOut.openObject();
+  debugOut.add("stats", VPackValue(VPackValueType::Object));
+  _statistics.serializeValues(debugOut);
+  debugOut.close();
+  _aggregators->serializeValues(debugOut);
+  debugOut.close();
+  // Replace this later
+
+  TRI_ASSERT(state != ExecutionState::DEFAULT);
+  if (state == ExecutionState::LOADING) {
+    // During state LOADING we need to initially create the document in the
+    // collection
+    auto storeResult = cWriter.createResult(debugOut.slice());
+    if (storeResult.ok()) {
+      LOG_PREGEL("063x1", INFO)
+          << "Stored result into: \"" << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    } else {
+      LOG_PREGEL("063x2", INFO)
+          << "Could not store result into: \""
+          << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    }
+  } else {
+    // During all other states, we will just simply update the already created
+    // document
+    auto updateResult = cWriter.updateResult(debugOut.slice());
+    if (updateResult.ok()) {
+      LOG_PREGEL("063x1", INFO)
+          << "Updated state into: \"" << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    } else {
+      LOG_PREGEL("063x2", INFO)
+          << "Could not store result into: \""
+          << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    }
+  }
+}
+
 ErrorCode Conductor::_sendToAllDBServers(std::string const& path,
                                          VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
@@ -848,4 +902,6 @@ void Conductor::updateState(ExecutionState state) {
       _state == ExecutionState::FATAL_ERROR) {
     _expires = std::chrono::system_clock::now() + _specifications.ttl.duration;
   }
+
+  persistPregelState(state);
 }

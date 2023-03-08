@@ -126,6 +126,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void cancel();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void persistPregelState(ExecutionState state);
 
   bool canBeGarbageCollected() const;
 
