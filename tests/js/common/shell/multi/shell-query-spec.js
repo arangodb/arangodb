@@ -287,11 +287,11 @@ describe('AQL query analyzer', function () {
       const filterQueries = (q) => q.query === query;
       
       testee.properties({
-        slowQueryThreshold: 2
+        slowQueryThreshold: 0.2
       });
 
       let now = (new Date()).toISOString();
-      internal.db._query(query, { amount: 20000 });
+      internal.db._query(query, { amount: 5000 });
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       let queries = testee.slow().filter(filterQueries);
       expect(queries.length).to.equal(1);
@@ -300,7 +300,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('user', 'root');
       expect(queries[0]).to.have.property('query', query);
       expect(queries[0]).to.have.property('bindVars');
-      expect(queries[0].bindVars).to.eql({ amount: 20000 });
+      expect(queries[0].bindVars).to.eql({ amount: 5000 });
       expect(queries[0]).to.have.property('started');
       expect(queries[0].started).to.be.greaterThan(now);
       expect(queries[0]).to.have.property('runTime');
