@@ -331,7 +331,7 @@ export const ViewContext = createContext({
   dispatch: noop,
   isAdminUser: false,
   changed: false,
-  setChanged: noop
+  setChanged: noop,
 });
 
 export type ViewProps = Pick<BaseFormState, 'name'>;

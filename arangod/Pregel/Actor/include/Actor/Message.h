@@ -50,6 +50,8 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
   return f.object(x).fields(f.field("payload", x.payload));
 }
 
+namespace message {
+
 struct UnknownMessage {
   ActorPID sender;
   ActorPID receiver;
@@ -106,6 +108,7 @@ template<typename T>
 struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
   using concatenator<typename T::variant, ActorError::variant>::concatenator;
 };
+}  // namespace message
 
 }  // namespace arangodb::pregel::actor
 
@@ -113,11 +116,11 @@ template<typename Payload>
 struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::UnknownMessage>
+struct fmt::formatter<arangodb::pregel::actor::message::UnknownMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::ActorNotFound>
+struct fmt::formatter<arangodb::pregel::actor::message::ActorNotFound>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::NetworkError>
+struct fmt::formatter<arangodb::pregel::actor::message::NetworkError>
     : arangodb::inspection::inspection_formatter {};
