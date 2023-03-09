@@ -40,6 +40,9 @@ struct DocumentLogEntry {
   ReplicatedOperation operation;
 
   auto& getInnerOperation() noexcept { return operation.operation; }
+  [[nodiscard]] auto const& getInnerOperation() const noexcept {
+    return operation.operation;
+  }
 
   template<typename Inspector>
   friend auto inspect(Inspector& f, DocumentLogEntry& x) {

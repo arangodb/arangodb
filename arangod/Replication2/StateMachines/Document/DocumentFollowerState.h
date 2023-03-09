@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -75,6 +76,19 @@ struct DocumentFollowerState
     explicit GuardedData(std::unique_ptr<DocumentCore> core)
         : core(std::move(core)), currentSnapshotVersion{0} {};
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
+
+    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
