@@ -3,7 +3,7 @@ devel
 
 * Updated internal JavaScript dependencies:
 
-  - @xmldom/xmldom: 8.6.0 -> 0.8.6
+  - @xmldom/xmldom: 0.8.0 -> 0.8.6
   - accepts: 1.3.7 -> 1.3.8
   - ajv: 8.10.0 -> 8.12.0
   - ansi_up: 5.0.1 -> 5.1.0
