@@ -115,8 +115,8 @@ export const SearchAliasProvider = ({
     } else {
       console.log("not changed!!", { view, initialView });
       setChanged(false);
-      window.sessionStorage.setItem(`${initialView.name}-changed`, "false");
-      window.sessionStorage.setItem(`${initialView.name}`, "");
+      window.sessionStorage.removeItem(`${initialView.name}-changed`);
+      window.sessionStorage.removeItem(`${initialView.name}`);
     }
   }, [initialView, view]);
 
