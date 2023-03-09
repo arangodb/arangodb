@@ -1,6 +1,6 @@
 import React from "react";
 
-import Select, { components, OptionProps, Props,  } from "react-select";
+import Select, { components, OptionProps, Props } from "react-select";
 export type OptionType = {
   value: string;
   label: string;
@@ -14,7 +14,9 @@ const Option = (props: OptionProps<OptionType>) => {
   );
 };
 
-export const getSelectBase = (SelectComponent: Select) => (props: Props<OptionType>) => (
+export const getSelectBase = (SelectComponent: Select) => (
+  props: Props<OptionType>
+) => (
   <SelectComponent
     {...props}
     menuPortalTarget={document.body}
@@ -29,6 +31,7 @@ export const getSelectBase = (SelectComponent: Select) => (props: Props<OptionTy
         overflow: "hidden",
         textOverflow: "ellipsis"
       }),
+      menuPortal: base => ({ ...base, zIndex: 9999 }),
       input: baseStyles => ({
         ...baseStyles,
         "> input": {

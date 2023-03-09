@@ -70,13 +70,6 @@ export const AnalyzersDropdown = ({
       options={options}
       noOptionsMessage={() => "Analyzer does not exist."}
       placeholder={"Start typing for suggestions."}
-      styles={{
-        option: baseStyles => ({
-          ...baseStyles,
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        })
-      }}
       isDisabled={isDisabled}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
