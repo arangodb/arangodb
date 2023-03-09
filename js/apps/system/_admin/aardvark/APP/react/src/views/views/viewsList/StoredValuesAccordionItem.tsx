@@ -61,7 +61,7 @@ const StoredValuesFields = () => {
                   alignItems={"end"}
                   key={index}
                 >
-                  <Box>
+                  <Box minWidth={"0"}>
                     <FormLabel htmlFor={`storedValues.${index}.fields`}>
                       Fields
                     </FormLabel>
@@ -72,7 +72,7 @@ const StoredValuesFields = () => {
                       name={`storedValues.${index}.fields`}
                     />
                   </Box>
-                  <Box>
+                  <Box minWidth={"0"}>
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
