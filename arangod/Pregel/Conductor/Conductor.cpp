@@ -896,5 +896,8 @@ void Conductor::updateState(ExecutionState state) {
     _expires = std::chrono::system_clock::now() + _specifications.ttl.duration;
   }
 
-  persistPregelState(state);
+  if (!_shutdown) {
+    // Only persist the state if we're not in shutdown phase.
+    persistPregelState(state);
+  }
 }

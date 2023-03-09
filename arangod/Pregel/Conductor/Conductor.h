@@ -94,6 +94,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _created;
   std::chrono::system_clock::time_point _expires;
   ExecutionTimings _timing;
+  /// Variable to identify whether ArangoDB is in shutdown mode.
+  bool _shutdown{false};
   // Work in Progress: Move data incrementally into this
   // struct; sort it into categories and make it (de)serialisable
   // with the Inspecotr framework

@@ -676,6 +676,7 @@ void PregelFeature::beginShutdown() {
 
   // cancel all conductors and workers
   for (auto& it : _conductors) {
+    it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
   for (auto it : _workers) {
