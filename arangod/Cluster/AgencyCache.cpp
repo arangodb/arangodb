@@ -216,20 +216,19 @@ void AgencyCache::handleCallbacksNoLock(
   for (auto const& cb : _callbacks) {
     auto const& cbkey = cb.first;
     auto it = std::lower_bound(keys.begin(), keys.end(), cbkey);
-    if (it != keys.end() && it->compare(0, cbkey.size(), cbkey) == 0) {
+    if (it != keys.end() && it->starts_with(cbkey)) {
       if (uniq.emplace(cb.second).second) {
         toCall.push_back(cb.second);
       }
     }
   }
 
-  std::unordered_set<std::string> dbs;
   const char SLASH('/');
 
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
     auto it = _callbacks.lower_bound(k);
-    while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
+    while (it != _callbacks.end() && it->first.starts_with(k)) {
       if (uniq.emplace(it->second).second) {
         toCall.push_back(it->second);
       }

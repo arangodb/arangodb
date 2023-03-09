@@ -37,7 +37,6 @@
 
 #include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
-#include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
@@ -45,6 +44,7 @@
 
 namespace arangodb {
 class Endpoint;
+class Result;
 
 namespace application_features {
 class ApplicationServer;

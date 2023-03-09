@@ -62,11 +62,7 @@
       'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'viewSettings',
-      // 'view/:name/info': 'viewInfo',
-      // 'view/:name/consolidation': 'viewConsolidation',
-      'view/:name/links': 'viewLinks',
-      'view/:name/links/*link': 'viewLinks',
-      'view/:name/json': 'viewJSON',
+      'view/:name/*link': 'viewSettings',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -276,15 +272,6 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      if (frontendConfig.foxxStoreEnabled) {
-        this.foxxRepo.fetch({
-          success: function () {
-            if (self.serviceInstallView) {
-              self.serviceInstallView.collection = self.foxxRepo;
-            }
-          }
-        });
-      }
 
       window.progressView = new window.ProgressView();
 
@@ -331,9 +318,6 @@
           cache: false
         });
 
-        this.footerView = new window.FooterView({
-          collection: self.coordinatorCollection
-        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -354,8 +338,6 @@
 
         this.queryCollection = new window.ArangoQueries();
 
-        this.footerView.render();
-
         window.checkVersion();
 
         this.userConfig = new window.UserConfig({
@@ -370,6 +352,16 @@
         });
 
         arangoHelper.initSigma();
+
+        if (frontendConfig.foxxStoreEnabled) {
+          this.foxxRepo.fetch({
+            success: function () {
+              if (self.serviceInstallView) {
+                self.serviceInstallView.collection = self.foxxRepo;
+              }
+            }
+          });
+        }
       }).bind(this);
 
       $(window).on('resize', function () {
@@ -1345,15 +1337,6 @@
         this.userManagementView.render(true);
       });
     },
-
-    viewInfo: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
-          document.getElementById('content')));
-    },
-
     viewSettings: function (name) {
       this.checkUser();
 
@@ -1361,31 +1344,6 @@
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
           document.getElementById('content')));
     },
-
-    viewConsolidation: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewLinks: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewJSON: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
-          document.getElementById('content')));
-    },
-
     views: function () {
       this.checkUser();
 
