@@ -89,8 +89,8 @@ bool equalFields(IResearchLinkMeta::Fields const& lhs,
   }
 
   for (auto const notFoundField = rhs.end(); auto& entry : lhs) {
-    auto rhsField = rhs.find(entry.key());
-    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
+    auto rhsField = rhs.find(entry.first);
+    if (rhsField == notFoundField || rhsField->second != entry.second) {
       return false;
     }
   }
@@ -413,9 +413,9 @@ bool FieldMeta::init(
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+        if (!_fields[name].init(server, value, childErrorField, defaultVocbase,
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
@@ -463,9 +463,9 @@ bool FieldMeta::init(
 
         std::string childErrorField;
 
-        if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+        if (!_nested[name].init(server, value, childErrorField, defaultVocbase,
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
@@ -479,7 +479,7 @@ bool FieldMeta::init(
   _hasNested = !_nested.empty();
   if (!_hasNested) {
     for (auto const& f : _fields) {
-      if (!f.value()->_nested.empty()) {
+      if (!f.second._nested.empty()) {
         _hasNested = true;
         break;
       }
@@ -546,16 +546,13 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.openObject();
 
     for (auto& entry : _fields) {
-      fieldMask._fields =
-          !entry.value()
-               ->_fields.empty();  // do not output empty fields on subobjects
-      fieldsBuilder.add(           // add sub-object
-          std::string_view(entry.key().data(),
-                           entry.key().size()),  // field name
-          VPackValue(velocypack::ValueType::Object));
+      // do not output empty fields on subobjects
+      fieldMask._fields = !entry.second._fields.empty();
+      // add sub-object
+      fieldsBuilder.add(entry.first, VPackValue(velocypack::ValueType::Object));
 
-      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
-                               defaultVocbase, &fieldMask)) {
+      if (!entry.second.json(server, fieldsBuilder, &subDefaults,
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 
@@ -573,13 +570,11 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
 
     for (auto& entry : _nested) {
       // do not output empty fields on subobjects
-      fieldMask._fields = !entry.value()->_fields.empty();
-      fieldsBuilder.add(
-          std::string_view(entry.key().data(), entry.key().size()),
-          VPackValue(velocypack::ValueType::Object));
+      fieldMask._fields = !entry.second._fields.empty();
+      fieldsBuilder.add(entry.first, VPackValue(velocypack::ValueType::Object));
 
-      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
-                               defaultVocbase, &fieldMask)) {
+      if (!entry.second.json(server, fieldsBuilder, &subDefaults,
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 
@@ -636,8 +631,8 @@ size_t FieldMeta::memory() const noexcept {
   size += _fields.size() * sizeof(decltype(_fields)::value_type);
 
   for (auto& entry : _fields) {
-    size += entry.key().size();
-    size += entry.value()->memory();
+    size += entry.first.size();
+    size += entry.second.memory();
   }
 
   return size;

@@ -48,7 +48,7 @@ Querying the status of a done job:
 @END_EXAMPLE_ARANGOSH_RUN
 
 Querying the status of a pending job:
-(therefore we create a long runnging job...)
+(therefore we create a long running job...)
 
 @EXAMPLE_ARANGOSH_RUN{job_getStatusById_02}
   var url = "/_api/transaction";

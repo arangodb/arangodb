@@ -35,7 +35,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
@@ -53,6 +52,16 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -810,12 +819,13 @@ template class arangodb::pregel::GraphStore<double, double>;
 template class arangodb::pregel::GraphStore<float, uint8_t>;
 
 // specific algo combos
-template class arangodb::pregel::GraphStore<WCCValue, uint64_t>;
-template class arangodb::pregel::GraphStore<SCCValue, int8_t>;
-template class arangodb::pregel::GraphStore<ECValue, int8_t>;
-template class arangodb::pregel::GraphStore<HITSValue, int8_t>;
-template class arangodb::pregel::GraphStore<HITSKleinbergValue, int8_t>;
-template class arangodb::pregel::GraphStore<DMIDValue, float>;
-template class arangodb::pregel::GraphStore<LPValue, int8_t>;
-template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
-template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::WCCValue, uint64_t>;
+template class arangodb::pregel::GraphStore<algos::SCCValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::ECValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::HITSValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::HITSKleinbergValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::DMIDValue, float>;
+template class arangodb::pregel::GraphStore<algos::LPValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::SLPAValue, int8_t>;
+template class arangodb::pregel::GraphStore<algos::ColorPropagationValue,
+                                            int8_t>;

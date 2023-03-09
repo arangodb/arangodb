@@ -45,10 +45,6 @@ class Slice;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class IndexNode;
-class UpdateNode;
-class ReplaceNode;
-class RemoveNode;
 struct Collection;
 
 /// @brief class RemoteNode

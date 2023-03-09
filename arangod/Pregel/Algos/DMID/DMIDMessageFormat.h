@@ -27,7 +27,6 @@
 
 #pragma once
 
-#include "Pregel/CommonFormats.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"

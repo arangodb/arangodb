@@ -24,11 +24,39 @@
 
 #include <map>
 
+#include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
+#include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 
 namespace arangodb::pregel {
+
+namespace conductor::message {
+
+struct ConductorStart {};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorStart& x) {
+  return f.object(x).fields();
+}
+struct WorkerCreated {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerCreated& x) {
+  return f.object(x).fields();
+}
+struct ConductorMessages
+    : std::variant<ConductorStart, ResultT<WorkerCreated>> {
+  using std::variant<ConductorStart, ResultT<WorkerCreated>>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<ConductorStart>("Start"),
+      arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"));
+}
+
+}  // namespace conductor::message
 
 // TODO split LoadGraph off CreateWorker
 struct CreateWorker {

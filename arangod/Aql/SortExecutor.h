@@ -28,11 +28,11 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -40,6 +40,10 @@ class TemporaryStorageFeature;
 
 namespace transaction {
 class Methods;
+}
+
+namespace velocypack {
+struct Options;
 }
 
 namespace aql {

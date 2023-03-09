@@ -29,6 +29,7 @@ var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
+const cluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: babies for documents
@@ -45,7 +46,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       collection = db._create(cn, {
         waitForSync: false
@@ -56,7 +57,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function() {
+    tearDown: function () {
       if (collection) {
         collection.unload();
         collection.drop();
@@ -69,7 +70,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMulti: function() {
+    testInsertRemoveMulti: function () {
       var docs = collection.insert([{}, {}, {}]);
       assertEqual(docs.length, 3);
       collection.remove(docs);
@@ -80,10 +81,10 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by key
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMultiByKey: function() {
+    testInsertRemoveMultiByKey: function () {
       var docs = collection.insert([{}, {}, {}]);
       assertEqual(docs.length, 3);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._key;
       }));
       assertEqual(collection.count(), 0);
@@ -93,10 +94,10 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by id
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMultiById: function() {
+    testInsertRemoveMultiById: function () {
       var docs = collection.insert([{}, {}, {}]);
       assertEqual(docs.length, 3);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._id;
       }));
       assertEqual(collection.count(), 0);
@@ -106,7 +107,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMultiMany: function() {
+    testInsertRemoveMultiMany: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -123,7 +124,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by key, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMultiManyByKey: function() {
+    testInsertRemoveMultiManyByKey: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -132,7 +133,7 @@ function CollectionDocumentSuiteBabies() {
       }
       var docs = collection.insert(l);
       assertEqual(docs.length, l.length);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._key;
       }));
       assertEqual(collection.count(), 0);
@@ -142,7 +143,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by id, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertRemoveMultiManyById: function() {
+    testInsertRemoveMultiManyById: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -151,7 +152,7 @@ function CollectionDocumentSuiteBabies() {
       }
       var docs = collection.insert(l);
       assertEqual(docs.length, l.length);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._id;
       }));
       assertEqual(collection.count(), 0);
@@ -161,7 +162,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents w. given key and remove them again
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMulti: function() {
+    testInsertWithKeyRemoveMulti: function () {
       var docs = collection.insert([{
         _key: "a"
       }, {
@@ -178,7 +179,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by key
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMultiByKey: function() {
+    testInsertWithKeyRemoveMultiByKey: function () {
       var docs = collection.insert([{
         _key: "a"
       }, {
@@ -187,7 +188,7 @@ function CollectionDocumentSuiteBabies() {
         _key: "c"
       }]);
       assertEqual(docs.length, 3);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._key;
       }));
       assertEqual(collection.count(), 0);
@@ -197,7 +198,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by id
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMultiById: function() {
+    testInsertWithKeyRemoveMultiById: function () {
       var docs = collection.insert([{
         _key: "a"
       }, {
@@ -206,7 +207,7 @@ function CollectionDocumentSuiteBabies() {
         _key: "c"
       }]);
       assertEqual(docs.length, 3);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._id;
       }));
       assertEqual(collection.count(), 0);
@@ -216,7 +217,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMultiMany: function() {
+    testInsertWithKeyRemoveMultiMany: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -234,7 +235,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by key, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMultiManyByKey: function() {
+    testInsertWithKeyRemoveMultiManyByKey: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -244,7 +245,7 @@ function CollectionDocumentSuiteBabies() {
       }
       var docs = collection.insert(l);
       assertEqual(docs.length, l.length);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._key;
       }));
       assertEqual(collection.count(), 0);
@@ -254,7 +255,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert multiple documents and remove them again by id, many case
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertWithKeyRemoveMultiManyById: function() {
+    testInsertWithKeyRemoveMultiManyById: function () {
       var l = [];
       for (var i = 0; i < 10000; i++) {
         l.push({
@@ -264,7 +265,7 @@ function CollectionDocumentSuiteBabies() {
       }
       var docs = collection.insert(l);
       assertEqual(docs.length, l.length);
-      collection.remove(docs.map(function(x) {
+      collection.remove(docs.map(function (x) {
         return x._id;
       }));
       assertEqual(collection.count(), 0);
@@ -274,11 +275,11 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert with unique constraint violation
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertErrorUniqueConstraint: function() {
+    testInsertErrorUniqueConstraint: function () {
       collection.insert([{
         _key: "a"
       }]);
-      var docs =  collection.insert([{
+      var docs = collection.insert([{
         _key: "b"
       }, {
         _key: "a"
@@ -305,30 +306,66 @@ function CollectionDocumentSuiteBabies() {
     /// @brief insert with bad key types
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertErrorBadKey: function() {
+    testInsertErrorBadKey: function () {
       var l = [null, false, true, 1, -1, {},
         []
       ];
-      l.forEach(function(k) {
-        var docs = collection.insert([{
+      l.forEach(function (k) {
+        const batch = [{
           _key: "a"
         }, {
           _key: k
-        }]);
+        }];
+
+        const docs = collection.insert(batch);
         assertEqual(docs.length, 2);
         assertEqual(docs[0]._key, "a");
         assertTrue(docs[1].error);
         assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
         collection.remove("a");
+        assertEqual(collection.count(), 0);
       });
-      assertEqual(collection.count(), 0);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief insert with bad key types
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsertErrorBadStringKey: function () {
+      // in comparison to the above test, this test also tests the behaviour
+      // if a string-based user key has been supplied, but is invalid. In that case
+      // the cluster will forbid any insertion of all elements inside that batch.
+      const batch = [{
+        _key: "validKey"
+      }, {
+        _key: "invalid whitespace inbetween"
+      }];
+
+      if (cluster) {
+        try {
+          collection.insert(batch);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
+            err.errorNum);
+        }
+        assertEqual(collection.count(), 0);
+      } else {
+        const docs = collection.insert(batch);
+        assertEqual(docs.length, 2);
+        assertEqual(docs[0]._key, "validKey");
+        assertTrue(docs[1].error);
+        assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+        collection.remove("validKey");
+        assertEqual(collection.count(), 0);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief database methods _replace and _update and _remove cannot do babies:
     ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorDatabaseMethodsNoBabies: function() {
+    testErrorDatabaseMethodsNoBabies: function () {
       collection.insert({
         _key: "b"
       });
@@ -366,7 +403,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief replace multiple documents
     ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceMulti: function() {
+    testReplaceMulti: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -403,7 +440,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief update multiple documents
     ////////////////////////////////////////////////////////////////////////////
 
-    testUpdateMulti: function() {
+    testUpdateMulti: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -440,7 +477,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief read multiple documents
     ////////////////////////////////////////////////////////////////////////////////
 
-    testDocumentMulti: function() {
+    testDocumentMulti: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -449,25 +486,25 @@ function CollectionDocumentSuiteBabies() {
         value: 3
       }]);
       assertEqual(docs.length, 3);
-      var keys = docs.map(function(x) {
+      var keys = docs.map(function (x) {
         return x._key;
       });
-      var ids = docs.map(function(x) {
+      var ids = docs.map(function (x) {
         return x._id;
       });
       var docs2 = collection.document(docs);
       assertEqual(docs2.length, 3);
-      assertEqual(docs2.map(function(x) {
+      assertEqual(docs2.map(function (x) {
         return x.value;
       }), [1, 2, 3]);
       docs2 = collection.document(keys.reverse());
       assertEqual(docs2.length, 3);
-      assertEqual(docs2.map(function(x) {
+      assertEqual(docs2.map(function (x) {
         return x.value;
       }), [3, 2, 1]);
       docs2 = collection.document(ids.reverse());
       assertEqual(docs2.length, 3);
-      assertEqual(docs2.map(function(x) {
+      assertEqual(docs2.map(function (x) {
         return x.value;
       }), [3, 2, 1]);
     },
@@ -476,7 +513,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test revision precondition for replace
     ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceMultiPrecondition: function() {
+    testReplaceMultiPrecondition: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -557,7 +594,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test revision precondition for update
     ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdateMultiPrecondition: function() {
+    testUpdateMultiPrecondition: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -639,7 +676,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test revision precondition for remove
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveMultiPrecondition: function() {
+    testRemoveMultiPrecondition: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -695,7 +732,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test revision precondition for document
     ////////////////////////////////////////////////////////////////////////////////
 
-    testDocumentMultiPrecondition: function() {
+    testDocumentMultiPrecondition: function () {
       var docs = collection.insert([{
         value: 1
       }, {
@@ -739,13 +776,13 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test bad arguments for insert/replace/update/remove for babies
     ////////////////////////////////////////////////////////////////////////////////
 
-    testBadArguments: function() {
+    testBadArguments: function () {
       // Insert
       var values = [null, false, true, 1, "abc", [],
         [1, 2, 3]
       ];
       var docs;
-      values.forEach(function(x) {
+      values.forEach(function (x) {
         docs = collection.insert([x]);
         assertEqual(docs.length, 1);
         assertEqual(docs[0].error, true);
@@ -753,7 +790,7 @@ function CollectionDocumentSuiteBabies() {
       });
       var origDocs = collection.insert([{}, {}, {}]);
       var expectedLength = origDocs.length;
-      values.forEach(function(x) {
+      values.forEach(function (x) {
         // Replace
         docs = collection.replace(origDocs, [x, x, x]);
         assertEqual(docs.length, expectedLength);
@@ -834,7 +871,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test bad arguments II for insert/replace/update/remove for babies
     ////////////////////////////////////////////////////////////////////////////////
 
-    testBadArguments2: function() {
+    testBadArguments2: function () {
       // Insert
       var docs;
       docs = collection.insert([{}, {}, {}]);
@@ -888,7 +925,7 @@ function CollectionDocumentSuiteBabies() {
     /// @brief test insert/replace/update/remove with empty lists
     ////////////////////////////////////////////////////////////////////////////////
 
-    testEmptyBabiesList: function() {
+    testEmptyBabiesList: function () {
       // Insert
       let result = collection.insert([]);
       assertTrue(Array.isArray(result));
@@ -928,7 +965,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       collection = db._create(cn, {
         waitForSync: false
@@ -941,7 +978,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function() {
+    tearDown: function () {
       collection.drop();
       wait(0.0);
     },
@@ -950,7 +987,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief create with and without returnNew
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateMultiReturnNew: function() {
+    testCreateMultiReturnNew: function () {
       var res = collection.insert([{
         "Hallo": 12
       }]);
@@ -999,7 +1036,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief remove with and without returnOld
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveMultiReturnOld: function() {
+    testRemoveMultiReturnOld: function () {
       var res = collection.insert([{
         "Hallo": 12
       }]);
@@ -1047,7 +1084,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief replace with and without returnOld and returnNew
     ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceMultiReturnOldNew: function() {
+    testReplaceMultiReturnOldNew: function () {
       var res = collection.insert({
         "Hallo": 12
       });
@@ -1184,7 +1221,7 @@ function CollectionDocumentSuiteReturnStuff() {
     /// @brief update with and without returnOld and returnNew
     ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdateMultiReturnOldNew: function() {
+    testUpdateMultiReturnOldNew: function () {
       var res = collection.insert({
         "Hallo": 12
       });

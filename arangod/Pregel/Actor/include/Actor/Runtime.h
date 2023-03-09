@@ -63,19 +63,39 @@ struct Runtime
         externalDispatcher(externalDispatcher) {}
 
   template<typename ActorConfig>
-  auto spawn(typename ActorConfig::State initialState,
+  auto spawn(DatabaseName const& database,
+             std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
-    auto address = ActorPID{.server = myServerID, .id = newId};
+    auto address =
+        ActorPID{.server = myServerID, .database = database, .id = newId};
 
     auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
-        address, this->shared_from_this(),
-        std::make_unique<typename ActorConfig::State>(initialState));
+        address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    dispatch(address, address, initialMessage);
+    dispatchLocally(address, address, initialMessage);
+
+    return newId;
+  }
+
+  template<typename ActorConfig>
+  auto spawn(DatabaseName const& database,
+             std::unique_ptr<typename ActorConfig::State> initialState,
+             velocypack::SharedSlice initialMessage) -> ActorID {
+    auto newId = ActorID{uniqueActorIDCounter++};
+
+    auto address =
+        ActorPID{.server = myServerID, .database = database, .id = newId};
+
+    auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
+        address, this->shared_from_this(), std::move(initialState));
+    actors.add(newId, std::move(newActor));
+
+    // Send initial message to newly created actor
+    receive(address, address, initialMessage);
 
     return newId;
   }
@@ -113,7 +133,8 @@ struct Runtime
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto error =
+          message::ActorError{message::ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -162,7 +183,8 @@ struct Runtime
   std::shared_ptr<Scheduler> scheduler;
   std::shared_ptr<ExternalDispatcher> externalDispatcher;
 
-  std::atomic<size_t> uniqueActorIDCounter{0};
+  // actor id 0 is reserved for special messages
+  std::atomic<size_t> uniqueActorIDCounter{1};
 
   ActorList actors;
 
@@ -175,7 +197,8 @@ struct Runtime
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else {
-      dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
+      dispatch(receiver, sender,
+               message::ActorError{message::ActorNotFound{.actor = receiver}});
     }
   }
 
