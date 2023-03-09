@@ -24,7 +24,8 @@
 #include "ConnectedComponents.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
 using namespace arangodb;
