@@ -1,6 +1,8 @@
 devel
 -----
 
+* Ran automated migrations on all .scss files for deprecated division opearator usage
+
 * Updated arangosync to v2.16.0-preview-1.
 
 * Added the following metrics for WAL file tracking:
