@@ -4,8 +4,8 @@ import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { ViewSettings } from "./ViewSettings";
-import { SearchAliasViewSettings } from "./viewSettings/SearchAliasViewSettings";
-import { useFetchViewProperties } from "./viewSettings/useFetchViewProperties";
+import { SearchAliasViewSettings } from "./searchAliasView/SearchAliasViewSettings";
+import { useFetchViewProperties } from "./searchAliasView/useFetchViewProperties";
 
 export const ViewSettingsWrap = ({
   name,
