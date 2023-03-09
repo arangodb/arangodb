@@ -3724,28 +3724,35 @@ void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
   std::string archiveDirectory =
       basics::FileUtils::buildFilename(_dbOptions.wal_dir, "archive");
 
-  WRITE_LOCKER(lock, _walFileLock);
+  try {
+    for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
+      if (!f.ends_with(".log")) {
+        // we only care about .log files in there
+        continue;
+      }
 
-  for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
-    if (!f.ends_with(".log")) {
-      // we only care about .log files in there
-      continue;
+      std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
+      int64_t size = TRI_SizeFile(fn.c_str());
+      if (size == 0) {
+        // file size is exactly 0 bytes
+        LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
+            << "found empty WAL file in archive at startup: '" << f
+            << "', scheduling this file for later deletion";
+
+        WRITE_LOCKER(lock, _walFileLock);
+        _prunableWalFiles.emplace(
+            basics::FileUtils::buildFilename("archive", f),
+            TRI_microtime() + _pruneWaitTime);
+      }
     }
 
-    std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
-    int64_t size = TRI_SizeFile(fn.c_str());
-    if (size == 0) {
-      // file size is exactly 0 bytes
-      LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
-          << "found empty WAL file in archive at startup: '" << f
-          << "', scheduling this file for later deletion";
-      _prunableWalFiles.emplace(basics::FileUtils::buildFilename("archive", f),
-                                TRI_microtime() + _pruneWaitTime);
-    }
+    _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                   std::memory_order_relaxed);
+  } catch (...) {
+    // we can continue even if an exception occurs here.
+    // it is possible that during hot backup restore the archive directory
+    // does not exist.
   }
-
-  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
-                                 std::memory_order_relaxed);
 }
 
 }  // namespace arangodb
