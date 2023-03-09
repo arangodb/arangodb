@@ -24,7 +24,7 @@
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -62,10 +62,8 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         return;
       }
 
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<int64_t>* edge = *edges;
-        int64_t val = edge->data() + current;
+      for (auto& edge : getEdges()) {
+        int64_t val = edge.data() + current;
         if (val < max) {
           sendMessage(edge, val);
         }

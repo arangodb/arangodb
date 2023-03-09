@@ -279,10 +279,9 @@
 
     calculateCenterDivHeight: function () {
       var navigation = $('.navbar').height();
-      var footer = $('.footer').height();
       var windowHeight = $(window).height();
 
-      return windowHeight - footer - navigation - 110;
+      return windowHeight - navigation - 110;
     },
 
     createTooltips: function (selector, position) {

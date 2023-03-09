@@ -228,8 +228,7 @@ function randomTestSuite() {
         internal.sleep(0.2);
       } while (i-- >= 0);
       assertTrue(i > 0, "timeout in pregel execution");
-    },
-
+    }
   };
 }
 
