@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -47,6 +48,7 @@ class FlushThread;
 struct FlushSubscription {
   virtual ~FlushSubscription() = default;
   virtual TRI_voc_tick_t tick() const = 0;
+  virtual std::string const& name() const = 0;
 };
 
 class FlushFeature final : public ArangodFeature {
