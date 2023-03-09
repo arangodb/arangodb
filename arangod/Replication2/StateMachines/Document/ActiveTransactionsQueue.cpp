@@ -50,9 +50,9 @@ void ActiveTransactionsQueue::markAsActive(LogIndex index) {
  * log indices list.
  */
 void ActiveTransactionsQueue::markAsInactive(TransactionId tid) {
-  // Locate the transaction with this specific log index, indicating when
-  // tid was first marked as active. Then, mark it as inactive.
-  // We assume that the log indices are always given in increasing order.
+  // Fetch the log index indicating when tid was first marked as active. Then,
+  // mark it as inactive. We assume that the log indices are always given in
+  // increasing order.
   auto it = _transactions.find(tid);
   ADB_PROD_ASSERT(it != std::end(_transactions))
       << "Could not find transaction " << tid;
