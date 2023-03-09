@@ -38,8 +38,9 @@ const im = require('@arangodb/testutils/instance-manager');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
 const executeExternalAndWait = internal.executeExternalAndWait;
+const testHelper = require("@arangodb/test-helper");
 const ArangoError = require('@arangodb').ArangoError;
-const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const isEnterprise = testHelper.isEnterprise;
 
 const platform = internal.platform;
 
@@ -80,6 +81,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     let count = 0;
     let forceTerminate = false;
     for (let i = 0; i < this.testList.length; i++) {
+      testHelper.flushInstanceInfo();
       let te = this.testList[i];
       let filtered = {};
       if (tu.filterTestcaseByOptions(te, this.options, filtered)) {

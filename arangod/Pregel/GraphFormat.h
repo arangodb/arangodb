@@ -33,16 +33,11 @@
 #include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;
-namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-namespace pregel {
+namespace arangodb::pregel {
 
 template<typename V, typename E>
 struct GraphFormat {
-  explicit GraphFormat(application_features::ApplicationServer& server)
-      : _server(server) {}
+  explicit GraphFormat() = default;
   virtual ~GraphFormat() = default;
 
   virtual size_t estimatedVertexSize() const { return sizeof(V); }
@@ -61,9 +56,6 @@ struct GraphFormat {
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    V const* targetPtr) const = 0;
-
- private:
-  application_features::ApplicationServer& _server;
 };
 
 template<typename V, typename E>
@@ -77,10 +69,9 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   const E _eDefault;
 
  public:
-  NumberGraphFormat(application_features::ApplicationServer& server,
-                    std::string const& source, std::string const& result,
+  NumberGraphFormat(std::string const& source, std::string const& result,
                     V vertexNull, E edgeNull)
-      : GraphFormat<V, E>(server),
+      : GraphFormat<V, E>(),
         _sourceField(source),
         _resultField(result),
         _vDefault(vertexNull),
@@ -132,9 +123,8 @@ class InitGraphFormat : public GraphFormat<V, E> {
   const E _eDefault;
 
  public:
-  InitGraphFormat(application_features::ApplicationServer& server,
-                  std::string const& result, V vertexNull, E edgeNull)
-      : GraphFormat<V, E>(server),
+  InitGraphFormat(std::string const& result, V vertexNull, E edgeNull)
+      : GraphFormat<V, E>(),
         _resultField(result),
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
@@ -167,11 +157,8 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   const V _vDefault;
 
  public:
-  VertexGraphFormat(application_features::ApplicationServer& server,
-                    std::string const& result, V vertexNull)
-      : GraphFormat<V, E>(server),
-        _resultField(result),
-        _vDefault(vertexNull) {}
+  VertexGraphFormat(std::string const& result, V vertexNull)
+      : GraphFormat<V, E>(), _resultField(result), _vDefault(vertexNull) {}
 
   size_t estimatedVertexSize() const override { return sizeof(V); }
   virtual size_t estimatedEdgeSize() const override { return 0; }
@@ -189,5 +176,4 @@ class VertexGraphFormat : public GraphFormat<V, E> {
     return true;
   }
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

@@ -100,10 +100,9 @@ namespace arangodb::pregel::algos {
 struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
-  explicit ColorPropagation(application_features::ApplicationServer& server,
-                            VPackSlice userParams)
+  explicit ColorPropagation(VPackSlice userParams)
       : Algorithm<ColorPropagationValue, int8_t, ColorPropagationMessageValue>(
-            server, "colorpropagation"),
+            "colorpropagation"),
         _numColors{getNumColors(userParams)},
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
@@ -207,11 +206,11 @@ struct ColorPropagationGraphFormat
   const std::string equivalenceClassFieldName;
   const uint16_t numColors;
 
-  explicit ColorPropagationGraphFormat(
-      application_features::ApplicationServer& server,
-      std::string inputColorsFieldName, std::string outputColorsFieldName,
-      std::string equivalenceClassFieldName, uint16_t numColors)
-      : GraphFormat<ColorPropagationValue, int8_t>(server),
+  explicit ColorPropagationGraphFormat(std::string inputColorsFieldName,
+                                       std::string outputColorsFieldName,
+                                       std::string equivalenceClassFieldName,
+                                       uint16_t numColors)
+      : GraphFormat<ColorPropagationValue, int8_t>(),
         inputColorsFieldName(std::move(inputColorsFieldName)),
         outputColorsFieldName(outputColorsFieldName),
         equivalenceClassFieldName(std::move(equivalenceClassFieldName)),

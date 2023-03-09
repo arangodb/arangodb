@@ -63,6 +63,10 @@ exports.compareStringIds = compareStringIds;
 
 let instanceInfo = null;
 
+exports.flushInstanceInfo = () => {
+  instanceInfo = null;
+};
+
 function getInstanceInfo() {
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
