@@ -23,19 +23,21 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
+#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
-#include "Pregel/Conductor/ExecutionStates/State.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
-#include "Utils/DatabaseGuard.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel::conductor {
 
+struct Initial;
+
 struct ConductorState {
-  ConductorState(ExecutionSpecifications specifications, TRI_vocbase_t& vocbase)
-      : _specifications{std::move(specifications)}, _vocbaseGuard{vocbase} {}
+  ConductorState(ExecutionSpecifications specifications,
+                 std::unique_ptr<CollectionLookup>&& lookupInfo)
+      : _specifications{std::move(specifications)},
+        _lookupInfo(std::move(lookupInfo)) {}
 
   ExecutionTimings _timing;
   uint64_t _globalSuperstep = 0;
@@ -45,7 +47,7 @@ struct ConductorState {
   ConductorStatus _status;
   std::vector<actor::ActorPID> _workers;
   const ExecutionSpecifications _specifications;
-  const DatabaseGuard _vocbaseGuard;
+  std::unique_ptr<CollectionLookup> _lookupInfo;
 };
 
 template<typename Inspector>

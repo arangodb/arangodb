@@ -32,8 +32,7 @@ using V = float;  // need to simulate MaxAggregator
 using E = uint8_t;
 
 struct ReadWrite : public SimpleAlgorithm<V, E, V> {
-  explicit ReadWrite(application_features::ApplicationServer& server,
-                     arangodb::velocypack::Slice const& params);
+  explicit ReadWrite(arangodb::velocypack::Slice const& params);
 
   [[nodiscard]] GraphFormat<V, E>* inputFormat() const override;
 
