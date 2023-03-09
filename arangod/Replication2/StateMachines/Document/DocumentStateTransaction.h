@@ -38,8 +38,6 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
-  [[nodiscard]] virtual auto apply(ReplicatedOperation const& op)
-      -> OperationResult = 0;
   [[nodiscard]] virtual auto apply(ReplicatedOperation::OperationType const& op)
       -> OperationResult = 0;
   [[nodiscard]] virtual auto intermediateCommit() -> Result = 0;
@@ -54,7 +52,6 @@ class DocumentStateTransaction
  public:
   explicit DocumentStateTransaction(
       std::unique_ptr<transaction::Methods> methods);
-  auto apply(ReplicatedOperation const& op) -> OperationResult override;
   [[nodiscard]] auto apply(ReplicatedOperation::OperationType const& op)
       -> OperationResult override;
   auto intermediateCommit() -> Result override;
