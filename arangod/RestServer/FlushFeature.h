@@ -25,6 +25,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
@@ -82,6 +83,8 @@ class FlushFeature final : public ArangodFeature {
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
+
+  metrics::Gauge<uint64_t>& _metricsFlushSubscriptions;
 };
 
 }  // namespace arangodb
