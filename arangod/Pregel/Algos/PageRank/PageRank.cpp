@@ -110,7 +110,10 @@ WorkerContext* PageRank::workerContext(VPackSlice userParams) const {
 
 struct PRMasterContext : public MasterContext {
   float _threshold = EPS;
-  explicit PRMasterContext(VPackSlice params) {
+  explicit PRMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                           std::unique_ptr<AggregatorHandler> aggregators,
+                           VPackSlice params)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
     VPackSlice t = params.get("threshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   }
@@ -126,8 +129,18 @@ struct PRMasterContext : public MasterContext {
   };
 };
 
-MasterContext* PageRank::masterContext(VPackSlice userParams) const {
-  return new PRMasterContext(userParams);
+[[nodiscard]] auto PageRank::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new PRMasterContext(0, 0, std::move(aggregators), userParams);
+}
+[[nodiscard]] auto PageRank::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<PRMasterContext>(vertexCount, edgeCount,
+                                           std::move(aggregators), userParams);
 }
 
 IAggregator* PageRank::aggregator(std::string const& name) const {

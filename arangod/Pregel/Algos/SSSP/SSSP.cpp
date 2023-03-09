@@ -25,6 +25,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 
 using namespace arangodb;
@@ -122,4 +123,23 @@ VertexCompensation<int64_t, int64_t, int64_t>*
 SSSPAlgorithm::createCompensation(
     std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPCompensation();
+}
+
+struct SSSPMasterContext : public MasterContext {
+  SSSPMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto SSSPAlgorithm::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new SSSPMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto SSSPAlgorithm::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<SSSPMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }

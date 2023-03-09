@@ -62,7 +62,14 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };

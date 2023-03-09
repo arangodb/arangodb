@@ -136,3 +136,22 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
   return new LPGraphFormat(_resultField);
 }
+
+struct LabelPropagationMasterContext : public MasterContext {
+  LabelPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                                std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto LabelPropagation::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new LabelPropagationMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto LabelPropagation::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<LabelPropagationMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
+}

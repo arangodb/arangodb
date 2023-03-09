@@ -94,7 +94,15 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   }
 
   WorkerContext* workerContext(velocypack::Slice params) const override;
-  MasterContext* masterContext(velocypack::Slice) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   VertexComputation<float, float, float>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;

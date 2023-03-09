@@ -56,10 +56,15 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  [[nodiscard]] virtual MasterContext* masterContext(
-      arangodb::velocypack::Slice userParams) const {
-    return nullptr;
-  }
+  [[nodiscard]] virtual auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* = 0;
+
+  [[nodiscard]] virtual auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> = 0;
 
   [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };

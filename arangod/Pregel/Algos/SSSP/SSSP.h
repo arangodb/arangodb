@@ -66,6 +66,15 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
 
   uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
                             MessageStats const& stats) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace algos
 }  // namespace pregel
