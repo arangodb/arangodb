@@ -144,7 +144,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 }
               }
             }
-            return transactionHandler->applyEntry(doc.operation);
+            return transactionHandler->applyEntry(op);
           },
           doc.getInnerOperation());
 
@@ -191,20 +191,18 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
 auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
     -> bool {
+  LOG_DEVEL << op;
   return std::visit(
-      [&](auto&& op) -> bool {
-        using T = std::decay_t<decltype(op)>;
-        if constexpr (FinishesUserTransaction<T> ||
-                      std::is_same_v<T,
-                                     ReplicatedOperation::IntermediateCommit>) {
-          // We don't replicate single abort/commit operations in case we have
-          // not replicated anything else for a transaction.
-          return _activeTransactions.getLockedGuard()
-              ->getTransactions()
-              .contains(op.tid);
-        } else {
-          return true;
-        }
+      overload{
+          [&](FinishesUserTransactionOrIntermediate auto const& op) -> bool {
+            // We don't replicate single abort/commit operations
+            // in case we have not replicated anything else for
+            // a transaction.
+            return _activeTransactions.getLockedGuard()
+                ->getTransactions()
+                .contains(op.tid);
+          },
+          [&](auto&&) -> bool { return true; },
       },
       op.operation);
 }
@@ -232,16 +230,15 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
   auto&& insertionRes = basics::catchToResultT([&] {
     return _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       auto idx = stream->insert(entry);
-      std::visit(
-          [&](auto&& op) {
-            using T = std::decay_t<decltype(op)>;
-            if constexpr (UserTransaction<T>) {
-              activeTransactions.markAsActive(op.tid, idx);
-            } else {
-              activeTransactions.markAsActive(idx);
-            }
-          },
-          op.operation);
+
+      std::visit(overload{
+                     [&](UserTransaction auto& op) {
+                       activeTransactions.markAsActive(op.tid, idx);
+                     },
+                     [&](auto&&) { activeTransactions.markAsActive(idx); },
+                 },
+                 op.operation);
+
       return idx;
     });
   });
