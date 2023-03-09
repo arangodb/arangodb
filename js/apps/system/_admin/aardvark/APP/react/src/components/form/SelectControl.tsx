@@ -1,7 +1,7 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
 import { Props as ReactSelectProps, PropsValue } from "react-select";
-import SelectBase from "../pure-css/form/SelectBase";
+import SelectBase from "../select/SelectBase";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
