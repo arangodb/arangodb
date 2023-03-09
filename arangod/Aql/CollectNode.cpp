@@ -266,6 +266,9 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
+      RegisterId expressionRegister{RegisterId::maxRegisterId};
+      calcExpressionRegister(expressionRegister, readableInputRegisters);
+
       // calculate the group registers
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
       calcGroupRegisters(groupRegisters, readableInputRegisters,
@@ -289,9 +292,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
+      // calculate the input variable names
+      auto inputVariables = calcInputVariableNames();
+
       auto executorInfos = HashedCollectExecutorInfos(
-          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-          std::move(aggregateRegisters),
+          std::move(groupRegisters), collectRegister, expressionRegister,
+          _expressionVariable, std::move(aggregateTypes),
+          std::move(inputVariables), std::move(aggregateRegisters),
           &_plan->getAst()->query().vpackOptions(),
           _plan->getAst()->query().resourceMonitor());
 

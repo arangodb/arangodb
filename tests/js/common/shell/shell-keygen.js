@@ -681,13 +681,12 @@ function AutoIncrementSuite() {
 /// @brief create with null keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateNullKeyGen: function() {
-      try {
-        db._create(cn, {keyOptions: null});
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code);
-      }
+    testCreateNullKeyGen: function () {
+      let c = db._create(cn, {keyOptions: null});
+
+      let options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(true, options.allowUserKeys);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,7 +952,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysTrueDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement") {
+        if (generator === "autoincrement" && cluster) {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: true}, numberOfShards: numShards});
@@ -981,7 +980,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysFalseDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement") {
+        if (generator === "autoincrement" && cluster) {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: false}, numberOfShards: numShards});
@@ -1107,7 +1106,7 @@ function PersistedLastValueSuite() {
     testPersistedLastValue: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement") {
+        if (generator === "autoincrement" && cluster) {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: numShards});
