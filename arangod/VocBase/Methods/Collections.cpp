@@ -646,7 +646,10 @@ Collections::create(         // create collection
         return result.result();
       }
 
-      appendSmartEdgeCollections(col, collections, config.idGenerator);
+      if (ServerState::instance()->isCoordinator()) {
+        // This is only relevant for Coordinators
+        appendSmartEdgeCollections(col, collections, config.idGenerator);
+      }
     }
   }
 

@@ -590,8 +590,27 @@ Result GraphManager::ensureCollections(
   // This will only have effect in Enterprise Version
   std::optional<std::string_view> leadingCollection =
       graph.getLeadingCollection(documentCollectionsToCreate, satellites);
-  auto const& config = _vocbase.getDatabaseConfiguration();
-
+  auto config = _vocbase.getDatabaseConfiguration();
+  if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+    // We create the leader within this call, rewire distributeShardsLike
+    // lookup:
+    config.getCollectionGroupSharding =
+        [&leadingCollection, &createRequests, &vocbase = _vocbase](
+            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      // We can only search for the leading collection.
+      TRI_ASSERT(name == leadingCollection.value());
+      for (auto const& c : createRequests) {
+        if (c.name == name) {
+          // On new graphs the leading collection is in the first position.
+          // So we will quickly loop here, even if it is not this loop is safe
+          return c;
+        }
+      }
+      return Result{
+          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+          "Collection not found: " + name + " in database " + vocbase.name()};
+    };
+  }
   for (auto const& c : documentCollectionsToCreate) {
     auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection, satellites);
     if (col.fail()) {
