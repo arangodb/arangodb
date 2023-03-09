@@ -71,14 +71,6 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   }
 
   template<class T>
-  [[nodiscard]] Status set(T& set) {
-    auto& f = this->self();
-    return f.beginArray()                         //
-           | [&]() { return f.processSet(set); }  //
-           | [&]() { return f.endArray(); };      //
-  }
-
-  template<class T>
   [[nodiscard]] Status tuple(T& data) {
     constexpr auto arrayLength = std::tuple_size_v<T>;
     auto& f = this->self();
@@ -422,22 +414,8 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   }
 
   template<class T>
-  Status processSet(T& set) {
-    std::size_t idx = 0;
-    return this->self().doProcessList([&](auto value) -> Status {
-      auto ff = this->self().make(value);
-      typename T::value_type val;
-      if (auto res = process(ff, val); !res.ok()) {
-        return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
-      }
-      set.insert(std::move(val));
-      ++idx;
-      return {};
-    });
-  }
-
-  template<class T>
   Status processList(T& list) {
+    constexpr auto isSet = detail::IsSetLike<T>::value;
     std::size_t idx = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
@@ -445,7 +423,11 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }
-      list.push_back(std::move(val));
+      if constexpr (isSet) {
+        list.insert(std::move(val));
+      } else {
+        list.push_back(std::move(val));
+      }
       ++idx;
       return {};
     });
