@@ -1,9 +1,8 @@
 import React, { useContext } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/CreatableMultiSelect";
+import CreatableMultiSelect from "../../../../components/pure-css/form/CreatableMultiSelect";
+import { OptionType } from "../../../../components/pure-css/form/SelectBase";
 import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { LinkProperties, ViewContext } from "../../constants";
 

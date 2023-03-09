@@ -3,9 +3,8 @@ import React, { useContext, useEffect, useState } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
-import MultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/MultiSelect";
+import MultiSelect from "../../../../components/pure-css/form/MultiSelect";
+import { OptionType } from "../../../../components/pure-css/form/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormState, ViewContext } from "../../constants";
 

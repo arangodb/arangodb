@@ -1,9 +1,8 @@
 import { get, without } from "lodash";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
-import MultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/MultiSelect";
+import MultiSelect from "../../../../components/pure-css/form/MultiSelect";
+import { OptionType } from "../../../../components/pure-css/form/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { LinkProperties, ViewContext } from "../../constants";
 
