@@ -1,6 +1,6 @@
 import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 
 export type CollectionType = {
   globallyUniqueId: string;

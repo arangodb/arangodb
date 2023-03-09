@@ -7,7 +7,7 @@ import {
   FormLabel
 } from "@chakra-ui/react";
 import React from "react";
-import { InputControl } from "../../../components/form/InputControl";
+import { InputControl } from "../../../../components/form/InputControl";
 
 export const AdvancedAccordionItem = () => {
   return (

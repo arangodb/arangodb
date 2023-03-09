@@ -11,47 +11,43 @@ import {
 } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../components/form/CreatableMultiSelectControl";
-import {
-  SelectControl
-} from "../../../components/form/SelectControl";
+import { InputControl } from "../../../../components/form/InputControl";
+import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 
-export const StoredValuesAccordionItem = () => {
+export const PrimarySortAccordionItem = () => {
   return (
     <AccordionItem>
       <AccordionButton>
         <Box flex="1" textAlign="left">
-          Stored Values
+          Primary Sort
         </Box>
         <AccordionIcon />
       </AccordionButton>
       <AccordionPanel pb={4}>
-        <StoredValuesFields />
+        <PrimarySortFields />
       </AccordionPanel>
     </AccordionItem>
   );
 };
-
-const compressionOptions = [
+const directionOptions = [
   {
-    label: "LZ4",
-    value: "lz4"
+    label: "Ascending",
+    value: "asc"
   },
   {
-    label: "None",
-    value: "none"
+    label: "Descending",
+    value: "desc"
   }
 ];
-
-const StoredValuesFields = () => {
+const PrimarySortFields = () => {
   const { values } = useFormikContext<AddNewViewFormValues>();
   return (
     <Box>
-      <FieldArray name="storedValues">
+      <FieldArray name="primarySort">
         {({ remove, push }) => (
           <Box display={"grid"} rowGap="4">
-            {values.storedValues.map((_, index) => {
+            {values.primarySort.map((_, index) => {
               return (
                 <Box
                   display={"grid"}
@@ -61,25 +57,20 @@ const StoredValuesFields = () => {
                   alignItems={"end"}
                   key={index}
                 >
-                  <Box minWidth={"0"}>
-                    <FormLabel htmlFor={`storedValues.${index}.fields`}>
-                      Fields
+                  <Box>
+                    <FormLabel htmlFor={`primarySort.${index}.field`}>
+                      Field
                     </FormLabel>
-                    <CreatableMultiSelectControl
-                    selectProps={{
-                      noOptionsMessage: () => "Type to add a field"
-                    }}
-                      name={`storedValues.${index}.fields`}
-                    />
+                    <InputControl name={`primarySort.${index}.field`} />
                   </Box>
-                  <Box minWidth={"0"}>
-                    <FormLabel htmlFor={`storedValues.${index}.compression`}>
-                      Compression
+                  <Box>
+                    <FormLabel htmlFor={`primarySort.${index}.direction`}>
+                      Direction
                     </FormLabel>
                     <SelectControl
-                      name={`storedValues.${index}.compression`}
+                      name={`primarySort.${index}.direction`}
                       selectProps={{
-                        options: compressionOptions
+                        options: directionOptions
                       }}
                     />
                   </Box>
@@ -99,7 +90,7 @@ const StoredValuesFields = () => {
             <Button
               colorScheme="blue"
               onClick={() => {
-                push({ field: "", compression: "lz4" });
+                push({ field: "", direction: "asc" });
               }}
               variant={"ghost"}
               justifySelf="start"

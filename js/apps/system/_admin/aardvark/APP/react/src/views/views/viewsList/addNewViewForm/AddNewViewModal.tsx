@@ -7,7 +7,7 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader
-} from "../../../components/modal";
+} from "../../../../components/modal";
 import { AddNewViewForm } from "./AddNewViewForm";
 import { useAddView } from "./useAddView";
 

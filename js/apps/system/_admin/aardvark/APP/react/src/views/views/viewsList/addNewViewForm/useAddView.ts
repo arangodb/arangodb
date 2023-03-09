@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 
 export const useAddView = () => {
   const [isLoading, setIsLoading] = useState(false);

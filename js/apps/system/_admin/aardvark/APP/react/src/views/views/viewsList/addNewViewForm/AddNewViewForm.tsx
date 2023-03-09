@@ -1,8 +1,8 @@
 import { Accordion, Box, FormLabel } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
-import { InputControl } from "../../../components/form/InputControl";
-import { SelectControl } from "../../../components/form/SelectControl";
+import { InputControl } from "../../../../components/form/InputControl";
+import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 import { AdvancedAccordionItem } from "./AdvancedAccordionItem";
 import { IndexesForm } from "./IndexesForm";

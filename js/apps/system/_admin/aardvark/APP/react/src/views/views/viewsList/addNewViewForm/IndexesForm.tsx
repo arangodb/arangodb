@@ -2,7 +2,7 @@ import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { SelectControl } from "../../../components/form/SelectControl";
+import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 import { useCollectionsList } from "./useCollectionsList";
 import { useInvertedIndexList } from "./useInvertedIndexList";
