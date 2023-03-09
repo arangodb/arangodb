@@ -20,6 +20,8 @@ v3.10.5 (XXXX-XX-XX)
 
 * Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
 
+* Updated arangosync to v2.15.0.
+
 * Allow usage of projections and covering indexes in more cases.
   Previously, projections were not used if there were complex filter conditions
   on the index attribute(s) that contained the `[*]` expansion operator with
