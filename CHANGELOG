@@ -10,6 +10,8 @@ v3.10.5 (XXXX-XX-XX)
   - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
     which onwards WAL files will be kept because they may be needed by the
     replication.
+  - `arangodb_flush_subscriptions`: number of currently active flush 
+    subscriptions.
 
 * Updated internal JavaScript dependencies:
 
