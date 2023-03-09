@@ -180,9 +180,10 @@ struct MockDocumentStateHandlersFactory
 
 struct MockDocumentStateTransaction
     : replicated_state::document::IDocumentStateTransaction {
-  MOCK_METHOD(OperationResult, apply,
-              (replicated_state::document::ReplicatedOperation const&),
-              (override));
+  MOCK_METHOD(
+      OperationResult, apply,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
@@ -202,14 +203,19 @@ struct MockDocumentStateTransactionHandler
 
   MOCK_METHOD(Result, applyEntry,
               (replicated_state::document::ReplicatedOperation), (override));
+  MOCK_METHOD(
+      Result, applyEntry,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
-  MOCK_METHOD(Result, validate,
-              (replicated_state::document::ReplicatedOperation),
-              (const, override));
+  MOCK_METHOD(
+      Result, validate,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>

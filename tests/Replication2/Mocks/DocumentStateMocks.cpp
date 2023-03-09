@@ -28,11 +28,21 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
         replicated_state::document::IDocumentStateTransactionHandler>
         real)
     : _real(std::move(real)) {
-  ON_CALL(*this, applyEntry(testing::_))
+  ON_CALL(*this,
+          applyEntry(
+              testing::Matcher<replicated_state::document::ReplicatedOperation>(
+                  testing::_)))
       .WillByDefault(
           [this](replicated_state::document::ReplicatedOperation op) {
             return _real->applyEntry(std::move(op));
           });
+  ON_CALL(*this,
+          applyEntry(
+              testing::Matcher<replicated_state::document::ReplicatedOperation::
+                                   OperationType const&>(testing::_)))
+      .WillByDefault(
+          [this](replicated_state::document::ReplicatedOperation::OperationType
+                     op) { return _real->applyEntry(op); });
   ON_CALL(*this, removeTransaction(testing::_))
       .WillByDefault(
           [this](TransactionId tid) { return _real->removeTransaction(tid); });
@@ -42,9 +52,8 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
       });
   ON_CALL(*this, validate(testing::_))
       .WillByDefault(
-          [this](replicated_state::document::ReplicatedOperation op) {
-            return _real->validate(std::move(op));
-          });
+          [this](replicated_state::document::ReplicatedOperation::
+                     OperationType const& op) { return _real->validate(op); });
   ON_CALL(*this, getTransactionsForShard(testing::_))
       .WillByDefault([this](ShardID const& shard) {
         return _real->getTransactionsForShard(shard);

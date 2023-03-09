@@ -750,7 +750,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
 
   // Unique constraint violation, should not fail
   EXPECT_CALL(*transactionMock, apply(_))
-      .WillOnce([](ReplicatedOperation const&) {
+      .WillOnce([](ReplicatedOperation::OperationType const&) {
         auto opRes = OperationResult{Result{}, OperationOptions{}};
         opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
         return opRes;
@@ -761,7 +761,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
 
   // DOCUMENT_NOT_FOUND error, should not fail
   EXPECT_CALL(*transactionMock, apply(_))
-      .WillOnce([](ReplicatedOperation const&) {
+      .WillOnce([](ReplicatedOperation::OperationType const&) {
         auto opRes = OperationResult{Result{}, OperationOptions{}};
         opRes.countErrorCodes[TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND] = 1;
         return opRes;
@@ -772,7 +772,7 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
 
   // An error inside countErrorCodes, transaction should fail
   EXPECT_CALL(*transactionMock, apply(_))
-      .WillOnce([](ReplicatedOperation const&) {
+      .WillOnce([](ReplicatedOperation::OperationType const&) {
         auto opRes = OperationResult{Result{}, OperationOptions{}};
         opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
         return opRes;
@@ -798,7 +798,9 @@ TEST_F(DocumentStateMachineTest,
   // 3 transactions are expected to be applied
   // 1 CreateShard due to the snapshot transfer
   // 1 Insert and 1 Commit due to the first batch
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(3);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation>(_)))
+      .Times(3);
   EXPECT_CALL(*leaderInterfaceMock, startSnapshot(LogIndex{1})).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
@@ -925,7 +927,9 @@ TEST_F(DocumentStateMachineTest,
 
   // We only call release on commit or abort
   EXPECT_CALL(*stream, release).Times(0);
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(3);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(3);
   follower->applyEntries(std::move(entryIterator));
 }
 
@@ -950,7 +954,8 @@ TEST_F(DocumentStateMachineTest,
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
-  ON_CALL(*transactionHandlerMock, applyEntry(_))
+  ON_CALL(*transactionHandlerMock,
+          applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(
@@ -1003,7 +1008,9 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
     EXPECT_EQ(index.value, 3);
   });
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(7);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(7);
   follower->applyEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(stream.get());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
@@ -1036,7 +1043,9 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
     EXPECT_EQ(index.value, 3);
   });
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(7);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(7);
   follower->applyEntries(std::move(entryIterator));
 }
 
@@ -1167,7 +1176,8 @@ TEST_F(DocumentStateMachineTest, follower_ignores_invalid_transactions) {
                                            TransactionId{10}));
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(entries[0].operation))
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(entries[0].getInnerOperation()))
       .Times(1);
   follower->applyEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -1229,7 +1239,8 @@ TEST_F(DocumentStateMachineTest,
       *transactionHandlerMock,
       applyEntry(ReplicatedOperation::buildAbortOperation(TransactionId{10})))
       .Times(0);
-  EXPECT_CALL(*transactionHandlerMock, applyEntry(entries[0].operation))
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(entries[0].getInnerOperation()))
       .Times(1);
   EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
 
@@ -1465,7 +1476,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*stream, insert).Times(1);  // AbortAllOngoingTrx
   EXPECT_CALL(*stream, release).Times(1);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
-  EXPECT_CALL(*transactionMock, apply(entries[0].operation)).Times(0);
+  EXPECT_CALL(*transactionMock, apply(entries[0].getInnerOperation())).Times(0);
   leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionMock.get());
@@ -1496,7 +1507,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*stream, release).Times(1);
   EXPECT_CALL(transactionManagerMock, abortManagedTrx(_, _)).Times(1);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
-  EXPECT_CALL(*transactionMock, apply(entries[0].operation)).Times(1);
+  EXPECT_CALL(*transactionMock, apply(entries[0].getInnerOperation())).Times(1);
   leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionMock.get());
