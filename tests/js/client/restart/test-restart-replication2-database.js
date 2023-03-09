@@ -50,8 +50,8 @@ const enableMaintenanceMode = function () {
 };
 
 const compareAllDocuments = function (col, expectedKeys) {
-  let actualKeys = [];
-  for (let tries = 0; tries < 60 && actualKeys.length === 0; ++tries) {
+  let actualKeys = null;
+  for (let tries = 0; tries < 60 && actualKeys === null; ++tries) {
     try {
       actualKeys = col.toArray().map(doc => doc._key);
     } catch (err) {
@@ -65,6 +65,7 @@ const compareAllDocuments = function (col, expectedKeys) {
       }
     }
   }
+  assertNotEqual(actualKeys, null);
   assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
 };
 

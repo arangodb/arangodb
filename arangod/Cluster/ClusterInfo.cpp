@@ -6219,12 +6219,18 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
 
   while (true) {
     {
+      if (++tries >= 100 || _server.isStopping()) {
+        break;
+      }
+
       READ_LOCKER(readLocker, _planProt.lock);
 
       // TODO we have to simplify this by using some adequate data structures
       // lookup the collection name
       auto colName = _shardToName.find(shardID);
-      ADB_PROD_ASSERT(colName != _shardToName.end());
+      if (colName == _shardToName.end()) {
+        continue;
+      }
 
       // fetch the logical collection containing the shard
       std::shared_ptr<LogicalCollection> logical{nullptr};
@@ -6235,7 +6241,9 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
           break;
         }
       }
-      ADB_PROD_ASSERT(logical != nullptr);
+      if (logical == nullptr) {
+        continue;
+      }
       if (logical->replicationVersion() == replication::Version::ONE) {
         return nullptr;
       }
@@ -6243,18 +6251,26 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
       // lookup the log id corresponding to the group id
       auto groupId = logical->groupID();
       auto id = logical->id();
-      ADB_PROD_ASSERT(_collectionGroups.contains(groupId));
+      if (!_collectionGroups.contains(groupId)) {
+        continue;
+      }
       auto const& colGroup = _collectionGroups.at(groupId);
       auto shards = _shards.find(CollectionID{std::to_string(id.id())});
-      ADB_PROD_ASSERT(shards != _shards.end());
+      if (shards == _shards.end()) {
+        continue;
+      }
       auto shardIt =
           std::find(shards->second->begin(), shards->second->end(), shardID);
-      ADB_PROD_ASSERT(shardIt != std::end(*shards->second));
+      if (shardIt == std::end(*shards->second)) {
+        continue;
+      }
       auto shardIdx = std::distance(shards->second->begin(), shardIt);
-      auto logId = colGroup->shardSheaves[shardIdx].replicatedLog;
+      auto logId = colGroup->shardSheaves.at(shardIdx).replicatedLog;
 
       auto it = _replicatedLogs.find(logId);
-      ADB_PROD_ASSERT(it != _replicatedLogs.end());
+      if (it == _replicatedLogs.end()) {
+        continue;
+      }
 
       if (it->second->currentTerm.has_value() &&
           it->second->currentTerm->leader.has_value()) {
@@ -6276,10 +6292,6 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         }
         break;
       }
-    }
-
-    if (++tries >= 100 || _server.isStopping()) {
-      break;
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
@@ -6404,7 +6416,10 @@ bool ClusterInfo::getResponsibleServersReplication2(
         // TODO we have to simplify this by using some adequate data structures
         // lookup the collection name
         auto colName = _shardToName.find(shardId);
-        ADB_PROD_ASSERT(colName != _shardToName.end());
+        if (colName == _shardToName.end()) {
+          result.clear();
+          break;
+        }
 
         // fetch the logical collection containing the shard
         std::shared_ptr<LogicalCollection> logical{nullptr};
@@ -6415,7 +6430,10 @@ bool ClusterInfo::getResponsibleServersReplication2(
             break;
           }
         }
-        ADB_PROD_ASSERT(logical != nullptr);
+        if (logical == nullptr) {
+          result.clear();
+          break;
+        }
 
         if (logical->replicationVersion() == replication::Version::ONE) {
           // this seems to be no replication 2.0 db -> skip the remaining shards
@@ -6425,25 +6443,36 @@ bool ClusterInfo::getResponsibleServersReplication2(
         // lookup the log id corresponding to the group id
         auto groupId = logical->groupID();
         auto id = logical->id();
-        ADB_PROD_ASSERT(_collectionGroups.contains(groupId));
+        if (!_collectionGroups.contains(groupId)) {
+          result.clear();
+          break;
+        }
         auto const& colGroup = _collectionGroups.at(groupId);
         auto shards = _shards.find(CollectionID{std::to_string(id.id())});
-        ADB_PROD_ASSERT(shards != _shards.end());
+        if (shards == _shards.end()) {
+          result.clear();
+          break;
+        }
         auto shardIt =
             std::find(shards->second->begin(), shards->second->end(), shardId);
-        ADB_PROD_ASSERT(shardIt != std::end(*shards->second));
+        if (shardIt == std::end(*shards->second)) {
+          result.clear();
+          break;
+        }
         auto shardIdx = std::distance(shards->second->begin(), shardIt);
-        auto logId = colGroup->shardSheaves[shardIdx].replicatedLog;
+        auto logId = colGroup->shardSheaves.at(shardIdx).replicatedLog;
 
         auto it = _replicatedLogs.find(logId);
-        ADB_PROD_ASSERT(it != _replicatedLogs.end());
+        if (it == _replicatedLogs.end()) {
+          result.clear();
+          break;
+        }
 
         if (it->second->currentTerm.has_value() &&
             it->second->currentTerm->leader.has_value()) {
           result.emplace(shardId, it->second->currentTerm->leader->serverId);
         } else {
           // no leader found, will retry
-          ++tries;
           result.clear();
           break;
         }
@@ -6454,13 +6483,13 @@ bool ClusterInfo::getResponsibleServersReplication2(
         << "getResponsibleServersReplication2: did not find leader,"
         << "waiting for half a second...";
 
-    if (tries >= 100 || !result.empty() || _server.isStopping()) {
+    if (++tries >= 100 || !result.empty() || _server.isStopping()) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  return true;
+  return !result.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
