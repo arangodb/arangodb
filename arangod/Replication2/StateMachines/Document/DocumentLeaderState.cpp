@@ -191,7 +191,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
 auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
     -> bool {
-  LOG_DEVEL << op;
   return std::visit(
       overload{
           [&](FinishesUserTransactionOrIntermediate auto const& op) -> bool {
