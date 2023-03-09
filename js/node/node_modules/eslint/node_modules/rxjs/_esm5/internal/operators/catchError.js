@@ -1,8 +1,6 @@
-/** PURE_IMPORTS_START tslib,_OuterSubscriber,_InnerSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function catchError(selector) {
     return function catchErrorOperatorFunction(source) {
         var operator = new CatchOperator(selector);
@@ -38,11 +36,14 @@ var CatchSubscriber = /*@__PURE__*/ (function (_super) {
                 return;
             }
             this._unsubscribeAndRecycle();
-            var innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+            var innerSubscriber = new SimpleInnerSubscriber(this);
             this.add(innerSubscriber);
-            subscribeToResult(this, result, undefined, undefined, innerSubscriber);
+            var innerSubscription = innerSubscribe(result, innerSubscriber);
+            if (innerSubscription !== innerSubscriber) {
+                this.add(innerSubscription);
+            }
         }
     };
     return CatchSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=catchError.js.map
