@@ -88,9 +88,9 @@ const DeleteViewButton = () => {
 };
 
 const EditableNameField = () => {
-  const { view } = useSearchAliasContext();
+  const { initialView } = useSearchAliasContext();
   const { onOpen, onClose, isOpen } = useDisclosure();
-  const [newName, setNewName] = useState(view.name);
+  const [newName, setNewName] = useState(initialView.name);
   const [loading, setLoading] = useState(false);
   if (isOpen) {
     return (
@@ -100,7 +100,7 @@ const EditableNameField = () => {
             setLoading(true);
             try {
               const isError = await putRenameView({
-                initialName: view.name,
+                initialName: initialView.name,
                 name: newName
               });
               console.log({ isError });
@@ -142,7 +142,7 @@ const EditableNameField = () => {
   return (
     <Stack direction="row" alignItems="center">
       <Text color="gray.700" fontWeight="600" fontSize="lg">
-        {view.name}
+        {initialView.name}
       </Text>
       <IconButton
         aria-label="Open edit name input"

@@ -16,6 +16,7 @@ import {
 
 type SearchAliasContextType = {
   view: ViewPropertiesType;
+  initialView: ViewPropertiesType;
   copiedView?: ViewPropertiesType;
   errors: ValidationError[];
   changed: boolean;
@@ -106,6 +107,7 @@ export const SearchAliasProvider = ({
     <SearchAliasContext.Provider
       value={{
         view,
+        initialView,
         setView,
         onChange,
         onSave: handleSave,
