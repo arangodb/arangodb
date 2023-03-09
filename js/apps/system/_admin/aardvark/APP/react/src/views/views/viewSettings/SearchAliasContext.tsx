@@ -105,7 +105,6 @@ export const SearchAliasProvider = ({
       updatedIndexes.changesDeleted.length > 0 ||
       initialView.name !== view.name
     ) {
-      console.log("changed!!", { view, initialView });
       setChanged(true);
       window.sessionStorage.setItem(`${initialView.name}-changed`, "true");
       window.sessionStorage.setItem(
@@ -113,7 +112,6 @@ export const SearchAliasProvider = ({
         JSON.stringify(view)
       );
     } else {
-      console.log("not changed!!", { view, initialView });
       setChanged(false);
       window.sessionStorage.removeItem(`${initialView.name}-changed`);
       window.sessionStorage.removeItem(`${initialView.name}`);
