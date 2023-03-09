@@ -71,10 +71,7 @@ auto DocumentLeaderState::resign() && noexcept
   // We are taking a copy of active transactions to avoid a deadlock in doAbort.
   // doAbort is called within abortManagedTrx below, and requires it's own lock
   // on the guarded data.
-  auto activeTransactions =
-      _activeTransactions.doUnderLock([&](auto& activeTransactions) {
-        return activeTransactions.getTransactions();
-      });
+  auto activeTransactions = _activeTransactions.copy();
   for (auto const& trx : activeTransactions) {
     try {
       _transactionManager.abortManagedTrx(trx.first, gid.database);
