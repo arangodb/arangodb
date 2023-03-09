@@ -109,7 +109,9 @@
     switchToVisGraphViewer: function () {
       const url = window.location.href;
       const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
-      window.location.href = `/_db/_system/_admin/aardvark/index.html#visgraphs/${linkToNewGraphViewer}`;
+      window.App.navigate(
+        `#visgraphs/${linkToNewGraphViewer}`, { trigger: true }
+      );
     },
 
     loadFullGraphModal: function () {
