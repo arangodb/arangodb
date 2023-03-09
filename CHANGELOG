@@ -13,6 +13,8 @@ devel
   - mime-types: 2.1.31 -> 2.1.35
   - semver: 7.3.5 -> 7.3.8
 
+* FE-135: Add new Graph Viewer with vis.js and change the UI.
+
 * Updated arangosync to v2.15.0.
 
 * FE-19: Updated ArangoDB logo in web interface.
