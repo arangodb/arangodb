@@ -74,7 +74,7 @@ void ActiveTransactionsQueue::markAsInactive(LogIndex index) {
 
 /**
  * Returns the first index that can be released without discarding
- * any active transactions.
+ * any actively ongoing operations.
  */
 std::optional<LogIndex> ActiveTransactionsQueue::getReleaseIndex() const {
   if (_logIndices.empty()) {
