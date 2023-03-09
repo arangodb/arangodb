@@ -27,9 +27,10 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
-const graph_module = require("@arangodb/general-graph");
 const internal = require("internal");
 const isCluster = internal.isCluster();
+const examples = require('@arangodb/graph-examples/example-graph.js');
+const graph_module = require("@arangodb/general-graph");
 
 const pregel = require("@arangodb/pregel");
 const pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
@@ -54,6 +55,10 @@ function pregelStatusWriterSuite() {
     return [pid, stats];
   };
 
+  const createSimpleGraph = () => {
+    examples.loadGraph("social");
+  };
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +66,7 @@ function pregelStatusWriterSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      const examples = require('@arangodb/graph-examples/example-graph.js');
-      examples.loadGraph("social");
+      createSimpleGraph();
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +79,6 @@ function pregelStatusWriterSuite() {
 
     testSystemCollectionExists: function () {
       assertTrue(db[pregelSystemCollectionName]);
-      assertEqual(db[pregelSystemCollectionName].count(), 0);
       const properties = db[pregelSystemCollectionName].properties();
       assertEqual(properties.internalValidatorType, 0);
       assertTrue(properties.isSystem);
@@ -95,6 +98,27 @@ function pregelStatusWriterSuite() {
       const persistedState = db[pregelSystemCollectionName].document(pid);
       assertTrue(persistedState);
       assertEqual(persistedState.data.state, "done");
+    },
+
+    testSystemCollectionsIsAvailablePerEachDatabase: function () {
+      const additionalDBName = "UnitTestsPregelDatabase2";
+      const pregelDB = db._createDatabase(additionalDBName);
+      assertTrue(pregelDB);
+
+      // Switch to the newly created database context
+      db._useDatabase(additionalDBName);
+      createSimpleGraph();
+      assertEqual(db[pregelSystemCollectionName].count(), 0);
+
+      // Execute pregel and verify historic run entry.
+      const result = executeExamplePregel();
+      const pid = result[0];
+      const persistedState = db[pregelSystemCollectionName].document(pid);
+      assertTrue(persistedState);
+      assertEqual(db[pregelSystemCollectionName].count(), 1);
+      // Switch back to system database context
+      db._useDatabase('_system');
+      db._dropDatabase(additionalDBName);
     }
   };
 }
