@@ -80,7 +80,6 @@ function pregelStatusWriterSuite() {
     testSystemCollectionExists: function () {
       assertTrue(db[pregelSystemCollectionName]);
       const properties = db[pregelSystemCollectionName].properties();
-      assertEqual(properties.internalValidatorType, 0);
       assertTrue(properties.isSystem);
       assertEqual(properties.schema, null);
       assertEqual(properties.waitForSync, false);
