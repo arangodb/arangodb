@@ -107,11 +107,11 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let commitEntries = dh.getDocumentEntries(mergedLogs, opType);
       let insertEntries = dh.getDocumentEntries(mergedLogs, "Insert");
       assertEqual(commitEntries.length, 1,
-          `Found more commitEntries than expected: ${commitEntries}. Insert entries: ${insertEntries}`);
+          `Found more commitEntries than expected: ${JSON.stringify(commitEntries)}. Insert entries: ${JSON.stringify(insertEntries)}`);
       assertEqual(insertEntries.length, commitEntries.length,
-          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
+          `Insert entries: ${JSON.stringify(insertEntries)} do not match Commit entries ${JSON.stringify(commitEntries)}`);
       assertEqual(insertEntries[0].trx, commitEntries[0].trx,
-          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
+          `Insert entries: ${JSON.stringify(insertEntries)} do not match Commit entries ${JSON.stringify(commitEntries)}`);
     },
 
     testReplicateOperationsInsert: function() {
