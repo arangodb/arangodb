@@ -22,7 +22,14 @@ const useResetSchema = (schema: JSONSchemaType<ViewPropertiesType>) => {
 };
 
 export const SearchAliasJsonForm = () => {
-  const { view, copiedView, onChange, setErrors, setCopiedView } = useSearchAliasContext();
+  const {
+    view,
+    copiedView,
+    onChange,
+    setErrors,
+    setCopiedView,
+    setView
+  } = useSearchAliasContext();
   const { schema } = useAliasViewSchema({ view });
   useResetSchema(schema);
   const jsonEditorRef = useRef(null);
@@ -31,9 +38,10 @@ export const SearchAliasJsonForm = () => {
     const currentData = (jsonEditorRef.current as any)?.jsonEditor.get();
     if (copiedView && currentData !== copiedView) {
       (jsonEditorRef.current as any)?.jsonEditor.set(copiedView);
-      setCopiedView(undefined)
+      setView(copiedView);
+      setCopiedView(undefined);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copiedView]);
   return (
     <Box>
