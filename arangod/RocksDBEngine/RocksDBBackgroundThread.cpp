@@ -162,7 +162,7 @@ void RocksDBBackgroundThread::run() {
         minTick = earliestSeqNeeded;
       }
 
-      uint64_t minTickForReplication = minTick;
+      uint64_t minTickForReplication = latestSeqNo;
       if (_engine.server().hasFeature<DatabaseFeature>()) {
         _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
             [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
@@ -185,7 +185,7 @@ void RocksDBBackgroundThread::run() {
 
         minTick = std::min(minTick, minTickForReplication);
       }
-      _metricsWalReleasedTickReplication.store(minTick,
+      _metricsWalReleasedTickReplication.store(minTickForReplication,
                                                std::memory_order_relaxed);
 
       LOG_TOPIC("cfe65", DEBUG, Logger::ENGINES)
