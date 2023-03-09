@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,44 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <cstdint>
-#include <string>
-
-#include "VertexID.h"
+#include "Pregel/GraphStore/Edge.h"
+#include "Pregel/GraphStore/Vertex.h"
 
 namespace arangodb::pregel {
 
+/*
+ * A quiver stores a bit of a graph; currently it stores vertex-centric: it
+ * stores vertices together with outgoing edges;
+ * the reason for this is mostly for backwards-compatibility with other
+ * Pregel code, and might change in future
+ */
 template<typename V, typename E>
-class GraphStore;
+struct Quiver {
+  using VertexType = Vertex<V, E>;
+  using EdgeType = Edge<E>;
 
-template<typename E>
-struct Edge {
-  template<typename V, typename E2>
-  friend class GraphStore;
+  auto emplace(VertexType&& v) -> void { vertices.emplace_back(std::move(v)); }
+  auto numberOfVertices() -> size_t { return vertices.size(); }
+  // TODO
+  auto numberOfEdges() -> size_t { return 0; }
 
-  Edge() = delete;
-  Edge(VertexID id, E&& data) : _to{id}, _data(std::move(data)) {}
-  Edge(Edge const&) = delete;
-  Edge(Edge&&) = default;
-  auto operator=(Edge const& other) -> Edge& = delete;
-  auto operator=(Edge&& other) -> Edge& = default;
+  auto begin() { return std::begin(vertices); }
+  auto end() { return std::end(vertices); }
 
-  [[nodiscard]] std::string_view toKey() const { return _to.key; }
-  E& data() noexcept { return _data; }
-  [[nodiscard]] PregelShard targetShard() const noexcept { return _to.shard; }
-
-  VertexID _to;
-  E _data;
+  std::vector<VertexType> vertices;
 };
 
-template<typename E, typename Inspector>
-auto inspect(Inspector& f, Edge<E>& e) {
-  return f.object(e).fields(f.field("to", e._to), f.field("data", e._data));
+template<typename V, typename E, typename Inspector>
+auto inspect(Inspector& f, Quiver<V, E>& s) {
+  return f.object(s).fields(f.field("vertices", s.vertices));
 }
 
 }  // namespace arangodb::pregel

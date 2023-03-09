@@ -50,6 +50,12 @@ struct VertexID {
   std::string key;
 };
 
+template<typename Inspector>
+auto inspect(Inspector& f, VertexID& id) {
+  return f.object(id).fields(f.field("shard", id.shard),
+                             f.field("key", id.key));
+}
+
 }  // namespace arangodb::pregel
 namespace std {
 template<>

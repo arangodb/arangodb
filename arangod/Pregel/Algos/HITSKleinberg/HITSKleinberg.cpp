@@ -26,7 +26,7 @@
 #include <utility>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 

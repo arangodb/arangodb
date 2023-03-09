@@ -24,12 +24,14 @@
 #pragma once
 
 #include "Basics/ResourceUsage.h"
+#include "Basics/Guarded.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/GraphFormat.h"
+#include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
@@ -73,27 +75,8 @@ class GraphStore final {
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
              ExecutionNumber executionNumber, GraphFormat<V, E>* graphFormat);
 
-  uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
-  auto allocatedSize() -> size_t {
-    auto total = size_t{0};
-
-    for (auto&& vb : _vertices) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _vertexKeys) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _edges) {
-      total += vb->capacity();
-    }
-    for (auto&& vb : _edgeKeys) {
-      total += vb->capacity();
-    }
-    return total;
-  }
-
   GraphStoreStatus status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
@@ -102,43 +85,26 @@ class GraphStore final {
   void loadShards(WorkerConfig* config,
                   std::function<void()> const& statusUpdateCallback,
                   std::function<void()> const& finishedLoadingCallback);
-  void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    std::string_view key);
   // ======================================================================
-
-  // only thread safe if your threads coordinate access to memory locations
-  RangeIterator<Vertex<V, E>> vertexIterator();
-  /// j and j are the first and last index of vertex segments
-  RangeIterator<Vertex<V, E>> vertexIterator(size_t i, size_t j);
-  RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>,
                     std::function<void()> const& statusUpdateCallback);
 
+  Quiver<V, E>& quiver() { return _quiver; }
+
  private:
-  void loadVertices(ShardID const& vertexShard,
+  auto loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards,
-                    std::function<void()> const& statusUpdateCallback);
+                    std::function<void()> const& statusUpdateCallback)
+      -> std::vector<Vertex<V, E>>;
   void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
-                 ShardID const& edgeShard, std::string const& documentID,
-                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                 ShardID const& edgeShard, std::string_view documentID,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
   void storeVertices(std::vector<ShardID> const& globalShards,
-                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
                      std::function<void()> const& statusUpdateCallback);
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
-
-  constexpr size_t vertexSegmentSize() const {
-    return 64 * 1024 * 1024 / sizeof(Vertex<V, E>);
-  }
-
-  constexpr size_t edgeSegmentSize() const {
-    return 64 * 1024 * 1024 / sizeof(Edge<E>);
-  }
 
  private:
   PregelFeature& _feature;
@@ -151,13 +117,7 @@ class GraphStore final {
   std::atomic<uint64_t> _vertexIdRangeStart;
 
   /// Holds vertex keys, data and pointers to edges
-  std::mutex _bufferMutex;
-  std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> _vertices;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
-  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
-  std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
-
+  Quiver<V, E> _quiver;
   GraphStoreObservables _observables;
 
   // cache the amount of vertices
@@ -166,7 +126,6 @@ class GraphStore final {
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
-  std::atomic<uint32_t> _runningThreads;
 };
 
 }  // namespace pregel
