@@ -25,35 +25,32 @@
 #include <variant>
 #include "Actor/ActorPID.h"
 #include "Inspection/Types.h"
+#include "Pregel/Worker/Messages.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::message {
 
 struct SpawnStart {};
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnStart& x) {
   return f.object(x).fields();
 }
-struct SpawnConductor {};
-template<typename Inspector>
-auto inspect(Inspector& f, SpawnConductor& x) {
-  return f.object(x).fields();
-}
 struct SpawnWorker {
-  // actor::ActorPID conductor;
+  actor::ActorPID conductor;
+  worker::message::CreateNewWorker message;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields();  // f.field("conductor", x.conductor));
+  return f.object(x).fields(f.field("conductor", x.conductor),
+                            f.field("message", x.message));
 }
-struct SpawnMessages : std::variant<SpawnStart, SpawnConductor, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnConductor, SpawnWorker>::variant;
+struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
+  using std::variant<SpawnStart, SpawnWorker>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnConductor>("SpawnConductor"),
       arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
 }
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::message

@@ -38,9 +38,8 @@ namespace arangodb::pregel::algos {
 /// maximum superstep number.
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
-  explicit LabelPropagation(application_features::ApplicationServer& server,
-                            VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "labelpropagation",
+  explicit LabelPropagation(VPackSlice userParams)
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("labelpropagation",
                                                    userParams) {}
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;

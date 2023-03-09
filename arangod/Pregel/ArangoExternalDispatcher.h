@@ -43,8 +43,9 @@ struct ArangoExternalDispatcher {
         .thenValue([sender, receiver, this](auto&& result) -> void {
           auto out = errorHandling(result);
           if (out.fail()) {
-            auto error = actor::ActorError{actor::NetworkError{
-                .message = (std::string)out.errorMessage()}};
+            auto error =
+                actor::message::ActorError{actor::message::NetworkError{
+                    .message = (std::string)out.errorMessage()}};
             auto payload = inspection::serializeWithErrorT(error);
             ADB_PROD_ASSERT(payload.ok());
             send(receiver, sender, payload.get())

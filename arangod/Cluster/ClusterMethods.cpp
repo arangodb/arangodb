@@ -589,14 +589,14 @@ struct InsertOperationCtx {
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
-        // validate the key provided by the user
-        auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
-                                                    value, isRestore);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+        if (!keySlice.stringView().empty()) {
+          // validate the key provided by the user
+          auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
+                                                      value, isRestore);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
         }
-      } else {
-        return {TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD};
       }
     }
 

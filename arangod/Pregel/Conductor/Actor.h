@@ -22,69 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
-#include "Actor/HandlerBase.h"
-#include "Pregel/Worker/Actor.h"
+#include "Pregel/Conductor/Handler.h"
 #include "Pregel/Conductor/Messages.h"
-#include "fmt/core.h"
+#include "Pregel/Conductor/State.h"
 
-namespace arangodb::pregel {
-
-struct ConductorState {};
-template<typename Inspector>
-auto inspect(Inspector& f, ConductorState& x) {
-  return f.object(x).fields();
-}
-
-template<typename Runtime>
-struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
-  auto operator()(ConductorStart start) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("56db0", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor {} started", this->self);
-    // TODO call State::initializeWorkers in here
-    // and then spawn actors from here
-    return std::move(this->state);
-  }
-
-  auto operator()(WorkerCreated start) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("17915", INFO, Logger::PREGEL)
-        << "Conductor Actor: Worker was created";
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::UnknownMessage unknown)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("d1791", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Error - sent unknown message to {}",
-                       unknown.receiver);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::ActorNotFound notFound)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("ea585", INFO, Logger::PREGEL)
-        << fmt::format("Conductor Actor: Error - receiving actor {} not found",
-                       notFound.actor);
-    return std::move(this->state);
-  }
-
-  auto operator()(actor::NetworkError notFound)
-      -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("866d8", INFO, Logger::PREGEL) << fmt::format(
-        "Conductor Actor: Error - network error {}", notFound.message);
-    return std::move(this->state);
-  }
-
-  auto operator()(auto&& rest) -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("7ae0f", INFO, Logger::PREGEL)
-        << "Conductor Actor: Got unhandled message";
-    return std::move(this->state);
-  }
-};
+namespace arangodb::pregel::conductor {
 
 struct ConductorActor {
   using State = ConductorState;
-  using Message = ConductorMessages;
+  using Message = message::ConductorMessages;
   template<typename Runtime>
   using Handler = ConductorHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
@@ -92,4 +38,4 @@ struct ConductorActor {
   }
 };
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::conductor

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <thread>
 
 #include <fmt/core.h>
 
@@ -30,13 +29,11 @@
 
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
-#include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelOptions.h"
-#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
@@ -46,9 +43,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -56,11 +51,9 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
 
@@ -85,8 +78,7 @@ Conductor::Conductor(ExecutionSpecifications const& specifications,
       _vocbaseGuard(vocbase),
       _specifications(specifications),
       _algorithm(AlgoRegistry::createAlgorithm(
-          vocbase.server(), specifications.algorithm,
-          specifications.userParameters.slice())),
+          specifications.algorithm, specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -487,16 +479,6 @@ ErrorCode Conductor::_initializeWorkers() {
                      .edgeShards = edgeShardMap,
                      .collectionPlanIds = collectionPlanIdMap,
                      .allShards = shardList};
-
-    // TODO should be done inside conductor actor (this whole function will be
-    // moved into the conductor actor state)
-    _feature.spawnActor(
-        server,
-        // TODO will be the pid of the conductor actor
-        actor::ActorPID{.server = _feature._actorRuntime->myServerID,
-                        .database = _vocbaseGuard.database().name(),
-                        .id = {0}},
-        SpawnMessages{SpawnWorker{}});
 
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {

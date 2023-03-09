@@ -50,6 +50,7 @@
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/SpawnActor.h"
@@ -70,13 +71,6 @@ using namespace arangodb::options;
 using namespace arangodb::pregel;
 
 namespace {
-
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 
 // locations for Pregel's temporary files
 std::unordered_set<std::string> const tempLocationTypes{
@@ -347,16 +341,17 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = options.algorithm,
-      .vertexCollections = vertexCollections,
-      .edgeCollections = edgeColls,
-      .edgeCollectionRestrictions = edgeCollectionRestrictionsPerShard,
+      .algorithm = std::move(options.algorithm),
+      .vertexCollections = std::move(vertexCollections),
+      .edgeCollections = std::move(edgeColls),
+      .edgeCollectionRestrictions =
+          std::move(edgeCollectionRestrictionsPerShard),
       .maxSuperstep = maxSuperstep,
       .useMemoryMaps = useMemoryMapsVar,
       .storeResults = storeResults,
       .ttl = ttl,
       .parallelism = parallelismVar,
-      .userParameters = options.userParameters};
+      .userParameters = std::move(options.userParameters)};
 
   // TODO needs to be part of the conductor state
   auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
@@ -365,23 +360,18 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
-  _actorRuntime->spawn<ConductorActor>(vocbase.name(), ConductorState{},
-                                       ConductorStart{});
+  auto vocbaseLookupInfo =
+      std::make_unique<conductor::DatabaseCollectionLookup>(
+          vocbase, executionSpecifications.vertexCollections,
+          executionSpecifications.edgeCollections);
+
+  _actorRuntime->spawn<conductor::ConductorActor>(
+      vocbase.name(),
+      std::make_unique<conductor::ConductorState>(executionSpecifications,
+                                                  std::move(vocbaseLookupInfo)),
+      conductor::message::ConductorStart{});
 
   return en;
-}
-
-void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
-                               SpawnMessages msg) {
-  if (server == _actorRuntime->myServerID) {
-    _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{}, msg);
-  } else {
-    _actorRuntime->dispatch(
-        sender,
-        actor::ActorPID{
-            .server = server, .database = sender.database, .id = {0}},
-        msg);
-  }
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {
