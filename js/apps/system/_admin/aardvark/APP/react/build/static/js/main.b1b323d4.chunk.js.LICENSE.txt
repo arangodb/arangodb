@@ -47,3 +47,5 @@
 //! momentjs.com
 
 //! version : 2.18.1
+
+//!isTriggeredOnSave && removeDrawnEdge();
