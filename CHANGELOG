@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.15.0.
+
 * FE-19: Updated ArangoDB logo in web interface.
 
 * Make the hashed variant of AQL COLLECT support INTO clauses too.

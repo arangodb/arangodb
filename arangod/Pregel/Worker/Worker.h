@@ -31,6 +31,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
@@ -100,8 +101,6 @@ class Worker : public IWorker {
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
   mutable Mutex _commandMutex;
-  // locks _workerThreadDone
-  mutable Mutex _threadMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
@@ -136,8 +135,7 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(size_t threadId,
-                        RangeIterator<Vertex<V, E>>& vertexIterator);
+  bool _processVertices();
   void _finishedProcessing();
   void _callConductor(std::string const& path, VPackBuilder const& message);
   [[nodiscard]] auto _observeStatus() -> Status const;
