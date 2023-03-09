@@ -35,9 +35,8 @@ namespace arangodb::pregel::algos {
 struct ConnectedComponents
     : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
-  explicit ConnectedComponents(application_features::ApplicationServer& server,
-                               VPackSlice userParams)
-      : SimpleAlgorithm(server, "connectedcomponents", userParams) {}
+  explicit ConnectedComponents(VPackSlice userParams)
+      : SimpleAlgorithm("connectedcomponents", userParams) {}
 
   GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 
