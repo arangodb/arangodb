@@ -127,7 +127,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
   if (isArangosh) {
     opt.setLongDescription(R"(You can use `--server.endpoint none` to start
-arangosh with an active connection.)");
+arangosh without connecting to a server.)");
   }
 
   options->addOption("--server.password",
