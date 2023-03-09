@@ -121,10 +121,14 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "server endpoint, otherwise http+tcp:// or unix://";
   }
 
-  options->addOption(
+  auto& opt = options->addOption(
       "--server.endpoint", endpointHelp,
       new VectorParameter<StringParameter>(&_endpoints),
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
+  if (isArangosh) {
+    opt.setLongDescription(R"(You can use `--server.endpoint none` to start
+arangosh with an active connection.)");
+  }
 
   options->addOption("--server.password",
                      "The password to use when connecting. If not specified "
