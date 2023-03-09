@@ -31,7 +31,7 @@
 
 #include "Basics/Common.h"
 
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
