@@ -114,9 +114,12 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       const plans = [
-        [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 COLLECT a = i INTO group OPTIONS { method: 'sorted' } RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 COLLECT a = i INTO group OPTIONS { method: 'hash' } RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group OPTIONS { method: 'sorted' } RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group OPTIONS { method: 'hashed' } RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group OPTIONS { method: 'sorted' } RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group OPTIONS { method: 'hash' } RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 COLLECT v = i WITH COUNT INTO cnt RETURN 1", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT() RETURN 1", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode" ] ],
       ];
