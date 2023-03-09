@@ -1,6 +1,11 @@
 v3.9.10 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
+  control whether automatic refilling of in-memory caches should happen on
+  followers or just leaders. The default value is `true`, i.e. refilling happens
+  on followers too.
+
 * Updated internal JavaScript dependencies:
 
   - @xmldom/xmldom: 0.8.0 -> 0.8.6

@@ -316,6 +316,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
       std::chrono::milliseconds maxWaitTime) override;
   virtual arangodb::WalAccess const* walAccess() const override;
 
+  bool autoRefillIndexCaches() const override;
+  bool autoRefillIndexCachesOnFollowers() const override;
+
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
       arangodb::IndexId id, arangodb::LogicalCollection& collection,
       VPackSlice const& info);
