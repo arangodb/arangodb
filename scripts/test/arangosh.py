@@ -50,8 +50,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             '--server.endpoint', 'none',
             '--javascript.allow-external-process-control', 'true',
             '--javascript.execute', testscript,
-            '--noStartStopLogs', 'false',
-        ]
+            ]
         run_cmd = args +[
             '--',
             testcase,
