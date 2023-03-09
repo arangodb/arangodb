@@ -96,6 +96,7 @@ struct WorkerState {
   }
 
   std::shared_ptr<WorkerConfig> config;
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;

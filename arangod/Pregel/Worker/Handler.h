@@ -44,10 +44,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(message::LoadGraph start)
+  auto operator()(message::LoadGraph msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
+
+    this->state->responsibleActorPerShard = msg.responsibleActorPerShard;
+
     std::function<void()> statusUpdateCallback =
         [/*self = shared_from_this(),*/ this] {
           // TODO
