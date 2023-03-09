@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added support for sending gzip-compressed responses from the server.
+  Previously only deflated responses were supported.
+
 * Updated internal JavaScript dependencies:
 
   - @xmldom/xmldom: 0.8.0 -> 0.8.6

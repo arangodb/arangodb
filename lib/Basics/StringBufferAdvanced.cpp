@@ -49,6 +49,18 @@ ErrorCode arangodb::basics::StringBuffer::deflate() {
   return code;
 }
 
+ErrorCode arangodb::basics::StringBuffer::gzip() {
+  arangodb::basics::StringBuffer gzipped;
+
+  ErrorCode code = arangodb::encoding::gzipCompress(
+      reinterpret_cast<uint8_t const*>(data()), size(), gzipped);
+
+  if (code == TRI_ERROR_NO_ERROR) {
+    swap(&gzipped);
+  }
+  return code;
+}
+
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
 ErrorCode arangodb::basics::StringBuffer::inflate(
     arangodb::basics::StringBuffer& out, size_t skip) {

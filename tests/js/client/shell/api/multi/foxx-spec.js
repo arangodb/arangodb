@@ -227,6 +227,22 @@ describe('FoxxApi commit', function () {
     } else {
       expect(result).to.have.property('parsedBody');
     }
+    
+    result = arango.GET_RAW('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = arango.GET_RAW('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
 
     if (!isVst) {
       // doesn't work with vst..
