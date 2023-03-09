@@ -38,10 +38,9 @@ namespace arangodb::pregel::algos {
 struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
                                               SenderMessage<double>> {
  public:
-  HITSKleinberg(application_features::ApplicationServer& server,
-                VPackSlice userParams)
+  HITSKleinberg(VPackSlice userParams)
       : SimpleAlgorithm<HITSKleinbergValue, int8_t, SenderMessage<double>>(
-            server, "HITSKleinberg", userParams) {
+            "HITSKleinberg", userParams) {
     if (userParams.hasKey(Utils::maxNumIterations)) {
       numIterations = userParams.get(Utils::maxNumIterations).getInt();
     }

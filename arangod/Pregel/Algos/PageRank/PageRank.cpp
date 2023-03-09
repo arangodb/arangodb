@@ -51,24 +51,22 @@ struct PRWorkerContext : public WorkerContext {
   }
 };
 
-PageRank::PageRank(application_features::ApplicationServer& server,
-                   VPackSlice const& params)
-    : SimpleAlgorithm(server, "pagerank", params),
+PageRank::PageRank(VPackSlice const& params)
+    : SimpleAlgorithm("pagerank", params),
       _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
-  SeededPRGraphFormat(application_features::ApplicationServer& server,
-                      std::string const& source, std::string const& result,
+  SeededPRGraphFormat(std::string const& source, std::string const& result,
                       float vertexNull)
-      : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
+      : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 };
 
 GraphFormat<float, float>* PageRank::inputFormat() const {
   if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_server, _sourceField, _resultField, -1.0);
+    return new SeededPRGraphFormat(_sourceField, _resultField, -1.0);
   } else {
-    return new VertexGraphFormat<float, float>(_server, _resultField, -1.0);
+    return new VertexGraphFormat<float, float>(_resultField, -1.0);
   }
 }
 

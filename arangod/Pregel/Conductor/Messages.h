@@ -24,6 +24,8 @@
 
 #include <map>
 
+#include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"

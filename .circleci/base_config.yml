@@ -68,7 +68,7 @@ jobs:
       edition:
         type: string
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1t
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh -v
@@ -167,6 +167,7 @@ jobs:
               --definition tests/test-definitions.txt
       - run:
           name: Copy test results
+          when: always
           command: |
             mkdir test-results
             find testrun -iname *xml -exec cp "{}" --target-directory=./test-results \;
