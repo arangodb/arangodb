@@ -25,11 +25,13 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/Metrics.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -45,6 +47,7 @@ namespace arangodb {
 struct FlushSubscription {
   virtual ~FlushSubscription() = default;
   virtual TRI_voc_tick_t tick() const = 0;
+  virtual std::string const& name() const = 0;
 };
 
 class FlushFeature final : public application_features::ApplicationFeature {
@@ -63,7 +66,6 @@ class FlushFeature final : public application_features::ApplicationFeature {
   void registerFlushSubscription(
       std::shared_ptr<FlushSubscription> const& subscription);
 
-  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
   /// returns number of active flush subscriptions removed, the number of stale
   /// flush scriptions removed, and the tick value up to which the storage
   /// engine could release ticks. if no active or stale flush subscriptions were
@@ -76,6 +78,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
+
+  Gauge<uint64_t>& _metricsFlushSubscriptions;
 };
 
 }  // namespace arangodb

@@ -35,6 +35,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -667,7 +668,9 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _recoveryStartSequence = 0;
 #endif
 
+  Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  Gauge<uint64_t>& _metricsLiveWalFiles;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
   Gauge<uint64_t>& _metricsWalPruningActive;

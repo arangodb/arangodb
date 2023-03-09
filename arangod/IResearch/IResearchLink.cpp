@@ -215,8 +215,9 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
-  explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
-      : _tick{tick} {}
+  explicit IResearchFlushSubscription(TRI_voc_tick_t tick,
+                                      std::string const& name)
+      : _tick{tick}, _name{name} {}
 
   /// @brief earliest tick that can be released
   TRI_voc_tick_t tick() const noexcept final {
@@ -236,8 +237,11 @@ class IResearchFlushSubscription final : public FlushSubscription {
     }
   }
 
+  std::string const& name() const final { return _name; }
+
  private:
   std::atomic<TRI_voc_tick_t> _tick;
+  std::string const _name;
 };
 
 enum class SegmentPayloadVersion : uint32_t {
@@ -1712,8 +1716,12 @@ Result IResearchLink::initDataStore(
   }
   _lastCommittedTickStageOne = _dataStore._recoveryTickLow;
   _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
-  _flushSubscription =
-      std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
+
+  std::string name =
+      std::string("flush subscription for ArangoSearch index '") +
+      std::to_string(id().id()) + "'";
+  _flushSubscription = std::make_shared<IResearchFlushSubscription>(
+      _dataStore._recoveryTickLow, name);
 
   irs::index_writer::init_options options;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
