@@ -240,7 +240,7 @@ function BaseRequestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBadJson: function () {
-      var url = buildUrl('/_admin/aardvark/img/ArangoDB-community-edition-Web-UI.png', false);
+      var url = buildUrl('/_admin/aardvark/img/arangodb-icon.svg', false);
       var res = request.get(url, {json: true, timeout: 300});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.json).to.be.equal(undefined);

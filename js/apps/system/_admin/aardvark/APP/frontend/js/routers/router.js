@@ -273,15 +273,6 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      if (frontendConfig.foxxStoreEnabled) {
-        this.foxxRepo.fetch({
-          success: function () {
-            if (self.serviceInstallView) {
-              self.serviceInstallView.collection = self.foxxRepo;
-            }
-          }
-        });
-      }
 
       window.progressView = new window.ProgressView();
 
@@ -328,9 +319,6 @@
           cache: false
         });
 
-        this.footerView = new window.FooterView({
-          collection: self.coordinatorCollection
-        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -351,8 +339,6 @@
 
         this.queryCollection = new window.ArangoQueries();
 
-        this.footerView.render();
-
         window.checkVersion();
 
         this.userConfig = new window.UserConfig({
@@ -367,6 +353,16 @@
         });
 
         arangoHelper.initSigma();
+
+        if (frontendConfig.foxxStoreEnabled) {
+          this.foxxRepo.fetch({
+            success: function () {
+              if (self.serviceInstallView) {
+                self.serviceInstallView.collection = self.foxxRepo;
+              }
+            }
+          });
+        }
       }).bind(this);
 
       $(window).on('resize', function () {

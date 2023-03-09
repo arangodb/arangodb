@@ -61,10 +61,10 @@ function CollectionBinaryDocumentSuite () {
     },
 
     testBinaryDocument : function () {
-      let filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+      let filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/default-thumbnail.png'.split('/').join(path.sep));
       if (!fs.exists(filename1)) {
         // look for version-specific file
-        filename1 = path.resolve('js/' + db._version().replace(/-.*$/, '') + '/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+        filename1 = path.resolve('js/' + db._version().replace(/-.*$/, '') + '/apps/system/_admin/aardvark/APP/default-thumbnail.png'.split('/').join(path.sep));
       }
       const content = fs.readFileSync(filename1);
 

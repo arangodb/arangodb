@@ -1,3 +1,4 @@
+
 # note that typedbuffer.cpp is excluded intentionally
 # since it seems to have a big dependency footprint;
 # we intent to remove the TypedBuffer construct soon
@@ -26,12 +27,14 @@ add_executable(arangodbtests_pregel
   EXCLUDE_FROM_ALL)
 
 target_link_libraries(arangodbtests_pregel
-  arango_lightweight
-  gtest_main
-  arango_tests_pregel
-  arango_assertions)
+    gtest_main
+    arango_tests_pregel
+    arango_tests_pregel_graphstore
+    arango_crashhandler_light
+    arango_assertions)
 
 add_test(NAME pregel
   COMMAND arangodbtests_pregel)
 
 add_subdirectory(Actor)
+add_subdirectory(GraphStore)
