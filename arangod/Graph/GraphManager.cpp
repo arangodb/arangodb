@@ -612,7 +612,8 @@ Result GraphManager::ensureCollections(
     };
   }
   for (auto const& c : documentCollectionsToCreate) {
-    auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection, satellites);
+    auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection,
+                                                       satellites);
     if (col.fail()) {
       return col.result();
     }
@@ -624,7 +625,8 @@ Result GraphManager::ensureCollections(
   }
 
   for (auto const& c : edgeCollectionsToCreate) {
-    auto col = graph.prepareCreateCollectionBodyEdge(c, leadingCollection, satellites);
+    auto col =
+        graph.prepareCreateCollectionBodyEdge(c, leadingCollection, satellites);
     if (col.fail()) {
       return col.result();
     }
@@ -634,7 +636,6 @@ Result GraphManager::ensureCollections(
     }
     createRequests.emplace_back(std::move(col.get()));
   }
-
   if (createRequests.empty()) {
     // Nothing to do.
     return {};
@@ -651,7 +652,6 @@ Result GraphManager::ensureCollections(
   auto finalResult = methods::Collections::create(
       ctx()->vocbase(), opOptions, std::move(createRequests), waitForSync, true,
       false, allowEnterpriseCollectionsOnSingleServer);
-
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
 

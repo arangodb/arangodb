@@ -835,7 +835,8 @@ auto Graph::prepareCreateCollectionBodyEdge(
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites);
+  auto res =
+      injectShardingToCollectionBody(body, leadingCollection, satellites);
   if (res.fail()) {
     return res;
   }
@@ -850,7 +851,8 @@ auto Graph::prepareCreateCollectionBodyVertex(
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites);
+  auto res =
+      injectShardingToCollectionBody(body, leadingCollection, satellites);
   if (res.fail()) {
     return res;
   }
@@ -858,8 +860,7 @@ auto Graph::prepareCreateCollectionBodyVertex(
 }
 
 auto Graph::injectShardingToCollectionBody(
-    CreateCollectionBody& body,
-    std::optional<std::string_view> const&,
+    CreateCollectionBody& body, std::optional<std::string_view> const&,
     std::unordered_set<std::string> const&) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection

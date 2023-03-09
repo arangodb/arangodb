@@ -318,7 +318,8 @@ class Graph {
   virtual auto injectShardingToCollectionBody(
       CreateCollectionBody& body,
       std::optional<std::string_view> const& leadingCollection,
-      std::unordered_set<std::string> const& satellites) const noexcept -> Result;
+      std::unordered_set<std::string> const& satellites) const noexcept
+      -> Result;
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph
