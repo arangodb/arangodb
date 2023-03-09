@@ -70,11 +70,10 @@ namespace arangodb::pregel::algos {
 
 struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
-  explicit LineRank(application_features::ApplicationServer& server,
-                    arangodb::velocypack::Slice params);
+  explicit LineRank(arangodb::velocypack::Slice params);
 
   GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_server, _resultField, 0);
+    return new VertexGraphFormat<float, float>(_resultField, 0);
   }
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();

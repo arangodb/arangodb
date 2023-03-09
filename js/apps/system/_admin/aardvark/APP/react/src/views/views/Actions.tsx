@@ -31,12 +31,14 @@ export const NavButton = ({ disabled, arrow = 'up', text = 'Up' }: NavButtonProp
 };
 
 type SaveButtonProps = ButtonProps & {
+  disabled?: boolean;
   oldName?: string;
   menu?: string;
   setChanged: (changed: boolean) => void;
 };
 
 export const SaveButton = ({
+                             disabled,
                              view,
                              oldName,
                              menu,
@@ -117,18 +119,15 @@ export const SaveButton = ({
   };
 
 
-  return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
-    marginTop: 10,
-    marginBottom: 10,
-    marginLeft: 0,
-    marginRight: 10
-  }}>
+  return <IconButton disabled={disabled} icon={"save"} onClick={handleSave} type={"success"}
+    style={{ float: 'right', marginRight: '10px' }}>
     Save View
   </IconButton>;
 };
 
 export const DeleteButton = ({ view }: ButtonProps) => {
   const [show, setShow] = useState(false);
+
 
   const handleDelete = async () => {
     try {
@@ -163,9 +162,7 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         onClick={() => setShow(true)}
         type={"danger"}
         style={{
-          marginTop: 10,
-          marginBottom: 10,
-          marginLeft: 0
+          float: 'right'
         }}
       >
         Delete

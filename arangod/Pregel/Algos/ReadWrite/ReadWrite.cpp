@@ -41,14 +41,12 @@ struct ReadWriteWorkerContext : public WorkerContext {
   ReadWriteWorkerContext() = default;
 };
 
-ReadWrite::ReadWrite(application_features::ApplicationServer& server,
-                     VPackSlice const& userParams)
-    : SimpleAlgorithm(server, "readwrite", userParams) {}
+ReadWrite::ReadWrite(VPackSlice const& userParams)
+    : SimpleAlgorithm("readwrite", userParams) {}
 
 struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
-  ReadWriteGraphFormat(application_features::ApplicationServer& server,
-                       std::string sourceFieldName, std::string resultFieldName)
-      : GraphFormat(server),
+  ReadWriteGraphFormat(std::string sourceFieldName, std::string resultFieldName)
+      : GraphFormat(),
         sourceFieldName{std::move(sourceFieldName)},
         resultFieldName{std::move(resultFieldName)} {}
   std::string const sourceFieldName;
@@ -82,7 +80,7 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
 };
 
 GraphFormat<V, E>* ReadWrite::inputFormat() const {
-  return new ReadWriteGraphFormat(_server, _sourceField, _resultField);
+  return new ReadWriteGraphFormat(_sourceField, _resultField);
 }
 
 struct ReadWriteComputation : public VertexComputation<V, E, V> {
