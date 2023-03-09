@@ -96,7 +96,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
   return ::emptyEdgeCollectionRestrictions;
 }
 
-VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
+VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
