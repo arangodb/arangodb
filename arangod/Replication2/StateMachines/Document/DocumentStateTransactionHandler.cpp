@@ -31,9 +31,9 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "VocBase/AccessMode.h"
 
-namespace {
-
-auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
+namespace arangodb::replication2::replicated_state::document {
+auto DocumentStateTransactionHandler::shouldIgnoreError(
+    arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
     /*
      * These errors are ignored because the snapshot can be more recent than
@@ -59,8 +59,8 @@ auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   return true;
 }
 
-auto makeResultFromOperationResult(arangodb::OperationResult const& res,
-                                   arangodb::TransactionId tid)
+auto DocumentStateTransactionHandler::makeResultFromOperationResult(
+    arangodb::OperationResult const& res, arangodb::TransactionId tid)
     -> arangodb::Result {
   ErrorCode e{res.result.errorNumber()};
   std::stringstream msg;
@@ -78,10 +78,6 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
   }
   return arangodb::Result{e, std::move(msg).str()};
 }
-
-}  // namespace
-
-namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
@@ -114,99 +110,6 @@ void DocumentStateTransactionHandler::setTrx(
   TRI_ASSERT(isInserted) << "Transaction " << tid << " already exists";
 }
 
-auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
-    -> Result try {
-  return std::visit(
-      [this, &operation](auto&& op) -> Result {
-        using T = std::decay_t<decltype(op)>;
-        if constexpr (UserTransaction<T>) {
-          TRI_ASSERT(op.tid.isFollowerTransactionId());
-
-          auto trx = getTrx(op.tid);
-          if constexpr (FinishesUserTransaction<T>) {
-            auto res = Result{};
-            ADB_PROD_ASSERT(trx != nullptr);
-            if constexpr (std::is_same_v<T, ReplicatedOperation::Commit>) {
-              res = trx->commit();
-            } else if constexpr (std::is_same_v<T,
-                                                ReplicatedOperation::Abort>) {
-              res = trx->abort();
-            }
-            removeTransaction(op.tid);
-            return res;
-          } else if constexpr (std::is_same_v<
-                                   T,
-                                   ReplicatedOperation::IntermediateCommit>) {
-            ADB_PROD_ASSERT(trx != nullptr);
-            return trx->intermediateCommit();
-          } else if constexpr (ModifiesUserTransaction<T>) {
-            if (trx == nullptr) {
-              auto accessType = std::is_same_v<T, ReplicatedOperation::Truncate>
-                                    ? AccessMode::Type::EXCLUSIVE
-                                    : AccessMode::Type::WRITE;
-              trx = _factory->createTransaction(*_vocbase, op.tid, op.shard,
-                                                accessType);
-              setTrx(op.tid, trx);
-            }
-            auto opRes = trx->apply(operation);
-            auto res = opRes.fail()
-                           ? opRes.result
-                           : makeResultFromOperationResult(opRes, op.tid);
-            if (res.fail() && shouldIgnoreError(opRes)) {
-              LOG_CTX("0da00", INFO, _logContext)
-                  << "Result " << res << " ignored while applying transaction "
-                  << op.tid;
-              LOG_CTX("7eecc", DEBUG, _logContext)
-                  << "Operation failure ignored for: " << operation;
-              res = Result{};
-            }
-            return res;
-          } else {
-            static_assert(
-                always_false_v<T>,
-                "Unhandled operation type. This should never happen.");
-          }
-        } else if constexpr (std::is_same_v<
-                                 T, ReplicatedOperation::AbortAllOngoingTrx>) {
-          _transactions.clear();
-          return Result{};
-        } else if constexpr (std::is_same_v<T,
-                                            ReplicatedOperation::CreateShard>) {
-          auto shardRes = _shardHandler->ensureShard(op.shard, op.collection,
-                                                     op.properties);
-          if (shardRes.fail()) {
-            return shardRes.result();
-          }
-          if (!shardRes.get()) {
-            LOG_CTX("c98e9", INFO, _logContext)
-                << "Shard " << op.shard << " already exists";
-          }
-          return Result{};
-        } else if constexpr (std::is_same_v<T,
-                                            ReplicatedOperation::DropShard>) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto transactions = getTransactionsForShard(op.shard);
-          TRI_ASSERT(transactions.empty())
-              << "Some transactions were not aborted before dropping shard "
-              << op.shard << ": " << transactions;
-#endif
-          return _shardHandler->dropShard(op.shard).result();
-        } else {
-          static_assert(always_false_v<T>,
-                        "Unhandled operation type. This should never happen.");
-        }
-      },
-      operation.operation);
-} catch (basics::Exception& e) {
-  return Result{e.code(), e.message()};
-} catch (std::exception& e) {
-  return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
-} catch (...) {
-  LOG_CTX("01202", FATAL, _logContext)
-      << "Caught unknown exception while applying operation " << operation;
-  FATAL_ERROR_EXIT();
-}
-
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
 }
@@ -228,7 +131,7 @@ auto DocumentStateTransactionHandler::getTransactionsForShard(
 }
 
 [[nodiscard]] auto DocumentStateTransactionHandler::validate(
-    ReplicatedOperation operation) const -> Result {
+    ReplicatedOperation::OperationType const& operation) const -> Result {
   return std::visit(
       [&](auto&& op) -> Result {
         using T = std::decay_t<decltype(op)>;
@@ -239,7 +142,108 @@ auto DocumentStateTransactionHandler::getTransactionsForShard(
         }
         return Result{};
       },
-      operation.operation);
+      operation);
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    FinishesUserTransaction auto const& op) -> Result {
+  TRI_ASSERT(op.tid.isFollowerTransactionId());
+  auto trx = getTrx(op.tid);
+  ADB_PROD_ASSERT(trx != nullptr);
+
+  auto res = Result{};
+  using T = std::decay_t<decltype(op)>;
+  if constexpr (std::is_same_v<T, ReplicatedOperation::Commit>) {
+    res = trx->commit();
+  } else if constexpr (std::is_same_v<T, ReplicatedOperation::Abort>) {
+    res = trx->abort();
+  }
+  removeTransaction(op.tid);
+  return res;
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::IntermediateCommit const& op) -> Result {
+  TRI_ASSERT(op.tid.isFollowerTransactionId());
+  auto trx = getTrx(op.tid);
+  ADB_PROD_ASSERT(trx != nullptr);
+  return trx->intermediateCommit();
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ModifiesUserTransaction auto const& op) -> Result {
+  TRI_ASSERT(op.tid.isFollowerTransactionId());
+  auto trx = getTrx(op.tid);
+  if (trx == nullptr) {
+    using T = std::decay_t<decltype(op)>;
+    auto accessType = std::is_same_v<T, ReplicatedOperation::Truncate>
+                          ? AccessMode::Type::EXCLUSIVE
+                          : AccessMode::Type::WRITE;
+    trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType);
+    setTrx(op.tid, trx);
+  }
+  auto opRes = trx->apply(op);
+  auto res = opRes.fail() ? opRes.result
+                          : makeResultFromOperationResult(opRes, op.tid);
+  if (res.fail() && shouldIgnoreError(opRes)) {
+    LOG_CTX("0da00", INFO, _logContext)
+        << "Result " << res << " ignored while applying transaction " << op.tid;
+    LOG_CTX("7eecc", DEBUG, _logContext)
+        << "Operation failure ignored for: " << op;
+    res = Result{};
+  }
+  return res;
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::AbortAllOngoingTrx const&) -> Result {
+  _transactions.clear();
+  return Result{};
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::CreateShard const& op) -> Result {
+  auto shardRes =
+      _shardHandler->ensureShard(op.shard, op.collection, op.properties);
+  if (shardRes.fail()) {
+    return shardRes.result();
+  }
+  if (!shardRes.get()) {
+    LOG_CTX("c98e9", INFO, _logContext)
+        << "Shard " << op.shard << " already exists";
+  }
+  return Result{};
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::DropShard const& op) -> Result {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto transactions = getTransactionsForShard(op.shard);
+  TRI_ASSERT(transactions.empty())
+      << "Some transactions were not aborted before dropping shard " << op.shard
+      << ": " << transactions;
+#endif
+  return _shardHandler->dropShard(op.shard).result();
+}
+
+auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
+    -> Result {
+  return applyEntry(operation.operation);
+}
+
+auto DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::OperationType const& operation) -> Result try {
+  return std::visit(
+      overload{[&](auto const& op) -> Result { return applyOp(op); }},
+      operation);
+} catch (basics::Exception& e) {
+  return Result{e.code(), e.message()};
+} catch (std::exception& e) {
+  return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
+} catch (...) {
+  LOG_CTX("01202", FATAL, _logContext)
+      << "Caught unknown exception while applying operation " << operation;
+  FATAL_ERROR_EXIT();
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

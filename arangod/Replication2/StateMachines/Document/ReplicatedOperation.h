@@ -118,6 +118,8 @@ struct ReplicatedOperation {
                    Remove>;
   OperationType operation;
 
+  static auto fromOperationType(OperationType op) noexcept
+      -> ReplicatedOperation;
   static auto buildAbortAllOngoingTrxOperation() noexcept
       -> ReplicatedOperation;
   static auto buildCommitOperation(TransactionId tid) noexcept
@@ -147,6 +149,9 @@ struct ReplicatedOperation {
   explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept;
 };
 
+template<typename T, typename... U>
+concept IsAnyOf = (std::same_as<T, U> || ...);
+
 template<class T>
 concept ModifiesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Truncate> ||
@@ -161,15 +166,20 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept UserTransaction =
-    ModifiesUserTransaction<T> || FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
-template<typename T, typename... U>
-concept IsAnyOf = (std::same_as<T, U> || ...);
+template<class T>
+concept InsertsDocuments =
+    IsAnyOf<T, ReplicatedOperation::Insert, ReplicatedOperation::Update,
+            ReplicatedOperation::Replace>;
 
-template<class... T>
-constexpr bool always_false_v = false;
+template<class T>
+concept UserTransaction =
+    ModifiesUserTransaction<T> || FinishesUserTransactionOrIntermediate<T>;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
+auto operator<<(std::ostream&, ReplicatedOperation::OperationType const&)
+    -> std::ostream&;
 }  // namespace arangodb::replication2::replicated_state::document

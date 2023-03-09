@@ -105,7 +105,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           [&](auto&& op) -> Result {
             using T = std::decay_t<decltype(op)>;
             if constexpr (ModifiesUserTransaction<T>) {
-              if (auto res = transactionHandler->validate(doc.operation);
+              if (auto res =
+                      transactionHandler->validate(doc.getInnerOperation());
                   res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
                 // The shard might've been dropped before doing recovery.
                 LOG_CTX("e76f8", INFO, self->loggerContext)
@@ -116,10 +117,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 return res;
               }
               activeTransactions.insert(op.tid);
-            } else if constexpr (FinishesUserTransaction<T> ||
-                                 std::is_same_v<
-                                     T,
-                                     ReplicatedOperation::IntermediateCommit>) {
+            } else if constexpr (FinishesUserTransactionOrIntermediate<T>) {
               // There are two cases where we can end up here:
               // 1. After recovery, we did not get the beginning of the
               // transaction.

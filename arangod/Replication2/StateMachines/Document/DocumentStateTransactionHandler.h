@@ -33,6 +33,10 @@
 #include <string>
 #include <unordered_map>
 
+namespace arangodb {
+struct OperationResult;
+}
+
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
@@ -48,13 +52,15 @@ struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
   [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation)
       -> Result = 0;
+  [[nodiscard]] virtual auto applyEntry(
+      ReplicatedOperation::OperationType const& operation) -> Result = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
   virtual auto getTransactionsForShard(ShardID const&)
       -> std::vector<TransactionId> = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
-  [[nodiscard]] virtual auto validate(ReplicatedOperation operation) const
-      -> Result = 0;
+  [[nodiscard]] virtual auto validate(
+      ReplicatedOperation::OperationType const& operation) const -> Result = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -66,18 +72,33 @@ class DocumentStateTransactionHandler
       std::shared_ptr<IDocumentStateShardHandler> shardHandler);
   [[nodiscard]] auto applyEntry(ReplicatedOperation operation)
       -> Result override;
+  [[nodiscard]] auto applyEntry(
+      ReplicatedOperation::OperationType const& operation) -> Result override;
   void removeTransaction(TransactionId tid) override;
   auto getTransactionsForShard(ShardID const&)
       -> std::vector<TransactionId> override;
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
-  [[nodiscard]] auto validate(ReplicatedOperation operation) const
+  [[nodiscard]] auto validate(
+      ReplicatedOperation::OperationType const& operation) const
       -> Result override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
   void setTrx(TransactionId tid,
               std::shared_ptr<IDocumentStateTransaction> trx);
+
+  auto applyOp(FinishesUserTransaction auto const&) -> Result;
+  auto applyOp(ReplicatedOperation::IntermediateCommit const&) -> Result;
+  auto applyOp(ModifiesUserTransaction auto const&) -> Result;
+  auto applyOp(ReplicatedOperation::AbortAllOngoingTrx const&) -> Result;
+  auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
+  auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
+
+  static auto shouldIgnoreError(OperationResult const& res) noexcept -> bool;
+  static auto makeResultFromOperationResult(OperationResult const& res,
+                                            TransactionId tid)
+      -> arangodb::Result;
 
  private:
   GlobalLogIdentifier _gid;

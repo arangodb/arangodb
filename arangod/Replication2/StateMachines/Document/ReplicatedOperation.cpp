@@ -38,6 +38,11 @@ ReplicatedOperation::ReplicatedOperation(std::in_place_t,
                                          Args&&... args) noexcept
     : operation(std::forward<Args>(args)...) {}
 
+auto ReplicatedOperation::fromOperationType(OperationType op) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{std::in_place, std::move(op)};
+}
+
 auto ReplicatedOperation::buildAbortAllOngoingTrxOperation() noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{std::in_place, AbortAllOngoingTrx{}};
@@ -108,5 +113,12 @@ auto ReplicatedOperation::buildDocumentOperation(
 auto operator<<(std::ostream& ostream, ReplicatedOperation const& operation)
     -> std::ostream& {
   return ostream << velocypack::serialize(operation).toJson();
+}
+
+auto operator<<(std::ostream& ostream,
+                ReplicatedOperation::OperationType const& operation)
+    -> std::ostream& {
+  auto replicatedOp = ReplicatedOperation::fromOperationType(operation);
+  return ostream << velocypack::serialize(replicatedOp).toJson();
 }
 }  // namespace arangodb::replication2::replicated_state::document
