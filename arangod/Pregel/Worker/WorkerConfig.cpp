@@ -27,7 +27,7 @@
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Utils.h"
+#include "Pregel/ResolveShard.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -110,8 +110,8 @@ VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   ShardID responsibleShard;
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  Utils::resolveShard(ci, this, std::string(collPart), StaticStrings::KeyString,
-                      keyPart, responsibleShard);
+  ResolveShard::resolve(ci, this, std::string(collPart),
+                        StaticStrings::KeyString, keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
   return VertexID(source, std::string(keyPart));

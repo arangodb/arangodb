@@ -23,6 +23,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
 
