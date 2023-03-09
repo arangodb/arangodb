@@ -76,5 +76,7 @@ declare module "jsoneditor-react" {
     type: "validation" | "customValidation" | "error";
     path: string;
     message: string;
+    params?: any;
+    keyword?: string;
   }
 }
