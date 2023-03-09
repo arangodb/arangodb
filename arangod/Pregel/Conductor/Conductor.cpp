@@ -789,11 +789,11 @@ void Conductor::persistPregelState(ExecutionState state) {
     // document
     auto updateResult = cWriter.updateResult(debugOut.slice());
     if (updateResult.ok()) {
-      LOG_PREGEL("063x1", INFO)
+      LOG_PREGEL("063x3", INFO)
           << "Updated state into: \"" << StaticStrings::PregelCollection
           << "\" collection for PID: " << executionNumber();
     } else {
-      LOG_PREGEL("063x2", INFO)
+      LOG_PREGEL("063x4", INFO)
           << "Could not store result into: \""
           << StaticStrings::PregelCollection
           << "\" collection for PID: " << executionNumber();
