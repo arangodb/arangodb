@@ -1,6 +1,8 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.15.0.
+
 * Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
   is generated for each imported document to avoid clashes with previously
   present data. This must be created on the shard leader rather than the
@@ -22,8 +24,6 @@ v3.8.9 (XXXX-XX-XX)
   arangosearch's analyzers to use optimizations that should not be used if not
   in a single shard mode. For this not to happen, the verification of the
   parameter being true as a condition to run optimizations was removed.
-
-* Updated arangosync to v2.14.0.
 
 * ES-1396: under some rare circumstances it was possible that background index
   creation missed some documents in case the documents were inserted after
