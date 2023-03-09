@@ -137,10 +137,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_released_tick_flush, uint64_t,
+              "Released tick for RocksDB WAL deletion (flush-induced)");
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(
     rocksdb_wal_sequence_lower_bound, uint64_t,
     "RocksDB WAL sequence number until which background thread has caught up");
+DECLARE_GAUGE(rocksdb_live_wal_files, uint64_t,
+              "Number of live RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t,
               "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t,
@@ -250,9 +254,14 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _metricsWalReleasedTickFlush(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_sequence_lower_bound{})),
+      _metricsLiveWalFiles(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files{})),
       _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
       _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
@@ -2317,19 +2326,20 @@ void RocksDBEngine::determineWalFilesInitial() {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
-    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive.
-      continue;
+    if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      ++archivedFiles;
+    } else if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
     }
-
-    ++archivedFiles;
   }
   _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
                                       std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
   _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
 }
 
@@ -2340,10 +2350,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
+  uint64_t minLogNumberToKeep = 0;
+  std::string v;
+  if (_db->GetProperty(rocksdb::DB::Properties::kMinLogNumberToKeep, &v)) {
+    minLogNumberToKeep = static_cast<uint64_t>(basics::StringUtils::int64(v));
+  }
+
   LOG_TOPIC("4673c", DEBUG, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
       << ", minTickExternal: " << minTickExternal
-      << ", releasedTick: " << _releasedTick;
+      << ", releasedTick: " << _releasedTick
+      << ", minLogNumberToKeep: " << minLogNumberToKeep;
 
   // Retrieve the sorted list of all wal files with earliest file first
   rocksdb::VectorLogPtr files;
@@ -2360,15 +2377,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
-    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are mostly interested in files of the archive
-      // just track this file and move to next one
+    if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
       ++liveFiles;
       LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
-          << "inspected WAL file #" << current << "/" << files.size()
+          << "live WAL file #" << current << "/" << files.size()
           << ", filename: '" << f->PathName()
-          << "', start sequence: " << f->StartSequence()
-          << " is not an archived WAL file";
+          << "', start sequence: " << f->StartSequence();
+      continue;
+    }
+
+    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
+      // we are mostly interested in files of the archive
       continue;
     }
 
@@ -2493,6 +2512,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
   _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
                                       std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
   _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
   _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
                                  std::memory_order_relaxed);
@@ -3456,8 +3476,13 @@ TRI_voc_tick_t RocksDBEngine::releasedTick() const {
 
 void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _walFileLock);
+
   if (tick > _releasedTick) {
     _releasedTick = tick;
+    lock.unlock();
+
+    // update metric for released tick
+    _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
 }
 

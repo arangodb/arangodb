@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
+  - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
+    onwards WAL files will be kept (i.e. not deleted from the archivE) because
+    of external flushing needs. Candidates for these are arangosearch links
+    and background index creation.
+  - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
+    which onwards WAL files will be kept because they may be needed by the
+    replication.
+
 * Updated arangosync to v2.15.0.
 
 * FE-19: Updated ArangoDB logo in web interface.
