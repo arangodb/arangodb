@@ -233,9 +233,9 @@ class ClusterFeature : public ArangodFeature {
   bool _requirePersistedId = false;
   // The following value indicates what HTTP code should be returned if
   // a configured write concern cannot currently be fulfilled. The old
-  // behaviour (false, currently the default) means that a 403 FORBIDDEN
-  // with an error of 1004 COLLECTION READ ONLY is returned. The new
-  // behaviour (true) would be a HTTP 503 SERVER UNAVAILABLE with an error of
+  // behavior (currently the default) means that a 403 FORBIDDEN
+  // with an error of 1004 COLLECTION READ ONLY is returned. It is possible to
+  // adjust the behavior so that a HTTP 503 SERVER UNAVAILABLE with an error of
   // 1429 ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED is returned.
   uint32_t _returnCodeFailedWriteConcern = 403;
   /// @brief coordinator timeout for index creation. defaults to 4 days
