@@ -1,6 +1,14 @@
-import { CheckIcon, DeleteIcon } from "@chakra-ui/icons";
-import { Box, Button, Stack, Text, useDisclosure } from "@chakra-ui/react";
-import React from "react";
+import { CheckIcon, DeleteIcon, EditIcon } from "@chakra-ui/icons";
+import {
+  Box,
+  Button,
+  IconButton,
+  Input,
+  Stack,
+  Text,
+  useDisclosure
+} from "@chakra-ui/react";
+import React, { useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -9,15 +17,13 @@ import {
 } from "../../../components/modal";
 import { CopyPropertiesDropdown } from "./CopyPropertiesDropdown";
 import { useSearchAliasContext } from "./SearchAliasContext";
+import { putRenameView } from "./useUpdateAliasViewProperties";
 
 export const SearchAliasHeader = () => {
-  const { view } = useSearchAliasContext();
   return (
-    <Box padding="5" borderBottomWidth="2px" borderColor="gray.200">
-      <Box display="grid" gridTemplateRows={"30px 1fr"}>
-        <Text color="gray.700" fontWeight="600" fontSize="lg">
-          {view.name}
-        </Text>
+    <Box padding="4" borderBottomWidth="2px" borderColor="gray.200">
+      <Box display="grid" gap="4" gridTemplateRows={"30px 1fr"}>
+        <EditableNameField />
         <Box display="grid" gridTemplateColumns="1fr 0.5fr">
           <CopyPropertiesDropdown />
           <ActionButtons />
@@ -78,5 +84,71 @@ const DeleteViewButton = () => {
         </ModalFooter>
       </Modal>
     </>
+  );
+};
+
+const EditableNameField = () => {
+  const { view } = useSearchAliasContext();
+  const { onOpen, onClose, isOpen } = useDisclosure();
+  const [newName, setNewName] = useState(view.name);
+  const [loading, setLoading] = useState(false);
+  if (isOpen) {
+    return (
+      <Stack as="form" margin="0" direction="row" alignItems="center" 
+          onSubmit={async event => {
+            event.preventDefault();
+            setLoading(true);
+            try {
+              const isError = await putRenameView({
+                initialName: view.name,
+                name: newName
+              });
+              console.log({ isError });
+              setLoading(false);
+              if (!isError) {
+                onClose();
+                let newRoute = `#view/${newName}`;
+                window.App.navigate(newRoute, {
+                  trigger: true,
+                  replace: true
+                });
+              }
+            } catch (e) {
+              setLoading(false);
+              window.arangoHelper.arangoError(
+                "Failure",
+                `Got unexpected server response: ${e.message}`
+              );
+            }
+          }}
+        >
+          <Input
+            value={newName}
+            backgroundColor={"white"}
+            isDisabled={loading}
+            onChange={e => setNewName(e.target.value)}
+            maxWidth="300px"
+            placeholder="Enter name"
+          />
+          <IconButton
+            type="submit"
+            isLoading={loading}
+            aria-label="Edit name"
+            icon={<CheckIcon />}
+          />
+      </Stack>
+    );
+  }
+  return (
+    <Stack direction="row" alignItems="center">
+      <Text color="gray.700" fontWeight="600" fontSize="lg">
+        {view.name}
+      </Text>
+      <IconButton
+        aria-label="Open edit name input"
+        icon={<EditIcon />}
+        onClick={onOpen}
+      />
+    </Stack>
   );
 };

@@ -37,7 +37,7 @@ export const useUpdateAliasViewProperties = () => {
   return { onSave };
 };
 
-const putRenameView = async ({
+export const putRenameView = async ({
   initialName,
   name
 }: {
