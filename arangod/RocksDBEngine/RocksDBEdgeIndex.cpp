@@ -846,9 +846,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   size_t n = 0;
   for (it->Seek(lower); it->Valid(); it->Next()) {
     ++n;
-    if (n % 1024 == 0 && collection().vocbase().server().isStopping()) {
-      // periodically check for server shutdown
-      return;
+    if (n % 1024 == 0) {
+      if (collection().vocbase().server().isStopping()) {
+        // periodically check for server shutdown
+        return;
+      }
+      if (collection().vocbase().isDropped() || collection().deleted()) {
+        // collection or database was dropped
+        return;
+      }
     }
 
     rocksdb::Slice key = it->key();
