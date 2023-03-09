@@ -39,7 +39,12 @@ export const SearchAliasProvider = ({
   initialView: ViewPropertiesType;
   children: ReactNode;
 }) => {
-  const [view, setView] = useState(initialView);
+  let newInitalView = initialView;
+  const cachedViewStateStr = window.sessionStorage.getItem(initialView.name);
+  if (cachedViewStateStr) {
+    newInitalView = JSON.parse(cachedViewStateStr);
+  }
+  const [view, setView] = useState(newInitalView);
   const [copiedView, setCopiedView] = useState<
     ViewPropertiesType | undefined
   >();
@@ -88,7 +93,9 @@ export const SearchAliasProvider = ({
       );
     }
   };
-  const [changed, setChanged] = useState(false);
+  const [changed, setChanged] = useState(
+    !!window.sessionStorage.getItem(`${initialView.name}-changed`)
+  );
 
   useEffect(() => {
     const updatedIndexes = getUpdatedIndexes({ initialView, view });
@@ -98,11 +105,21 @@ export const SearchAliasProvider = ({
       updatedIndexes.changesDeleted.length > 0 ||
       initialView.name !== view.name
     ) {
+      console.log("changed!!", { view, initialView });
       setChanged(true);
+      window.sessionStorage.setItem(`${initialView.name}-changed`, "true");
+      window.sessionStorage.setItem(
+        `${initialView.name}`,
+        JSON.stringify(view)
+      );
     } else {
+      console.log("not changed!!", { view, initialView });
       setChanged(false);
+      window.sessionStorage.setItem(`${initialView.name}-changed`, "false");
+      window.sessionStorage.setItem(`${initialView.name}`, "");
     }
   }, [initialView, view]);
+
   return (
     <SearchAliasContext.Provider
       value={{

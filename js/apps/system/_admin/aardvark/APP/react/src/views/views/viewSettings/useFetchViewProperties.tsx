@@ -28,10 +28,10 @@ export function useFetchViewProperties(name: string) {
 
   useEffect(() => {
     if (data) {
-      let viewState = omit(data.body, "error", "code") as ViewPropertiesType;
+      const viewState = omit(data.body, "error", "code") as ViewPropertiesType;
       setView(viewState);
     }
   }, [data, name]);
 
-  return {view, isLoading};
+  return { view, isLoading };
 }
