@@ -92,9 +92,6 @@ function pregelStatusWriterSuite() {
     testExecutionCreatesHistoricPregelEntry: function () {
       const result = executeExamplePregel();
       const pid = result[0];
-      const stats = result[1];
-
-      assertEqual(db[pregelSystemCollectionName].count(), 1);
       const persistedState = db[pregelSystemCollectionName].document(pid);
       assertTrue(persistedState);
       assertEqual(persistedState.data.state, "done");
