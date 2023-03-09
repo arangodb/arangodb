@@ -45,7 +45,7 @@ workflows:
   setup-rlog:
     when:
       matches:
-        pattern: /^(bug-fix|feature|chore)\/cinfra-.*$/
+        pattern: /^(bug-fix|feature|chore|test|build|refactor)\/cinfra-.*$/
         value: << pipeline.git.branch >>
     jobs:
       - setup:
