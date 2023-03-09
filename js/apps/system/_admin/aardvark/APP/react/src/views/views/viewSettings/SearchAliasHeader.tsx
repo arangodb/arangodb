@@ -94,48 +94,52 @@ const EditableNameField = () => {
   const [loading, setLoading] = useState(false);
   if (isOpen) {
     return (
-      <Stack as="form" margin="0" direction="row" alignItems="center" 
-          onSubmit={async event => {
-            event.preventDefault();
-            setLoading(true);
-            try {
-              const isError = await putRenameView({
-                initialName: initialView.name,
-                name: newName
+      <Stack
+        as="form"
+        margin="0"
+        direction="row"
+        alignItems="center"
+        onSubmit={async event => {
+          event.preventDefault();
+          setLoading(true);
+          try {
+            const isError = await putRenameView({
+              initialName: initialView.name,
+              name: newName
+            });
+            setLoading(false);
+            if (!isError) {
+              onClose();
+              let newRoute = `#view/${newName}`;
+              window.App.navigate(newRoute, {
+                trigger: true,
+                replace: true
               });
-              console.log({ isError });
-              setLoading(false);
-              if (!isError) {
-                onClose();
-                let newRoute = `#view/${newName}`;
-                window.App.navigate(newRoute, {
-                  trigger: true,
-                  replace: true
-                });
-              }
-            } catch (e) {
-              setLoading(false);
-              window.arangoHelper.arangoError(
-                "Failure",
-                `Got unexpected server response: ${e.message}`
-              );
             }
-          }}
-        >
-          <Input
-            value={newName}
-            backgroundColor={"white"}
-            isDisabled={loading}
-            onChange={e => setNewName(e.target.value)}
-            maxWidth="300px"
-            placeholder="Enter name"
-          />
-          <IconButton
-            type="submit"
-            isLoading={loading}
-            aria-label="Edit name"
-            icon={<CheckIcon />}
-          />
+          } catch (e) {
+            setLoading(false);
+            window.arangoHelper.arangoError(
+              "Failure",
+              `Got unexpected server response: ${e.message}`
+            );
+          }
+        }}
+      >
+        <Input
+          autoFocus
+          value={newName}
+          backgroundColor={"white"}
+          isDisabled={loading}
+          onChange={e => setNewName(e.target.value)}
+          maxWidth="300px"
+          placeholder="Enter name"
+        />
+        <IconButton
+          type="submit"
+          isLoading={loading}
+          aria-label="Edit name"
+          icon={<CheckIcon />}
+        />
       </Stack>
     );
   }
