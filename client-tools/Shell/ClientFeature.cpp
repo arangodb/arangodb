@@ -384,8 +384,10 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
-        << "invalid value for --server.endpoint ('" << definition << "')";
+    if (definition != "none") {
+      LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
+          << "invalid value for --server.endpoint ('" << definition << "')";
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
