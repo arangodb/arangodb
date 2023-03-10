@@ -140,6 +140,13 @@ std::shared_ptr<GraphFormat<HITSValue, int8_t> const> HITS::inputFormat()
   return new HITSWorkerContext(std::move(readAggregators),
                                std::move(writeAggregators));
 }
+[[nodiscard]] auto HITS::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<HITSWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
 
 struct HITSMasterContext : public MasterContext {
   // note: this is identical to getThreshold() in HITSKleinberg.cpp

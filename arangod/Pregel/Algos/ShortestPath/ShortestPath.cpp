@@ -142,6 +142,13 @@ struct ShortestPathWorkerContext : public WorkerContext {
   return new ShortestPathWorkerContext(std::move(readAggregators),
                                        std::move(writeAggregators));
 }
+[[nodiscard]] auto ShortestPathAlgorithm::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ShortestPathWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
 
 struct ShortestPathMasterContext : public MasterContext {
   ShortestPathMasterContext(uint64_t vertexCount, uint64_t edgeCount,

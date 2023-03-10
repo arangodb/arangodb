@@ -107,6 +107,14 @@ ColorPropagation::createComputation(
                                            std::move(writeAggregators), _maxGss,
                                            _numColors);
 }
+[[nodiscard]] auto ColorPropagation::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ColorPropagationWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), _maxGss,
+      _numColors);
+}
 
 struct ColorPropagationMasterContext : public MasterContext {
   ColorPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,

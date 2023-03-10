@@ -322,6 +322,15 @@ HITSKleinberg::inputFormat() const {
                                         std::move(writeAggregators), maxGSS,
                                         numIterations, threshold);
 }
+[[nodiscard]] auto HITSKleinberg::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  double const threshold = getThreshold(userParams);
+  return std::make_unique<HITSKleinbergWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), maxGSS,
+      numIterations, threshold);
+}
 
 struct HITSKleinbergMasterContext : public MasterContext {
   double const threshold;

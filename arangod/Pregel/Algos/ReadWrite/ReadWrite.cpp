@@ -112,6 +112,13 @@ VertexComputation<V, E, V>* ReadWrite::createComputation(
   return new ReadWriteWorkerContext(std::move(readAggregators),
                                     std::move(writeAggregators));
 }
+[[nodiscard]] auto ReadWrite::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ReadWriteWorkerContext>(std::move(readAggregators),
+                                                  std::move(writeAggregators));
+}
 
 struct ReadWriteMasterContext : public MasterContext {
   size_t maxGss;

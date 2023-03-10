@@ -139,6 +139,13 @@ struct SSSPWorkerContext : public WorkerContext {
   return new SSSPWorkerContext(std::move(readAggregators),
                                std::move(writeAggregators));
 }
+[[nodiscard]] auto SSSPAlgorithm::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<SSSPWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
 
 struct SSSPMasterContext : public MasterContext {
   SSSPMasterContext(uint64_t vertexCount, uint64_t edgeCount,

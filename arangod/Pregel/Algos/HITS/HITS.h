@@ -73,6 +73,11 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
       std::unique_ptr<AggregatorHandler> readAggregators,
       std::unique_ptr<AggregatorHandler> writeAggregators,
       velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

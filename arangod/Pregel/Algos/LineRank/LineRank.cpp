@@ -124,6 +124,13 @@ VertexComputation<float, float, float>* LineRank::createComputation(
   return new LRWorkerContext(std::move(readAggregators),
                              std::move(writeAggregators));
 }
+[[nodiscard]] auto LineRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<LRWorkerContext>(std::move(readAggregators),
+                                           std::move(writeAggregators));
+}
 
 [[nodiscard]] auto LineRank::masterContext(
     std::unique_ptr<AggregatorHandler> aggregators,

@@ -87,6 +87,19 @@ struct AlgorithmFake : IAlgorithm {
       -> std::unique_ptr<MasterContext> override {
     return nullptr;
   }
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const -> WorkerContext* override {
+    return nullptr;
+  }
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override {
+    return nullptr;
+  }
   [[nodiscard]] auto name() const -> std::string_view override {
     return "fake";
   };

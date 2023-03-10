@@ -115,6 +115,13 @@ struct ConnectedComponentsWorkerContext : public WorkerContext {
   return new ConnectedComponentsWorkerContext(std::move(readAggregators),
                                               std::move(writeAggregators));
 }
+[[nodiscard]] auto ConnectedComponents::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ConnectedComponentsWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
 
 struct ConnectedComponentsMasterContext : public MasterContext {
   ConnectedComponentsMasterContext(

@@ -675,6 +675,13 @@ struct DMIDWorkerContext : public WorkerContext {
   return new DMIDWorkerContext(std::move(readAggregators),
                                std::move(writeAggregators));
 }
+[[nodiscard]] auto DMID::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<DMIDWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
 
 struct DMIDMasterContext : public MasterContext {
   DMIDMasterContext(uint64_t vertexCount, uint64_t edgeCount,

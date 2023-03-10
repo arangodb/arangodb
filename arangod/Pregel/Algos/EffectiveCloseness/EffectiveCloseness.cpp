@@ -144,6 +144,13 @@ struct EffectiveClosenessWorkerContext : public WorkerContext {
   return new EffectiveClosenessWorkerContext(std::move(readAggregators),
                                              std::move(writeAggregators));
 }
+[[nodiscard]] auto EffectiveCloseness::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<EffectiveClosenessWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
 
 struct EffectiveClosenessMasterContext : public MasterContext {
   EffectiveClosenessMasterContext(

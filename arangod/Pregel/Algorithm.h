@@ -59,7 +59,6 @@ struct IAlgorithm {
   [[nodiscard]] virtual auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* = 0;
-
   [[nodiscard]] virtual auto masterContextUnique(
       uint64_t vertexCount, uint64_t edgeCount,
       std::unique_ptr<AggregatorHandler> aggregators,
@@ -67,9 +66,13 @@ struct IAlgorithm {
       -> std::unique_ptr<MasterContext> = 0;
 
   [[nodiscard]] virtual auto workerContext(
-      std::unique_ptr<AggregatorHandler> conductorAggregators,
-      std::unique_ptr<AggregatorHandler> workerAggregators,
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
       velocypack::Slice userParams) const -> WorkerContext* = 0;
+  [[nodiscard]] virtual auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> = 0;
 
   [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };
