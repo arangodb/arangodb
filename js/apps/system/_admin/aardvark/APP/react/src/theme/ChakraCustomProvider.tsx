@@ -9,6 +9,9 @@ export const ChakraCustomProvider = ({ children }: { children: ReactNode }) => {
       {/* This is to override bootstrap styles */}
       <Global
         styles={{
+          ".reactContainer": {
+            height: 'calc(100% - 120px)'
+          },
           "input[type='number'], input[type='number']:focus": {
             height: '40px'
           }

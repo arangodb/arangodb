@@ -303,7 +303,7 @@
               $.ajax({
                 url: './foxxes/docs/swagger.json?mount=' + encodeURIComponent(this.model.get('mount')),
                 success: function (data) {
-                  if (Object.keys(data.paths).length < 1) {
+                  if (data.paths && Object.keys(data.paths).length < 1) {
                     self.render('readme');
                     $('#app-show-swagger').attr('disabled', 'true');
                   }

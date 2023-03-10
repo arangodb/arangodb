@@ -159,6 +159,7 @@
           }
 
           // react unmounting
+          ReactDOM.unmountComponentAtNode(document.getElementById('content-react'));
           ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
       }
@@ -786,20 +787,31 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            if (self.indicesView) {
-              self.indicesView.remove();
-            }
-            self.indicesView = new window.IndicesView({
-              collectionName: colname,
-              collection: self.arangoCollectionsStore.findWhere({
-                name: colname
-              })
-            });
-            self.indicesView.render();
-          }
+            // if (self.indicesView) {
+            //   self.indicesView.remove();
+            // }
+            // self.indicesView = new window.IndicesView({
+            //   collectionName: colname,
+            //   collection: self.arangoCollectionsStore.findWhere({
+            //     name: colname
+            //   })
+            // });
+            // self.indicesView.render();
+
+            ReactDOM.render(
+              React.createElement(window.CollectionIndicesReactView, {
+                collectionName: colname,
+                collection: self.arangoCollectionsStore.findWhere({
+                  name: colname,
+                }),
+              }),
+              document.getElementById("content-react")
+            );
+          },
         });
       });
     },
+
 
     cSettings: function (colname) {
       const self = this;

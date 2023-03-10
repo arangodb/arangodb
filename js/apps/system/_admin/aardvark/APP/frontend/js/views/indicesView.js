@@ -60,8 +60,8 @@
           })
         }));
 
-        self.breadcrumb();
-        window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
+        // self.breadcrumb();
+        // window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
 
         self.getIndex();
 
