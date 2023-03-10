@@ -40,7 +40,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
                        std::function<void()> const& statusUpdateCallback)
       : config(config), statusUpdateCallback(statusUpdateCallback) {}
 
-  auto store(std::unique_ptr<Quiver<V, E>> quiver) -> void override;
+  auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
 
   std::shared_ptr<WorkerConfig> config;
   std::function<void()> const& statusUpdateCallback;

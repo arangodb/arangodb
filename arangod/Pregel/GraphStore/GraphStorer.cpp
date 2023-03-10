@@ -22,10 +22,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphStorer.h"
+#include <cstdint>
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
 
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(std::unique_ptr<Quiver<V, E>> quiver) -> void {}
+auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {}
 
 }  // namespace arangodb::pregel
+
+template struct arangodb::pregel::GraphStorer<int64_t, int64_t>;
+template struct arangodb::pregel::GraphStorer<uint64_t, uint64_t>;
+template struct arangodb::pregel::GraphStorer<uint64_t, uint8_t>;
+template struct arangodb::pregel::GraphStorer<float, float>;
+template struct arangodb::pregel::GraphStorer<double, float>;
+template struct arangodb::pregel::GraphStorer<double, double>;
+template struct arangodb::pregel::GraphStorer<float, uint8_t>;
+
+// specific algo combos
+template struct arangodb::pregel::GraphStorer<arangodb::pregel::algos::WCCValue,
+                                              uint64_t>;
+template struct arangodb::pregel::GraphStorer<arangodb::pregel::algos::SCCValue,
+                                              int8_t>;
+template struct arangodb::pregel::GraphStorer<arangodb::pregel::algos::ECValue,
+                                              int8_t>;
+template struct arangodb::pregel::GraphStorer<
+    arangodb::pregel::algos::HITSValue, int8_t>;
+template struct arangodb::pregel::GraphStorer<
+    arangodb::pregel::algos::HITSKleinbergValue, int8_t>;
+template struct arangodb::pregel::GraphStorer<
+    arangodb::pregel::algos::DMIDValue, float>;
+template struct arangodb::pregel::GraphStorer<arangodb::pregel::algos::LPValue,
+                                              int8_t>;
+template struct arangodb::pregel::GraphStorer<
+    arangodb::pregel::algos::SLPAValue, int8_t>;
+template struct arangodb::pregel::GraphStorer<
+    arangodb::pregel::algos::ColorPropagationValue, int8_t>;

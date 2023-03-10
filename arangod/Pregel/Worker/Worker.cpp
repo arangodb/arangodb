@@ -36,7 +36,9 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/GraphLoader.h"
+#include "Pregel/GraphStore/GraphStorer.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/IncomingCache.h"
@@ -85,7 +87,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
-      _algorithm(algo) {
+      _algorithm(algo),
+      _quiver(nullptr) {
   _config->updateConfig(parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
@@ -96,8 +99,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                           parameters.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _graphStore = std::make_unique<GraphStore<V, E>>(
-      _feature, vocbase, _config->executionNumber(), _algorithm->inputFormat());
+  _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
+  _workerAggregators = std::make_unique<AggregatorHandler>(algo);
 
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
@@ -162,11 +165,10 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
-    auto graphLoaded =
-        GraphLoaded{.executionNumber = _config->_executionNumber,
-                    .sender = ServerState::instance()->getId(),
-                    .vertexCount = _graphStore->localVertexCount(),
-                    .edgeCount = _graphStore->localEdgeCount()};
+    auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
+                                   .sender = ServerState::instance()->getId(),
+                                   .vertexCount = _quiver->numberOfVertices(),
+                                   .edgeCount = _quiver->numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -186,23 +188,25 @@ void Worker<V, E, M>::setupWorker() {
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(_makeStatusCallback()),
-                    finishedCallback = std::move(finishedCallback)] {
-                     try {
-                       _graphStore->loadShards(_config, statusUpdateCallback,
-                                               finishedCallback);
-                     } catch (std::exception const& ex) {
-                       LOG_PREGEL("a47c4", WARN)
-                           << "caught exception in loadShards: " << ex.what();
-                       throw;
-                     } catch (...) {
-                       LOG_PREGEL("e932d", WARN)
-                           << "caught unknown exception in loadShards";
-                       throw;
-                     }
-                   });
+  scheduler->queue(
+      RequestLane::INTERNAL_LOW,
+      [this, self = shared_from_this(),
+       statusUpdateCallback = std::move(_makeStatusCallback()),
+       finishedCallback = std::move(finishedCallback)] {
+        try {
+          auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
+                                          statusUpdateCallback);
+          _quiver = loader.load();
+        } catch (std::exception const& ex) {
+          LOG_PREGEL("a47c4", WARN)
+              << "caught exception in loadShards: " << ex.what();
+          throw;
+        } catch (...) {
+          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
+          throw;
+        }
+        finishedCallback();
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -259,8 +263,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
-                                 .vertexCount = _graphStore->localVertexCount(),
-                                 .edgeCount = _graphStore->localEdgeCount(),
+                                 .vertexCount = _quiver->numberOfVertices(),
+                                 .edgeCount = _quiver->numberOfEdges(),
                                  .aggregators = aggregators};
 }
 
@@ -348,7 +352,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_graphStore = _graphStore.get();
+  ctx->_quiver = _quiver;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
@@ -373,7 +377,7 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& vertexEntry : _graphStore->quiver()) {
+  for (auto& vertexEntry : *_quiver) {
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
     _currentGssObservables.messagesReceived += messages.size();
@@ -426,6 +430,7 @@ bool Worker<V, E, M>::_processVertices() {
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
+  // clearly don't get here atm
   return true;
 }
 
@@ -514,9 +519,12 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->storeResults(_config, std::move(cleanup),
-                              _makeStatusCallback());
+    auto storer = GraphStorer<V, E>(_config, _makeStatusCallback());
+    // as of here we don't have a quiver anymore!
+    storer.store(std::move(_quiver));
+    _quiver = nullptr;
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+    cleanup();
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
@@ -525,13 +533,15 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
+  ADB_PROD_ASSERT(false) << "Returning AQL results not implemented yet.";
+#if 0
   MUTEX_LOCKER(guard, _commandMutex);
 
   std::string tmp;
 
   VPackBuilder results;
   results.openArray(/*unindexed*/ true);
-  for (auto& vertex : _graphStore->quiver()) {
+  for (auto& vertex : _quiver) {
     TRI_ASSERT(vertex.shard().value < _config->globalShardIDs().size());
     ShardID const& shardId = _config->globalShardID(vertex.shard());
 
@@ -564,6 +574,8 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   }
   results.close();
   return PregelResults{results};
+#endif
+  return PregelResults{};
 }
 
 template<typename V, typename E, typename M>
@@ -606,7 +618,7 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
   if (!currentGss.isDefault()) {
     fullGssStatus.gss.emplace_back(currentGss);
   }
-  return Status{.graphStoreStatus = _graphStore->status(),
+  return Status{.graphStoreStatus = {},  // TODO: _graphStore->status(),
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};

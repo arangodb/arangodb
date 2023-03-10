@@ -97,14 +97,6 @@ class GraphStore final {
   Quiver<V, E>& quiver() { return _quiver; }
 
  private:
-  auto loadVertices(ShardID const& vertexShard,
-                    std::vector<ShardID> const& edgeShards,
-                    std::function<void()> const& statusUpdateCallback)
-      -> std::vector<Vertex<V, E>>;
-  void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
-                 ShardID const& edgeShard, std::string_view documentID,
-                 uint64_t numVertices, traverser::EdgeCollectionInfo& info);
-
   void storeVertices(std::vector<ShardID> const& globalShards,
                      std::function<void()> const& statusUpdateCallback);
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);

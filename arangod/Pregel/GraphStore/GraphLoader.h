@@ -26,23 +26,45 @@
 #include <memory>
 #include <functional>
 
-#include "Pregel/GraphStore/GraphLoaderBase.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
+#include "Pregel/GraphStore/GraphLoaderBase.h"
+#include "Pregel/IndexHelpers.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel {
 
 class WorkerConfig;
+template<class V, class E>
+struct GraphFormat;
 
 template<typename V, typename E>
 struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
+                       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::function<void()> const& statusUpdateCallback)
-      : config(config), statusUpdateCallback(statusUpdateCallback) {}
+      : graphFormat(graphFormat),
+        resourceMonitor(GlobalResourceMonitor::instance()),
+        config(config),
+        statusUpdateCallback(statusUpdateCallback) {}
 
-  auto load() -> std::unique_ptr<Quiver<V, E>> override;
+  auto load() -> std::shared_ptr<Quiver<V, E>> override;
 
-  void loadShards();
+  auto loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards) -> void;
+  auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
+                 ShardID const& edgeShard, std::string_view documentID,
+                 uint64_t numVertices, traverser::EdgeCollectionInfo& info)
+      -> void;
 
+  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
+
+  std::shared_ptr<Quiver<V, E>> result;
+
+  std::shared_ptr<GraphFormat<V, E> const> graphFormat;
+  ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
   std::function<void()> const& statusUpdateCallback;
 };
