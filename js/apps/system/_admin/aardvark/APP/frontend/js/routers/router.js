@@ -1362,14 +1362,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content')));
+          document.getElementById('content-react')));
     },
     views: function () {
       this.checkUser();
       
       this.init.then(
        () => ReactDOM.render(React.createElement(window.ViewsListReactView),
-         document.getElementById('content')));
+         document.getElementById('content-react')));
     },
 
     fetchDBS: function (callback) {

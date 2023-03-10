@@ -6,14 +6,20 @@ import { theme } from "./theme";
 export const ChakraCustomProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ChakraProvider theme={theme}>
-      {/* This is to override bootstrap styles */}
       <Global
         styles={{
-          ".reactContainer": {
-            height: 'calc(100% - 120px)'
+          // {/* This is to override the non-react wrappers */}
+          ".contentWrapper": {
+            display: "none"
           },
+          ".reactContainer": {
+            height: "calc(100% - 120px)",
+            display: "flex",
+            width: "100%"
+          },
+          // {/* This is to override bootstrap styles */}
           "input[type='number'], input[type='number']:focus": {
-            height: '40px'
+            height: "40px"
           }
         }}
       />

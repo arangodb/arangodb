@@ -35,7 +35,7 @@ const ViewsListInner = () => {
     return <>no views found</>;
   }
   return (
-    <Box display={"grid"} gridTemplateRows="48px 1fr" rowGap="5">
+    <Box width="full" display={"grid"} gridTemplateRows="48px 1fr" rowGap="5">
       <Box
         backgroundColor="white"
         boxShadow="md"
