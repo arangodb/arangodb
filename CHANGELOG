@@ -1,6 +1,22 @@
 devel
 -----
 
+* Auto-flush RocksDB WAL files and in-memory column family data if the number
+  of live WAL files exceeds a certain threshold. This is to make sure that
+  WAL files are moved to the archive when there are a lot of live WAL files
+  present (e.g. after a restart; in this case RocksDB does not count any
+  previously existing WAL files when calculating the size of WAL files and 
+  comparing it `max_total_wal_size`.
+  The feature can be configured via the following startup options:
+  - `--rocksdb.auto-flush-min-live-wal-files`: minimum number of live WAL
+    files that triggers an auto-flush. Defaults to `10`.
+  - `--rocksdb.auto-flush-check-interval`: interval (in seconds) in which
+    auto-flushes are executed. Defaults to `3600`.
+  Note that an auto-flush is only executed if the number of live WAL files 
+  exceeds the configured threshold and the last auto-flush is longer ago than
+  the configured auto-flush check interval. That way too frequent auto-flushes
+  can be avoided.
+
 * Updated arangosync to v2.16.0-preview-1.
 
 * Added the following metrics for WAL file tracking:
