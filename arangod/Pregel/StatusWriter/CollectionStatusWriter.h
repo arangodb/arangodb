@@ -169,7 +169,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  [[nodiscard]] std::shared_ptr<transaction::Context> ctx() const {
+  [[nodiscard]] auto ctx() -> std::shared_ptr<transaction::Context> const {
     return transaction::V8Context::CreateWhenRequired(_vocbase, true);
   }
 
