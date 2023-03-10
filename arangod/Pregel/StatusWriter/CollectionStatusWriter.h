@@ -90,7 +90,6 @@ struct CollectionStatusWriter : StatusWriterInterface {
         : _key(std::to_string(executionNumber)), data(data) {}
 
     std::string _key;
-    std::string state;
     std::optional<VPackSlice> data;
   };
 
@@ -186,8 +185,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
 // need to serialize.
 template<typename Inspector>
 auto inspect(Inspector& f, CollectionStatusWriter::OperationData& x) {
-  return f.object(x).fields(f.field("_key", x._key), f.field("data", x.data),
-                            f.field("state", x.state));
+  return f.object(x).fields(f.field("_key", x._key), f.field("data", x.data));
 }
 
 }  // namespace arangodb::pregel::statuswriter
