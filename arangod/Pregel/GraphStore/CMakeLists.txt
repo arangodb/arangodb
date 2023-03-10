@@ -1,2 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  GraphStore.cpp)
+  GraphLoader.cpp
+  GraphStore.cpp
+  GraphStorer.cpp)
