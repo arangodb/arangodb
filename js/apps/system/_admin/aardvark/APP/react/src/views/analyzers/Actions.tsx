@@ -5,9 +5,9 @@ import { mutate } from "swr";
 import { pick } from 'lodash';
 import { FormState } from "./constants";
 import { State } from '../../utils/constants';
-import {isAdminUser as userIsAdmin} from "../../utils/helpers";
 import { IconButton } from "../../components/arango/buttons";
 import { ViewAnalyzerModal } from './ViewAnalyzerModal';
+import { userIsAdmin } from '../../utils/usePermissions';
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };

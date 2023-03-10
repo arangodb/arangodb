@@ -6,10 +6,8 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
 import {
-  getReducer,
-  isAdminUser as userIsAdmin,
-  usePermissions
-} from "../../utils/helpers";
+  getReducer} from "../../utils/helpers";
+import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
 import "./split-pane-styles.css";

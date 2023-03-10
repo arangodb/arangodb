@@ -34,7 +34,7 @@ export const SearchAliasHeader = () => {
 };
 
 const ActionButtons = () => {
-  const { onSave, errors, changed } = useSearchAliasContext();
+  const { onSave, errors, changed, isAdminUser } = useSearchAliasContext();
   return (
     <Box display={"flex"} justifyContent="end" alignItems={"center"} gap="4">
       <Button
@@ -42,7 +42,7 @@ const ActionButtons = () => {
         colorScheme="blue"
         leftIcon={<CheckIcon />}
         onClick={onSave}
-        isDisabled={errors.length > 0 || !changed}
+        isDisabled={errors.length > 0 || !changed || !isAdminUser}
       >
         Save view
       </Button>
@@ -52,7 +52,7 @@ const ActionButtons = () => {
 };
 
 const DeleteViewButton = () => {
-  const { onDelete, view } = useSearchAliasContext();
+  const { onDelete, view, isAdminUser } = useSearchAliasContext();
   const { onOpen, onClose, isOpen } = useDisclosure();
   return (
     <>
@@ -61,6 +61,7 @@ const DeleteViewButton = () => {
         colorScheme="red"
         leftIcon={<DeleteIcon />}
         onClick={onOpen}
+        isDisabled={!isAdminUser}
       >
         Delete
       </Button>
@@ -88,7 +89,7 @@ const DeleteViewButton = () => {
 };
 
 const EditableNameField = () => {
-  const { initialView } = useSearchAliasContext();
+  const { initialView, isAdminUser, isCluster } = useSearchAliasContext();
   const { onOpen, onClose, isOpen } = useDisclosure();
   const [newName, setNewName] = useState(initialView.name);
   const [loading, setLoading] = useState(false);
@@ -146,13 +147,13 @@ const EditableNameField = () => {
   return (
     <Stack direction="row" alignItems="center">
       <Text color="gray.700" fontWeight="600" fontSize="lg">
-        {initialView.name}
+        {initialView.name} {!isAdminUser ? "(read only)" : null}
       </Text>
-      <IconButton
+      {!isCluster && isAdminUser ? <IconButton
         aria-label="Open edit name input"
         icon={<EditIcon />}
         onClick={onOpen}
-      />
+      /> : null}
     </Stack>
   );
 };

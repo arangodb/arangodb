@@ -1,5 +1,6 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
+import { useSearchAliasContext } from "./SearchAliasContext";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 
 const searchAliasJsonSchema: JSONSchemaType<ViewPropertiesType> = {
@@ -54,7 +55,17 @@ const searchAliasJsonSchema: JSONSchemaType<ViewPropertiesType> = {
 
 export const useAliasViewSchema = ({ view }: { view: ViewPropertiesType }) => {
   const [schema, setSchema] = useState(searchAliasJsonSchema);
+  const { isCluster } = useSearchAliasContext();
   useEffect(() => {
+    const nameProperty =
+      isCluster && schema.properties
+        ? {
+            name: {
+              ...schema.properties.name,
+              const: view.name
+            }
+          }
+        : {};
     const newProperties = schema.properties
       ? {
           ...schema.properties,
@@ -65,7 +76,8 @@ export const useAliasViewSchema = ({ view }: { view: ViewPropertiesType }) => {
           globallyUniqueId: {
             ...schema.properties.globallyUniqueId,
             const: view.globallyUniqueId
-          }
+          },
+          ...nameProperty
         }
       : undefined;
     const newSchema = {

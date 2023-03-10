@@ -42,7 +42,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
     "error",
     "code"
   ) as ViewPropertiesType;
-  const { onCopy } = useSearchAliasContext();
+  const { onCopy, isAdminUser } = useSearchAliasContext();
   useEffect(() => {
     if (views) {
       const newViews = views
@@ -77,6 +77,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
             selectedView
           })
         }
+        isDisabled={!isAdminUser}
       >
         Copy from
       </Button>

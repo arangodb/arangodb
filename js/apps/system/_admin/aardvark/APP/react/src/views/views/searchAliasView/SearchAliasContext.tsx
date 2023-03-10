@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { useIsAdminUser } from "../../../utils/usePermissions";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 import {
   getUpdatedIndexes,
@@ -20,6 +21,8 @@ type SearchAliasContextType = {
   copiedView?: ViewPropertiesType;
   errors: ValidationError[];
   changed: boolean;
+  isAdminUser: boolean;
+  isCluster: boolean;
   setErrors: (errors: ValidationError[]) => void;
   setView: (view: ViewPropertiesType) => void;
   setCopiedView: (view: ViewPropertiesType | undefined) => void;
@@ -39,6 +42,7 @@ export const SearchAliasProvider = ({
   initialView: ViewPropertiesType;
   children: ReactNode;
 }) => {
+  const isAdminUser = useIsAdminUser();
   let newInitalView = initialView;
   const cachedViewStateStr = window.sessionStorage.getItem(initialView.name);
   if (cachedViewStateStr) {
@@ -132,7 +136,9 @@ export const SearchAliasProvider = ({
         onCopy: handleCopy,
         copiedView,
         setCopiedView,
-        onDelete: handleDelete
+        onDelete: handleDelete,
+        isAdminUser,
+        isCluster: !!window.frontendConfig.isCluster
       }}
     >
       {children}

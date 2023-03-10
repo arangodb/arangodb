@@ -9,7 +9,8 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../components/mod
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { theme } from '../../theme/theme';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler } from '../../utils/helpers';
+import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -153,7 +154,7 @@ const AnalyzersReactView = () => {
         <Grid>
           <Cell size={'1'}>
             {
-              isAdminUser(permissions)
+              userIsAdmin(permissions)
                 ? <div className={'sectionHeader'}>
                   <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
                 </div>
