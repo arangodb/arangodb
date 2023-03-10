@@ -68,7 +68,6 @@ struct ExecutionTimings {
   Duration storing;
   // FIXME: just sum the times above?
   Duration total;
-  Duration fatal;
 
   std::vector<Duration> gss;
 };
