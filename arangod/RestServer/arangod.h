@@ -100,6 +100,7 @@ class ReplicationFeature;
 class ReplicatedLogFeature;
 class ReplicationMetricsFeature;
 class ReplicationTimeoutFeature;
+class RequestTrackFeature;
 class SchedulerFeature;
 class ScriptFeature;
 class ServerFeature;
@@ -243,6 +244,7 @@ using ArangodFeaturesList = TypeList<
     ReplicatedLogFeature,
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
+    RequestTrackFeature,
     SchedulerFeature,
     ScriptFeature,
     ServerFeature,

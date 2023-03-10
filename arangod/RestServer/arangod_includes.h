@@ -112,6 +112,7 @@
 #include "RestServer/NonceFeature.h"
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RequestTrackFeature.h"
 #include "RestServer/RestartAction.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"

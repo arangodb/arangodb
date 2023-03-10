@@ -25,12 +25,17 @@
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 struct OperationOptions;
 
 namespace transaction {
 class Methods;
+}
+
+namespace velocypack {
+class Slice;
 }
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
@@ -77,6 +82,9 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   void addTransactionHints(std::string const& collectionName, bool isMultiple,
                            bool isOverwritingInsert);
+
+  void trackRequest(std::string const& collectionName,
+                    TRI_voc_document_operation_e op, velocypack::Slice body);
 
   std::unique_ptr<transaction::Methods> _activeTrx;
 };

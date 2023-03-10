@@ -140,6 +140,7 @@ add_library(arangoserver STATIC
   RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/RequestTrackFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp

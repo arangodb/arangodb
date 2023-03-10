@@ -29,7 +29,9 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/RequestTrackFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -237,6 +239,8 @@ RestStatus RestDocumentHandler::insertDocument() {
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
+
+  trackRequest(cname, TRI_VOC_DOCUMENT_OPERATION_INSERT, body);
 
   bool const isMultiple = body.isArray();
   transaction::Options trxOpts;
@@ -602,6 +606,11 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   }
 
+  trackRequest(cname,
+               isPatch ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
+                       : TRI_VOC_DOCUMENT_OPERATION_REPLACE,
+               body);
+
   bool const isMultiple = body.isArray();
   transaction::Options trxOpts;
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
@@ -767,6 +776,8 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
+  trackRequest(cname, TRI_VOC_DOCUMENT_OPERATION_REMOVE, search);
+
   bool const isMultiple = search.isArray();
   transaction::Options trxOpts;
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
@@ -909,6 +920,45 @@ RestStatus RestDocumentHandler::readManyDocuments() {
                       _activeTrx->transactionContextPtr()->getVPackOptions());
                 });
           }));
+}
+
+void RestDocumentHandler::trackRequest(std::string const& collectionName,
+                                       TRI_voc_document_operation_e op,
+                                       velocypack::Slice body) {
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    return;
+  }
+  if (!_vocbase.server().hasFeature<RequestTrackFeature>()) {
+    return;
+  }
+  auto& rf = _vocbase.server().getFeature<RequestTrackFeature>();
+  try {
+    bool duplicate = rf.trackRequest(collectionName, op, body);
+    if (duplicate) {
+      std::string_view opType("unknown");
+      switch (op) {
+        case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+          opType = "insert";
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+          opType = "update";
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+          opType = "replace";
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+          opType = "remove";
+          break;
+        default:
+          break;
+      }
+      LOG_TOPIC("04a27", WARN, Logger::REQUESTS)
+          << "duplicate request for " << opType << " into " << collectionName
+          << ": " << body.toJson();
+    }
+  } catch (...) {
+    // we don't want to fail only because request tracking went wrong
+  }
 }
 
 void RestDocumentHandler::handleFillIndexCachesValue(
