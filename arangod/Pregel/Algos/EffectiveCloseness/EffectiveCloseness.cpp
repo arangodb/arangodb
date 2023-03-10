@@ -84,7 +84,8 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
 };
 
 VertexComputation<ECValue, int8_t, HLLCounter>*
-EffectiveCloseness::createComputation(WorkerConfig const*) const {
+EffectiveCloseness::createComputation(
+    std::shared_ptr<WorkerConfig const>) const {
   return new ECComputation();
 }
 

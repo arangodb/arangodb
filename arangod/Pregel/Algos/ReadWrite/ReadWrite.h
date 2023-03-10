@@ -45,7 +45,7 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
   }
 
   VertexComputation<V, E, V>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;

@@ -43,7 +43,7 @@ struct EffectiveCloseness
   MessageCombiner<HLLCounter>* messageCombiner() const override;
 
   VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 };
 }  // namespace algos
 }  // namespace pregel

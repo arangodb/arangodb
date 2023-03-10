@@ -49,7 +49,7 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   MessageFormat<DMIDMessage>* messageFormat() const override;
 
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 

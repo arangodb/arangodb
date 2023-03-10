@@ -97,7 +97,7 @@ struct ReadWriteComputation : public VertexComputation<V, E, V> {
 };
 
 VertexComputation<V, E, V>* ReadWrite::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new ReadWriteComputation();
 }
 

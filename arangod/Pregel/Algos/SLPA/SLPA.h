@@ -113,7 +113,7 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
   }
 
   VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   WorkerContext* workerContext(velocypack::Slice userParams) const override;
 };
 }  // namespace arangodb::pregel::algos
