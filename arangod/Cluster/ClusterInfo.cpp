@@ -6219,14 +6219,21 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
 
   while (true) {
     {
-      if (++tries >= 100 || _server.isStopping()) {
+      ++tries;
+      if (tries >= 100 || _server.isStopping()) {
         break;
+      } else if (tries > 1) {
+        LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
+            << "getResponsibleServerReplication2: shard = " << shardID
+            << "did not find log leader,"
+            << "waiting for half a second...";
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
 
       READ_LOCKER(readLocker, _planProt.lock);
 
       // TODO we have to simplify this by using some adequate data structures
-      // lookup the collection name
+      //  lookup the collection name, see CINFRA-700
       auto colName = _shardToName.find(shardID);
       if (colName == _shardToName.end()) {
         continue;
@@ -6277,10 +6284,6 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
-
-        // TODO Sanity check, can be removed later
-        TRI_ASSERT(participants.size() < 1000000);
-
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!
@@ -6293,12 +6296,6 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         break;
       }
     }
-
-    LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: shard = " << shardID
-        << "did not find log leader,"
-        << "waiting for half a second...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   return result;
@@ -6414,7 +6411,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
 
       for (auto const& shardId : shardIds) {
         // TODO we have to simplify this by using some adequate data structures
-        // lookup the collection name
+        //  lookup the collection name, see CINFRA-700
         auto colName = _shardToName.find(shardId);
         if (colName == _shardToName.end()) {
           result.clear();
