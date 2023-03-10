@@ -163,15 +163,10 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   }
 
   // set the sharding strategy
-  if (!ServerState::instance()->isRunningInCluster()) {
-    // shortcut, so we do not need to set up the whole application server for
-    // testing
-    _shardingStrategy = std::make_unique<ShardingStrategyNone>();
-  } else {
-    auto& server = _collection->vocbase().server();
-    _shardingStrategy =
-        server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
-  }
+
+  auto& server = _collection->vocbase().server();
+  _shardingStrategy =
+      server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
