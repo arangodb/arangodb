@@ -95,6 +95,16 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
+  auto operator()(message::RunGlobalSuperStep message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is computing", this->self);
+    // prepare
+    // process vertices in threads
+    // finish
+    return std::move(this->state);
+  }
+
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     std::string tmp;

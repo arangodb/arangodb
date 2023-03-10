@@ -49,11 +49,13 @@ struct CreateWorkers : ExecutionState {
     function that needs to be used instead of the message function of the state
     interface.
    */
-  auto messages()
+  auto messagesToServers()
       -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
-  auto message() -> worker::message::WorkerMessages override {
-    return worker::message::WorkerMessages{};
-  };
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 

@@ -10,7 +10,7 @@ CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
   conductor.timing.total.start();
 }
 
-auto CreateWorkers::messages()
+auto CreateWorkers::messagesToServers()
     -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
   auto workerSpecifications = _workerSpecifications();
 

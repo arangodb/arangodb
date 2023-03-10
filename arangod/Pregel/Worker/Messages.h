@@ -60,6 +60,21 @@ auto inspect(Inspector& f, LoadGraph& x) {
   return f.object(x).fields();
 }
 
+struct RunGlobalSuperStep {
+  uint64_t gss;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  uint64_t sendCount;
+  VPackBuilder aggregators;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, RunGlobalSuperStep& x) {
+  return f.object(x).fields(
+      f.field("globalSuperStep", x.gss), f.field("vertexCount", x.vertexCount),
+      f.field("edgeCount", x.edgeCount), f.field("sendCount", x.sendCount),
+      f.field("aggregators", x.aggregators));
+}
+
 struct ProduceResults {
   bool withID;
 };
@@ -68,10 +83,10 @@ auto inspect(Inspector& f, ProduceResults& x) {
   return f.object(x).fields(f.field("withID", x.withID));
 }
 
-struct WorkerMessages
-    : std::variant<WorkerStart, CreateNewWorker, LoadGraph, ProduceResults> {
+struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker, LoadGraph,
+                                     RunGlobalSuperStep, ProduceResults> {
   using std::variant<WorkerStart, CreateNewWorker, LoadGraph,
-                     ProduceResults>::variant;
+                     RunGlobalSuperStep, ProduceResults>::variant;
 };
 
 template<typename Inspector>
@@ -80,6 +95,7 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<WorkerStart>("Start"),
       arangodb::inspection::type<CreateNewWorker>("CreateWorker"),
       arangodb::inspection::type<LoadGraph>("LoadGraph"),
+      arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 
@@ -194,6 +210,9 @@ struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::LoadGraph>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::RunGlobalSuperStep>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::WorkerMessages>
