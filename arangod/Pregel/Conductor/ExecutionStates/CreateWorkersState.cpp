@@ -11,7 +11,7 @@ CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
 }
 
 auto CreateWorkers::messagesToServers()
-    -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
+    -> std::unordered_map<ServerID, worker::message::CreateWorker> {
   auto workerSpecifications = _workerSpecifications();
 
   auto servers = std::vector<ServerID>{};
@@ -46,21 +46,28 @@ auto CreateWorkers::receive(actor::ActorPID sender,
 };
 
 auto CreateWorkers::_workerSpecifications() const
-    -> std::unordered_map<ServerID, worker::message::CreateNewWorker> {
+    -> std::unordered_map<ServerID, worker::message::CreateWorker> {
   auto createWorkers =
-      std::unordered_map<ServerID, worker::message::CreateNewWorker>{};
+      std::unordered_map<ServerID, worker::message::CreateWorker>{};
   for (auto const& [server, vertexShards] :
        conductor.lookupInfo->getServerMapVertices()) {
     auto edgeShards = conductor.lookupInfo->getServerMapEdges().at(server);
     createWorkers.emplace(
-        server, worker::message::CreateNewWorker{
-                    .executionSpecifications = conductor.specifications,
-                    .collectionSpecifications = CollectionSpecifications{
-                        .vertexShards = std::move(vertexShards),
-                        .edgeShards = std::move(edgeShards),
-                        .collectionPlanIds =
-                            conductor.lookupInfo->getCollectionPlanIdMapAll(),
-                        .allShards = conductor.lookupInfo->getAllShards()}});
+        server,
+        worker::message::CreateWorker{
+            .executionNumber = conductor.specifications.executionNumber,
+            .algorithm = std::string{conductor.specifications.algorithm},
+            .userParameters = conductor.specifications.userParameters,
+            .coordinatorId = "",
+            .useMemoryMaps = conductor.specifications.useMemoryMaps,
+            .parallelism = conductor.specifications.parallelism,
+            .edgeCollectionRestrictions =
+                conductor.specifications.edgeCollectionRestrictions,
+            .vertexShards = std::move(vertexShards),
+            .edgeShards = std::move(edgeShards),
+            .collectionPlanIds =
+                conductor.lookupInfo->getCollectionPlanIdMapAll(),
+            .allShards = conductor.lookupInfo->getAllShards()});
   }
   return createWorkers;
 }

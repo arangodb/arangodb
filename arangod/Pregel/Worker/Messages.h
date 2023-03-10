@@ -37,15 +37,34 @@ namespace arangodb::pregel {
 
 namespace worker::message {
 
-struct CreateNewWorker {
-  ExecutionSpecifications executionSpecifications;
-  CollectionSpecifications collectionSpecifications;
+struct CreateWorker {
+  ExecutionNumber executionNumber;
+  std::string algorithm;
+  VPackBuilder userParameters;
+  std::string coordinatorId;
+  bool useMemoryMaps;
+  size_t parallelism;
+  std::unordered_map<CollectionID, std::vector<ShardID>>
+      edgeCollectionRestrictions;
+  std::map<CollectionID, std::vector<ShardID>> vertexShards;
+  std::map<CollectionID, std::vector<ShardID>> edgeShards;
+  std::unordered_map<CollectionID, std::string> collectionPlanIds;
+  std::vector<ShardID> allShards;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, CreateNewWorker& x) {
+auto inspect(Inspector& f, CreateWorker& x) {
   return f.object(x).fields(
-      f.field("executionSpecifications", x.executionSpecifications),
-      f.field("collectionSpecifications", x.collectionSpecifications));
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("algorithm", x.algorithm),
+      f.field("userParameters", x.userParameters),
+      f.field("coordinatorId", x.coordinatorId),
+      f.field("useMemoryMaps", x.useMemoryMaps),
+      f.field("parallelism", x.parallelism),
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
+      f.field("vertexShards", x.vertexShards),
+      f.field("edgeShards", x.edgeShards),
+      f.field("collectionPlanIds", x.collectionPlanIds),
+      f.field("allShards", x.allShards));
 }
 
 struct WorkerStart {};
@@ -83,17 +102,16 @@ auto inspect(Inspector& f, ProduceResults& x) {
   return f.object(x).fields(f.field("withID", x.withID));
 }
 
-struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker, LoadGraph,
+struct WorkerMessages : std::variant<WorkerStart, CreateWorker, LoadGraph,
                                      RunGlobalSuperStep, ProduceResults> {
-  using std::variant<WorkerStart, CreateNewWorker, LoadGraph,
-                     RunGlobalSuperStep, ProduceResults>::variant;
+  using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
+                     ProduceResults>::variant;
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<WorkerStart>("Start"),
-      arangodb::inspection::type<CreateNewWorker>("CreateWorker"),
+      arangodb::inspection::type<CreateWorker>("CreateWorker"),
       arangodb::inspection::type<LoadGraph>("LoadGraph"),
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<ProduceResults>("ProduceResults"));
@@ -206,7 +224,7 @@ template<>
 struct fmt::formatter<arangodb::pregel::worker::message::WorkerStart>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
+struct fmt::formatter<arangodb::pregel::worker::message::CreateWorker>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::LoadGraph>

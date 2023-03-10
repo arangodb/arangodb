@@ -96,35 +96,6 @@ auto inspect(Inspector& f, ConductorMessages& x) {
 
 }  // namespace conductor::message
 
-// TODO split LoadGraph off CreateWorker
-struct CreateWorker {
-  ExecutionNumber executionNumber;
-  std::string algorithm;
-  VPackBuilder userParameters;
-  std::string coordinatorId;
-  bool useMemoryMaps;
-  std::unordered_map<CollectionID, std::vector<ShardID>>
-      edgeCollectionRestrictions;
-  std::map<CollectionID, std::vector<ShardID>> vertexShards;
-  std::map<CollectionID, std::vector<ShardID>> edgeShards;
-  std::unordered_map<CollectionID, std::string> collectionPlanIds;
-  std::vector<ShardID> allShards;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, CreateWorker& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("algorithm", x.algorithm),
-      f.field("userParameters", x.userParameters),
-      f.field("coordinatorId", x.coordinatorId),
-      f.field("useMemoryMaps", x.useMemoryMaps),
-      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
-      f.field("vertexShards", x.vertexShards),
-      f.field("edgeShards", x.edgeShards),
-      f.field("collectionPlanIds", x.collectionPlanIds),
-      f.field("allShards", x.allShards));
-}
-
 struct PrepareGlobalSuperStep {
   ExecutionNumber executionNumber;
   uint64_t gss;

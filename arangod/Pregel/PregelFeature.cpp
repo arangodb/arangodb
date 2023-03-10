@@ -992,8 +992,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
-    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
-        velocypack::SharedSlice({}, body));
+    auto createWorker =
+        inspection::deserializeWithErrorT<worker::message::CreateWorker>(
+            velocypack::SharedSlice({}, body));
     if (!createWorker.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,

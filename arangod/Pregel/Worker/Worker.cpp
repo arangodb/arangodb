@@ -80,12 +80,13 @@ using namespace arangodb::pregel;
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        CreateWorker const& parameters, PregelFeature& feature)
+                        worker::message::CreateWorker const& parameters,
+                        PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo) {
-  _config->updateConfig(_feature, parameters);
+  _config->updateConfig(parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 

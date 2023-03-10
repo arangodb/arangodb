@@ -24,9 +24,12 @@
 
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
-#include "Basics/Guarded.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/WorkerContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/Status/Status.h"
@@ -35,17 +38,46 @@ namespace arangodb::pregel::worker {
 
 template<typename V, typename E, typename M>
 struct WorkerState {
-  WorkerState(actor::ActorPID conductor,
-              ExecutionSpecifications executionSpecifications,
-              CollectionSpecifications collectionSpecifications,
+  WorkerState(std::unique_ptr<WorkerContext> workerContext,
+              actor::ActorPID conductor,
+              worker::message::CreateWorker specifications,
+              std::unique_ptr<MessageFormat<M>> messageFormat,
+              std::unique_ptr<MessageCombiner<M>> messageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
               TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
-      : conductor{std::move(conductor)},
-        executionSpecifications{std::move(executionSpecifications)},
-        collectionSpecifications{std::move(collectionSpecifications)},
+      : config{std::make_shared<WorkerConfig>(&vocbase)},
+        workerContext{std::move(workerContext)},
+        messageFormat{std::move(messageFormat)},
+        messageCombiner{std::move(messageCombiner)},
+        conductor{std::move(conductor)},
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase},
-        resultActor(resultActor){};
+        resultActor(resultActor) {
+    config->updateConfig(specifications);
+
+    if (messageCombiner) {
+      readCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
+                                              messageCombiner.get()));
+      writeCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
+                                               messageCombiner.get()));
+      for (size_t i = 0; i < config->parallelism(); i++) {
+        auto incoming = std::make_unique<CombiningInCache<M>>(
+            nullptr, messageFormat.get(), messageCombiner.get());
+        inCaches.push_back(std::move(incoming));
+        outCaches.push_back(new CombiningOutCache<M>(
+            config, messageFormat.get(), messageCombiner.get()));
+      }
+    } else {
+      readCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
+      writeCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
+      for (size_t i = 0; i < config->parallelism(); i++) {
+        auto incoming =
+            std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
+        inCaches.push_back(std::move(incoming));
+        outCaches.push_back(new ArrayOutCache<M>(config, messageFormat.get()));
+      }
+    }
+  }
 
   auto observeStatus() -> Status const {
     auto currentGss = currentGssObservables.observe();
@@ -62,9 +94,19 @@ struct WorkerState {
                             : std::nullopt};
   }
 
+  std::shared_ptr<WorkerConfig> config;
+
+  // only needed in computing state
+  std::unique_ptr<WorkerContext> workerContext;
+  std::vector<PregelMessage> messagesForNextGss;
+  std::unique_ptr<MessageFormat<M>> messageFormat;
+  std::unique_ptr<MessageCombiner<M>> messageCombiner;
+  std::unique_ptr<InCache<M>> readCache = nullptr;
+  std::unique_ptr<InCache<M>> writeCache = nullptr;
+  std::vector<std::unique_ptr<InCache<M>>> inCaches;
+  std::vector<std::unique_ptr<OutCache<M>>> outCaches;
+
   actor::ActorPID conductor;
-  const ExecutionSpecifications executionSpecifications;
-  const CollectionSpecifications collectionSpecifications;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID resultActor;
@@ -75,11 +117,8 @@ struct WorkerState {
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {
-  return f.object(x).fields(
-      f.field("conductor", x.conductor),
-      f.field("executionSpecifications", x.executionSpecifications),
-      f.field("collectionSpecifications", x.collectionSpecifications),
-      f.field("algorithm", x.algorithm->name()));
+  return f.object(x).fields(f.field("conductor", x.conductor),
+                            f.field("algorithm", x.algorithm->name()));
 }
 
 }  // namespace arangodb::pregel::worker

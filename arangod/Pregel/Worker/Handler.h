@@ -54,8 +54,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           this->template dispatch<conductor::message::ConductorMessages>(
               this->state->conductor,
               conductor::message::StatusUpdate{
-                  .executionNumber =
-                      this->state->executionSpecifications.executionNumber,
+                  .executionNumber = this->state->config->executionNumber(),
                   .status = this->state->observeStatus()});
         };
 
@@ -70,8 +69,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         // this->state->graphStore->loadShards(&_config, statusUpdateCallback,
         // []() {});
         return {conductor::message::GraphLoaded{
-            .executionNumber =
-                this->state->executionSpecifications.executionNumber,
+            .executionNumber = this->state->config->executionNumber(),
             .vertexCount = 0,  // TODO GORDO-1546
                                // this->state->graphStore->localVertexCount(),
             .edgeCount = 0,    // TODO GORDO-1546

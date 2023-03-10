@@ -50,7 +50,7 @@ struct CreateWorkers : ExecutionState {
     interface.
    */
   auto messagesToServers()
-      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
+      -> std::unordered_map<ServerID, worker::message::CreateWorker>;
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override {
@@ -64,7 +64,7 @@ struct CreateWorkers : ExecutionState {
   std::set<ServerID> respondedServers;
   uint64_t responseCount = 0;
   auto _workerSpecifications() const
-      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
+      -> std::unordered_map<ServerID, worker::message::CreateWorker>;
 };
 
 }  // namespace arangodb::pregel::conductor
