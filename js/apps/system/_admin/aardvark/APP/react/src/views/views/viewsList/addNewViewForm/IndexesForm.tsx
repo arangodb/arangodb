@@ -14,7 +14,7 @@ export const IndexesForm = () => {
   });
   const { values } = useFormikContext<AddNewViewFormValues>();
   return (
-    <Box>
+    <Box marginTop="5">
       <FieldArray name="indexes">
         {({ remove, push }) => (
           <Box display={"grid"} rowGap="4">
