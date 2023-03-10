@@ -36,10 +36,10 @@ export const useViewsList = ({
   );
 
   const checkProgress = () => {
-    const callback = (_: any, lockedViews: { collection: string }[]) => {
+    const callback = (_: any, lockedViews?: { collection: string }[]) => {
       const newViewsList = result?.map(view => {
         if (
-          lockedViews.find(lockedView => lockedView.collection === view.name)
+          lockedViews?.find(lockedView => lockedView.collection === view.name)
         ) {
           return { ...view, isLocked: true };
         }

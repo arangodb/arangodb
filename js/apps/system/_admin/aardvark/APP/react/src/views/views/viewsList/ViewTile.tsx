@@ -14,6 +14,7 @@ export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
       backgroundColor="white"
       cursor="pointer"
       onClick={() => history.push(`/view/${view.name}`)}
+      title={view.name}
     >
       <Box
         as="i"
@@ -29,12 +30,23 @@ export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
         display="flex"
         alignItems={"center"}
       >
-        <Box minWidth={0}>{view.name}</Box>
+        <Box
+          minWidth={0}
+          textOverflow="ellipsis"
+          overflow="hidden"
+          whiteSpace="nowrap"
+        >
+          {view.name}
+        </Box>
         <Box
           marginLeft="auto"
           paddingX="2"
           borderRadius={"sm"}
           backgroundColor={"cyan.500"}
+          title={view.type}
+          textOverflow="ellipsis"
+          overflow="hidden"
+          whiteSpace="nowrap"
         >
           {view.type}
         </Box>

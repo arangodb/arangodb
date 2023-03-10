@@ -5,7 +5,6 @@ import { ViewPropertiesType } from "./useFetchViewProperties";
 
 
 export const useUpdateAliasViewProperties = () => {
-  // const [changed, setChanged] = useState(false);
   const onSave = async ({
     view,
     initialView

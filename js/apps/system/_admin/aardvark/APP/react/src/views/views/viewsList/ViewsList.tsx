@@ -60,7 +60,7 @@ const ViewsListInner = () => {
         display={"grid"}
         gap="4"
         padding="4"
-        gridTemplateColumns={"repeat(auto-fill, minmax(200px, 1fr))"}
+        gridTemplateColumns={"repeat(auto-fill, minmax(190px, 1fr))"}
       >
         <AddViewTile />
         {viewsList.map(view => {
