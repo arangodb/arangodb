@@ -187,9 +187,9 @@ TEST_F(VPackSaveInspectorTest, store_set) {
   ASSERT_EQ(3u, list.length());
 
   auto s2 = std::set<int>();
-  s2.insert(list[0]["i"].getInt());
-  s2.insert(list[1]["i"].getInt());
-  s2.insert(list[2]["i"].getInt());
+  s2.insert(static_cast<int>(list[0]["i"].getInt()));
+  s2.insert(static_cast<int>(list[1]["i"].getInt()));
+  s2.insert(static_cast<int>(list[2]["i"].getInt()));
 
   ASSERT_EQ(s2, std::set<int>({1, 2, 3}));
 
@@ -198,8 +198,8 @@ TEST_F(VPackSaveInspectorTest, store_set) {
   ASSERT_EQ(2u, list.length());
 
   auto us = std::unordered_set<int>();
-  us.insert(list[0].getInt());
-  us.insert(list[1].getInt());
+  us.insert(static_cast<int>(list[0].getInt()));
+  us.insert(static_cast<int>(list[1].getInt()));
   ASSERT_EQ(us, s.unordered);
 }
 
