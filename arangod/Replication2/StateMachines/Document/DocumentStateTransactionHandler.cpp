@@ -233,9 +233,8 @@ auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
 
 auto DocumentStateTransactionHandler::applyEntry(
     ReplicatedOperation::OperationType const& operation) -> Result try {
-  return std::visit(
-      overload{[&](auto const& op) -> Result { return applyOp(op); }},
-      operation);
+  return std::visit([&](auto const& op) -> Result { return applyOp(op); },
+                    operation);
 } catch (basics::Exception& e) {
   return Result{e.code(), e.message()};
 } catch (std::exception& e) {
