@@ -91,6 +91,47 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
   }
   return nullptr;
 }
+auto AlgoRegistry::createAlgorithmNew(std::string const& algorithm,
+                                      VPackSlice userParams)
+    -> std::optional<std::unique_ptr<IAlgorithm>> {
+  if (algorithm == "sssp") {
+    return std::make_unique<algos::SSSPAlgorithm>(userParams);
+  } else if (algorithm == "pagerank") {
+    return std::make_unique<algos::PageRank>(userParams);
+  } else if (algorithm == "recoveringpagerank") {
+    return std::make_unique<algos::RecoveringPageRank>(userParams);
+  } else if (algorithm == "shortestpath") {
+    return std::make_unique<algos::ShortestPathAlgorithm>(userParams);
+  } else if (algorithm == "linerank") {
+    return std::make_unique<algos::LineRank>(userParams);
+  } else if (algorithm == "effectivecloseness") {
+    return std::make_unique<algos::EffectiveCloseness>(userParams);
+  } else if (algorithm == "connectedcomponents") {
+    return std::make_unique<algos::ConnectedComponents>(userParams);
+  } else if (algorithm == "scc") {
+    return std::make_unique<algos::SCC>(userParams);
+  } else if (algorithm == "hits") {
+    return std::make_unique<algos::HITS>(userParams);
+  } else if (algorithm == "hitskleinberg") {
+    return std::make_unique<algos::HITSKleinberg>(userParams);
+  } else if (algorithm == "labelpropagation") {
+    return std::make_unique<algos::LabelPropagation>(userParams);
+  } else if (algorithm == "slpa") {
+    return std::make_unique<algos::SLPA>(userParams);
+  } else if (algorithm == "dmid") {
+    return std::make_unique<algos::DMID>(userParams);
+  } else if (algorithm == "wcc") {
+    return std::make_unique<algos::WCC>(userParams);
+  } else if (algorithm == "colorpropagation") {
+    return std::make_unique<algos::ColorPropagation>(userParams);
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return std::make_unique<algos::ReadWrite>(userParams);
+  }
+#endif
+  return std::nullopt;
+}
 
 template<typename V, typename E, typename M>
 std::shared_ptr<IWorker> AlgoRegistry::createWorker(

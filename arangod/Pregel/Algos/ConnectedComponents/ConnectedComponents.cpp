@@ -24,6 +24,7 @@
 #include "ConnectedComponents.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -95,4 +96,24 @@ VertexCompensation<uint64_t, uint8_t, uint64_t>*
 ConnectedComponents::createCompensation(
     std::shared_ptr<WorkerConfig const> config) const {
   return new MyCompensation();
+}
+
+struct ConnectedComponentsMasterContext : public MasterContext {
+  ConnectedComponentsMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ConnectedComponents::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ConnectedComponentsMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ConnectedComponents::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ConnectedComponentsMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }
