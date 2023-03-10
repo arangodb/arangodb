@@ -18,10 +18,9 @@ export const CollectionIndicesList = ({
 }: {
   indices?: IndexType[];
 }) => {
-  console.log({ indices });
   return (
-    <TableContainer>
-      <Table size="sm" variant="striped" colorScheme="gray">
+    <TableContainer border="1px solid" borderColor="gray.200">
+      <Table whiteSpace="normal" size="sm" variant="striped" colorScheme="gray">
         <Thead>
           <Tr height="10">
             <Th>ID</Th>
@@ -54,10 +53,7 @@ export const CollectionIndicesList = ({
               "cacheEnabled"
             ].forEach(function(key) {
               if (indexRow.hasOwnProperty(key)) {
-                extras = [
-                  ...extras,
-                  `${key}: ${(indexRow as any)[key]}`
-                ];
+                extras = [...extras, `${key}: ${(indexRow as any)[key]}`];
               }
             });
             const selectivityEstimate = isNumber(indexRow.selectivityEstimate)

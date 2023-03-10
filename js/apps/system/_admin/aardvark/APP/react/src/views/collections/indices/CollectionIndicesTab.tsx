@@ -1,6 +1,7 @@
 import { AddIcon } from "@chakra-ui/icons";
-import { Button, Stack } from "@chakra-ui/react";
+import { Box, Button, useDisclosure } from "@chakra-ui/react";
 import React, { useEffect } from "react";
+import { AddIndex } from "./AddIndex";
 import { CollectionIndicesList } from "./CollectionIndicesList";
 import { useFetchIndices } from "./useFetchIndices";
 
@@ -12,13 +13,34 @@ export const CollectionIndicesTab = ({
 }) => {
   useSteupNav({ collectionName });
   const { indices } = useFetchIndices({ collectionName });
+  const { onOpen, onClose, isOpen } = useDisclosure();
+  if (isOpen) {
+    return <AddIndex onClose={onClose} />;
+  }
   return (
-    <Stack backgroundColor="white" height="full">
-      <CollectionIndicesList indices={indices} />
-      <Button colorScheme="blue" variant="ghost" leftIcon={<AddIcon />}>
-        Add Index
-      </Button>
-    </Stack>
+    <Box padding="4" height="full" width="full">
+      <Box
+        display="flex"
+        flexDirection="column"
+        backgroundColor="white"
+        width="full"
+        paddingBottom="2"
+      >
+        <CollectionIndicesList indices={indices} />
+        <Button
+          marginTop="2"
+          marginRight="4"
+          size="sm"
+          onClick={onOpen}
+          alignSelf="flex-end"
+          colorScheme="green"
+          variant="ghost"
+          leftIcon={<AddIcon />}
+        >
+          Add Index
+        </Button>
+      </Box>
+    </Box>
   );
 };
 
