@@ -101,7 +101,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
 };
 
 VertexComputation<float, float, float>* PageRank::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new PRComputation();
 }
 

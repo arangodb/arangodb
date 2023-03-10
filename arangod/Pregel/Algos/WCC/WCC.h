@@ -47,6 +47,6 @@ struct WCC
     return nullptr;
   }
   VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 };
 }  // namespace arangodb::pregel::algos

@@ -118,7 +118,7 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 
   VertexComputation<ColorPropagationValue, int8_t,
                     ColorPropagationMessageValue>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;

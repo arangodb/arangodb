@@ -207,6 +207,36 @@ TEST_F(VPackLoadInspectorTest, load_map) {
             m.unordered);
 }
 
+TEST_F(VPackLoadInspectorTest, load_set) {
+  builder.openObject();
+  builder.add(VPackValue("set"));
+  builder.openArray();
+  builder.openObject();
+  builder.add("i", VPackValue(1));
+  builder.close();
+  builder.openObject();
+  builder.add("i", VPackValue(2));
+  builder.close();
+  builder.openObject();
+  builder.add("i", VPackValue(3));
+  builder.close();
+  builder.close();
+  builder.add(VPackValue("unordered"));
+  builder.openArray();
+  builder.add(VPackValue(4));
+  builder.add(VPackValue(5));
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Set s;
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok()) << result.error();
+
+  EXPECT_EQ((std::set<Container>{{1}, {2}, {3}}), s.set);
+  EXPECT_EQ((std::unordered_set<int>{4, 5}), s.unordered);
+}
+
 TEST_F(VPackLoadInspectorTest, load_tuples) {
   builder.openObject();
 

@@ -104,7 +104,8 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
 };
 
 VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+LabelPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new LPComputation();
 }
 

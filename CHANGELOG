@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.16.0-preview-1.
+
 * Added the following metrics for WAL file tracking:
   - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
   - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which

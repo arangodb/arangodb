@@ -67,7 +67,7 @@ using namespace arangodb::pregel;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _config.executionNumber() << "] "
+      << "[job " << _config->executionNumber() << "] "
 
 #define MY_READ_LOCKER(obj, lock)                                              \
   ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
@@ -82,9 +82,9 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                         CreateWorker const& parameters, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
-      _config(&vocbase),
+      _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo) {
-  _config.updateConfig(_feature, parameters);
+  _config->updateConfig(_feature, parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 
@@ -94,7 +94,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
   _workerAggregators = std::make_unique<AggregatorHandler>(algo);
   _graphStore = std::make_unique<GraphStore<V, E>>(
-      _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
+      _feature, vocbase, _config->executionNumber(), _algorithm->inputFormat());
 
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
@@ -125,29 +125,28 @@ Worker<V, E, M>::~Worker() {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
-  const size_t p = _config.parallelism();
+  const size_t p = _config->parallelism();
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
                                          _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
                                           _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
           nullptr, _messageFormat.get(), _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
-          &_config, _messageFormat.get(), _messageCombiner.get()));
+          _config, _messageFormat.get(), _messageCombiner.get()));
       incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
+    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming =
           std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
       _inCaches.push_back(incoming.get());
-      _outCaches.push_back(
-          new ArrayOutCache<M>(&_config, _messageFormat.get()));
+      _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
       incoming.release();
     }
   }
@@ -159,9 +158,9 @@ void Worker<V, E, M>::setupWorker() {
   std::function<void()> finishedCallback = [self = shared_from_this(), this] {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
-                       _config.executionNumber());
+                       _config->executionNumber());
     auto graphLoaded =
-        GraphLoaded{.executionNumber = _config._executionNumber,
+        GraphLoaded{.executionNumber = _config->_executionNumber,
                     .sender = ServerState::instance()->getId(),
                     .vertexCount = _graphStore->localVertexCount(),
                     .edgeCount = _graphStore->localEdgeCount()};
@@ -181,7 +180,7 @@ void Worker<V, E, M>::setupWorker() {
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   LOG_PREGEL("52070", WARN) << fmt::format(
-      "Worker for execution number {} is loading", _config.executionNumber());
+      "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
@@ -189,7 +188,7 @@ void Worker<V, E, M>::setupWorker() {
                     statusUpdateCallback = std::move(_makeStatusCallback()),
                     finishedCallback = std::move(finishedCallback)] {
                      try {
-                       _graphStore->loadShards(&_config, statusUpdateCallback,
+                       _graphStore->loadShards(_config, statusUpdateCallback,
                                                finishedCallback);
                      } catch (std::exception const& ex) {
                        LOG_PREGEL("a47c4", WARN)
@@ -227,7 +226,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   }
 
   // initialize worker context
-  if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
+  if (_workerContext && gss == 0 && _config->localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
     _workerContext->_vertexCount = data.vertexCount;
@@ -236,12 +235,12 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   }
 
   // make us ready to receive messages
-  _config._globalSuperstep = gss;
+  _config->_globalSuperstep = gss;
   // write cache becomes the readable cache
   MY_WRITE_LOCKER(wguard, _cacheRWLock);
   TRI_ASSERT(_readCache->containedMessageCount() == 0);
   std::swap(_readCache, _writeCache);
-  _config._localSuperstep = gss;
+  _config->_localSuperstep = gss;
 
   // only place where is makes sense to call this, since startGlobalSuperstep
   // might not be called again
@@ -256,7 +255,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{.executionNumber = _config._executionNumber,
+  return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
                                  .vertexCount = _graphStore->localVertexCount(),
@@ -266,7 +265,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
-  if (data.gss == _config._globalSuperstep) {
+  if (data.gss == _config->_globalSuperstep) {
     {  // make sure the pointer is not changed while
       // parsing messages
       MY_READ_LOCKER(guard, _cacheRWLock);
@@ -276,8 +275,8 @@ void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
 
   } else {
     // Trigger the processing of vertices
-    LOG_PREGEL("ecd34", ERR) << fmt::format("Expected: {}, Got: {}",
-                                            _config._globalSuperstep, data.gss);
+    LOG_PREGEL("ecd34", ERR) << fmt::format(
+        "Expected: {}, Got: {}", _config->_globalSuperstep, data.gss);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
@@ -343,8 +342,8 @@ void Worker<V, E, M>::_startProcessing() {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
-  ctx->_gss = _config.globalSuperstep();
-  ctx->_lss = _config.localSuperstep();
+  ctx->_gss = _config->globalSuperstep();
+  ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
   ctx->_graphStore = _graphStore.get();
   ctx->_readAggregators = _conductorAggregators.get();
@@ -365,7 +364,7 @@ bool Worker<V, E, M>::_processVertices() {
   AggregatorHandler workerAggregator(_algorithm.get());
 
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-      _algorithm->createComputation(&_config));
+      _algorithm->createComputation(_config));
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
@@ -449,15 +448,15 @@ void Worker<V, E, M>::_finishedProcessing() {
   _makeStatusCallback()();
 
   _readCache->clear();  // no need to keep old messages around
-  _expectedGSS = _config._globalSuperstep + 1;
-  _config._localSuperstep++;
+  _expectedGSS = _config->_globalSuperstep + 1;
+  _config->_localSuperstep++;
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
 
   auto gssFinished =
-      GlobalSuperStepFinished{.executionNumber = _config.executionNumber(),
+      GlobalSuperStepFinished{.executionNumber = _config->executionNumber(),
                               .sender = ServerState::instance()->getId(),
-                              .gss = _config.globalSuperstep(),
+                              .gss = _config->globalSuperstep(),
                               .messageStats = _messageStats};
   auto serialized = inspection::serializeWithErrorT(gssFinished);
   if (!serialized.ok()) {
@@ -470,7 +469,7 @@ void Worker<V, E, M>::_finishedProcessing() {
                  VPackBuilder(serialized.get().slice()));
   LOG_PREGEL("2de5b", DEBUG) << fmt::format("Finished GSS: {}", gssFinished);
 
-  uint64_t tn = _config.parallelism();
+  uint64_t tn = _config->parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
   _messageStats.resetTracking();
@@ -494,7 +493,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
-    auto finished = Finished{.executionNumber = _config.executionNumber(),
+    auto finished = Finished{.executionNumber = _config->executionNumber(),
                              .sender = ServerState::instance()->getId()};
     auto serialized = inspection::serializeWithErrorT(finished);
     if (!serialized.ok()) {
@@ -512,7 +511,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->storeResults(&_config, std::move(cleanup),
+    _graphStore->storeResults(_config, std::move(cleanup),
                               _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
@@ -530,13 +529,13 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   VPackBuilder results;
   results.openArray(/*unindexed*/ true);
   for (auto& vertex : _graphStore->quiver()) {
-    TRI_ASSERT(vertex.shard().value < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardID(vertex.shard());
+    TRI_ASSERT(vertex.shard().value < _config->globalShardIDs().size());
+    ShardID const& shardId = _config->globalShardID(vertex.shard());
 
     results.openObject(/*unindexed*/ true);
 
     if (withId) {
-      std::string const& cname = _config.shardIDToCollectionName(shardId);
+      std::string const& cname = _config->shardIDToCollectionName(shardId);
       if (!cname.empty()) {
         tmp.clear();
         tmp.append(cname);
@@ -573,23 +572,24 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     scheduler->queue(RequestLane::INTERNAL_LOW,
                      [this, self = shared_from_this(), path, message] {
                        VPackBuilder response;
-                       _feature.handleConductorRequest(
-                           *_config.vocbase(), path, message.slice(), response);
+                       _feature.handleConductorRequest(*_config->vocbase(),
+                                                       path, message.slice(),
+                                                       response);
                      });
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    auto const& nf = _config.vocbase()
+    auto const& nf = _config->vocbase()
                          ->server()
                          .template getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     network::RequestOptions reqOpts;
-    reqOpts.database = _config.database();
+    reqOpts.database = _config->database();
 
-    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
+    network::sendRequestRetry(pool, "server:" + _config->coordinatorId(),
                               fuerte::RestVerb::Post, baseUrl + path,
                               std::move(buffer), reqOpts);
   }
@@ -612,7 +612,7 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
   return [self = shared_from_this(), this] {
-    auto update = StatusUpdated{.executionNumber = _config._executionNumber,
+    auto update = StatusUpdated{.executionNumber = _config->_executionNumber,
                                 .sender = ServerState::instance()->getId(),
                                 .status = _observeStatus()};
     auto serialized = inspection::serializeWithErrorT(update);

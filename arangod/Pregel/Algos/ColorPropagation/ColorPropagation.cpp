@@ -92,7 +92,8 @@ void ColorPropagationComputation::compute(
 }
 
 VertexComputation<ColorPropagationValue, int8_t, ColorPropagationMessageValue>*
-ColorPropagation::createComputation(WorkerConfig const* config) const {
+ColorPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new ColorPropagationComputation();
 }
 

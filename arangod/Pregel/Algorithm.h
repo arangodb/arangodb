@@ -99,20 +99,23 @@ struct Algorithm : IAlgorithm {
   virtual graph_format* inputFormat() const = 0;
   virtual message_format* messageFormat() const = 0;
   virtual message_combiner* messageCombiner() const { return nullptr; }
-  virtual vertex_computation* createComputation(WorkerConfig const*) const = 0;
-  virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
+  virtual vertex_computation* createComputation(
+      std::shared_ptr<WorkerConfig const>) const = 0;
+  virtual vertex_compensation* createCompensation(
+      std::shared_ptr<WorkerConfig const>) const {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() { return {}; }
 
   [[nodiscard]] virtual uint32_t messageBatchSize(
-      WorkerConfig const& config, MessageStats const& stats) const {
-    if (config.localSuperstep() == 0) {
+      std::shared_ptr<WorkerConfig const> config,
+      MessageStats const& stats) const {
+    if (config->localSuperstep() == 0) {
       return 500;
     } else {
       double msgsPerSec =
           static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
-      msgsPerSec /= static_cast<double>(config.parallelism());  // per thread
+      msgsPerSec /= static_cast<double>(config->parallelism());  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }
