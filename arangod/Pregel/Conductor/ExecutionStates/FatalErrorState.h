@@ -33,7 +33,9 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor) : conductor{conductor} {}
+  FatalError(ConductorState& conductor) : conductor{conductor} {
+    conductor._timing.total.finish();
+  }
   ~FatalError() {}
   auto name() const -> std::string override { return "fatal error"; };
   auto message() -> worker::message::WorkerMessages override {
