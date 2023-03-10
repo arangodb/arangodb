@@ -102,48 +102,52 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       auto doc = entry->second;
 
       auto res = std::visit(
-          [&](auto&& op) -> Result {
-            using T = std::decay_t<decltype(op)>;
-            if constexpr (ModifiesUserTransaction<T>) {
-              if (auto res =
-                      transactionHandler->validate(doc.getInnerOperation());
-                  res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-                // The shard might've been dropped before doing recovery.
-                LOG_CTX("e76f8", INFO, self->loggerContext)
-                    << "will not apply transaction " << op.tid << " for shard "
-                    << op.shard << " because it is not available";
-                return {};
-              } else if (res.fail()) {
-                return res;
-              }
-              activeTransactions.insert(op.tid);
-            } else if constexpr (FinishesUserTransactionOrIntermediate<T>) {
-              // There are two cases where we can end up here:
-              // 1. After recovery, we did not get the beginning of the
-              // transaction.
-              // 2. We ignored all other operations for this transaction because
-              // the shard was dropped.
-              if (activeTransactions.erase(op.tid) == 0) {
-                return Result{};
-              }
-            } else if constexpr (std::is_same_v<
-                                     T, ReplicatedOperation::DropShard>) {
-              // Abort all transactions for this shard.
-              for (auto const& tid :
-                   transactionHandler->getTransactionsForShard(op.shard)) {
-                activeTransactions.erase(tid);
-                auto abortRes = transactionHandler->applyEntry(
-                    ReplicatedOperation::buildAbortOperation(tid));
-                if (abortRes.fail()) {
-                  LOG_CTX("3eb75", INFO, self->loggerContext)
-                      << "failed to abort transaction " << tid << " for shard "
-                      << op.shard << " during recovery: " << abortRes;
-                  return abortRes;
+          overload{
+              [&](ModifiesUserTransaction auto& op) -> Result {
+                if (auto res =
+                        transactionHandler->validate(doc.getInnerOperation());
+                    res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  // The shard might've been dropped before doing recovery.
+                  LOG_CTX("e76f8", INFO, self->loggerContext)
+                      << "will not apply transaction " << op.tid
+                      << " for shard " << op.shard
+                      << " because it is not available";
+                  return {};
+                } else if (res.fail()) {
+                  return res;
                 }
-              }
-            }
-            return transactionHandler->applyEntry(op);
-          },
+                activeTransactions.insert(op.tid);
+                return transactionHandler->applyEntry(op);
+              },
+              [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
+                // There are two cases where we can end up here:
+                // 1. After recovery, we did not get the beginning of the
+                // transaction.
+                // 2. We ignored all other operations for this transaction
+                // because the shard was dropped.
+                if (activeTransactions.erase(op.tid) == 0) {
+                  return Result{};
+                }
+                return transactionHandler->applyEntry(op);
+              },
+              [&](ReplicatedOperation::DropShard& op) -> Result {
+                // Abort all transactions for this shard.
+                for (auto const& tid :
+                     transactionHandler->getTransactionsForShard(op.shard)) {
+                  activeTransactions.erase(tid);
+                  auto abortRes = transactionHandler->applyEntry(
+                      ReplicatedOperation::buildAbortOperation(tid));
+                  if (abortRes.fail()) {
+                    LOG_CTX("3eb75", INFO, self->loggerContext)
+                        << "failed to abort transaction " << tid
+                        << " for shard " << op.shard
+                        << " during recovery: " << abortRes;
+                    return abortRes;
+                  }
+                }
+                return transactionHandler->applyEntry(op);
+              },
+              [&](auto&& op) { return transactionHandler->applyEntry(op); }},
           doc.getInnerOperation());
 
       if (res.fail()) {
