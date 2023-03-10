@@ -57,10 +57,7 @@ const postCreateIndex = async ({
         }
       } catch (error) {
         handleError(error.response.body);
-        console.log({ error });
       }
-
-      console.log(result);
       // $.ajax({
       //   cache: false,
       //   type: "POST",

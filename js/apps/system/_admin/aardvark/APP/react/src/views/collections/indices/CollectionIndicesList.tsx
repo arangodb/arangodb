@@ -1,16 +1,27 @@
-import { DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon, LockIcon } from "@chakra-ui/icons";
 import {
+  Box,
+  Button,
   IconButton,
+  Stack,
   Table,
   TableContainer,
   Tbody,
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  useDisclosure
 } from "@chakra-ui/react";
 import { isNumber } from "lodash";
 import React from "react";
+import {
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader
+} from "../../../components/modal";
+import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { IndexType } from "./useFetchIndices";
 
 export const CollectionIndicesList = ({
@@ -72,13 +83,7 @@ export const CollectionIndicesList = ({
                 <Td>{JSON.stringify(indexRow.fields)}</Td>
                 <Td>{indexRow.name}</Td>
                 <Td>
-                  <IconButton
-                    colorScheme="red"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Delete Index"
-                    icon={<DeleteIcon />}
-                  />
+                  <ActionCell indexRow={indexRow} />
                 </Td>
               </Tr>
             );
@@ -86,5 +91,66 @@ export const CollectionIndicesList = ({
         </Tbody>
       </Table>
     </TableContainer>
+  );
+};
+const ActionCell = ({ indexRow }: { indexRow: IndexType }) => {
+  const { type } = indexRow;
+  if (type === "primary" || type === "edge") {
+    return (
+      <Box display="flex" justifyContent="center">
+        <LockIcon />
+      </Box>
+    );
+  }
+  return <DeleteButton indexRow={indexRow} />;
+};
+
+const DeleteButton = ({ indexRow }: { indexRow: IndexType }) => {
+  const { onOpen, onClose, isOpen } = useDisclosure();
+  return (
+    <Box display="flex" justifyContent="center">
+      <IconButton
+        colorScheme="red"
+        variant="ghost"
+        size="sm"
+        aria-label="Delete Index"
+        icon={<DeleteIcon />}
+        onClick={onOpen}
+      />
+      <DeleteModal indexRow={indexRow} onClose={onClose} isOpen={isOpen} />
+    </Box>
+  );
+};
+
+const DeleteModal = ({
+  onClose,
+  isOpen,
+  indexRow
+}: {
+  onClose: () => void;
+  isOpen: boolean;
+  indexRow: IndexType;
+}) => {
+  const { onDeleteIndex } = useCollectionIndicesContext();
+  return (
+    <Modal onClose={onClose} isOpen={isOpen}>
+      <ModalHeader>
+        Delete Index: "{indexRow.name}" (ID: {indexRow.id})?
+      </ModalHeader>
+      <ModalBody></ModalBody>
+      <ModalFooter>
+        <Stack direction="row">
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            colorScheme="red"
+            onClick={() =>
+              onDeleteIndex({ id: indexRow.id, onSuccess: onClose })
+            }
+          >
+            Delete
+          </Button>
+        </Stack>
+      </ModalFooter>
+    </Modal>
   );
 };

@@ -8,7 +8,7 @@ export type IndexType = {
   id: string;
   name: string;
   sparse: boolean;
-  type: "primary" | "fulltext";
+  type: "primary" | "fulltext" | "edge";
   unique: boolean;
   selectivityEstimate?: number;
   storedValues?: string[];

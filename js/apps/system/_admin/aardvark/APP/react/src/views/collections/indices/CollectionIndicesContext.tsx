@@ -1,8 +1,10 @@
 import { useDisclosure } from "@chakra-ui/react";
 import React, { createContext, ReactNode, useContext } from "react";
+import { useDeleteIndex } from "./useDeleteIndex";
 
 type CollectionIndicesContextType = {
   collectionName: string;
+  onDeleteIndex: (data: { id: string; onSuccess: () => void }) => void;
   onOpenForm: () => void;
   onCloseForm: () => void;
   isFormOpen: boolean;
@@ -23,9 +25,11 @@ export const CollectionIndicesProvider = ({
     onClose: onCloseForm,
     isOpen: isFormOpen
   } = useDisclosure();
+  const { onDeleteIndex } = useDeleteIndex();
   return (
     <CollectionIndicesContext.Provider
       value={{
+        onDeleteIndex,
         collectionName,
         onOpenForm,
         onCloseForm,
