@@ -552,9 +552,6 @@ ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
 
   bool store = _state == ExecutionState::STORING;
-  if (_masterContext) {
-    _masterContext->postApplication();
-  }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   auto finalize = FinalizeExecution{
