@@ -305,9 +305,6 @@ Result insertDocument(IResearchDataStore const& dataStore,
   Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.template Insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
-  if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    ctx.SetLastTick(dataStore.engine()->currentTick());
-  }
   return {};
 }
 
@@ -655,7 +652,7 @@ IResearchDataStore::IResearchDataStore(ArangodServer& server)
             }
             std::this_thread::sleep_for(5s);
           }
-          ctx._ctx.ForceFlush();
+          ctx._ctx.RegisterFlush();
           LOG_TOPIC("cdc04", DEBUG, TOPIC) << myNumber << " added to flush";
           ++_t3NumFlushRegistered;
           break;
@@ -678,10 +675,10 @@ IResearchDataStore::IResearchDataStore(ArangodServer& server)
       }
     }
     else {
-      ctx._ctx.ForceFlush();
+      ctx._ctx.RegisterFlush();
     }
 #else
-    ctx._ctx.ForceFlush();
+    ctx._ctx.RegisterFlush();
 #endif
   };
   _afterCommitCallback = [this](TransactionState& state) {
@@ -744,12 +741,7 @@ IResearchDataStore::IResearchDataStore(ArangodServer& server)
       }
     }
 #endif
-    ctx._ctx.SetLastTick(lastOperationTick);
-    if (ADB_LIKELY(!_engine->inRecovery())) {
-      ctx._ctx.SetFirstTick(lastOperationTick - state.numPrimitiveOperations());
-    }
-    TRI_ASSERT(ctx._wasCommit == false);
-    ctx._wasCommit = true;
+    ctx._ctx.Commit(lastOperationTick);
   };
 }
 
@@ -1840,15 +1832,16 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       return {TRI_ERROR_INTERNAL};
     }
     auto ctx = _dataStore._writer->GetBatch();
+    auto res = insertImpl(ctx);
+    if (!res.ok()) {
+      ctx.Abort();
+      return res;
+    }
+    ctx.Commit(irs::writer_limits::kMinTick + 1);
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
-      auto res = insertImpl(ctx);  // we need insert to succeed, so  we have
-                                   // things to cleanup in storage
-      if (res.fail()) {
-        return res;
-      }
       return {TRI_ERROR_DEBUG};
     }
-    return insertImpl(ctx);
+    return res;
   }
   auto* key = this;
   // TODO FIXME find a better way to look up a ViewState
