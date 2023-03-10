@@ -142,7 +142,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
 
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
-  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   // TODO change these to use better algorithms when we no longer
   //      need to support collections created before 3.4
 
