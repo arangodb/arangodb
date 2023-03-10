@@ -39,7 +39,7 @@ const ActionButtons = () => {
     <Box display={"flex"} justifyContent="end" alignItems={"center"} gap="4">
       <Button
         size="xs"
-        colorScheme="blue"
+        colorScheme="green"
         leftIcon={<CheckIcon />}
         onClick={onSave}
         isDisabled={errors.length > 0 || !changed || !isAdminUser}
