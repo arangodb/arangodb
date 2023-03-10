@@ -1,21 +1,23 @@
 import { AddIcon } from "@chakra-ui/icons";
-import { Box, Button, useDisclosure } from "@chakra-ui/react";
-import React, { useEffect } from "react";
+import { Box, Button } from "@chakra-ui/react";
+import React from "react";
 import { AddIndex } from "./AddIndex";
+import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { CollectionIndicesList } from "./CollectionIndicesList";
 import { useFetchIndices } from "./useFetchIndices";
+import { useSetupNav } from "./useSetupNav";
 
-export const CollectionIndicesTab = ({
-  collectionName
-}: {
-  collectionName: string;
-  collection: any;
-}) => {
-  useSteupNav({ collectionName });
+export const CollectionIndicesTab = () => {
+  const {
+    collectionName,
+    onOpenForm,
+    onCloseForm,
+    isFormOpen
+  } = useCollectionIndicesContext();
+  useSetupNav({ collectionName });
   const { indices } = useFetchIndices({ collectionName });
-  const { onOpen, onClose, isOpen } = useDisclosure();
-  if (isOpen) {
-    return <AddIndex onClose={onClose} />;
+  if (isFormOpen) {
+    return <AddIndex onClose={onCloseForm} />;
   }
   return (
     <Box padding="4" height="full" width="full">
@@ -31,7 +33,7 @@ export const CollectionIndicesTab = ({
           marginTop="2"
           marginRight="4"
           size="sm"
-          onClick={onOpen}
+          onClick={onOpenForm}
           alignSelf="flex-end"
           colorScheme="green"
           variant="ghost"
@@ -41,11 +43,5 @@ export const CollectionIndicesTab = ({
         </Button>
       </Box>
     </Box>
-  );
-};
-
-const useSteupNav = ({ collectionName }: { collectionName: string }) => {
-  useEffect(() =>
-    window.arangoHelper.buildCollectionSubNav(collectionName, "Indexes")
   );
 };
