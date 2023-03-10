@@ -45,6 +45,11 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
     return "pagerank";
   };
 
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* override;

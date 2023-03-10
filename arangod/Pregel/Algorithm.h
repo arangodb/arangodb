@@ -66,6 +66,11 @@ struct IAlgorithm {
       arangodb::velocypack::Slice userParams) const
       -> std::unique_ptr<MasterContext> = 0;
 
+  [[nodiscard]] virtual auto workerContext(
+      std::unique_ptr<AggregatorHandler> conductorAggregators,
+      std::unique_ptr<AggregatorHandler> workerAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* = 0;
+
   [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };
 
@@ -89,10 +94,6 @@ struct Algorithm : IAlgorithm {
       VertexCompensation<vertex_type, edge_type, message_type>;
 
  public:
-  [[nodiscard]] virtual WorkerContext* workerContext(
-      velocypack::Slice userParams) const {
-    return new WorkerContext();
-  }
   virtual std::shared_ptr<graph_format const> inputFormat() const = 0;
   virtual message_format* messageFormat() const = 0;
   virtual message_combiner* messageCombiner() const { return nullptr; }

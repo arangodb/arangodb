@@ -178,6 +178,20 @@ std::shared_ptr<GraphFormat<WCCValue, uint64_t> const> WCC::inputFormat()
   return std::make_shared<::WCCGraphFormat>(_resultField);
 }
 
+struct WCCWorkerContext : public WorkerContext {
+  WCCWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                   std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto WCC::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new WCCWorkerContext(std::move(readAggregators),
+                              std::move(writeAggregators));
+}
+
 struct WCCMasterContext : public MasterContext {
   WCCMasterContext(uint64_t vertexCount, uint64_t edgeCount,
                    std::unique_ptr<AggregatorHandler> aggregators)

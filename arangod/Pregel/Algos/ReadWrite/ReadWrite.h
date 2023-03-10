@@ -58,8 +58,10 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
   VertexComputation<V, E, V>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

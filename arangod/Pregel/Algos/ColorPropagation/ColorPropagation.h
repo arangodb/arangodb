@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
@@ -129,8 +130,10 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                     ColorPropagationMessageValue>*
       createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
@@ -201,7 +204,10 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 enum class State { SendInitialColors, PropagateColors };
 
 struct ColorPropagationWorkerContext : public WorkerContext {
-  ColorPropagationWorkerContext(uint64_t maxGss, uint16_t numColors);
+  ColorPropagationWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators, uint64_t maxGss,
+      uint16_t numColors);
   void postGlobalSuperstep(uint64_t gss) override;
 
   State state = State::SendInitialColors;

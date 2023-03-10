@@ -28,6 +28,7 @@
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/WorkerContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -98,6 +99,21 @@ VertexCompensation<uint64_t, uint8_t, uint64_t>*
 ConnectedComponents::createCompensation(
     std::shared_ptr<WorkerConfig const> config) const {
   return new MyCompensation();
+}
+
+struct ConnectedComponentsWorkerContext : public WorkerContext {
+  ConnectedComponentsWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto ConnectedComponents::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ConnectedComponentsWorkerContext(std::move(readAggregators),
+                                              std::move(writeAggregators));
 }
 
 struct ConnectedComponentsMasterContext : public MasterContext {

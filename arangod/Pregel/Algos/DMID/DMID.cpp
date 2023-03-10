@@ -662,6 +662,20 @@ std::shared_ptr<GraphFormat<DMIDValue, float> const> DMID::inputFormat() const {
   return std::make_shared<DMIDGraphFormat>(_resultField, _maxCommunities);
 }
 
+struct DMIDWorkerContext : public WorkerContext {
+  DMIDWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto DMID::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new DMIDWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+
 struct DMIDMasterContext : public MasterContext {
   DMIDMasterContext(uint64_t vertexCount, uint64_t edgeCount,
                     std::unique_ptr<AggregatorHandler> aggregators)

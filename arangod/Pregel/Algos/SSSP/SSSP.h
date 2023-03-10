@@ -68,6 +68,11 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
                             MessageStats const& stats) const override;
 
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* override;

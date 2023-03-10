@@ -126,7 +126,11 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
 
   VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
-  WorkerContext* workerContext(velocypack::Slice userParams) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

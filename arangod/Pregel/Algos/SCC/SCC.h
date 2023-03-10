@@ -119,6 +119,11 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
   VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
       createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* override;

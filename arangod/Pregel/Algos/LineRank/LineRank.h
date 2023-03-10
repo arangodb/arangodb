@@ -95,7 +95,10 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  WorkerContext* workerContext(velocypack::Slice params) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

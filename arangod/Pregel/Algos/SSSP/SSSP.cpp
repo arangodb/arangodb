@@ -126,6 +126,20 @@ SSSPAlgorithm::createCompensation(
   return new SSSPCompensation();
 }
 
+struct SSSPWorkerContext : public WorkerContext {
+  SSSPWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto SSSPAlgorithm::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new SSSPWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+
 struct SSSPMasterContext : public MasterContext {
   SSSPMasterContext(uint64_t vertexCount, uint64_t edgeCount,
                     std::unique_ptr<AggregatorHandler> aggregators)

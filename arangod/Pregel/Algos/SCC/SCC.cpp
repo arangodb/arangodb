@@ -190,6 +190,20 @@ std::shared_ptr<GraphFormat<SCCValue, int8_t> const> SCC::inputFormat() const {
   return std::make_shared<SCCGraphFormat>(_resultField);
 }
 
+struct SCCWorkerContext : public WorkerContext {
+  SCCWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                   std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto SCC::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new SCCWorkerContext(std::move(readAggregators),
+                              std::move(writeAggregators));
+}
+
 struct SCCMasterContext : public MasterContext {
   SCCMasterContext(uint64_t vertexCount, uint64_t edgeCount,
                    std::unique_ptr<AggregatorHandler> aggregators)
