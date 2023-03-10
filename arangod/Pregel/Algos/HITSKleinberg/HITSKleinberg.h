@@ -57,7 +57,7 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
   }
 
   VertexComputation<HITSKleinbergValue, int8_t, SenderMessage<double>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;

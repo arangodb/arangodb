@@ -99,7 +99,8 @@ static const char* shardError =
 
 template<typename V, typename E>
 void GraphStore<V, E>::loadShards(
-    WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
+    std::shared_ptr<WorkerConfig const> config,
+    std::function<void()> const& statusUpdateCallback,
     std::function<void()> const& finishedLoadingCallback) {
   _config = config;
 
@@ -471,7 +472,7 @@ void GraphStore<V, E>::storeVertices(
 
 template<typename V, typename E>
 void GraphStore<V, E>::storeResults(
-    WorkerConfig* config, std::function<void()> cb,
+    std::shared_ptr<WorkerConfig const> config, std::function<void()> cb,
     std::function<void()> const& statusUpdateCallback) {
   _config = config;
   double now = TRI_microtime();

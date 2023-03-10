@@ -128,7 +128,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
 };
 
 VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SLPAComputation();
 }
 

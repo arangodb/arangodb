@@ -50,9 +50,9 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   }
 
   VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<float, float, float>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos

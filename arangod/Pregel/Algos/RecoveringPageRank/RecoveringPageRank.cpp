@@ -65,7 +65,7 @@ struct RPRComputation : public VertexComputation<float, float, float> {
 };
 
 VertexComputation<float, float, float>* RecoveringPageRank::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new RPRComputation();
 }
 
@@ -109,7 +109,7 @@ struct RPRCompensation : public VertexCompensation<float, float, float> {
 };
 
 VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new RPRCompensation();
 }
 

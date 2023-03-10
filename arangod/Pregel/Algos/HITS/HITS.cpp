@@ -98,7 +98,7 @@ struct HITSComputation
 };
 
 VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-HITS::createComputation(WorkerConfig const* config) const {
+HITS::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new HITSComputation();
 }
 
