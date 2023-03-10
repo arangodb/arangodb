@@ -66,9 +66,9 @@ export const AddNewViewModal = ({
         initialValues={initialValues}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required"),
-          writebufferIdle: Yup.string().required("Write Buffer Idle is required"),
-          writebufferActive: Yup.string().required("Write Buffer Active is required"),
-          writebufferSizeMax: Yup.string().required("Write Buffer Size Max is required"),
+          writebufferIdle: Yup.number().positive().required("Write Buffer Idle is required"),
+          writebufferActive: Yup.number().positive().required("Write Buffer Active is required"),
+          writebufferSizeMax: Yup.number().positive().required("Write Buffer Size Max is required"),
         })}
         onSubmit={(values, { setSubmitting }) => {
           const finalValues = getFinalValues(values);
