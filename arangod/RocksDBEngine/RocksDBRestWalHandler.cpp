@@ -117,16 +117,16 @@ void RocksDBRestWalHandler::flush() {
 
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = basics::StringUtils::boolean(value.copyString());
+      flushColumnFamilies = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
-      waitForCollector = value.getBoolean();
+      flushColumnFamilies = value.getBoolean();
     }
   }
 
   auto res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
     server().getFeature<EngineSelectorFeature>().engine().flushWal(
         waitForSync, flushColumnFamilies);
