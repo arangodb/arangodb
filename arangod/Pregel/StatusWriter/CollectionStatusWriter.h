@@ -170,7 +170,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
   }
 
   [[nodiscard]] auto ctx() -> std::shared_ptr<transaction::Context> const {
-    return transaction::V8Context::CreateWhenRequired(_vocbase, true);
+    return transaction::V8Context::CreateWhenRequired(_vocbase, false);
   }
 
  private:
