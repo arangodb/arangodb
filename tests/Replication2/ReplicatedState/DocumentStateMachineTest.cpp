@@ -363,17 +363,28 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
       std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
   std::size_t bytesSent{0};
 
-  // fetch data from shard1
-  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
-    EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
-    EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
-    auto batchRes = snapshot.fetch();
-    Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
+  EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
+  EXPECT_CALL(*collectionReaderMock2, read(_, _)).Times(1);
+  EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(1);
+  std::optional<ShardID> shardID;
 
+  // fetch data from first shard
+  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
+    auto batchRes = snapshot.fetch();
     ASSERT_TRUE(batchRes.ok()) << batchRes.result();
     auto batch = batchRes.get();
     EXPECT_EQ(snapshotId, batch.snapshotId);
-    EXPECT_EQ(batch.shardId, shardId1);
+    shardID = batch.shardId;
+
+    if (shardID == shardId1) {
+      Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+    } else if (shardID == shardId2) {
+      Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+    } else {
+      ADD_FAILURE();
+    }
+
     EXPECT_TRUE(batch.hasMore);
     EXPECT_TRUE(batch.payload.isArray());
 
@@ -381,31 +392,37 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
     ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
               status.state);
     EXPECT_EQ(2, status.statistics.shards.size());
-    EXPECT_EQ(idx + 1, status.statistics.shards[shardId1].docsSent);
+    EXPECT_EQ(idx + 1, status.statistics.shards[*shardID].docsSent);
     EXPECT_EQ(idx + 1, status.statistics.batchesSent);
 
     bytesSent += batch.payload.byteSize();
     EXPECT_EQ(bytesSent, status.statistics.bytesSent);
   }
 
-  // fetch data from shard2
+  // fetch data from second shard
   for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
-    EXPECT_CALL(*collectionReaderMock2, read(_, _)).Times(1);
-    EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(1);
     auto batchRes = snapshot.fetch();
-    Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
-
     ASSERT_TRUE(batchRes.ok()) << batchRes.result();
     auto batch = batchRes.get();
     EXPECT_EQ(snapshotId, batch.snapshotId);
-    EXPECT_EQ(batch.shardId, shardId2);
+    shardID = batch.shardId;
+
+    if (shardID == shardId1) {
+      Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+    } else if (shardID == shardId2) {
+      Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+    } else {
+      ADD_FAILURE();
+    }
+
+    EXPECT_EQ(snapshotId, batch.snapshotId);
     EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
     EXPECT_TRUE(batch.payload.isArray());
 
     auto status = snapshot.status();
     ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
               status.state);
-    EXPECT_EQ(idx + 1, status.statistics.shards[shardId2].docsSent);
+    EXPECT_EQ(idx + 1, status.statistics.shards[*shardID].docsSent);
     EXPECT_EQ(collectionData.size() + idx + 1, status.statistics.batchesSent);
 
     bytesSent += batch.payload.byteSize();
