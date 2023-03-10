@@ -47,8 +47,8 @@ struct ConnectedComponents
     return new MinCombiner<uint64_t>();
   }
   VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 };
 }  // namespace arangodb::pregel::algos

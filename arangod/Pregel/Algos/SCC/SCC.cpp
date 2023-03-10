@@ -151,7 +151,7 @@ struct SCCComputation
 }  // namespace
 
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-SCC::createComputation(WorkerConfig const* config) const {
+SCC::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new SCCComputation();
 }
 

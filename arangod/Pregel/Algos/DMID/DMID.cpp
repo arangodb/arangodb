@@ -587,7 +587,7 @@ struct DMIDComputation
 };
 
 VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new DMIDComputation();
 }
 

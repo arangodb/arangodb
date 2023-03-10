@@ -114,7 +114,8 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
-ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
+ShortestPathAlgorithm::createComputation(
+    std::shared_ptr<WorkerConfig const> _config) const {
   VertexID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }

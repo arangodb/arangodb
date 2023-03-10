@@ -66,11 +66,11 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   }
 
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
-  uint32_t messageBatchSize(WorkerConfig const& config,
+  uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
                             MessageStats const& stats) const override;
 };
 }  // namespace algos

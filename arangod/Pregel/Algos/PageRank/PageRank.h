@@ -43,7 +43,7 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   }
 
   VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
   WorkerContext* workerContext(VPackSlice userParams) const override;
 

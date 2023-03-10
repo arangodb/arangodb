@@ -82,7 +82,8 @@ struct MyCompensation : public VertexCompensation<uint64_t, uint8_t, uint64_t> {
 }  // namespace
 
 VertexComputation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createComputation(WorkerConfig const* config) const {
+ConnectedComponents::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new MyComputation();
 }
 
@@ -91,6 +92,7 @@ GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
 }
 
 VertexCompensation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createCompensation(WorkerConfig const* config) const {
+ConnectedComponents::createCompensation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new MyCompensation();
 }

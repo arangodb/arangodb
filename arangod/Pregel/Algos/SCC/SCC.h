@@ -106,7 +106,7 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
   }
 
   VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] MasterContext* masterContext(
       VPackSlice userParams) const override;
