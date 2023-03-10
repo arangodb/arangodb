@@ -138,6 +138,8 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view kEngineName = "rocksdb";
+
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
@@ -459,7 +461,7 @@ class RocksDBEngine final : public StorageEngine {
 
   class RocksDBSnapshot final : public StorageSnapshot {
    public:
-    explicit RocksDBSnapshot(rocksdb::DB& db) noexcept : _snapshot(&db) {}
+    explicit RocksDBSnapshot(rocksdb::DB& db) : _snapshot(&db) {}
 
     TRI_voc_tick_t tick() const noexcept override {
       return _snapshot.snapshot()->GetSequenceNumber();
@@ -513,12 +515,10 @@ class RocksDBEngine final : public StorageEngine {
   Result encryptInternalKeystore();
 #endif
 
- public:
-  static constexpr std::string_view kEngineName = "rocksdb";
-
- private:
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  void removeEmptyJournalFilesFromArchive();
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -696,7 +696,9 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _recoveryStartSequence = 0;
 #endif
 
+  metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;

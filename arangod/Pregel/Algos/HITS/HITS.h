@@ -57,7 +57,7 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
   }
 
   VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;

@@ -53,19 +53,20 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-uint32_t SSSPAlgorithm::messageBatchSize(WorkerConfig const& config,
-                                         MessageStats const& stats) const {
-  if (config.localSuperstep() <= 1) {
+uint32_t SSSPAlgorithm::messageBatchSize(
+    std::shared_ptr<WorkerConfig const> config,
+    MessageStats const& stats) const {
+  if (config->localSuperstep() <= 1) {
     return 5;
   } else {
     double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-    msgsPerSec /= config.parallelism();  // per thread
+    msgsPerSec /= config->parallelism();  // per thread
     return msgsPerSec > 100.0 ? (uint32_t)msgsPerSec : 100;
   }
 }
 
 VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPComputation();
 }
 
@@ -101,6 +102,7 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
 };
 
 VertexCompensation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
+SSSPAlgorithm::createCompensation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPCompensation();
 }

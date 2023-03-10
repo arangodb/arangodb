@@ -167,7 +167,7 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
 }  // namespace
 
 VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
-WCC::createComputation(WorkerConfig const* config) const {
+WCC::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new ::WCCComputation();
 }
 

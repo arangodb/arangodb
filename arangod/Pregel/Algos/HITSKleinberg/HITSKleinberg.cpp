@@ -277,7 +277,8 @@ struct HITSKleinbergComputation
 };
 
 VertexComputation<VertexType, int8_t, SenderMessage<double>>*
-HITSKleinberg::createComputation(WorkerConfig const* config) const {
+HITSKleinberg::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new HITSKleinbergComputation();
 }
 

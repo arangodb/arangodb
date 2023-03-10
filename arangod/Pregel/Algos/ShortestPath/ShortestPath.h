@@ -48,7 +48,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   }
 
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const* config) const override;
+      std::shared_ptr<WorkerConfig const> config) const override;
   IAggregator* aggregator(std::string const& name) const override;
   std::set<std::string> initialActiveSet() override;
 };
