@@ -47,8 +47,8 @@ namespace arangodb::pregel::statuswriter {
 struct CollectionStatusWriter : StatusWriterInterface {
   CollectionStatusWriter(TRI_vocbase_t& vocbase,
                          ExecutionNumber& executionNumber)
-      : _vocbase(vocbase), _executionNumber(executionNumber) {
-    CollectionNameResolver resolver(vocbase);
+      : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
+    CollectionNameResolver resolver(_vocbaseGuard.database());
     auto logicalCollection =
         resolver.getCollection(StaticStrings::PregelCollection);
     if (logicalCollection == nullptr) {
@@ -170,11 +170,12 @@ struct CollectionStatusWriter : StatusWriterInterface {
   }
 
   [[nodiscard]] auto ctx() -> std::shared_ptr<transaction::Context> const {
-    return transaction::V8Context::CreateWhenRequired(_vocbase, false);
+    return transaction::V8Context::CreateWhenRequired(_vocbaseGuard.database(),
+                                                      false);
   }
 
  private:
-  TRI_vocbase_t& _vocbase;
+  DatabaseGuard _vocbaseGuard;
   ExecutionNumber _executionNumber;
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };
