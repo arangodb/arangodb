@@ -109,7 +109,8 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
     return "scc";
   };
 
-  [[nodiscard]] GraphFormat<SCCValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] std::shared_ptr<GraphFormat<SCCValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<uint64_t>>* messageFormat()
       const override {
     return new SenderMessageFormat<uint64_t>();

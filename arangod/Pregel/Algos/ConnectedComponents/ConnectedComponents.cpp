@@ -63,7 +63,8 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+                      uint64_t& targetPtr,
+                      uint64_t& vertexIdRange) const override {
     targetPtr = vertexIdRange++;
   }
 };
@@ -88,8 +89,9 @@ ConnectedComponents::createComputation(
   return new MyComputation();
 }
 
-GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<uint64_t, uint8_t> const>
+ConnectedComponents::inputFormat() const {
+  return std::make_shared<MyGraphFormat>(_resultField);
 }
 
 VertexCompensation<uint64_t, uint8_t, uint64_t>*

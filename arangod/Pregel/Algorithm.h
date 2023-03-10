@@ -93,7 +93,7 @@ struct Algorithm : IAlgorithm {
       velocypack::Slice userParams) const {
     return new WorkerContext();
   }
-  virtual graph_format* inputFormat() const = 0;
+  virtual std::shared_ptr<graph_format const> inputFormat() const = 0;
   virtual message_format* messageFormat() const = 0;
   virtual message_combiner* messageCombiner() const { return nullptr; }
   virtual vertex_computation* createComputation(
