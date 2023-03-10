@@ -1,4 +1,4 @@
-import { Button } from "@chakra-ui/react";
+import { Button, Stack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import * as Yup from "yup";
@@ -65,7 +65,10 @@ export const AddNewViewModal = ({
       <Formik
         initialValues={initialValues}
         validationSchema={Yup.object({
-          name: Yup.string().required("Name is required")
+          name: Yup.string().required("Name is required"),
+          writebufferIdle: Yup.string().required("Write Buffer Idle is required"),
+          writebufferActive: Yup.string().required("Write Buffer Active is required"),
+          writebufferSizeMax: Yup.string().required("Write Buffer Size Max is required"),
         })}
         onSubmit={(values, { setSubmitting }) => {
           const finalValues = getFinalValues(values);
@@ -74,20 +77,27 @@ export const AddNewViewModal = ({
             onClose();
           });
         }}
+        isInitialValid={false}
       >
-        {({ isSubmitting }) => (
+        {({ isSubmitting, isValid }) => (
           <Form>
             <ModalBody>
               <AddNewViewForm />
             </ModalBody>
             <ModalFooter>
-              <Button
-                isLoading={isSubmitting}
-                colorScheme={"blue"}
-                type="submit"
-              >
-                Create
-              </Button>
+              <Stack direction="row">
+                <Button onClick={onClose} colorScheme={"gray"}>
+                  Close
+                </Button>
+                <Button
+                  isLoading={isSubmitting}
+                  colorScheme={"green"}
+                  type="submit"
+                  isDisabled={!isValid}
+                >
+                  Create
+                </Button>
+              </Stack>
             </ModalFooter>
           </Form>
         )}
