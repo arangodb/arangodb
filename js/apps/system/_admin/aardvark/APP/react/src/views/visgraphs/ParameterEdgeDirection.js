@@ -2,6 +2,10 @@ import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import ToolTip from '../../components/arango/tootip';
+import {
+  Box,
+  Flex,
+  Center } from '@chakra-ui/react';
 
 const ParameterEdgeDirection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,9 +14,11 @@ const ParameterEdgeDirection = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <Flex direction='row' mt='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Show edge direction</Box>
+      </Center>
       <Checkbox
-        label='Show edge direction'
         inline
         checked={edgeDirection}
         onChange={() => {
@@ -23,13 +29,15 @@ const ParameterEdgeDirection = () => {
         }}
         template={'graphviewer'}
       />
-      <ToolTip
-        title={"When true, an arrowhead on the 'to' side of the edge is drawn."}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-      </ToolTip>
-    </div>
+      <Center>
+        <ToolTip
+          title={"When true, an arrowhead on the 'to' side of the edge is drawn."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        </ToolTip>
+      </Center>
+    </Flex>
   );
 };
 

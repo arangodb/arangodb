@@ -2,6 +2,10 @@ import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import ToolTip from '../../components/arango/tootip';
+import {
+  Box,
+  Flex,
+  Center } from '@chakra-ui/react';
 
 const ParameterEdgeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,9 +14,11 @@ const ParameterEdgeColorByCollection = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <Flex direction='row' mt='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Color edges by collection</Box>
+      </Center>
       <Checkbox
-        label='Color edges by collection'
         inline
         checked={edgeColorByCollection}
         onChange={() => {
@@ -23,13 +29,15 @@ const ParameterEdgeColorByCollection = () => {
         }}
         template={'graphviewer'}
       />
-      <ToolTip
-        title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-      </ToolTip>
-    </div>
+      <Center>
+        <ToolTip
+          title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        </ToolTip>
+      </Center>
+    </Flex>
   );
 };
 
