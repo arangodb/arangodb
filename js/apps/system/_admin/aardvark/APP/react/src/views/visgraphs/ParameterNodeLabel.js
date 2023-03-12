@@ -1,7 +1,12 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
-import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
 
 const ParameterNodeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,27 +15,31 @@ const ParameterNodeLabel = () => {
   const newUrlParameters = { ...urlParameters };
   
   return (
-    <>
-      <div style={{ 'marginTop': '24px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-        <Textinput
-          label={'Node label'}
-          value={nodeLabel}
-          template={'graphviewer'}
-          width={'200px'}
-          onChange={(e) => {
-            setNodeLabel(e.target.value);
-            newUrlParameters.nodeLabel = e.target.value;
-            setUrlParameters(newUrlParameters);
-          }}>
-        </Textinput>
+    <Flex direction='row' mt='24' mb='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Node label</Box>
+      </Center>
+      <Input  
+        width='200px'
+        min={1}
+        required={true}
+        value={nodeLabel}
+        onChange={(e) => {
+          setNodeLabel(e.target.value);
+          newUrlParameters.nodeLabel = e.target.value;
+          setUrlParameters(newUrlParameters);
+        }}
+      />
+      <Spacer />
+      <Center>
         <ToolTip
           title={"Enter a valid node attribute to be used as a node label."}
           setArrow={true}
         >
           <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
-      </div>
-    </>
+      </Center>
+    </Flex>
   );
 };
 

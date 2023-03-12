@@ -1,35 +1,45 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
-import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
 
 const ParameterEdgeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
 
   const newUrlParameters = { ...urlParameters };
-  
+
   return (
-    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <Textinput
-        label={'Edge color attribute'}
+    <Flex direction='row' mt='24' mb='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Edge color attribute</Box>
+      </Center>
+      <Input  
+        width='200px'
+        min={1}
         value={edgeColorAttribute}
-        template={'graphviewer'}
-        width={'200px'}
         onChange={(e) => {
           setEdgeColorAttribute(e.target.value);
           newUrlParameters.edgeColorAttribute = e.target.value;
           setUrlParameters(newUrlParameters);
         }}
-        disabled={urlParameters.edgeColorByCollection}>
-      </Textinput>
-      <ToolTip
-        title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-      </ToolTip>
-    </div>
+        disabled={urlParameters.edgeColorByCollection}
+      />
+      <Spacer />
+      <Center>
+        <ToolTip
+          title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        </ToolTip>
+      </Center>
+    </Flex>
   );
 };
 

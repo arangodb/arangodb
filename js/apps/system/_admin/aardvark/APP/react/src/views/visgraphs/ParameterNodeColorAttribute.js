@@ -1,7 +1,13 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
-import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
+
 
 const ParameterNodeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,26 +16,32 @@ const ParameterNodeColorAttribute = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-      <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-        <Textinput
-          label={'Node color attribute'}
-          value={nodeColorAttribute}
-          template={'graphviewer'}
-          width={'200px'}
-          onChange={(e) => {
-            setNodeColorAttribute(e.target.value);
-            newUrlParameters.nodeColorAttribute = e.target.value;
-            setUrlParameters(newUrlParameters);
-          }}
-          disabled={urlParameters.nodeColorByCollection}>
-        </Textinput>
+    <Flex direction='row' mt='24' mb='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Node color attribute</Box>
+      </Center>
+      <Input  
+        width='200px'
+        min={1}
+        required={true}
+        value={nodeColorAttribute}
+        onChange={(e) => {
+          setNodeColorAttribute(e.target.value);
+          newUrlParameters.nodeColorAttribute = e.target.value;
+          setUrlParameters(newUrlParameters);
+        }}
+        disabled={urlParameters.nodeColorByCollection}
+      />
+      <Spacer />
+      <Center>
         <ToolTip
-          title={"If an attribute is given, nodes will be colorized by the attribute. This setting ignores default node color if set."}
-          setArrow={true}
-        >
+            title={"If an attribute is given, nodes will be colorized by the attribute. This setting ignores default node color if set."}
+            setArrow={true}
+          >
           <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
-      </div>
+      </Center>
+    </Flex>
   );
 };
 

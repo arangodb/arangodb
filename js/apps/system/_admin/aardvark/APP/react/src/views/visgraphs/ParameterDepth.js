@@ -1,7 +1,12 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
-import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
 
 const ParameterDepth = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,27 +15,31 @@ const ParameterDepth = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <>
-      <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-        <Textinput
-            label={'Depth'}
-            value={depth}
-            template={'graphviewer'}
-            width={'60px'}
-            onChange={(e) => {
-              setDepth(+e.target.value);
-              newUrlParameters.depth = +e.target.value;
-              setUrlParameters(newUrlParameters);
-            }}>
-        </Textinput>
+    <Flex direction='row'>
+      <Center>
+        <Box color='#fff' w='150px'>Depth</Box>
+      </Center>
+      <Input  
+        width='200px'
+        min={1}
+        required={true}
+        value={depth}
+        onChange={(e) => {
+          setDepth(+e.target.value);
+          newUrlParameters.depth = +e.target.value;
+          setUrlParameters(newUrlParameters);
+        }}
+      />
+      <Spacer />
+      <Center>
         <ToolTip
           title={"Search depth, starting from your start node."}
           setArrow={true}
         >
           <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
         </ToolTip>
-      </div>
-    </>
+      </Center>
+    </Flex>
   );
 };
 

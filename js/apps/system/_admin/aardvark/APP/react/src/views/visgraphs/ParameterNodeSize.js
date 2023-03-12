@@ -1,7 +1,12 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import ToolTip from '../../components/arango/tootip';
-import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
 
 const ParameterNodeSize = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,26 +15,32 @@ const ParameterNodeSize = () => {
   const newUrlParameters = { ...urlParameters };
 
   return (
-    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <Textinput
-        label={'Sizing attribute'}
+    <Flex direction='row' mt='24' mb='12'>
+      <Center>
+        <Box color='#fff' w='150px'>Sizing attribute</Box>
+      </Center>
+      <Input  
+        width='200px'
+        min={1}
+        required={true}
         value={nodeSize}
-        template={'graphviewer'}
-        width={'200px'}
         onChange={(e) => {
           setNodeSize(e.target.value);
           newUrlParameters.nodeSize = e.target.value;
           setUrlParameters(newUrlParameters);
         }}
-        disabled={urlParameters.nodeSizeByEdges}>
-      </Textinput>
-      <ToolTip
-        title={"If an attribute is given, nodes will be sized by the attribute."}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-      </ToolTip>
-    </div>
+        disabled={urlParameters.nodeSizeByEdges}
+      />
+      <Spacer />
+      <Center>
+        <ToolTip
+          title={"If an attribute is given, nodes will be sized by the attribute."}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        </ToolTip>
+      </Center>
+    </Flex>
   );
 };
 
