@@ -3,6 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import ToolTip from '../../components/arango/tootip';
+import {
+  Flex,
+  Spacer } from '@chakra-ui/react';
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -164,10 +167,11 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
             ) : 'Data is loading...'
           }
         </div>
-        <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
+        <Flex direction='row' mt='38'>
+          <Spacer />
           <StyledButton className="button-close" onClick={() => cancelEdge()}>Cancel</StyledButton>
           <StyledButton className="button-success" onClick={() => { addEdge(edge) }}>Create</StyledButton>
-        </div>
+        </Flex>
       </ModalBody>
     </ModalBackground>
   );

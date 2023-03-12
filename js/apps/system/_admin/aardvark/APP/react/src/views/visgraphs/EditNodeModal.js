@@ -3,6 +3,9 @@ import React, { useState, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { AttributesInfo } from './AttributesInfo';
+import {
+  Flex,
+  Spacer } from '@chakra-ui/react';
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -88,10 +91,11 @@ export const EditNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, 
             ) : 'Loading data...'
           }
         </div>
-        <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+        <Flex direction='row' mt='38'>
+          <Spacer />
           <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
           <StyledButton className="button-success" onClick={() => { updateNode(node) }}>Update</StyledButton>
-        </div>
+        </Flex>
       </ModalBody>
     </ModalBackground>
   );

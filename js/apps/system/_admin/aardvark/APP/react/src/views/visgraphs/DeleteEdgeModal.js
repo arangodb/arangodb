@@ -2,6 +2,9 @@
 import React from 'react';
 import styled from "styled-components";
 import { AttributesInfo } from './AttributesInfo';
+import {
+  Flex,
+  Spacer } from '@chakra-ui/react';
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -68,10 +71,11 @@ export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge
           {children}<br />
         </div>
         <AttributesInfo attributes={basicEdgeData} />
-        <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+        <Flex direction='row' mt='38'>
+          <Spacer />
           <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
           <StyledButton className="button-danger" onClick={() => { deleteEdge(edge) }}>Delete</StyledButton>
-        </div>
+        </Flex>
       </ModalBody>
     </ModalBackground>
   );

@@ -4,6 +4,9 @@ import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import { AttributesInfo } from './AttributesInfo';
+import {
+  Flex,
+  Spacer } from '@chakra-ui/react';
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -106,28 +109,13 @@ export const DeleteNodeModal = ({ shouldShow, onDeleteNode, onRequestClose, node
             const newDeleteEdges = !deleteEdges;
             setDeleteEdges(newDeleteEdges);
           }}
-          //template={'graphviewer'}
         />
 
-          {
-            /*
-            <Checkbox
-              checked={deleteEdges}
-              onChange={() => {
-                const newDeleteEdges = !deleteEdges;
-                setDeleteEdges(newDeleteEdges);
-              }}
-              style={{ 'color': '#736b68' }}
-            >
-              Delete connected edges too
-            </Checkbox>
-            */
-          }
-
-        <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+        <Flex direction='row'>
+          <Spacer />
           <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
           <StyledButton className="button-danger" onClick={() => { deleteNode(node) }}>Delete</StyledButton>
-        </div>
+        </Flex>
       </ModalBody>
     </ModalBackground>
   );
