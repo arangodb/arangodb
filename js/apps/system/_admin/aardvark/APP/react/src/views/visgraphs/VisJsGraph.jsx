@@ -104,13 +104,11 @@ const VisJsGraph = () => {
       contentType: 'application/json',
       data: urlParameters,
       success: function (data) {
-        console.log("data: ", data);
-        console.log("data.settings.edgeCollections: ", data.settings.edgeCollections);
         responseTimesObject.fetchFinished = new Date();
         responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
         setResponseTimes(responseTimesObject);
         setVertexCollections(data.settings.vertexCollections);
-        setEdgeCollections(data.settings.edgeCollections);
+        setEdgeCollections(data.settings.edgesCollections);
         setVisGraphData(data);
       },
       error: function (e) {
@@ -163,7 +161,6 @@ const VisJsGraph = () => {
 
 
   const openDeleteNodeModal = (nodeId) => {
-    console.log("nodeId in openDeleteNodeModal: ", nodeId);
     const slashPos = nodeId.indexOf("/");
     setNodeToDelete(nodeId);
     setNodeToDeleteKey(nodeId.substring(slashPos + 1));
@@ -370,25 +367,6 @@ const VisJsGraph = () => {
           ...uniqueMergedEdges
         ]
       };
-      
-      /*
-      // Calculate some settings after the node has been expanded
-      if(urlParameters.nodeSize) {
-        setNodesSizeMinMax(data.settings.nodesSizeMinMax);
-      }
-      if(urlParameters.nodeSizeByEdges) {
-        if(typeof connectionsMinMax == "undefined") {
-          setConnectionsMinMax(data.settings.connectionsMinMax);
-        } else {
-          if(data.settings.connectionsMinMax[0] < connectionsMinMax[0]) {
-            setConnectionsMinMax([data.settings.connectionsMinMax[0], connectionsMinMax[1]]);
-          }
-          if(data.settings.connectionsMinMax[1] > connectionsMinMax[1]) {
-            setConnectionsMinMax([connectionsMinMax[0], data.settings.connectionsMinMax[1]]);
-          }
-        }
-      }
-      */
       setVisGraphData(newGraphData);
     })
     .catch((err) => {
@@ -621,27 +599,6 @@ const VisJsGraph = () => {
         >
           <strong>Edit edge: {edgeToEdit}</strong>
         </EditEdgeModal>
-
-        {
-          /*
-        <GraphView
-          visGraphData={visGraphData}
-          graphName={graphName}
-          responseDuration={responseTimes.fetchDuration}
-          onChangeGraphData={(newGraphData) => setVisGraphData(newGraphData)}
-          onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
-            setVisGraphData(newGraphData);
-            setResponseTimes(responseTimesObject);
-            setGraphData(newGraphData);
-          }}
-          onAddNodeToDb={() => openAddNodeModal()}
-          onAddEdgeToDb={(edgeData) => {
-            setEdgeModelToAdd(edgeData);
-            openAddEdgeModal(edgeData);
-          }}
-        />
-          */
-        }
         <GraphView
           data={graphData}
           visGraphData={visGraphData}
@@ -676,21 +633,6 @@ const VisJsGraph = () => {
           onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
           onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
             setVisGraphData(newGraphData);
-            /*
-            if(newGraphData.settings.nodesColorAttributes) {
-              setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
-            }
-            if(newGraphData.settings.nodesSizeMinMax) {
-              setNodesSizeMinMax(newGraphData.settings.nodesSizeMinMax);
-            }
-            if(newGraphData.settings.connectionsMinMax) {
-              setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
-            }
-            if(newGraphData.settings.edgesColorAttributes) {
-              setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
-            }
-            setGraphData(newGraphData);
-            */
             setResponseTimes(responseTimesObject);
           }}
           vertexCollectionsColors={vertexCollectionsColors}
