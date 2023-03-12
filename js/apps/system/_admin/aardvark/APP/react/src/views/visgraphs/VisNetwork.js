@@ -3,7 +3,6 @@ import styled from "styled-components";
 import { Network } from "vis-network";
 import { isEqual } from "lodash";
 import { ProgressBar } from "./ProgressBar";
-import { DataSet } from "vis-data";
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
@@ -22,14 +21,10 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const nodes = [
 		...graphData.nodes
 	];
-	const nodesDataset = new DataSet(...graphData.nodes);
-	console.log("nodesDataset: ", nodesDataset);
 
 	const edges = [
 		...graphData.edges
 	];
-	const edgesDataset = new DataSet(...graphData.edges);
-	console.log("edgesDataset: ", edgesDataset);
 
 	const visJsRef = useRef(null);
 
@@ -50,37 +45,10 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	useEffect(() => {
 		if(graphData.settings !== undefined) {
 			const options = graphData.settings.layout;
-			console.log("options: ", options);
 			options.manipulation = {
 				enabled: false,
-				addNode: function (data, callback) {
-					// filling in the popup DOM elements
-					console.log('add', data);
-				},
-				editNode: function (data, callback) {
-					// filling in the popup DOM elements
-					console.log('edit', data);
-				},
 				addEdge: function (data, callback) {
-					console.log('add edge', data);
 					onAddEdge(data);
-					/*
-					if (data.from == data.to) {
-						var r = confirm("Do you want to connect the node to itself?");
-						if (r === true) {
-							callback(data);
-						}
-					}
-					else {
-						callback(data);
-					}
-					*/
-					// after each adding you will be back to addEdge mode
-					//console.log("network.addEdgeMode(): ", network.addEdgeMode());
-					//network.addEdgeMode();
-
-					//network.disableEditMode();
-					//network.redraw();
 				}
 			};
 			setLayoutOptions(graphData.settings.layout);
@@ -92,7 +60,6 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		setNetworkData(network);
 		// Use network here to configure events, etc
 		if(selectedNode && selectedNode.id){
-			console.log(selectedNode);
 			network.selectNodes([selectedNode.id])
 		}
 
@@ -103,11 +70,8 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				const widthFactor = params.iterations / params.total;
 				const width = Math.max(minWidth, maxWidth * widthFactor);
 
-				console.log("params.iterations: ", params.iterations);
-				console.log("params.total: ", params.total);
 				
 				const progressValue = Math.round(widthFactor * 100);
-				console.log("progressValue: ", progressValue);
 			
 				document.getElementById("graphViewerProgressBar").style.width = width + "px";
 				document.getElementById("graphViewerLoadingText").innerText = progressValue + "%";
@@ -122,7 +86,6 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		});
 
 		network.on("stabilized", function () {
-			console.log("####### stabilized #######");
 			document.getElementById("graphViewerLoadingBar").style.opacity = 0;
 			setTimeout(function () {
 				document.getElementById("graphViewerLoadingBar").style.display = "none";
@@ -132,12 +95,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		network.on("selectNode", (event, params) => {
 			if (event.nodes.length === 1) {
 				onSelectNode(event.nodes[0]);
-				console.log("selectNode (params): ", params);
-			} else {
-				console.log("selectNode (event) ELSE: ", event);
-				console.log("selectNode (params) ELSE: ", params);
 			}
-			console.log("NETWOOOORK: ", network.getViewPosition());
 		});
 
 		network.on("selectEdge", (event, params) => {
@@ -149,25 +107,6 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		network.on("click", function(params) {
 			// close all maybe open context menus
 			toggleContextMenu("");
-
-			console.log("click (params): ", params);
-
-			/*
-			var nodeID = params['nodes']['0'];
-			console.log("nodeID: ", nodeID);
-			if (nodeID) {
-				console.log("Do I have the nodes here? ", nodes);
-				console.log("typeof nodes: ", typeof nodes);
-				console.log("network.body.nodes: ", network.body.nodes);
-				console.log("network.body.nodes['worldVertices/world']: ", network.body.nodes['worldVertices/world']);
-				console.log("network.body.edges: ", network.body.edges);
-				console.log("Object.values(nodes): ", Object.values(nodes));
-				const nodesArr = Object.values(nodes);
-				console.log("typeof nodesArr: ", typeof nodesArr);
-			}
-			*/
-			//network.redraw();
-			//console.log("Is network redrawn?");
 		});
 
 		network.on("oncontext", (args) => {
@@ -175,45 +114,23 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			const canvasOffset = document.getElementById("visnetworkdiv");
 			setPosition({ left: `${args.pointer.DOM.x + canvasOffset.offsetLeft}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
 			if (network.getNodeAt(args.pointer.DOM)) {
-				console.log("A node");
-
 				toggleContextMenu("node");
 				network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
 				setContextMenuNodeID(network.getNodeAt(args.pointer.DOM));
 			} else if (network.getEdgeAt(args.pointer.DOM)) {
-				console.log("An edge");
 
 				toggleContextMenu("edge");
 				network.selectEdges([network.getEdgeAt(args.pointer.DOM)]);
 				setContextMenuEdgeID(network.getEdgeAt(args.pointer.DOM));
-				//setPosition({ left: `${args.pointer.DOM.x}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
 			} else {
-				console.log("The canvas");
-
 				toggleContextMenu("canvas");
 			}
 		});
 
-		console.log("status of network: ", network);
 		return () => {
 			network.destroy();
 		};
 	}, [visJsRef, visGraphData, selectedNode, layoutOptions]);
-
-	/*
-	function editEdgeWithoutDrag(data, callback) {
-		// filling in the popup DOM elements
-		document.getElementById("edge-label").value = data.label;
-		document.getElementById("edge-saveButton").onclick = saveEdgeData.bind(
-		this,
-		data,
-		callback
-		);
-		document.getElementById("edge-cancelButton").onclick =
-		cancelEdgeEdit.bind(this, callback);
-		document.getElementById("edge-popUp").style.display = "block";
-	}
-	*/
 
 	return <>
 		{
