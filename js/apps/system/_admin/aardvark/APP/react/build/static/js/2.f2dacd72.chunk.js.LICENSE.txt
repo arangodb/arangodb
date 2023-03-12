@@ -163,13 +163,6 @@ and limitations under the License.
   	 * Licensed under the MIT license */
 
 /*! Hammer.JS - v2.0.17-rc - 2019-12-16
-     * http://naver.github.io/egjs
-     *
-     * Forked By Naver egjs
-     * Copyright (c) hammerjs
-     * Licensed under the MIT license */
-
-/*! Hammer.JS - v2.0.17-rc - 2019-12-16
    * http://naver.github.io/egjs
    *
    * Forked By Naver egjs
@@ -185,32 +178,6 @@ and limitations under the License.
  * Released under MIT license <https://lodash.com/license>
  * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- */
-
-/**
- * vis-data
- * http://visjs.org/
- *
- * Manage unstructured data using DataSet. Add, update, and remove data, and listen for changes in the data.
- *
- * @version 7.1.4
- * @date    2022-03-15T15:23:59.245Z
- *
- * @copyright (c) 2011-2017 Almende B.V, http://almende.com
- * @copyright (c) 2017-2019 visjs contributors, https://github.com/visjs
- *
- * @license
- * vis.js is dual licensed under both
- *
- *   1. The Apache 2.0 License
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *   and
- *
- *   2. The MIT License
- *      http://opensource.org/licenses/MIT
- *
- * vis.js may be distributed under either license.
  */
 
 /**
