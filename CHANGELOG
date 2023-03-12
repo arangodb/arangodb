@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-196: Add canvas interactions to Graph Viewer.
+
 * FE-135: Add new Graph Viewer with vis.js and change the UI.
 
 * Updated arangosync to v2.15.0.
