@@ -349,7 +349,29 @@ const VisJsGraph = () => {
   }
 
   const expandNode = (nodeId) => {
-    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${nodeId}" GRAPH "${graphName}" RETURN p`;
+    const paramsObj = {
+      depth: `${urlParameters.depth}`,
+      limit: `${urlParameters.limit}`,
+      nodeColor: `#${urlParameters.nodeColor}`,
+      nodeColorAttribute: `${urlParameters.nodeColorAttribute}`,
+      nodeColorByCollection: `${urlParameters.nodeColorByCollection}`,
+      edgeColor: `#${urlParameters.edgeColor}`,
+      edgeColorAttribute: `${urlParameters.edgeColorAttribute}`,
+      edgeColorByCollection: `${urlParameters.edgeColorByCollection}`,
+      nodeLabel: `${urlParameters.nodeLabel}`,
+      edgeLabel: `${urlParameters.edgeLabel}`,
+      nodeSize: `${urlParameters.nodeSize}`,
+      nodeSizeByEdges: `${urlParameters.nodeSizeByEdges}`,
+      edgeEditable: `${urlParameters.edgeEditable}`,
+      nodeLabelByCollection: `${urlParameters.nodeLabelByCollection}`,
+      edgeLabelByCollection: `${urlParameters.edgeLabelByCollection}`,
+      nodeStart: `${urlParameters.nodeStart}`,
+      barnesHutOptimize: `${urlParameters.barnesHutOptimize}`,
+      query: "FOR v, e, p IN 1..1 ANY '" + nodeId + "' GRAPH '" + graphName + "' RETURN p",
+    };
+
+    const searchParams = new URLSearchParams(paramsObj);
+    const url = `/_admin/aardvark/visgraph/${graphName}?${searchParams.toString()}`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
@@ -379,7 +401,29 @@ const VisJsGraph = () => {
     const newUrlParameters = urlParameters;
     newUrlParameters.nodeStart = nodeId;
     setUrlParameters(newUrlParameters);
-    const url = `/_admin/aardvark/visgraph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}`;
+
+    const paramsObj = {
+      depth: `${urlParameters.depth}`,
+      limit: `${urlParameters.limit}`,
+      nodeColor: `#${urlParameters.nodeColor}`,
+      nodeColorAttribute: `${urlParameters.nodeColorAttribute}`,
+      nodeColorByCollection: `${urlParameters.nodeColorByCollection}`,
+      edgeColor: `#${urlParameters.edgeColor}`,
+      edgeColorAttribute: `${urlParameters.edgeColorAttribute}`,
+      edgeColorByCollection: `${urlParameters.edgeColorByCollection}`,
+      nodeLabel: `${urlParameters.nodeLabel}`,
+      edgeLabel: `${urlParameters.edgeLabel}`,
+      nodeSize: `${urlParameters.nodeSize}`,
+      nodeSizeByEdges: `${urlParameters.nodeSizeByEdges}`,
+      edgeEditable: `${urlParameters.edgeEditable}`,
+      nodeLabelByCollection: `${urlParameters.nodeLabelByCollection}`,
+      edgeLabelByCollection: `${urlParameters.edgeLabelByCollection}`,
+      nodeStart: `${urlParameters.nodeStart}`,
+      barnesHutOptimize: `${urlParameters.barnesHutOptimize}`
+    };
+
+    const searchParams = new URLSearchParams(paramsObj);
+    const url = `/_admin/aardvark/visgraph/${graphName}?${searchParams.toString()}`;
     arangoFetch(arangoHelper.databaseUrl(url), {
       method: "GET"
     })
