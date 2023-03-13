@@ -3143,11 +3143,9 @@ Future<Result> Methods::replicateOperations(
             operation, state()->id(), rtc.collectionName(),
             replicationData.sharedSlice());
     // Should finish immediately
-    auto replicationFut =
-        leaderState
-            ->replicateOperation(
-                std::move(replicatedOp),
-                replication2::replicated_state::document::ReplicationOptions{});
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(replicatedOp),
+        replication2::replicated_state::document::ReplicationOptions{});
 
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log

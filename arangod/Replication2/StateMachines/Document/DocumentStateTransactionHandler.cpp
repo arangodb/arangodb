@@ -32,8 +32,7 @@
 #include "VocBase/AccessMode.h"
 
 namespace {
-auto shouldIgnoreError(
-    arangodb::OperationResult const& res) noexcept -> bool {
+auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
     /*
      * These errors are ignored because the snapshot can be more recent than
@@ -59,8 +58,8 @@ auto shouldIgnoreError(
   return true;
 }
 
-auto makeResultFromOperationResult(
-    arangodb::OperationResult const& res, arangodb::TransactionId tid)
+auto makeResultFromOperationResult(arangodb::OperationResult const& res,
+                                   arangodb::TransactionId tid)
     -> arangodb::Result {
   ErrorCode e{res.result.errorNumber()};
   std::stringstream msg;
@@ -78,7 +77,7 @@ auto makeResultFromOperationResult(
   }
   return arangodb::Result{e, std::move(msg).str()};
 }
-}
+}  // namespace
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -157,8 +156,8 @@ auto DocumentStateTransactionHandler::applyOp(
   auto res = std::invoke(
       overload{
           [&](ReplicatedOperation::Commit const&) { return trx->commit(); },
-          [&](ReplicatedOperation::Abort const&) { return trx->abort(); }
-      }, op);
+          [&](ReplicatedOperation::Abort const&) { return trx->abort(); }},
+      op);
 
   removeTransaction(op.tid);
   return res;
