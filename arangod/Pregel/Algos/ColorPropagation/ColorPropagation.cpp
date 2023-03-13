@@ -24,12 +24,14 @@
 #include "ColorPropagation.h"
 #include <atomic>
 #include <climits>
+#include <memory>
 #include <utility>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/MasterContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -92,12 +94,32 @@ void ColorPropagationComputation::compute(
 }
 
 VertexComputation<ColorPropagationValue, int8_t, ColorPropagationMessageValue>*
-ColorPropagation::createComputation(WorkerConfig const* config) const {
+ColorPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new ColorPropagationComputation();
 }
 
 WorkerContext* ColorPropagation::workerContext(VPackSlice userParams) const {
   return new ColorPropagationWorkerContext(_maxGss, _numColors);
+}
+
+struct ColorPropagationMasterContext : public MasterContext {
+  ColorPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                                std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ColorPropagation::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ColorPropagationMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ColorPropagation::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ColorPropagationMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }
 
 ColorPropagationWorkerContext::ColorPropagationWorkerContext(uint64_t maxGss,

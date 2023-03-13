@@ -45,6 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
+      'visgraphs/:name': 'showVisGraph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -375,6 +376,14 @@
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
         document.getElementById('content')));
+    },
+
+    showVisGraph: function (name) {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
+        document.getElementById('content'))
+      );
     },
 
     cluster: function () {

@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -93,8 +95,7 @@ struct arangodb::pregel::algos::SPGraphFormat
   }
 };
 
-ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
-    : Algorithm("ShortestPath") {
+ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams) {
   VPackSlice val1 = userParams.get("source");
   VPackSlice val2 = userParams.get("target");
   if (val1.isNone() || val2.isNone()) {
@@ -114,7 +115,8 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
-ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
+ShortestPathAlgorithm::createComputation(
+    std::shared_ptr<WorkerConfig const> _config) const {
   VertexID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
@@ -124,4 +126,23 @@ IAggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }
   return nullptr;
+}
+
+struct ShortestPathMasterContext : public MasterContext {
+  ShortestPathMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                            std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ShortestPathAlgorithm::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ShortestPathMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ShortestPathAlgorithm::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ShortestPathMasterContext>(vertexCount, edgeCount,
+                                                     std::move(aggregators));
 }

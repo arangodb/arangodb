@@ -82,13 +82,14 @@ class GraphStore final {
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig* config,
+  void loadShards(std::shared_ptr<WorkerConfig const> config,
                   std::function<void()> const& statusUpdateCallback,
                   std::function<void()> const& finishedLoadingCallback);
   // ======================================================================
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()>,
+  void storeResults(std::shared_ptr<WorkerConfig const> config,
+                    std::function<void()>,
                     std::function<void()> const& statusUpdateCallback);
 
   Quiver<V, E>& quiver() { return _quiver; }
@@ -112,7 +113,7 @@ class GraphStore final {
   ResourceMonitor _resourceMonitor;
   ExecutionNumber const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  WorkerConfig* _config = nullptr;
+  std::shared_ptr<WorkerConfig const> _config = nullptr;
 
   std::atomic<uint64_t> _vertexIdRangeStart;
 

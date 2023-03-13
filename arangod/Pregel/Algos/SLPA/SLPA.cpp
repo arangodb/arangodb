@@ -128,7 +128,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
 };
 
 VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SLPAComputation();
 }
 
@@ -204,4 +204,23 @@ GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
   return new SLPAWorkerContext();
+}
+
+struct SLPAMasterContext : public MasterContext {
+  SLPAMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto SLPA::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new SLPAMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto SLPA::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<SLPAMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }

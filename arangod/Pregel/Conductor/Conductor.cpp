@@ -29,6 +29,7 @@
 
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
@@ -84,9 +85,9 @@ Conductor::Conductor(ExecutionSpecifications const& specifications,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
-  _masterContext.reset(
-      _algorithm->masterContext(specifications.userParameters.slice()));
-  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
+  _masterContext.reset(_algorithm->masterContext(
+      std::make_unique<AggregatorHandler>(_algorithm.get()),
+      specifications.userParameters.slice()));
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
@@ -135,7 +136,7 @@ bool Conductor::_startGlobalStep() {
   _callbackMutex.assertLockedByCurrentThread();
 
   /// collect the aggregators
-  _aggregators->resetValues();
+  _masterContext->_aggregators->resetValues();
   _statistics.resetActiveCount();
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
@@ -168,7 +169,8 @@ bool Conductor::_startGlobalStep() {
                   "Cannot deserialize GlobalSuperStepPrepared message: {}",
                   prepared.error().error()));
         }
-        _aggregators->aggregateValues(prepared.get().aggregators.slice());
+        _masterContext->_aggregators->aggregateValues(
+            prepared.get().aggregators.slice());
         _statistics.accumulateActiveCounts(prepared.get().sender,
                                            prepared.get().activeCount);
         _totalVerticesCount += prepared.get().vertexCount;
@@ -229,7 +231,7 @@ bool Conductor::_startGlobalStep() {
   VPackBuilder agg;
   {
     VPackObjectBuilder ob(&agg);
-    _aggregators->serializeValues(agg);
+    _masterContext->_aggregators->serializeValues(agg);
   }
   auto runGss =
       RunGlobalSuperStep{.executionNumber = _specifications.executionNumber,
@@ -302,7 +304,6 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_aggregators = _aggregators.get();
     _masterContext->preApplication();
   }
 
@@ -469,7 +470,7 @@ ErrorCode Conductor::_initializeWorkers() {
 
     auto createWorker =
         CreateWorker{.executionNumber = _specifications.executionNumber,
-                     .algorithm = _algorithm->name(),
+                     .algorithm = std::string{_algorithm->name()},
                      .userParameters = _specifications.userParameters,
                      .coordinatorId = coordinatorId,
                      .useMemoryMaps = _specifications.useMemoryMaps,
@@ -593,7 +594,7 @@ void Conductor::finishedWorkerFinalize(Finished const& data) {
   debugOut.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(debugOut);
   debugOut.close();
-  _aggregators->serializeValues(debugOut);
+  _masterContext->_aggregators->serializeValues(debugOut);
   debugOut.close();
 
   LOG_PREGEL("063b5", INFO)
@@ -726,7 +727,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
       result.add(VPackValue(gssTime.elapsedSeconds().count()));
     }
   }
-  _aggregators->serializeValues(result);
+  _masterContext->_aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
