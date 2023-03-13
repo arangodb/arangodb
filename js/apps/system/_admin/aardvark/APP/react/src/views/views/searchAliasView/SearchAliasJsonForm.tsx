@@ -28,7 +28,9 @@ export const SearchAliasJsonForm = () => {
     onChange,
     setErrors,
     setCopiedView,
-    setView
+    setView,
+    currentName,
+    setCurrentName
   } = useSearchAliasContext();
   const { schema } = useAliasViewSchema({ view });
   useResetSchema(schema);
@@ -43,6 +45,16 @@ export const SearchAliasJsonForm = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copiedView]);
+  useEffect(() => {
+    const currentData = (jsonEditorRef.current as any)?.jsonEditor.get();
+    if (currentData.name !== currentName) {
+      const newView = { ...currentData, name: currentName || view.name };
+      setView(newView);
+      (jsonEditorRef.current as any)?.jsonEditor.set(newView);
+      setCurrentName(undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentName]);
   return (
     <Box>
       <JsonEditor

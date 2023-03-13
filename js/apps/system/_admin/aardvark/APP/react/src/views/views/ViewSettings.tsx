@@ -5,8 +5,7 @@ import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
-import {
-  getReducer} from "../../utils/helpers";
+import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
@@ -14,23 +13,7 @@ import "./split-pane-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 
-export const ViewSettings = ({
-  name,
-  isCluster
-}: {
-  name: string;
-  isCluster: boolean;
-}) => {
-  const [editName, setEditName] = useState(false);
-
-  const handleEditName = () => {
-    setEditName(true);
-  };
-
-  const closeEditName = () => {
-    setEditName(false);
-  };
-
+export const ViewSettings = ({ name }: { name: string }) => {
   // if we try to fix this by using inital values for id, type,
   // it causes the navigation to break
   const initFormState = { name } as any;
@@ -73,12 +56,12 @@ export const ViewSettings = ({
     });
   }, [view, name]);
 
-  const updateName = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const updateName = (name: string) => {
     dispatch({
       type: "setField",
       field: {
         path: "name",
-        value: event.target && event.target.value
+        value: name
       }
     });
   };
@@ -94,7 +77,6 @@ export const ViewSettings = ({
   }, [isAdminUser, permissions]);
 
   const formState = state.formState;
-  const nameEditDisabled = isCluster || !isAdminUser;
   if (data) {
     if (!isEqual(data.body.result, views)) {
       setViews(data.body.result);
@@ -112,12 +94,8 @@ export const ViewSettings = ({
     >
       <HashRouter basename={`view/${name}`} hashType={"noslash"}>
         <ViewSettingsInner
-          editName={editName}
           formState={formState}
-          handleEditName={handleEditName}
           updateName={updateName}
-          nameEditDisabled={nameEditDisabled}
-          closeEditName={closeEditName}
           isAdminUser={isAdminUser}
           views={views}
           dispatch={dispatch}
@@ -132,12 +110,8 @@ export const ViewSettings = ({
 };
 
 const ViewSettingsInner = ({
-  editName,
   formState,
-  handleEditName,
   updateName,
-  nameEditDisabled,
-  closeEditName,
   isAdminUser,
   views,
   dispatch,
@@ -146,12 +120,8 @@ const ViewSettingsInner = ({
   setChanged,
   state
 }: {
-  editName: boolean;
   formState: FormState;
-  handleEditName: () => void;
-  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  nameEditDisabled: boolean;
-  closeEditName: () => void;
+  updateName: (name: string) => void;
   isAdminUser: boolean;
   views: never[];
   dispatch: FormDispatch<FormState>;
@@ -161,14 +131,14 @@ const ViewSettingsInner = ({
   state: State<FormState>;
 }) => {
   return (
-    <Box backgroundColor="white">
+    <Box
+      height="calc(100vh - 60px)"
+      display="grid"
+      gridTemplateRows="120px 1fr"
+    >
       <ViewHeader
-        editName={editName}
         formState={formState}
-        handleEditName={handleEditName}
         updateName={updateName}
-        nameEditDisabled={nameEditDisabled}
-        closeEditName={closeEditName}
         isAdminUser={isAdminUser}
         views={views}
         dispatch={dispatch}

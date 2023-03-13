@@ -7,13 +7,7 @@ import { ViewSettings } from "./ViewSettings";
 import { SearchAliasViewSettings } from "./searchAliasView/SearchAliasViewSettings";
 import { useFetchViewProperties } from "./searchAliasView/useFetchViewProperties";
 
-export const ViewSettingsWrap = ({
-  name,
-  isCluster
-}: {
-  name: string;
-  isCluster: boolean;
-}) => {
+export const ViewSettingsWrap = ({ name }: { name: string }) => {
   const { view, isLoading } = useFetchViewProperties(name);
   useDisableNavBar();
   useGlobalStyleReset();
@@ -29,7 +23,7 @@ export const ViewSettingsWrap = ({
   }
   return (
     <ChakraCustomProvider>
-      <ViewSettings name={name} isCluster={isCluster} />
+      <ViewSettings name={name} />
     </ChakraCustomProvider>
   );
 };

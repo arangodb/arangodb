@@ -23,8 +23,10 @@ type SearchAliasContextType = {
   changed: boolean;
   isAdminUser: boolean;
   isCluster: boolean;
+  currentName?: string;
   setErrors: (errors: ValidationError[]) => void;
   setView: (view: ViewPropertiesType) => void;
+  setCurrentName: (name?: string) => void;
   setCopiedView: (view: ViewPropertiesType | undefined) => void;
   onChange: (view: ViewPropertiesType) => void;
   onCopy: ({ selectedView }: { selectedView?: ViewPropertiesType }) => void;
@@ -49,12 +51,15 @@ export const SearchAliasProvider = ({
     newInitalView = JSON.parse(cachedViewStateStr);
   }
   const [view, setView] = useState(newInitalView);
+  const [currentName, setCurrentName] = useState<string | undefined>(newInitalView.name);
   const [copiedView, setCopiedView] = useState<
     ViewPropertiesType | undefined
   >();
   const [errors, setErrors] = useState<ValidationError[]>([]);
-
-  const { onSave } = useUpdateAliasViewProperties();
+  const [changed, setChanged] = useState(
+    !!window.sessionStorage.getItem(`${initialView.name}-changed`)
+  );
+  const { onSave } = useUpdateAliasViewProperties({ setChanged });
   const onChange = (view: ViewPropertiesType) => {
     setView(view);
   };
@@ -67,6 +72,7 @@ export const SearchAliasProvider = ({
     selectedView?.indexes &&
       setCopiedView({ ...view, indexes: selectedView.indexes });
   };
+
   const handleSave = () => {
     onSave({ view, initialView });
   };
@@ -97,9 +103,6 @@ export const SearchAliasProvider = ({
       );
     }
   };
-  const [changed, setChanged] = useState(
-    !!window.sessionStorage.getItem(`${initialView.name}-changed`)
-  );
 
   useEffect(() => {
     const updatedIndexes = getUpdatedIndexes({ initialView, view });
@@ -138,7 +141,9 @@ export const SearchAliasProvider = ({
         setCopiedView,
         onDelete: handleDelete,
         isAdminUser,
-        isCluster: !!window.frontendConfig.isCluster
+        isCluster: !!window.frontendConfig.isCluster,
+        setCurrentName,
+        currentName
       }}
     >
       {children}

@@ -3,8 +3,11 @@ import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 
-
-export const useUpdateAliasViewProperties = () => {
+export const useUpdateAliasViewProperties = ({
+  setChanged
+}: {
+  setChanged: (changed: boolean) => void;
+}) => {
   const onSave = async ({
     view,
     initialView
@@ -23,7 +26,12 @@ export const useUpdateAliasViewProperties = () => {
       }
 
       if (!isError) {
-        await patchViewProperties({ view, isNameChanged, initialView });
+        await patchViewProperties({
+          view,
+          isNameChanged,
+          initialView,
+          setChanged
+        });
       }
     } catch (e) {
       window.arangoHelper.arangoError(
@@ -36,7 +44,7 @@ export const useUpdateAliasViewProperties = () => {
   return { onSave };
 };
 
-export const putRenameView = async ({
+const putRenameView = async ({
   initialName,
   name
 }: {
@@ -62,11 +70,13 @@ export const putRenameView = async ({
 async function patchViewProperties({
   view,
   isNameChanged,
-  initialView
+  initialView,
+  setChanged
 }: {
   view: ViewPropertiesType;
   isNameChanged: string | boolean;
   initialView: ViewPropertiesType;
+  setChanged: (changed: boolean) => void;
 }) {
   const path = `/view/${view.name}/properties`;
   const result = await patchProperties({ view, path, initialView });
@@ -78,7 +88,10 @@ async function patchViewProperties({
       `Got unexpected server response: ${result.body.errorMessage}`
     );
   } else {
-    // setChanged(false);
+    setChanged(false);
+    window.sessionStorage.removeItem(`${initialView.name}-changed`);
+    window.sessionStorage.removeItem(`${initialView.name}`);
+
     if (!isNameChanged) {
       await mutate(path);
     } else {
