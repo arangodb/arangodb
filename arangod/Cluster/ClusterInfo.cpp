@@ -6028,10 +6028,13 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 
 std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     std::string_view shardID) {
-  if (auto result = getResponsibleServerReplication2(shardID);
-      result != nullptr) {
-    return result;
+  if (!shardID.empty()) {
+    if (auto result = getResponsibleServerReplication2(shardID);
+        result != nullptr) {
+      return result;
+    }
   }
+
   return getResponsibleServerReplication1(shardID);
 }
 

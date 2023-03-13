@@ -34,6 +34,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Value.h>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -52,7 +53,8 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step)
 }  // namespace arangodb
 
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
-    : arangodb::graph::BaseStep<Step>{},
+    : arangodb::graph::BaseStep<Step>{std::numeric_limits<size_t>::max(), 0,
+                                      0.0},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
@@ -258,8 +260,12 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
         if (_weightCallback.has_value()) {
-          result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
-                                (source.getDepth() + 1), edge.getWeight()});
+          VPackBuilder builder;
+          edge.addToBuilder(builder);
+          result.push_back(
+              Step{previousIndex, fromH, edge, decideProcessable(),
+                   (source.getDepth() + 1),
+                   (*_weightCallback)(source.getWeight(), builder.slice())});
         } else {
           result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
                                 (source.getDepth() + 1)});
@@ -281,8 +287,12 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
         if (_weightCallback.has_value()) {
-          result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
-                                (source.getDepth() + 1), edge.getWeight()});
+          VPackBuilder builder;
+          edge.addToBuilder(builder);
+          result.push_back(
+              Step{previousIndex, toH, edge, decideProcessable(),
+                   (source.getDepth() + 1),
+                   (*_weightCallback)(source.getWeight(), builder.slice())});
         } else {
           result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
                                 (source.getDepth() + 1)});

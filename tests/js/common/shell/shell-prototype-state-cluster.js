@@ -121,7 +121,7 @@ function PrototypeStateTestSuite() {
 
     testReadFromServer: function () {
       const state = db._createPrototypeState({config});
-      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: true});
 
       const status = db._replicatedLog(state.id()).status();
       const follower = _.sample(_.without(Object.keys(status.participants), status.leaderId));

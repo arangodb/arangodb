@@ -33,28 +33,29 @@ namespace arangodb::pregel {
 template<typename V, typename E>
 class GraphStore;
 
-// header entry for the edge file
 template<typename E>
-// cppcheck-suppress noConstructor
-class Edge {
+struct Edge {
   template<typename V, typename E2>
   friend class GraphStore;
 
-  // these members are initialized by the GraphStore
-  char* _toKey;              // uint64_t
-  uint16_t _toKeyLength;     // uint16_t
-  PregelShard _targetShard;  // uint16_t
+  Edge() = delete;
+  Edge(VertexID id, E&& data) : _to{id}, _data(std::move(data)) {}
+  Edge(Edge const&) = delete;
+  Edge(Edge&&) = default;
+  auto operator=(Edge const& other) -> Edge& = delete;
+  auto operator=(Edge&& other) -> Edge& = default;
 
-  E _data;
-
- public:
-  [[nodiscard]] std::string_view toKey() const {
-    return {_toKey, _toKeyLength};
-  }
+  [[nodiscard]] std::string_view toKey() const { return _to.key; }
   E& data() noexcept { return _data; }
-  [[nodiscard]] PregelShard targetShard() const noexcept {
-    return _targetShard;
-  }
+  [[nodiscard]] PregelShard targetShard() const noexcept { return _to.shard; }
+
+  VertexID _to;
+  E _data;
 };
+
+template<typename E, typename Inspector>
+auto inspect(Inspector& f, Edge<E>& e) {
+  return f.object(e).fields(f.field("to", e._to), f.field("data", e._data));
+}
 
 }  // namespace arangodb::pregel

@@ -46,6 +46,8 @@ auto inspect(Inspector& f, SpawnState& x) {
                             f.field("state", x.state));
 }
 
+namespace message {
+
 struct SpawnStartMessage {};
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnStartMessage& x) {
@@ -72,15 +74,19 @@ auto inspect(Inspector& f, SpawnActorMessage& x) {
       arangodb::inspection::type<SpawnMessage>("spawn"));
 }
 
+}  // namespace message
+
 template<typename Runtime>
 struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
-  auto operator()(SpawnStartMessage msg) -> std::unique_ptr<SpawnState> {
+  auto operator()(message::SpawnStartMessage msg)
+      -> std::unique_ptr<SpawnState> {
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(SpawnMessage msg) -> std::unique_ptr<SpawnState> {
-    this->template spawn<TrivialActor>(TrivialState{}, TrivialStart{});
+  auto operator()(message::SpawnMessage msg) -> std::unique_ptr<SpawnState> {
+    this->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
+                                       message::TrivialStart{});
     this->state->called++;
     this->state->state += msg.message;
     return std::move(this->state);
@@ -94,7 +100,7 @@ struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
 
 struct SpawnActor {
   using State = SpawnState;
-  using Message = SpawnActorMessage;
+  using Message = message::SpawnActorMessage;
   template<typename Runtime>
   using Handler = SpawnHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "SpawnActor"; };
@@ -105,5 +111,5 @@ template<>
 struct fmt::formatter<arangodb::pregel::actor::test::SpawnState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::SpawnMessage>
+struct fmt::formatter<arangodb::pregel::actor::test::message::SpawnMessage>
     : arangodb::inspection::inspection_formatter {};

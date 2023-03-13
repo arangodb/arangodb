@@ -43,6 +43,8 @@ auto inspect(Inspector& f, FinishingState& x) {
   return f.object(x).fields();
 }
 
+namespace message {
+
 struct FinishingStart {};
 template<typename Inspector>
 auto inspect(Inspector& f, FinishingStart& x) {
@@ -67,13 +69,17 @@ auto inspect(Inspector& f, FinishingMessages& x) {
       arangodb::inspection::type<FinishingFinish>("finish"));
 }
 
+}  // namespace message
+
 template<typename Runtime>
 struct FinishingHandler : HandlerBase<Runtime, FinishingState> {
-  auto operator()(FinishingStart msg) -> std::unique_ptr<FinishingState> {
+  auto operator()(message::FinishingStart msg)
+      -> std::unique_ptr<FinishingState> {
     return std::move(this->state);
   }
 
-  auto operator()(FinishingFinish msg) -> std::unique_ptr<FinishingState> {
+  auto operator()(message::FinishingFinish msg)
+      -> std::unique_ptr<FinishingState> {
     this->finish();
     return std::move(this->state);
   }
@@ -86,7 +92,7 @@ struct FinishingHandler : HandlerBase<Runtime, FinishingState> {
 
 struct FinishingActor {
   using State = FinishingState;
-  using Message = FinishingMessages;
+  using Message = message::FinishingMessages;
   template<typename Runtime>
   using Handler = FinishingHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
@@ -99,5 +105,5 @@ template<>
 struct fmt::formatter<arangodb::pregel::actor::test::FinishingState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::FinishingMessages>
+struct fmt::formatter<arangodb::pregel::actor::test::message::FinishingMessages>
     : arangodb::inspection::inspection_formatter {};

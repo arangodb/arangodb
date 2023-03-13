@@ -23,13 +23,12 @@
 
 #pragma once
 
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
 #include "Basics/Common.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
@@ -58,34 +57,39 @@ struct OptimizerRule {
 
   /// @brief helper for building flags
   template<typename... Args>
-  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  static constexpr std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
     return static_cast<std::underlying_type<Flags>::type>(flag) +
            makeFlags(args...);
   }
 
-  static std::underlying_type<Flags>::type makeFlags() {
+  static constexpr std::underlying_type<Flags>::type makeFlags() noexcept {
     return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
   }
 
   /// @brief check a flag for the rule
-  bool hasFlag(Flags flag) const {
+  constexpr bool hasFlag(Flags flag) const noexcept {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) !=
             0);
   }
 
-  bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
+  bool canBeDisabled() const noexcept { return hasFlag(Flags::CanBeDisabled); }
 
-  bool isClusterOnly() const { return hasFlag(Flags::ClusterOnly); }
+  bool isClusterOnly() const noexcept { return hasFlag(Flags::ClusterOnly); }
 
-  bool isHidden() const { return hasFlag(Flags::Hidden); }
+  bool isHidden() const noexcept { return hasFlag(Flags::Hidden); }
 
-  bool canCreateAdditionalPlans() const {
+  bool canCreateAdditionalPlans() const noexcept {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
 
-  bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
+  bool isDisabledByDefault() const noexcept {
+    return hasFlag(Flags::DisabledByDefault);
+  }
 
-  bool isEnterpriseOnly() const { return hasFlag(Flags::EnterpriseOnly); }
+  bool isEnterpriseOnly() const noexcept {
+    return hasFlag(Flags::EnterpriseOnly);
+  }
 
   /// @brief optimizer rules
   enum RuleLevel : int {
@@ -415,5 +419,4 @@ struct OptimizerRule {
   }
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

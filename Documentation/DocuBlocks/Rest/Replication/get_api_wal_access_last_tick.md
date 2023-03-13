@@ -6,7 +6,7 @@
 
 @RESTDESCRIPTION
 Returns the last available tick value that can be served from the server's
-replication log. This corresponds to the tick of the latest successfull operation.
+replication log. This corresponds to the tick of the latest successful operation.
 
 The result is a JSON object containing the attributes *tick*, *time* and *server*.
 * *tick*: contains the last available tick, *time*

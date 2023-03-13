@@ -93,10 +93,10 @@
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-using KPathRefactored = arangodb::graph::KPathEnumerator<
+using KPath = arangodb::graph::KPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using KPathRefactoredTracer = arangodb::graph::TracedKPathEnumerator<
+using KPathTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
@@ -106,6 +106,20 @@ using AllShortestPathsTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
+
+using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
+    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
+    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using WeightedKShortestPaths =
+    arangodb::graph::WeightedKShortestPathsEnumerator<
+        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+using WeightedKShortestPathsTracer =
+    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
+        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
@@ -123,16 +137,31 @@ using WeightedShortestPathTracer =
             arangodb::graph::SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
-using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
+using KPathCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathRefactoredClusterTracer = arangodb::graph::TracedKPathEnumerator<
+using KPathClusterTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using AllShortestPathsClusterTracer =
     arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using KShortestPathsClusterTracer =
+    arangodb::graph::TracedKShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedKShortestPathsCluster =
+    arangodb::graph::WeightedKShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedKShortestPathsClusterTracer =
+    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
@@ -644,16 +673,22 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ShortestPathExecutor<WeightedShortestPathTracer>,
                   ShortestPathExecutor<WeightedShortestPathCluster>,
                   ShortestPathExecutor<WeightedShortestPathClusterTracer>,
-                  ReturnExecutor,
-                  EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
-                  EnumeratePathsExecutor<KPathRefactored>,
-                  EnumeratePathsExecutor<KPathRefactoredTracer>,
-                  EnumeratePathsExecutor<KPathRefactoredCluster>,
-                  EnumeratePathsExecutor<KPathRefactoredClusterTracer>,
+                  ReturnExecutor, EnumeratePathsExecutor<KPath>,
+                  EnumeratePathsExecutor<KPathTracer>,
+                  EnumeratePathsExecutor<KPathCluster>,
+                  EnumeratePathsExecutor<KPathClusterTracer>,
                   EnumeratePathsExecutor<AllShortestPaths>,
                   EnumeratePathsExecutor<AllShortestPathsTracer>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
                   EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<KShortestPaths>,
+                  EnumeratePathsExecutor<KShortestPathsTracer>,
+                  EnumeratePathsExecutor<KShortestPathsCluster>,
+                  EnumeratePathsExecutor<KShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedKShortestPaths>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
+                  EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
