@@ -34,7 +34,7 @@ struct ConductorState;
 
 struct FatalError : ExecutionState {
   FatalError(ConductorState& conductor) : conductor{conductor} {
-    conductor._timing.total.finish();
+    conductor.timing.total.finish();
   }
   ~FatalError() {}
   auto name() const -> std::string override { return "fatal error"; };
