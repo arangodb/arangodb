@@ -568,7 +568,6 @@ Result GraphManager::ensureCollections(
     std::unordered_set<std::shared_ptr<LogicalCollection>> const&
         existentEdgeCollections,
     std::unordered_set<std::string> const& satellites, bool waitForSync) const {
-
   // Validate if the existing collections can be used within this graph type.
 
   // document collections
