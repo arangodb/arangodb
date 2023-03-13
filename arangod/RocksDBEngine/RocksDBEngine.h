@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <deque>
 #include <map>
 #include <memory>
@@ -163,6 +164,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
+  void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(
@@ -240,7 +242,8 @@ class RocksDBEngine final : public StorageEngine {
   /// The function parameter name are a remainder from MMFiles times, when
   /// they made more sense. This can be refactored at any point, so that
   /// flushing column families becomes a separate API.
-  Result flushWal(bool waitForSync, bool flushColumnFamilies) override;
+  Result flushWal(bool waitForSync = false,
+                  bool flushColumnFamilies = false) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
@@ -695,6 +698,14 @@ class RocksDBEngine final : public StorageEngine {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   uint64_t _recoveryStartSequence = 0;
 #endif
+
+  // last point in time when an auto-flush happened
+  std::chrono::steady_clock::time_point _autoFlushLastExecuted;
+  // interval (in s) in which auto-flushing is tried
+  double _autoFlushCheckInterval;
+  // minimum number of live WAL files that need to be present to trigger
+  // an auto-flush
+  uint64_t _autoFlushMinWalFiles;
 
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
