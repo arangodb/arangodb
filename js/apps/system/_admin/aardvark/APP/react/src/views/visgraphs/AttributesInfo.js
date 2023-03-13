@@ -1,4 +1,4 @@
-import Tag from "../../components/pure-css/form/Tag";
+import { Tag } from '@chakra-ui/react';
 
 export const AttributesInfo = ({ attributes }) => {
   return (
@@ -6,7 +6,7 @@ export const AttributesInfo = ({ attributes }) => {
       {
         Object.keys(attributes)
         .map((key, i) => (
-            <Tag label={`${key}: ${JSON.stringify(attributes[key])}`} />
+            <Tag>{`${key}: ${JSON.stringify(attributes[key])}`}</Tag>
         ))
       }
     </div>

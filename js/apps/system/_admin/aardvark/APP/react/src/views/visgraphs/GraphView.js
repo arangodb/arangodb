@@ -3,7 +3,7 @@ import { Headerinfo } from './Headerinfo';
 import './graphview.menu.css';
 import './visgraphstyles.css'
 import VisNetwork from './VisNetwork';
-import Tag from "../../components/pure-css/form/Tag";
+import { HStack, Tag } from '@chakra-ui/react';
 import GraphInfo from './components/pure-css/form/GraphInfo';
 
 export class GraphView extends React.Component {
@@ -69,7 +69,17 @@ export class GraphView extends React.Component {
       />
 
       <GraphInfo>
-        <Tag label={`${this.props.visGraphData.nodes.length} nodes`}/><Tag label={`${this.props.visGraphData.edges.length} edges`}/><Tag template='transparent' label={`Response time: ${this.props.responseDuration}ms`}/>
+        <HStack spacing={4}>
+          <Tag size={'md'} key={'nodesCountTag'} variant='solid' background='gray.800' color='white'>
+            {`${this.props.visGraphData.nodes.length} nodes`}
+          </Tag>
+          <Tag size={'md'} key={'edgesCountTag'} variant='solid' background='gray.800' color='white'>
+            {`${this.props.visGraphData.edges.length} edges`}
+          </Tag>
+          <Tag size={'md'} key={'responseTimeTag'} variant='solid' background='transparent' color='gray.800'>
+            {`Response time: ${this.props.responseDuration}ms`}
+          </Tag>
+        </HStack>
       </GraphInfo>
     </>;
   }
