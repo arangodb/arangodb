@@ -97,20 +97,6 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
-struct Store {};
-template<typename Inspector>
-auto inspect(Inspector& f, Store& x) {
-  return f.object(x).fields();
-}
-
-struct ProduceResults {
-  bool withID;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ProduceResults& x) {
-  return f.object(x).fields(f.field("withID", x.withID));
-}
-
 struct PregelMessage {
   ExecutionNumber executionNumber;
   uint64_t gss;
@@ -125,11 +111,31 @@ auto inspect(Inspector& f, PregelMessage& x) {
       f.field("messages", x.messages));
 }
 
+struct Store {};
+template<typename Inspector>
+auto inspect(Inspector& f, Store& x) {
+  return f.object(x).fields();
+}
+
+struct ProduceResults {
+  bool withID;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ProduceResults& x) {
+  return f.object(x).fields(f.field("withID", x.withID));
+}
+
+struct Cleanup {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cleanup& x) {
+  return f.object(x).fields();
+}
+
 struct WorkerMessages
     : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                   Store, PregelMessage, ProduceResults> {
+                   PregelMessage, Store, ProduceResults, Cleanup> {
   using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                     Store, PregelMessage, ProduceResults>::variant;
+                     PregelMessage, Store, ProduceResults, Cleanup>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
@@ -140,7 +146,8 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<PregelMessage>("PregelMessage"),
       arangodb::inspection::type<Store>("Store"),
-      arangodb::inspection::type<ProduceResults>("ProduceResults"));
+      arangodb::inspection::type<ProduceResults>("ProduceResults"),
+      arangodb::inspection::type<Cleanup>("Cleanup"));
 }
 
 }  // namespace worker::message

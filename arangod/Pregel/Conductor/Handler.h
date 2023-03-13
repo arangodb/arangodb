@@ -140,6 +140,19 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::CleanupFinished start)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("02da1", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Worker {} is cleaned up", this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(start));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+      this->finish();
+    }
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)

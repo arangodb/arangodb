@@ -427,6 +427,19 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
+  auto operator()(message::Cleanup msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("664f5", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is cleaned", this->self);
+
+    this->finish();
+
+    this->template dispatch<pregel::conductor::message::ConductorMessages>(
+        this->state->conductor, pregel::conductor::message::CleanupFinished{});
+
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
