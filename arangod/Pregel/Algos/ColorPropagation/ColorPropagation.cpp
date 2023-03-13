@@ -188,7 +188,7 @@ Result getInitialColors(ColorPropagationValue& senders,
 void ColorPropagationGraphFormat::copyVertexData(
     arangodb::velocypack::Options const&, std::string const& documentId,
     arangodb::velocypack::Slice document, ColorPropagationValue& senders,
-    uint64_t& vertexIdRange) {
+    uint64_t& vertexIdRange) const {
   senders.equivalenceClass =
       getEquivalenceClass(document, equivalenceClassFieldName);
 
@@ -211,9 +211,9 @@ bool ColorPropagationGraphFormat::buildVertexDocument(
   return true;
 }
 
-GraphFormat<ColorPropagationValue, int8_t>* ColorPropagation::inputFormat()
-    const {
-  return new ColorPropagationGraphFormat(
+std::shared_ptr<GraphFormat<ColorPropagationValue, int8_t> const>
+ColorPropagation::inputFormat() const {
+  return std::make_shared<ColorPropagationGraphFormat>(
       _inputColorsFieldName, _outputColorsFieldName, _equivalenceClassFieldName,
       _numColors);
 }

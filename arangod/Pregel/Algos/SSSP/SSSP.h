@@ -49,7 +49,8 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
     return "sssp";
   };
 
-  GraphFormat<int64_t, int64_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<int64_t, int64_t> const> inputFormat()
+      const override;
 
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat<int64_t>();

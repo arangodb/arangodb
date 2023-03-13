@@ -54,8 +54,10 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
       arangodb::velocypack::Slice userParams) const
       -> std::unique_ptr<MasterContext> override;
 
-  GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_resultField, 0);
+  std::shared_ptr<GraphFormat<float, float> const> inputFormat()
+      const override {
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             0.0f);
   }
 
   MessageFormat<float>* messageFormat() const override {

@@ -59,8 +59,8 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
     return "HITSKleinberg";
   };
 
-  [[nodiscard]] GraphFormat<HITSKleinbergValue, int8_t>* inputFormat()
-      const override;
+  [[nodiscard]] std::shared_ptr<GraphFormat<HITSKleinbergValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
       const override {
     return new SenderMessageFormat<double>();

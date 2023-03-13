@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,32 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+namespace arangodb {
 
-namespace arangodb::pregel::conductor {
+struct OperationResult;
 
-struct ConductorState;
+namespace pregel {
+struct ExecutionNumber;
+}
+}  // namespace arangodb
 
-struct Loading : ExecutionState {
-  Loading(ConductorState& conductor);
-  ~Loading();
-  auto name() const -> std::string override { return "loading"; };
-  auto message() -> worker::message::WorkerMessages override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+namespace arangodb::pregel::statuswriter {
 
-  ConductorState& conductor;
-  std::unordered_set<actor::ActorPID> respondedWorkers;
-  uint64_t totalVerticesCount = 0;
-  uint64_t totalEdgesCount = 0;
+struct StatusWriterInterface {
+  virtual ~StatusWriterInterface() = default;
+
+  // CRUD interface definition
+  [[nodiscard]] virtual auto createResult(VPackSlice data)
+      -> OperationResult = 0;
+  [[nodiscard]] virtual auto readResult(VPackSlice data) -> OperationResult = 0;
+  [[nodiscard]] virtual auto updateResult(VPackSlice data)
+      -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteResult(VPackSlice data)
+      -> OperationResult = 0;
 };
 
-}  // namespace arangodb::pregel::conductor
+}  // namespace arangodb::pregel::statuswriter

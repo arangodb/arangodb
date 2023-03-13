@@ -90,7 +90,7 @@ struct arangodb::pregel::algos::SPGraphFormat
                       std::string const& documentId,
                       arangodb::velocypack::Slice /*document*/,
                       int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      uint64_t& /*vertexIdRange*/) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
@@ -110,8 +110,9 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
   return std::set<std::string>{_source};
 }
 
-GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return new SPGraphFormat(_source, _target);
+std::shared_ptr<GraphFormat<int64_t, int64_t> const>
+ShortestPathAlgorithm::inputFormat() const {
+  return std::make_shared<SPGraphFormat>(_source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
