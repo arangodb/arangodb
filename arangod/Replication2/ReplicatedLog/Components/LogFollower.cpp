@@ -195,6 +195,15 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   // Please note that it is important that the commit index is checked before
   // the snapshot. Otherwise the local state could be reported operational,
   // while it isn't (and never was during this term).
+  // This is because the snapshot status can toggle once from available to
+  // missing (if it started as available), before eventually toggling from
+  // missing to available. The commit index starts as zero and can only
+  // increase. The toggle *to* missing will happen before any change to the
+  // commit index.
+  // The local state is operational if a) the commit index is greater
+  // than zero, and b) the snapshot is available. That means checking them in
+  // the wrong order could see the snapshot status available from before it was
+  // toggled to missing, and then the commit index that was just increased.
   auto const commitIndex = commit->getCommitIndex();
   auto const log = storage->getCommittedLog();
   auto const [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
