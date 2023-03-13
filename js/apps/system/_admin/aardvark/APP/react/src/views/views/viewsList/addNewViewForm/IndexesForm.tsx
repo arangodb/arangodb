@@ -21,6 +21,7 @@ export const IndexesForm = () => {
             {values.indexes.map((value, index) => {
               return (
                 <CollectionIndexRow
+                  key={index}
                   value={value}
                   index={index}
                   collectionsOptions={collectionsOptions}
