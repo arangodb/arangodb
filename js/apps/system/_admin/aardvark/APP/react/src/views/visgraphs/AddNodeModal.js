@@ -51,15 +51,16 @@ const StyledButton = styled.button`
   const addNode = (graphData, updateNodeId) => {
 
     const key = keyInputRef.current.value;
+    let newJson = {...json};
     if (key !== '' && key !== undefined) {
-      json._key = key;
+      newJson = {...newJson, _key: key};
     }
 
     $.ajax({
       type: 'POST',
       url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(graphName) + '/vertex/' + encodeURIComponent(collection),
       contentType: 'application/json',
-      data: JSON.stringify(json),
+      data: JSON.stringify(newJson),
       processData: true,
       success: function (response) {
         const nodeModel = {
