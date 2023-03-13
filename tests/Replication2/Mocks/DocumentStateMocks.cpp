@@ -22,7 +22,7 @@
 
 #include "Replication2/Mocks/DocumentStateMocks.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::tests {
 MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
     std::shared_ptr<
         replicated_state::document::IDocumentStateTransactionHandler>
@@ -150,4 +150,4 @@ auto DocumentLogEntryIterator::next() -> std::optional<
 auto DocumentLogEntryIterator::range() const noexcept -> LogRange {
   return LogRange{LogIndex{1}, LogIndex{entries.size() + 1}};
 }
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::tests

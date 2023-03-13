@@ -53,6 +53,8 @@ struct DelayedExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
   ~DelayedExecutor() override;
   DelayedExecutor();
 
+  auto hasWork() const noexcept -> bool;
+
   void runOnce() noexcept;
   void runAll() noexcept;
 

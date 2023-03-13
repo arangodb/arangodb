@@ -100,6 +100,8 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
   return res;
 }
 
+auto to_string(QuickLogStatus const& status) -> std::string;
+
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
@@ -248,6 +250,8 @@ struct LogStatus {
  private:
   VariantType _variant;
 };
+
+auto to_string(LogStatus const& status) -> std::string;
 
 /**
  * @brief Provides a more general view of what's currently going on, without

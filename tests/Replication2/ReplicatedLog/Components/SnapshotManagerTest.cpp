@@ -19,6 +19,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -31,6 +32,8 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+
+#include "Replication2/Mocks/LeaderCommunicatorMock.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -86,21 +89,14 @@ struct StateHandleManagerMock : IStateHandleManager {
   MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&, std::uint64_t),
               (noexcept, override));
 };
-
-struct LeaderCommunicatorMock : ILeaderCommunicator {
-  MOCK_METHOD(ParticipantId const&, getParticipantId, (),
-              (const, noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, reportSnapshotAvailable, (MessageId mid),
-              (noexcept, override));
-};
 }  // namespace
 
 struct SnapshotManagerTest : ::testing::Test {
   testing::StrictMock<StorageManagerMock> storageManagerMock;
   testing::StrictMock<StateHandleManagerMock> stateHandleManagerMock;
 
-  std::shared_ptr<LeaderCommunicatorMock> leaderComm =
-      std::make_shared<LeaderCommunicatorMock>();
+  std::shared_ptr<tests::LeaderCommunicatorMock> leaderComm =
+      std::make_shared<tests::LeaderCommunicatorMock>();
   std::shared_ptr<FollowerTermInformation> termInfo =
       std::make_shared<FollowerTermInformation>(
           FollowerTermInformation{.leader = "LEADER"});

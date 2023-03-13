@@ -12,14 +12,18 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Mocks/FakeLeader.h
         #Mocks/FakeReplicatedLog.cpp
         #Mocks/FakeReplicatedLog.h
-        #Mocks/FakeReplicatedState.cpp
         #Mocks/PersistedLog.cpp
         #Mocks/PersistedLog.cpp
         #Mocks/PersistedLog.h
         #Mocks/PersistedLog.h
-        #Mocks/ReplicatedStateMetricsMock.cpp
         #ReplicatedLog/TestHelper.cpp
-        Mocks/DocumentStateMocks.cpp
+
+        Mocks/ParticipantsFactoryMock.h
+        Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
+        Mocks/ReplicatedStateMetricsMock.cpp Mocks/ReplicatedStateMetricsMock.h
+
+        Mocks/DocumentStateMocks.cpp Mocks/DocumentStateMocks.h
+        Mocks/MockVocbase.h
         )
 
 

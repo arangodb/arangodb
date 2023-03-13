@@ -1294,23 +1294,6 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
         fmt::vformat(formatString, fmt::make_format_args(args...)), location);
   };
 
-  auto const status = stateMachine->getStatus();
-  if (status == std::nullopt) {
-    throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available, accessed "
-                     "from {}/{}. No status available.",
-                     *_replicatedStateId, vocbase().name(), name());
-  }
-
-  auto const* const leaderStatus = status->asLeaderStatus();
-  if (leaderStatus == nullptr) {
-    throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available as leader, accessed "
-                     "from {}/{}. Status is {}.",
-                     *_replicatedStateId, vocbase().name(), name(),
-                     fmt::streamed(*status));
-  }
-
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {
     throwUnavailable(ADB_HERE,
