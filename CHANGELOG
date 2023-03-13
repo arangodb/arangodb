@@ -1,6 +1,9 @@
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
+* Fix potential memory under-accounting on cache shutdown for in-memory caches
+  for edge indexes.
+
 * Added the following metrics for WAL file tracking:
   - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
   - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
