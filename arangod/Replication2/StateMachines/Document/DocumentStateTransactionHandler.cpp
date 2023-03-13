@@ -31,8 +31,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "VocBase/AccessMode.h"
 
-namespace arangodb::replication2::replicated_state::document {
-auto DocumentStateTransactionHandler::shouldIgnoreError(
+namespace {
+auto shouldIgnoreError(
     arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
     /*
@@ -59,7 +59,7 @@ auto DocumentStateTransactionHandler::shouldIgnoreError(
   return true;
 }
 
-auto DocumentStateTransactionHandler::makeResultFromOperationResult(
+auto makeResultFromOperationResult(
     arangodb::OperationResult const& res, arangodb::TransactionId tid)
     -> arangodb::Result {
   ErrorCode e{res.result.errorNumber()};
@@ -78,6 +78,9 @@ auto DocumentStateTransactionHandler::makeResultFromOperationResult(
   }
   return arangodb::Result{e, std::move(msg).str()};
 }
+}
+
+namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,

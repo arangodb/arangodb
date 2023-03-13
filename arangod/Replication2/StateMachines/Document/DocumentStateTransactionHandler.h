@@ -33,10 +33,6 @@
 #include <string>
 #include <unordered_map>
 
-namespace arangodb {
-struct OperationResult;
-}
-
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
@@ -94,11 +90,6 @@ class DocumentStateTransactionHandler
   auto applyOp(ReplicatedOperation::AbortAllOngoingTrx const&) -> Result;
   auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
-
-  static auto shouldIgnoreError(OperationResult const& res) noexcept -> bool;
-  static auto makeResultFromOperationResult(OperationResult const& res,
-                                            TransactionId tid)
-      -> arangodb::Result;
 
  private:
   GlobalLogIdentifier _gid;
