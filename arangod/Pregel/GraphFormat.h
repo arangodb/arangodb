@@ -29,7 +29,6 @@
 #include <type_traits>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterFeature.h"
 #include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;

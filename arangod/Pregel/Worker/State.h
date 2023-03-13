@@ -24,10 +24,12 @@
 
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
+#include "Basics/Guarded.h"
 #include "Pregel/CollectionSpecifications.h"
 #include "Pregel/PregelOptions.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/Status/Status.h"
 
 namespace arangodb::pregel::worker {
 
@@ -43,11 +45,31 @@ struct WorkerState {
         collectionSpecifications{std::move(collectionSpecifications)},
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase} {};
+
+  auto observeStatus() -> Status const {
+    auto currentGss = currentGssObservables.observe();
+    auto fullGssStatus = allGssStatus.copy();
+
+    if (!currentGss.isDefault()) {
+      fullGssStatus.gss.emplace_back(currentGss);
+    }
+    return Status{
+        .graphStoreStatus =
+            GraphStoreStatus{},  // TODO GORDO-1546 graphStore->status(),
+        .allGssStatus = fullGssStatus.gss.size() > 0
+                            ? std::optional{fullGssStatus}
+                            : std::nullopt};
+  }
+
   actor::ActorPID conductor;
   const ExecutionSpecifications executionSpecifications;
   const CollectionSpecifications collectionSpecifications;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
+  // TODO GOROD-1546
+  // GraphStore graphStore;
+  GssObservables currentGssObservables;
+  Guarded<AllGssStatus> allGssStatus;
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {
