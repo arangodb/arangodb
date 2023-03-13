@@ -13,9 +13,9 @@ export const AddViewTile = () => {
         boxShadow="md"
         backgroundColor="white"
         onClick={onOpen}
+        leftIcon={<AddIconCircle />}
       >
         <Stack direction={"row"} width={"full"}>
-          <AddIcon />
           <Text>Add View</Text>
         </Stack>
       </Button>
@@ -24,3 +24,19 @@ export const AddViewTile = () => {
   );
 };
 
+const AddIconCircle = () => {
+  return (
+    <Box
+      background="green.400"
+      width="5"
+      height="5"
+      borderRadius="full"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      color="white"
+    >
+      <AddIcon boxSize="3" />
+    </Box>
+  );
+};
