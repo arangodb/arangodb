@@ -133,14 +133,25 @@ struct StreamProxy : Interface<typename ReplicatedStateTraits<S>::EntryType> {
   using Iterator = typename streams::Stream<EntryType>::Iterator;
 
  protected:
-  std::unique_ptr<ILogMethodsT> _logMethods;
+  Guarded<std::unique_ptr<ILogMethodsT>> _logMethods;
 
  public:
   explicit StreamProxy(std::unique_ptr<ILogMethodsT> methods);
 
-  auto methods() -> auto&;
+  struct MethodsGuard {
+    using Guard =
+        typename Guarded<std::unique_ptr<ILogMethodsT>>::mutex_guard_type;
+    auto operator->() noexcept -> ILogMethodsT* { return guard.get().get(); }
+    auto operator*() noexcept -> ILogMethodsT& { return *guard.get().get(); }
+    explicit MethodsGuard(Guard&& guard) : guard(std::move(guard)) {}
 
-  auto resign() && -> decltype(_logMethods);
+   private:
+    Guard guard;
+  };
+
+  auto methods() -> MethodsGuard;
+
+  auto resign() && -> std::unique_ptr<ILogMethodsT>;
 
   auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override;
   auto waitForIterator(LogIndex index)
