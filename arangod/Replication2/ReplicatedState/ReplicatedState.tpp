@@ -244,15 +244,15 @@ StreamProxy<S, Interface, ILogMethodsT>::StreamProxy(
 
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
-auto StreamProxy<S, Interface, ILogMethodsT>::methods() -> auto& {
-  return *this->_logMethods;
+auto StreamProxy<S, Interface, ILogMethodsT>::methods() -> MethodsGuard {
+  return MethodsGuard{this->_logMethods.getLockedGuard()};
 }
 
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface,
-                 ILogMethodsT>::resign() && -> decltype(_logMethods) {
-  return std::move(this->_logMethods);
+                 ILogMethodsT>::resign() && -> std::unique_ptr<ILogMethodsT> {
+  return std::move(this->_logMethods.getLockedGuard().get());
 }
 
 template<typename S, template<typename> typename Interface,
@@ -269,7 +269,8 @@ auto StreamProxy<S, Interface, ILogMethodsT>::waitFor(LogIndex index)
   // TODO We might want to remove waitFor here, in favor of updateCommitIndex.
   //      It's currently used by DocumentLeaderState::replicateOperation.
   //      If this is removed, delete it also in streams::Stream.
-  return _logMethods->waitFor(index).thenValue(
+  auto guard = _logMethods.getLockedGuard();
+  return guard.get()->waitFor(index).thenValue(
       [](auto const&) { return WaitForResult(); });
 }
 
@@ -280,7 +281,8 @@ auto StreamProxy<S, Interface, ILogMethodsT>::waitForIterator(LogIndex index)
   // TODO As far as I can tell right now, we can get rid of this, but for the
   //      PrototypeState (currently). So:
   //      Delete this, also in streams::Stream.
-  return _logMethods->waitForIterator(index).thenValue([](auto&& logIter) {
+  auto guard = _logMethods.getLockedGuard();
+  return guard.get()->waitForIterator(index).thenValue([](auto&& logIter) {
     std::unique_ptr<Iterator> deserializedIter =
         std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
             std::move(logIter));
@@ -291,8 +293,9 @@ auto StreamProxy<S, Interface, ILogMethodsT>::waitForIterator(LogIndex index)
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
-  if (_logMethods != nullptr) [[likely]] {
-    _logMethods->releaseIndex(index);
+  auto guard = _logMethods.getLockedGuard();
+  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
+    methods->releaseIndex(index);
   } else {
     throwResignedException();
   }
@@ -333,13 +336,14 @@ ProducerStreamProxy<S>::ProducerStreamProxy(
     : StreamProxy<S, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods>(
           std::move(methods)) {
-  ADB_PROD_ASSERT(this->_logMethods != nullptr);
+  ADB_PROD_ASSERT(this->_logMethods.getLockedGuard().get() != nullptr);
 }
 
 template<typename S>
 auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
-  if (this->_logMethods != nullptr) [[likely]] {
-    return this->_logMethods->insert(serialize(v));
+  auto guard = this->_logMethods.getLockedGuard();
+  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
+    return methods->insert(serialize(v));
   } else {
     this->throwResignedException();
   }
@@ -349,8 +353,9 @@ template<typename S>
 auto ProducerStreamProxy<S>::insertDeferred(const EntryType& v)
     -> std::pair<LogIndex, DeferredAction> {
   // TODO Remove this method, it should be superfluous
-  if (this->_logMethods != nullptr) [[likely]] {
-    return this->_logMethods->insertDeferred(serialize(v));
+  auto guard = this->_logMethods.getLockedGuard();
+  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
+    return methods->insertDeferred(serialize(v));
   } else {
     this->throwResignedException();
   }
@@ -385,7 +390,7 @@ void LeaderStateManager<S>::recoverEntries() {
 
 template<typename S>
 auto LeaderStateManager<S>::GuardedData::recoverEntries() {
-  auto logSnapshot = _stream->methods().getLogSnapshot();
+  auto logSnapshot = _stream->methods()->getLogSnapshot();
   auto logIter = logSnapshot.getRangeIteratorFrom(LogIndex{0});
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
@@ -567,7 +572,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     _applyEntriesIndexInFlight =
         std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = _stream->methods().getLogIterator(
+    auto logIter = _stream->methods()->getLogIterator(
         {_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1});
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
@@ -738,7 +743,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
           guard->clearSnapshotErrors();
           auto res =
               basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
-                  guard->_stream->methods())
+                  *guard->_stream->methods())
                   .snapshotCompleted(version);
           // TODO (How) can we handle this more gracefully?
           ADB_PROD_ASSERT(res.ok());
