@@ -158,8 +158,10 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     }
 
     auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
-    auto abortAllRes =
-        self->replicateOperation(abortAll, ReplicationOptions{}).get();
+    auto abortAllResFut =
+        self->replicateOperation(abortAll, ReplicationOptions{});
+    TRI_ASSERT(abortAllResFut.isReady());
+    auto abortAllRes = abortAllResFut.get();
     if (abortAllRes.fail()) {
       LOG_CTX("b4217", FATAL, self->loggerContext)
           << "failed to replicate AbortAllOngoingTrx operation during "
@@ -196,9 +198,9 @@ auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
   return std::visit(
       overload{
           [&](FinishesUserTransactionOrIntermediate auto const& op) -> bool {
-            // We don't replicate single abort/commit operations
-            // in case we have not replicated anything else for
-            // a transaction.
+            // An empty transaction is not active, therefore we can ignore it.
+            // We are not replication commit or abort operations for empty
+            // transactions.
             return _activeTransactions.getLockedGuard()
                 ->getTransactions()
                 .contains(op.tid);

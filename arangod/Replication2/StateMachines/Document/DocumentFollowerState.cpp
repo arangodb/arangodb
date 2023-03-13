@@ -101,7 +101,8 @@ auto DocumentFollowerState::applyEntries(
             auto [index, doc] = *entry;
 
             auto currentReleaseIndex = std::visit(
-                [&data, index](auto&& op) -> ResultT<std::optional<LogIndex>> {
+                [&data,
+                 index = index](auto&& op) -> ResultT<std::optional<LogIndex>> {
                   return data.applyEntry(op, index);
                 },
                 doc.getInnerOperation());
