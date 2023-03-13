@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +24,16 @@
 #include "Pregel/OutgoingCache.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPackWithErrorT.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
@@ -44,9 +49,11 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
-OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
+OutCache<M>::OutCache(std::shared_ptr<WorkerConfig const> state,
+                      MessageFormat<M> const* format)
     : _config(state),
       _format(format),
       _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
@@ -145,7 +152,7 @@ void ArrayOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardIDs()[shard],
+        pool, "shard:" + this->_config->globalShardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -164,9 +171,9 @@ void ArrayOutCache<M>::flushMessages() {
 // ================= CombiningOutCache ==================
 
 template<typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
-                                        MessageFormat<M> const* format,
-                                        MessageCombiner<M> const* combiner)
+CombiningOutCache<M>::CombiningOutCache(
+    std::shared_ptr<WorkerConfig const> state, MessageFormat<M> const* format,
+    MessageCombiner<M> const* combiner)
     : OutCache<M>(state, format), _combiner(combiner) {}
 
 template<typename M>
@@ -261,7 +268,7 @@ void CombiningOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardIDs()[shard],
+        pool, "shard:" + this->_config->globalShardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 

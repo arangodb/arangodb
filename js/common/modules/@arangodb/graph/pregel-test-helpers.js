@@ -51,6 +51,41 @@ const Graph = graphGeneration.Graph;
 
 const epsilon = 0.00001;
 
+const runFinishedSuccessfully = (stats) => stats.state === "done";
+const runFinishedUnsuccessfully = (stats) => stats.state === "canceled" || stats.state === "fatal error";
+const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
+const runCanceled = (stats) => stats.state === "canceled";
+
+const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
+  let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+  var status;
+  do {
+    internal.sleep(0.2);
+    status = pregel.status(pid);
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "timeout in pregel execution");
+      return;
+    }
+  } while (!runFinished(status));
+
+  if (runFinishedUnsuccessfully(status)) {
+    assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
+    return;
+  }
+
+  return status;
+};
+
+const uniquePregelResults = function(documentCursor) {
+  let myset = new Set();
+  while (documentCursor.hasNext()) {
+    const doc = documentCursor.next();
+    assertTrue(doc.result !== undefined, "Found no pregel result in document " + doc);
+    myset.add(doc.result);
+  }
+  return myset;
+};
+
 /**
  * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
  * @param expected the expected value, a number
@@ -77,34 +112,21 @@ const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDes
     }
 };
 
-const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
-    const pid = pregel.start(algName, graphName, parameters);
-    const sleepIntervalSecs = 0.2;
-    let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-    while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
-        wakeupsLeft--;
-        internal.sleep(0.2);
-    }
-    const statusState = pregel.status(pid).state;
-    assertEqual(statusState, "done", `Pregel Job did never succeed. Status: ${statusState}`);
-    return db._query(query).toArray();
-};
-
 const dampingFactor = 0.85;
-
 
 const testPageRankOnGraph = function (vertices, edges, seeded = false) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "value": v.pagerank}  
-              `;
     let parameters = {maxGSS: 100, resultField: "pagerank"};
     if (seeded) {
         parameters.sourceField = "input";
     }
-    const result = runPregelInstance("pagerank", graphName, parameters, query);
+    const pid = pregel.start("pagerank", graphName, parameters);
+	  waitUntilRunFinishedSuccessfully(pid);
+    const result = db._query(`
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "value": v.pagerank}  
+                `).toArray();
 
     const graph = new Graph(vertices, edges);
     for (const v of result) {
@@ -130,15 +152,15 @@ const testPageRankOnGraph = function (vertices, edges, seeded = false) {
 const testHITSKleinbergOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
-              `;
     const numberIterations = 50;
 
     let parameters = {resultField: "hits", maxNumIterations: numberIterations};
-    let algName = "hitskleinberg";
-    const result = runPregelInstance(algName, graphName, parameters, query);
+    const pid = pregel.start("hitskleinberg", graphName, parameters);
+    waitUntilRunFinishedSuccessfully(pid);
+    const result = db._query(`
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
+              `).toArray();
 
     const hits = new HITS();
     const graph = new Graph(vertices, edges);
@@ -177,16 +199,16 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
 const testHITSKleinbergThresholdOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
-              `;
     const numberIterations = 50;
     const threshold = 200.0; // must be less than 1000.0, the value added in HITSKleinberg in reportFakeDifference()
 
     let parameters = {resultField: "hits", maxNumIterations: numberIterations, threshold: threshold};
-    let algName = "hitskleinberg";
-    const result = runPregelInstance(algName, graphName, parameters, query);
+    const pid = pregel.start("hitskleinberg", graphName, parameters);
+    waitUntilRunFinishedSuccessfully(pid);
+    const result = db._query(`
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
+                `).toArray();
 
     const hits = new HITS();
     const graph = new Graph(vertices, edges);
@@ -230,13 +252,14 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
     assertTrue(parameters.hasOwnProperty("resultField"),
         `Malformed test: the parameter "parameters" of pregelRunSmallInstanceGetComponents 
         must have an attribute "resultField"`);
-    const query = `
+    const pid = pregel.start(algName, graphName, parameters);
+    waitUntilRunFinishedSuccessfully(pid);
+    return db._query(`
         FOR v IN ${vColl}
           COLLECT ${parameters.resultField} = v.result WITH COUNT INTO size
           SORT size DESC
           RETURN {${parameters.resultField}, size}
-      `;
-    return runPregelInstance(algName, graphName, parameters, query);
+        `).toArray();
 };
 
 const makeSetUp = function (smart, smartAttribute, numberOfShards) {
@@ -294,11 +317,12 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     });
     if (parameters.hasOwnProperty("test") && parameters.test) {
         delete parameters.test;
-        const query = `
-        FOR v in ${vColl}
-        RETURN {"vertex": v._key, "result": v.result}
-    `;
-        runPregelInstance(algName, graphName, parameters, query);
+        const pid = pregel.start(algName, graphName, parameters);
+        waitUntilRunFinishedSuccessfully(pid);
+        db._query(`
+          FOR v in ${vColl}
+          RETURN {"vertex": v._key, "result": v.result}
+        `).toArray();
         return;
     }
     const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
@@ -1035,12 +1059,14 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
-                const query = `
+
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                waitUntilRunFinishedSuccessfully(pid);
+                const result = db._query(`
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "community": v.community}  
-              `;
-                const result = runPregelInstance("labelpropagation", graphName,
-                    {maxGSS: 100, resultField: "community"}, query);
+                `).toArray();
+
                 assertEqual(result.length, length);
                 for (const value of result) {
                     assertEqual(value.community, result[0].community);
@@ -1056,14 +1082,15 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
                 db[vColl].save(verticesEdges.vertices);
                 db[eColl].save(verticesEdges.edges);
 
-                const query = `
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                waitUntilRunFinishedSuccessfully(pid);
+                const result = db._query(`
                   FOR v in ${vColl}
                   COLLECT community = v.community WITH COUNT INTO size
                   SORT size DESC
                   RETURN {community, size}
-              `;
-                const result = runPregelInstance("labelpropagation", graphName,
-                    {maxGSS: 100, resultField: "community"}, query);
+                `).toArray();
+
                 assertEqual(result.length, 2);
                 assertEqual(result[0].size, length);
                 assertEqual(result[1].size, length);
@@ -1080,19 +1107,20 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
-                const query = `
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                waitUntilRunFinishedSuccessfully(pid);
+                const result = db._query(`
                   FOR v in ${vColl}
                   COLLECT community = v.community WITH COUNT INTO size
                   SORT size DESC
                   RETURN {community, size}
-              `;
+                `).toArray();
+
                 // expected (depending on the "random" distribution of initial ids) that
                 //  - all vertices are in one community:
                 //      if the least initial value of vertices in the component with label v0,
                 //      is less than the least initial value of vertices in the component with label v1,
                 //  - or two communities otherwise.
-                const result = runPregelInstance("labelpropagation", graphName,
-                    {maxGSS: 100, resultField: "community"}, query);
                 assertTrue(result.length === 1 || result.length === 2, `Expected 1 or 2, obtained ${result}`);
                 if (result.length === 1) {
                     assertEqual(result[0].size, 2 * size);
@@ -1480,12 +1508,14 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
         db[vColl].save(vertices);
         db[eColl].save(edges);
-        const query = `
+        let parameters = {source: `${vColl}/${source}`, resultField: "distance"};
+        const pid = pregel.start("sssp", graphName, parameters);
+        waitUntilRunFinishedSuccessfully(pid);
+        const result = db._query(`
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "result": v.distance}  
-              `;
-        let parameters = {source: `${vColl}/${source}`, resultField: "distance"};
-        const result = runPregelInstance("sssp", graphName, parameters, query);
+                `).toArray();
+
         const graph = new Graph(vertices, edges);
         // assign to each vertex.value infinity
         // (This is what Pregel, in fact, returns if a vertex is not reachable.
@@ -1712,8 +1742,12 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
-exports.runPregelInstance = runPregelInstance;
 exports.epsilon = epsilon;
 exports.makeSetUp = makeSetUp;
 exports.makeTearDown = makeTearDown;
 exports.assertAlmostEquals = assertAlmostEquals;
+exports.runFinished = runFinished;
+exports.runCanceled = runCanceled;
+exports.runFinishedSuccessfully = runFinishedSuccessfully;
+exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
+exports.uniquePregelResults = uniquePregelResults;

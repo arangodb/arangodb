@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/DownCast.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -65,7 +64,6 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -829,6 +827,11 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
         _previousDocumentBuilder(&_methods) {}
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     std::string_view key;
 
     if (value.isString()) {
@@ -1126,6 +1129,11 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       // return an error *instead* of actually processing the value
       return TRI_ERROR_DEBUG;
     }
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
 
     _newDocumentBuilder->clear();
 
@@ -1399,6 +1407,11 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
         _isUpdate(isUpdate) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + _collection.name()) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
     _newDocumentBuilder->clear();
     _previousDocumentBuilder->clear();
 
@@ -3146,13 +3159,41 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+
+  // index cache refilling...
+  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+    // index cache refilling opt-out
+    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  } else {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    bool const refill =
+        engine.autoRefillIndexCachesOnFollowers() &&
+        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+          engine.autoRefillIndexCaches()));
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+      if (refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      if (!refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
     reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
-                      ? "true"
-                      : "false");
+                  refill ? "true" : "false");
   }
 
   std::string url = "/_api/document/";

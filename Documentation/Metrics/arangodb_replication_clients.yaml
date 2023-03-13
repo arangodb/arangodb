@@ -1,0 +1,15 @@
+name: arangodb_replication_clients
+introducedIn: "3.10.5"
+help: |
+  Number of currently connected/active replication clients.
+unit: number
+type: gauge
+category: Replication
+complexity: medium
+exposedBy:
+  - single
+  - dbserver
+description: |
+  This metric contains the number of currently active/connected replication clients
+  that have started or are currently receiving data from this server for replication
+  purposes.

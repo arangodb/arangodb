@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +22,50 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Actor/ActorPID.h"
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
+#include "Inspection/Types.h"
+#include "Pregel/CollectionSpecifications.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/GraphStore/Graph.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 
 namespace arangodb::pregel {
+
+namespace worker::message {
+
+struct CreateNewWorker {
+  ExecutionSpecifications executionSpecifications;
+  CollectionSpecifications collectionSpecifications;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, CreateNewWorker& x) {
+  return f.object(x).fields(
+      f.field("executionSpecifications", x.executionSpecifications),
+      f.field("collectionSpecifications", x.collectionSpecifications));
+}
+
+struct WorkerStart {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerStart& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker> {
+  using std::variant<WorkerStart, CreateNewWorker>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<WorkerStart>("Start"),
+      arangodb::inspection::type<CreateNewWorker>("CreateWorker"));
+}
+
+}  // namespace worker::message
 
 struct GraphLoaded {
   ExecutionNumber executionNumber;
@@ -131,4 +167,7 @@ struct fmt::formatter<arangodb::pregel::StatusUpdated>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::GlobalSuperStepFinished>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
     : arangodb::inspection::inspection_formatter {};

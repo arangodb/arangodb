@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -149,10 +149,12 @@ class GeoJsonAnalyzerBase : public GeoAnalyzer {
   explicit GeoJsonAnalyzerBase(irs::type_info const& type,
                                OptionsBase const& options);
 
-  bool resetImpl(std::string_view value, bool legacy);
+  bool resetImpl(std::string_view value, bool legacy,
+                 geo::coding::Options options, Encoder* encoder);
 
   geo::ShapeContainer _shape;
-  std::vector<S2Point> _cache;
+  S2Point _centroid;
+  std::vector<S2LatLng> _cache;
   Type _type;
 };
 
@@ -181,38 +183,14 @@ class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
   bool _legacy{false};
 };
 
-/// The analyzer capable of breaking up a valid GeoJson input
-/// into a set of tokens for further indexing. Stores S2 geometry.
-class GeoS2Analyzer final : public GeoJsonAnalyzerBase {
- public:
-  struct Options : OptionsBase {
-    s2coding::CodingHint hint{s2coding::CodingHint::COMPACT};
-  };
-
-  static constexpr std::string_view type_name() noexcept {
-    return "geojson-s2";
-  }
-  static bool normalize(std::string_view args, std::string& out);
-  static irs::analysis::analyzer::ptr make(std::string_view args);
-
-  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
-
-  explicit GeoS2Analyzer(Options const& opts);
-
-  bool reset(std::string_view value) final;
-
-  void prepare(GeoFilterOptionsBase& options) const final;
-
- private:
-  Encoder _encoder;
-  s2coding::CodingHint _hint{s2coding::CodingHint::COMPACT};
-};
+Result fromVelocyPackBase(velocypack::Slice object,
+                          GeoJsonAnalyzerBase::OptionsBase& options);
+void toVelocyPackBase(velocypack::Builder& builder,
+                      GeoJsonAnalyzerBase::OptionsBase const& options);
 
 void toVelocyPack(velocypack::Builder& builder,
                   GeoPointAnalyzer::Options const& options);
 void toVelocyPack(velocypack::Builder& builder,
                   GeoVPackAnalyzer::Options const& options);
-void toVelocyPack(velocypack::Builder& builder,
-                  GeoS2Analyzer::Options const& options);
 
 }  // namespace arangodb::iresearch

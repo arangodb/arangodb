@@ -279,13 +279,19 @@ function saveToJunitXML(options, results) {
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
-
+      let msg = "";
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        msg = testSuite.message;
+        errors = 1;
+      }
       state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+        errors: errors,
+        failures: msg,
         tests: total,
         name: state.xmlName,
-        time: 0 + testSuite.duration
+        // time is in seconds
+        time: testSuite.duration / 1000
       });
       
     },
@@ -294,7 +300,8 @@ function saveToJunitXML(options, results) {
 
       state.xml.elem('testcase', {
         name: prefix + testCaseName,
-        time: 0 + testCase.duration
+        // time is in seconds
+        time: testCase.duration / 1000
       }, success);      
 
       state.seenTestCases = true;
@@ -992,7 +999,7 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
 
 }
 

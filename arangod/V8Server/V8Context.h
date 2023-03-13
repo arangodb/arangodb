@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,91 +25,46 @@
 
 #include "Basics/Common.h"
 
-#include <v8.h>
-
 #include "Basics/Mutex.h"
-#include "Basics/StaticStrings.h"
+#include "V8Server/GlobalContextMethods.h"
 
 #include <atomic>
+#include <string_view>
+
+#include <v8.h>
 
 namespace arangodb {
-class GlobalContextMethods {
- public:
-  enum class MethodType {
-    UNKNOWN = 0,
-    RELOAD_ROUTING,
-    RELOAD_AQL,
-  };
-
- public:
-  static MethodType type(std::string const& type) {
-    if (type == "reloadRouting") {
-      return MethodType::RELOAD_ROUTING;
-    }
-    if (type == "reloadAql") {
-      return MethodType::RELOAD_AQL;
-    }
-
-    return MethodType::UNKNOWN;
-  }
-
-  static std::string const name(MethodType type) {
-    switch (type) {
-      case MethodType::RELOAD_ROUTING:
-        return "reloadRouting";
-      case MethodType::RELOAD_AQL:
-        return "reloadAql";
-      case MethodType::UNKNOWN:
-      default:
-        return "unknown";
-    }
-  }
-
-  static std::string const& code(MethodType type) {
-    switch (type) {
-      case MethodType::RELOAD_ROUTING:
-        return CodeReloadRouting;
-      case MethodType::RELOAD_AQL:
-        return CodeReloadAql;
-      case MethodType::UNKNOWN:
-      default:
-        return StaticStrings::Empty;
-    }
-  }
-
- public:
-  static std::string const CodeReloadRouting;
-  static std::string const CodeReloadAql;
-};
-
 class V8Context {
  public:
   V8Context(size_t id, v8::Isolate* isolate);
 
-  size_t id() const { return _id; }
-  bool isDefault() const { return _id == 0; }
+  size_t id() const noexcept { return _id; }
+  bool isDefault() const noexcept { return _id == 0; }
   void assertLocked() const;
   double age() const;
   void lockAndEnter();
   void unlockAndExit();
-  uint64_t invocations() const {
+  uint64_t invocations() const noexcept {
     return _invocations.load(std::memory_order_relaxed);
   }
   double acquired() const noexcept { return _acquired; }
-  char const* description() const noexcept { return _description; }
+  std::string_view description() const noexcept { return _description; }
   bool shouldBeRemoved(double maxAge, uint64_t maxInvocations) const;
   bool hasGlobalMethodsQueued();
   void setCleaned(double stamp);
 
   // sets acquisition description (char const* must stay valid forever) and
   // acquisition timestamp
-  void setDescription(char const* description, double acquired) noexcept {
+  void setDescription(std::string_view description, double acquired) noexcept {
     _description = description;
     _acquired = acquired;
   }
   void clearDescription() noexcept { _description = "none"; }
 
- public:
+  void addGlobalContextMethod(GlobalContextMethods::MethodType type);
+  void handleGlobalContextMethods();
+  void handleCancellationCleanup();
+
   v8::Persistent<v8::Context> _context;
   v8::Isolate* const _isolate;
   double _lastGcStamp;
@@ -122,18 +77,13 @@ class V8Context {
   v8::Locker* _locker;
   /// @brief description of what the context is doing. pointer must be valid
   /// through the entire program lifetime
-  char const* _description;
+  std::string_view _description;
   /// @brief timestamp of when the context was last entered
   double _acquired;
   double const _creationStamp;
 
   Mutex _globalMethodsLock;
   std::vector<GlobalContextMethods::MethodType> _globalMethods;
-
- public:
-  bool addGlobalContextMethod(std::string const&);
-  void handleGlobalContextMethods();
-  void handleCancellationCleanup();
 };
 
 class V8ContextEntryGuard {

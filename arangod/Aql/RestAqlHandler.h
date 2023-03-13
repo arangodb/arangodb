@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,11 +54,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
-  // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
+  // <operation>: can be "execute", "skipSome" "initializeCursor" or
   //              "shutdown".
-  //              "getSome" and "skipSome" are only used pre-3.7 and can be
-  //              removed in 3.8.
-  // The body must be a Json with the following attributes:
+  // The body must be a JSON with the following attributes:
   // For the "execute" operation one has to give:
   //   "callStack": an array of objects, each with the following attributes:
   //     "offset": a non-negative integer

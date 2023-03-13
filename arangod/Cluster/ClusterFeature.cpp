@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,8 +87,6 @@ ClusterFeature::~ClusterFeature() {
     // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     shutdownAgencyCache();
-
-    AgencyCommHelper::shutdown();
   }
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.

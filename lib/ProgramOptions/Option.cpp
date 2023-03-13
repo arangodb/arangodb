@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -220,8 +220,7 @@ size_t Option::optionsWidth() const {
 
 // strip the "--" from a string
 std::string Option::stripPrefix(std::string const& name) {
-  size_t pos = name.find("--");
-  if (pos == 0) {
+  if (name.starts_with("--")) {
     // strip initial "--"
     return name.substr(2);
   }
@@ -230,8 +229,7 @@ std::string Option::stripPrefix(std::string const& name) {
 
 // strip the "-" from a string
 std::string Option::stripShorthand(std::string const& name) {
-  size_t pos = name.find('-');
-  if (pos == 0) {
+  if (name.starts_with('-')) {
     // strip initial "-"
     return name.substr(1);
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RestAqlHandler.h"

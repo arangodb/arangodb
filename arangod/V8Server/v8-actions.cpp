@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,7 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/FoxxFeature.h"
+#include "V8Server/GlobalContextMethods.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -1266,36 +1267,18 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief eventually executes a function in all contexts
-///
-/// @FUN{internal.executeGlobalContextFunction(@FA{function-definition})}
+/// @brief reload routing defintions in all contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteGlobalContextFunction(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ReloadRouting(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeGlobalContextFunction(<function-type>)");
-  }
-
-  // extract the action name
-  v8::String::Utf8Value utf8def(isolate, args[0]);
-
-  if (*utf8def == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
-  }
-
-  std::string const def = std::string(*utf8def, utf8def.length());
-
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  // and pass it to the V8 contexts
   if (!v8g->server().getFeature<V8DealerFeature>().addGlobalContextMethod(
-          def)) {
+          GlobalContextMethods::MethodType::kReloadRouting)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid action definition");
+                                   "unable to reload routing");
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1603,9 +1586,8 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEFINE_ACTION"),
       JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(
-      isolate,
-      TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
-      JS_ExecuteGlobalContextFunction, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RELOAD_ROUTING"),
+      JS_ReloadRouting, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_CURRENT_REQUEST"),
       JS_GetCurrentRequest);

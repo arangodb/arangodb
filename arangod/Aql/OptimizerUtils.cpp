@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1042,6 +1042,15 @@ bool findProjections(ExecutionNode* n, Variable const* v,
                 /*expectedAttribute*/ expectedAttribute, attributes)) {
           return false;
         }
+      }
+    } else if (current->getType() == EN::SUBQUERY) {
+      auto sub = ExecutionNode::castTo<SubqueryNode*>(current);
+      ExecutionNode* top = sub->getSubquery();
+      while (top->hasDependency()) {
+        top = top->getFirstDependency();
+      }
+      if (!findProjections(top, v, expectedAttribute, false, attributes)) {
+        return false;
       }
     } else {
       // all other node types mandate a check

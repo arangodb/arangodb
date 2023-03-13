@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,11 +36,6 @@ namespace arangodb {
 namespace cache {
 
 class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
- private:
-  Manager::TaskEnvironment _environment;
-  Manager& _manager;
-  std::shared_ptr<Cache> _cache;
-
  public:
   FreeMemoryTask() = delete;
   FreeMemoryTask(FreeMemoryTask const&) = delete;
@@ -54,15 +49,13 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
 
  private:
   void run();
-};
 
-class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
- private:
   Manager::TaskEnvironment _environment;
   Manager& _manager;
   std::shared_ptr<Cache> _cache;
-  std::shared_ptr<Table> _table;
+};
 
+class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
  public:
   MigrateTask() = delete;
   MigrateTask(MigrateTask const&) = delete;
@@ -76,6 +69,11 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
 
  private:
   void run();
+
+  Manager::TaskEnvironment _environment;
+  Manager& _manager;
+  std::shared_ptr<Cache> _cache;
+  std::shared_ptr<Table> _table;
 };
 
 };  // end namespace cache

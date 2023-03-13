@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EffectiveCloseness.h"
+#include <memory>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounterFormat.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -84,16 +85,16 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
 };
 
 VertexComputation<ECValue, int8_t, HLLCounter>*
-EffectiveCloseness::createComputation(WorkerConfig const*) const {
+EffectiveCloseness::createComputation(
+    std::shared_ptr<WorkerConfig const>) const {
   return new ECComputation();
 }
 
 struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   const std::string _resultField;
 
-  explicit ECGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<ECValue, int8_t>(server), _resultField(result) {}
+  explicit ECGraphFormat(std::string const& result)
+      : GraphFormat<ECValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; }
 
@@ -125,5 +126,25 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 };
 
 GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
-  return new ECGraphFormat(_server, _resultField);
+  return new ECGraphFormat(_resultField);
+}
+
+struct EffectiveClosenessMasterContext : public MasterContext {
+  EffectiveClosenessMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto EffectiveCloseness::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new EffectiveClosenessMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto EffectiveCloseness::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<EffectiveClosenessMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }

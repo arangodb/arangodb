@@ -268,9 +268,23 @@ let failurePointsCheck = {
   }
 };
 
+function isBucketized(testBuckets) {
+  if (testBuckets === undefined || testBuckets === null) {
+    return false;
+  }
+  let n = testBuckets.split('/');
+  let r = parseInt(n[0]);
+  let s = parseInt(n[1]);
+  if (r === 1 && s === 0) {
+    // we only have a single bucket - this is equivalent to not using bucketizing at all
+    return false;
+  }
+  return true;
+}
+
 class testRunner {
   constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
-    if (options.testBuckets && !didSplitBuckets) {
+    if (isBucketized(options.testBuckets) && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
     this.addArgs = undefined;

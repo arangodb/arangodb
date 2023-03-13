@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -491,7 +491,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
                 // check if the follower is actively working on replicating the
                 // shard. note: 3.7 will not provide the "syncing" attribute. it
-                // must there be treated as optional in 3.8.
+                // must therefore be treated as optional in 3.8.
                 if (VPackSlice syncing = slice.get("syncing");
                     syncing.isBoolean() && syncing.getBoolean()) {
                   ++entry.followersSyncing;

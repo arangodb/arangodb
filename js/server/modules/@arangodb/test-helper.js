@@ -31,25 +31,31 @@
 const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const {
+  runWithRetry,
   getServerById,
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.runWithRetry = runWithRetry;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;

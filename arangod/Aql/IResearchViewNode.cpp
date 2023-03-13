@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -134,10 +134,10 @@ std::vector<SearchFunc> fromVelocyPack(aql::ExecutionPlan& plan,
 // Helpers for IResearchViewNode::Options
 constexpr auto conditionOptimizationTypeMap =
     frozen::make_map<std::string_view, aql::ConditionOptimization>({
-        {"auto", aql::ConditionOptimization::Auto},
-        {"nodnf", aql::ConditionOptimization::NoDNF},
-        {"noneg", aql::ConditionOptimization::NoNegation},
-        {"none", aql::ConditionOptimization::None},
+        {"auto", aql::ConditionOptimization::kAuto},
+        {"nodnf", aql::ConditionOptimization::kNoDNF},
+        {"noneg", aql::ConditionOptimization::kNoNegation},
+        {"none", aql::ConditionOptimization::kNone},
     });
 
 constexpr auto countApproximationTypeMap =

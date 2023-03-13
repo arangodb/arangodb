@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,10 @@
 #pragma once
 
 #include <atomic>
+#include <string>
+#include <string_view>
 #include <unordered_set>
+#include <vector>
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ConditionVariable.h"
@@ -32,6 +35,7 @@
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
+#include "V8Server/GlobalContextMethods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -80,24 +84,37 @@ class V8DealerFeature final : public ArangodFeature {
   std::string _startupDirectory;
   std::string _nodeModulesDirectory;
   std::vector<std::string> _moduleDirectories;
+  // maximum number of contexts to create
+  uint64_t _nrMaxContexts;
+  // minimum number of contexts to keep
+  uint64_t _nrMinContexts;
+  // number of contexts currently in creation
+  uint64_t _nrInflightContexts;
+  // maximum number of V8 context invocations
+  uint64_t _maxContextInvocations;
+
+  // copy JavaScript files into database directory on startup
   bool _copyInstallation;
-  uint64_t _nrMaxContexts;          // maximum number of contexts to create
-  uint64_t _nrMinContexts;          // minimum number of contexts to keep
-  uint64_t _nrInflightContexts;     // number of contexts currently in creation
-  uint64_t _maxContextInvocations;  // maximum number of V8 context invocations
+  // enable /_admin/execute API
   bool _allowAdminExecute;
+  // allow JavaScript transactions?
   bool _allowJavaScriptTransactions;
+  // allow JavaScript user-defined functions?
+  bool _allowJavaScriptUdfs;
+  // allow JavaScript tasks (tasks module)?
   bool _allowJavaScriptTasks;
+  // enable JavaScript globally
   bool _enableJS;
 
  public:
-  bool allowAdminExecute() const { return _allowAdminExecute; }
-  bool allowJavaScriptTransactions() const {
+  bool allowAdminExecute() const noexcept { return _allowAdminExecute; }
+  bool allowJavaScriptTransactions() const noexcept {
     return _allowJavaScriptTransactions;
   }
-  bool allowJavaScriptTasks() const { return _allowJavaScriptTasks; }
+  bool allowJavaScriptUdfs() const noexcept { return _allowJavaScriptUdfs; }
+  bool allowJavaScriptTasks() const noexcept { return _allowJavaScriptTasks; }
 
-  bool addGlobalContextMethod(std::string const&);
+  bool addGlobalContextMethod(GlobalContextMethods::MethodType type);
   void collectGarbage();
 
   /// @brief loads a JavaScript file in all contexts, only called at startup.
@@ -119,9 +136,9 @@ class V8DealerFeature final : public ArangodFeature {
     }
   }
 
-  uint64_t maximumContexts() const { return _nrMaxContexts; }
+  uint64_t maximumContexts() const noexcept { return _nrMaxContexts; }
 
-  void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
+  void setMaximumContexts(size_t nr) noexcept { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
   std::vector<DetailedContextStatistics> getCurrentContextDetails();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -409,7 +409,13 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
-      _resultPath.toVelocyPack(result);
+      if (_options.getPathType() == PathType::Type::KShortestPaths) {
+        // Add weight attribute to edges
+        _resultPath.toVelocyPack(
+            result, PathResult<ProviderType, Step>::WeightType::AMOUNT_EDGES);
+      } else {
+        _resultPath.toVelocyPack(result);
+      }
 
       // At this state we've produced a valid path result. In case we're using
       // the path type "ShortestPath", the algorithm is finished. We need

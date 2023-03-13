@@ -5,10 +5,7 @@ add_library(arango_graph STATIC
   Graph.cpp
   GraphManager.cpp
   GraphOperations.cpp
-  KShortestPathsFinder.cpp
-  ShortestPathFinder.cpp
   ShortestPathOptions.cpp
-  ShortestPathResult.cpp
   PathType.cpp
   SingleServerEdgeCursor.cpp
   TraverserCache.cpp # maybe remove

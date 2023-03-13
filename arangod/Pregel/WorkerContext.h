@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +51,9 @@ class WorkerContext {
     return (T*)_readAggregators->getAggregatedValue(name);
   }
 
-  AggregatorHandler& getWriteAggregators() { return *_writeAggregators; }
-
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}
   virtual void postGlobalSuperstep(uint64_t gss) {}
-  virtual void postApplication() {}
 
  public:
   WorkerContext()

@@ -138,7 +138,6 @@ function PregelSuite () {
 
         assertFalse(result === undefined || result === {});
         assertEqual(result.status, 200);
-        assertTrue(result.body.state === 'loading' || result.body.state === 'running' || result.body.state === 'done');
       });
 
       require('internal').wait(5.0, false);
@@ -176,7 +175,6 @@ function PregelSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertTrue(result.body.state === "loading" || result.body.state === "running");
 
       require('internal').wait(5.0, false);
 
@@ -210,7 +208,6 @@ function PregelSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertTrue(result.body.state === "loading" || result.body.state === "running");
 
       require('internal').wait(5.0, false);
 

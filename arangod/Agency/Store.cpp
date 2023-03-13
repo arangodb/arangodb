@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1095,46 +1095,6 @@ std::string Store::normalize(char const* key, size_t length) {
   TRI_ASSERT(normalized.front() == '/');
   TRI_ASSERT(normalized.find("//") == std::string::npos);
   return normalized;
-}
-
-/// @brief Split strings by forward slashes, omitting empty strings,
-/// and ignoring multiple subsequent forward slashes
-std::vector<std::string> Store::split(std::string_view str) {
-  std::vector<std::string> result;
-
-  char const* p = str.data();
-  char const* e = str.data() + str.size();
-
-  // strip leading forward slashes
-  while (p != e && *p == '/') {
-    ++p;
-  }
-
-  // strip trailing forward slashes
-  while (p != e && *(e - 1) == '/') {
-    --e;
-  }
-
-  char const* start = nullptr;
-  while (p != e) {
-    if (*p == '/') {
-      if (start != nullptr) {
-        // had already found something
-        result.emplace_back(start, p - start);
-        start = nullptr;
-      }
-    } else {
-      if (start == nullptr) {
-        start = p;
-      }
-    }
-    ++p;
-  }
-  if (start != nullptr) {
-    result.emplace_back(start, p - start);
-  }
-
-  return result;
 }
 
 /**

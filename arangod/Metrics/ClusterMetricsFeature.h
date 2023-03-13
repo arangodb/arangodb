@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,6 +164,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
 
   bool wasStop() const noexcept;
 
+  // We don't want to update constantly empty data
+  bool _prevEmpty{true};
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;

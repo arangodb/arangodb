@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
                                std::regex::ECMAScript);
     if (std::regex_match(idSlice.copyString(), re)) {
       id = idSlice.copyString();
-      name = id.substr(id.find_first_of("/") + 1);
+      name = id.substr(id.find('/') + 1);
     } else {
       name = idSlice.copyString();
       id = collection->name() + "/" + name;

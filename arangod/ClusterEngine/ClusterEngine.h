@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -153,7 +153,8 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool flushColumnFamilies) override {
+  Result flushWal(bool /*waitForSync*/ = false,
+                  bool /*flushColumnFamilies*/ = false) override {
     return {};
   }
 
@@ -168,7 +169,6 @@ class ClusterEngine final : public StorageEngine {
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 
- public:
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -222,6 +222,9 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
+
+  bool autoRefillIndexCaches() const override { return false; }
+  bool autoRefillIndexCachesOnFollowers() const override { return false; }
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() final { return nullptr; }
 
