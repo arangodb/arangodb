@@ -603,8 +603,13 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     builder.close();
 
     auto slice = builder.slice();
-
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("smartSort");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -670,7 +675,13 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("smartSort");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -906,7 +917,13 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("smartSort");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1182,7 +1199,13 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("smartSort");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1404,7 +1427,11 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1461,7 +1488,11 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(12, slice.length());
+#else
     EXPECT_EQ(11, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1488,7 +1519,12 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    EXPECT_TRUE(slice.hasKey("smartSort"));
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -4540,5 +4576,44 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
   std::set<irs::field_id> expected{1, 4};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+
+TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":false,
+      "includeAllFields":true,
+      "fields" : {},
+      "smartSort": ["bm25(@doc) desc"]
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  EXPECT_FALSE(meta._smartSort.empty());
+  EXPECT_EQ(1, meta._smartSort.buckets().size());
+  {
+    VPackBuilder builder;
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, true));
+    builder.close();
+    auto sort = builder.slice().get("smartSort");
+    EXPECT_TRUE(sort.isArray());
+    EXPECT_EQ(1, sort.length());
+  }
+  {
+    VPackBuilder builder;
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, false));
+    builder.close();
+    auto sort = builder.slice().get("smartSort");
+    EXPECT_TRUE(sort.isNone());
+  }
 }
 #endif

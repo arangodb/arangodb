@@ -661,7 +661,7 @@ bool IResearchLinkMeta::operator==(
   }
 
 #ifdef USE_ENTERPRISE
-  if (_pkCache != other._pkCache || _sortCache != other._sortCache) {
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache || _smartSort != other._smartSort) {
     return false;
   }
 #endif
@@ -742,6 +742,19 @@ bool IResearchLinkMeta::init(
         return false;
       }
       _pkCache = field.getBool();
+    }
+  }
+  {
+    auto const field = slice.get(StaticStrings::kSmartSortField);
+    mask->_smartSort = !field.isNone();
+    std::string err;
+    if (mask->_smartSort) {
+      if (!_smartSort.fromVelocyPack(field, err)) {
+        errorField = StaticStrings::kSmartSortField;
+        errorField = StaticStrings::kSmartSortField;
+        absl::StrAppend(&errorField, ": ", err);
+        return false;
+      }
     }
   }
 #endif
@@ -975,6 +988,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
        (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
     builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
   }
+  if (writeAnalyzerDefinition && (!mask || mask ->_smartSort) &&
+    (!ignoreEqual || _smartSort != ignoreEqual->_smartSort)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::kSmartSortField);
+    if (!_smartSort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
 #endif
 
   if (writeAnalyzerDefinition && (!mask || mask->_version)) {
@@ -1020,6 +1041,9 @@ size_t IResearchLinkMeta::memory() const noexcept {
   size += _collectionName.size();
   size += sizeof(_version);
   size += FieldMeta::memory();
+#ifdef USE_ENTERPRISE
+  size += _smartSort.memory();
+#endif
 
   return size;
 }

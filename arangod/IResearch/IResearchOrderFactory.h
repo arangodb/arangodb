@@ -63,7 +63,7 @@ aql::Variable const* refFromScorer(aql::AstNode const& node);
 // if 'scorer' != nullptr then also append build iresearch scorer
 // there.
 bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
-            QueryContext const& ctx);
+            QueryContext const& ctx, std::string* scorer_name = nullptr);
 
 // Determine if the 'node' can be converted into an iresearch scorer
 // if 'scorer' != nullptr then also append build iresearch comparer

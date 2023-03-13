@@ -47,6 +47,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 #ifdef USE_ENTERPRISE
       _sortCache(mask),
       _pkCache(mask),
+      _smartSort(mask),
 #endif
       _primarySortCompression(mask) {
 }
@@ -78,6 +79,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
+  _smartSort = other._smartSort;
 #endif
   IResearchDataStoreMeta::storeFull(other);
 }
@@ -92,6 +94,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
+  _smartSort = std::move(other._smartSort);
 #endif
   IResearchDataStoreMeta::storeFull(std::move(other));
 }
@@ -108,7 +111,7 @@ bool IResearchViewMeta::operator==(
     return false;
   }
 #ifdef USE_ENTERPRISE
-  if (_sortCache != other._sortCache || _pkCache != other._pkCache) {
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache || _smartSort != other._smartSort) {
     return false;
   }
 #endif
@@ -225,6 +228,24 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       _pkCache = defaults._pkCache;
     }
   }
+  {
+    auto const field = slice.get(StaticStrings::kSmartSortField);
+    mask->_smartSort = !field.isNone();
+    if (mask->_smartSort) {
+      std::string error;
+      if (!_smartSort.fromVelocyPack(field, error)) {
+        errorField = StaticStrings::kSmartSortField;
+        errorField += " ";
+        errorField += error;
+        return false;
+      }
+    } else {
+      _smartSort = defaults._smartSort;
+    }
+    // Do not bother copy ctor for smart sort. Defaults anyway should 
+    // be empty
+    TRI_ASSERT(mask->_smartSort || defaults._smartSort.empty());
+  }
 #endif
   return true;
 }
@@ -277,6 +298,17 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
        (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
     builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
   }
+
+  
+  if ((!mask || mask->_smartSort) &&
+      (!ignoreEqual || _smartSort != ignoreEqual->_smartSort)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::kSmartSortField);
+    if (!_smartSort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
 #endif
   return true;
 }

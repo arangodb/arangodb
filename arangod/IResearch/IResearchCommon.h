@@ -187,6 +187,10 @@ struct StaticStrings {
   // enables caching for primary key column
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
+#ifdef USE_ENTERPRISE 
+  static constexpr std::string_view kSmartSortField{"smartSort"};
+#endif
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        time in Ms between running consolidations
