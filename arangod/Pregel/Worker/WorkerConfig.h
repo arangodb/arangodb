@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
+#include "Basics/StaticStrings.h"
 
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 
@@ -45,7 +47,7 @@ class Worker;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
-class WorkerConfig {
+class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   template<typename V, typename E, typename M>
   friend class Worker;
 

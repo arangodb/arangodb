@@ -42,7 +42,7 @@ struct ReadWriteWorkerContext : public WorkerContext {
 };
 
 ReadWrite::ReadWrite(VPackSlice const& userParams)
-    : SimpleAlgorithm("readwrite", userParams) {}
+    : SimpleAlgorithm(userParams) {}
 
 struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   ReadWriteGraphFormat(std::string sourceFieldName, std::string resultFieldName)
@@ -54,7 +54,8 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId, VPackSlice document,
-                      V& targetPtr, uint64_t& /*vertexIdRange*/) override {
+                      V& targetPtr,
+                      uint64_t& /*vertexIdRange*/) const override {
     auto value = document.get(sourceFieldName);
     if (value.isNone()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -79,8 +80,8 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   }
 };
 
-GraphFormat<V, E>* ReadWrite::inputFormat() const {
-  return new ReadWriteGraphFormat(_sourceField, _resultField);
+std::shared_ptr<GraphFormat<V, E> const> ReadWrite::inputFormat() const {
+  return std::make_shared<ReadWriteGraphFormat>(_sourceField, _resultField);
 }
 
 struct ReadWriteComputation : public VertexComputation<V, E, V> {
@@ -97,7 +98,7 @@ struct ReadWriteComputation : public VertexComputation<V, E, V> {
 };
 
 VertexComputation<V, E, V>* ReadWrite::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new ReadWriteComputation();
 }
 
@@ -107,7 +108,10 @@ WorkerContext* ReadWrite::workerContext(VPackSlice userParams) const {
 
 struct ReadWriteMasterContext : public MasterContext {
   size_t maxGss;
-  explicit ReadWriteMasterContext(VPackSlice userParams) {
+  explicit ReadWriteMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators, VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
     auto value = userParams.get(Utils::maxGSS);
     if (not value.isNone()) {
       maxGss = value.getInt();
@@ -117,8 +121,18 @@ struct ReadWriteMasterContext : public MasterContext {
   bool postGlobalSuperstep() override { return globalSuperstep() <= maxGss; };
 };
 
-MasterContext* ReadWrite::masterContext(VPackSlice userParams) const {
-  return new ReadWriteMasterContext(userParams);
+[[nodiscard]] auto ReadWrite::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ReadWriteMasterContext(0, 0, std::move(aggregators), userParams);
+}
+[[nodiscard]] auto ReadWrite::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ReadWriteMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* ReadWrite::aggregator(std::string const& name) const {

@@ -32,12 +32,19 @@ namespace pregel {
 namespace algos {
 
 /// https://github.com/Rofti/DMID
+
+struct DMIDType {
+  using Vertex = DMIDValue;
+  using Edge = float;
+  using Message = DMIDMessage;
+};
+
 struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   unsigned _maxCommunities = 1;
 
  public:
   explicit DMID(VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {
+      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(userParams) {
     arangodb::velocypack::Slice val = userParams.get("maxCommunities");
     if (val.isInteger()) {
       _maxCommunities = (unsigned)std::min(
@@ -45,13 +52,25 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
     }
   }
 
-  GraphFormat<DMIDValue, float>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "DMID";
+  };
+
+  std::shared_ptr<GraphFormat<DMIDValue, float> const> inputFormat()
+      const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;
 
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };

@@ -172,6 +172,37 @@ TEST_F(VPackSaveInspectorTest, store_map) {
   EXPECT_EQ(m.unordered["5"], obj["5"].getInt());
 }
 
+TEST_F(VPackSaveInspectorTest, store_set) {
+  static_assert(
+      inspection::detail::HasInspectOverload<Set, VPackSaveInspector>::value);
+
+  Set s{.set = {{1}, {2}, {3}}, .unordered = {4, 5}};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  auto list = slice["set"];
+  ASSERT_TRUE(list.isArray());
+  ASSERT_EQ(3u, list.length());
+
+  auto s2 = std::set<int>();
+  s2.insert(static_cast<int>(list[0]["i"].getInt()));
+  s2.insert(static_cast<int>(list[1]["i"].getInt()));
+  s2.insert(static_cast<int>(list[2]["i"].getInt()));
+
+  ASSERT_EQ(s2, std::set<int>({1, 2, 3}));
+
+  list = slice["unordered"];
+  ASSERT_TRUE(list.isArray());
+  ASSERT_EQ(2u, list.length());
+
+  auto us = std::unordered_set<int>();
+  us.insert(static_cast<int>(list[0].getInt()));
+  us.insert(static_cast<int>(list[1].getInt()));
+  ASSERT_EQ(us, s.unordered);
+}
+
 TEST_F(VPackSaveInspectorTest, store_tuples) {
   static_assert(
       inspection::detail::HasInspectOverload<Tuple, VPackSaveInspector>::value);

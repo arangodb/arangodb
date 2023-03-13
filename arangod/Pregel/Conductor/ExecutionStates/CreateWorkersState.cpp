@@ -1,4 +1,4 @@
-#include "CreateWorkers.h"
+#include "CreateWorkersState.h"
 
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 
@@ -6,7 +6,7 @@ using namespace arangodb;
 using namespace arangodb::pregel::conductor;
 
 CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
-  conductor._timing.total.start();
+  conductor.timing.total.start();
 }
 
 auto CreateWorkers::messages()
@@ -18,7 +18,7 @@ auto CreateWorkers::messages()
     servers.emplace_back(server);
     sentServers.emplace(server);
   }
-  conductor._status = ConductorStatus::forWorkers(servers);
+  conductor.status = ConductorStatus::forWorkers(servers);
 
   return workerSpecifications;
 }
@@ -36,7 +36,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     // TODO return error state (GORDO-1553)
     return std::nullopt;
   }
-  conductor._workers.emplace_back(sender);
+  conductor.workers.emplace(sender);
   respondedServers.emplace(sender.server);
   responseCount++;
 
@@ -51,17 +51,17 @@ auto CreateWorkers::_workerSpecifications() const
   auto createWorkers =
       std::unordered_map<ServerID, worker::message::CreateNewWorker>{};
   for (auto const& [server, vertexShards] :
-       conductor._lookupInfo->getServerMapVertices()) {
-    auto edgeShards = conductor._lookupInfo->getServerMapEdges().at(server);
+       conductor.lookupInfo->getServerMapVertices()) {
+    auto edgeShards = conductor.lookupInfo->getServerMapEdges().at(server);
     createWorkers.emplace(
         server, worker::message::CreateNewWorker{
-                    .executionSpecifications = conductor._specifications,
+                    .executionSpecifications = conductor.specifications,
                     .collectionSpecifications = CollectionSpecifications{
                         .vertexShards = std::move(vertexShards),
                         .edgeShards = std::move(edgeShards),
                         .collectionPlanIds =
-                            conductor._lookupInfo->getCollectionPlanIdMapAll(),
-                        .allShards = conductor._lookupInfo->getAllShards()}});
+                            conductor.lookupInfo->getCollectionPlanIdMapAll(),
+                        .allShards = conductor.lookupInfo->getAllShards()}});
   }
   return createWorkers;
 }

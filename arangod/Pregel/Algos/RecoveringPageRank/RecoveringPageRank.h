@@ -30,15 +30,34 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct RecoveringPageRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   explicit RecoveringPageRank(arangodb::velocypack::Slice params)
-      : SimpleAlgorithm("pagerank", params) {}
+      : SimpleAlgorithm(params) {}
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "pagerank";
+  };
 
-  GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_resultField, 0);
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
+
+  std::shared_ptr<GraphFormat<float, float> const> inputFormat()
+      const override {
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             0.0f);
   }
 
   MessageFormat<float>* messageFormat() const override {
@@ -50,9 +69,9 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   }
 
   VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<float, float, float>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos

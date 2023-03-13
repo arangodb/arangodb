@@ -105,6 +105,19 @@ struct IsMapLike<T, std::void_t<decltype(std::declval<T>().begin() !=
     : std::true_type {};
 
 template<class T, class = void>
+struct IsSetLike : std::false_type {};
+
+template<class T>
+struct IsSetLike<
+    T,
+    std::void_t<decltype(std::declval<T>().begin() != std::declval<T>().end()),
+                decltype(++std::declval<T>().begin()),
+                decltype(*std::declval<T>().begin()), typename T::key_type,
+                decltype(std::declval<T>().insert(
+                    std::declval<typename T::key_type>()))>> : std::true_type {
+};
+
+template<class T, class = void>
 struct IsTuple
     : std::conditional_t<std::is_array_v<T>, std::true_type, std::false_type> {
 };
@@ -149,8 +162,8 @@ constexpr inline bool HasAccessSpecialization() {
 template<class T, class Inspector>
 constexpr inline bool IsInspectable() {
   return IsBuiltinType<T>() || HasInspectOverload<T, Inspector>::value ||
-         IsListLike<T>::value || IsMapLike<T>::value || IsTuple<T>::value ||
-         HasAccessSpecialization<T>();
+         IsListLike<T>::value || IsSetLike<T>::value || IsMapLike<T>::value ||
+         IsTuple<T>::value || HasAccessSpecialization<T>();
 }
 
 template<class T>

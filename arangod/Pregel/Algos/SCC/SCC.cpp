@@ -24,6 +24,7 @@
 #include "SCC.h"
 #include <atomic>
 #include <climits>
+#include <memory>
 #include <utility>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -151,7 +152,7 @@ struct SCCComputation
 }  // namespace
 
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-SCC::createComputation(WorkerConfig const* config) const {
+SCC::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new SCCComputation();
 }
 
@@ -168,7 +169,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
                       arangodb::velocypack::Slice document, SCCValue& senders,
-                      uint64_t& vertexIdRange) override {
+                      uint64_t& vertexIdRange) const override {
     senders.vertexID = vertexIdRange++;
   }
 
@@ -185,12 +186,15 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
 }  // namespace
 
-GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
-  return new SCCGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<SCCValue, int8_t> const> SCC::inputFormat() const {
+  return std::make_shared<SCCGraphFormat>(_resultField);
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() = default;  // TODO use _threshold
+  SCCMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                   std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
@@ -236,8 +240,18 @@ struct SCCMasterContext : public MasterContext {
   };
 };
 
-MasterContext* SCC::masterContext(VPackSlice userParams) const {
-  return new SCCMasterContext();
+[[nodiscard]] auto SCC::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new SCCMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto SCC::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<SCCMasterContext>(vertexCount, edgeCount,
+                                            std::move(aggregators));
 }
 
 IAggregator* SCC::aggregator(std::string const& name) const {
