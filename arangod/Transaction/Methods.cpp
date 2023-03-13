@@ -2647,13 +2647,13 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     auto operation =
         replication2::replicated_state::document::ReplicatedOperation::
             buildTruncateOperation(state()->id(), trxColl->collectionName());
-    // Should finish immediately
-    auto replicationRes =
-        leaderState
-            ->replicateOperation(
-                std::move(operation),
-                replication2::replicated_state::document::ReplicationOptions{})
-            .get();
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(operation),
+        replication2::replicated_state::document::ReplicationOptions{});
+    TRI_ASSERT(replicationFut.isReady());
+    auto replicationRes = replicationFut.get();
     return OperationResult{replicationRes.result(), options};
   }
 
@@ -3143,12 +3143,17 @@ Future<Result> Methods::replicateOperations(
             operation, state()->id(), rtc.collectionName(),
             replicationData.sharedSlice());
     // Should finish immediately
-    auto replicationRes =
+    auto replicationFut =
         leaderState
             ->replicateOperation(
                 std::move(replicatedOp),
-                replication2::replicated_state::document::ReplicationOptions{})
-            .get();
+                replication2::replicated_state::document::ReplicationOptions{});
+
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    TRI_ASSERT(replicationFut.isReady());
+
+    auto replicationRes = replicationFut.get();
     if (replicationRes.fail()) {
       return replicationRes.result();
     }

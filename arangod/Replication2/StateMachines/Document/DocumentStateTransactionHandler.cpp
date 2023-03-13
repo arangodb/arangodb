@@ -107,7 +107,7 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 void DocumentStateTransactionHandler::setTrx(
     TransactionId tid, std::shared_ptr<IDocumentStateTransaction> trx) {
   auto [_, isInserted] = _transactions.emplace(tid, std::move(trx));
-  TRI_ASSERT(isInserted) << "Transaction " << tid << " already exists";
+  ADB_PROD_ASSERT(isInserted) << "Transaction " << tid << " already exists";
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
@@ -151,13 +151,12 @@ auto DocumentStateTransactionHandler::applyOp(
   auto trx = getTrx(op.tid);
   ADB_PROD_ASSERT(trx != nullptr);
 
-  auto res = Result{};
-  using T = std::decay_t<decltype(op)>;
-  if constexpr (std::is_same_v<T, ReplicatedOperation::Commit>) {
-    res = trx->commit();
-  } else if constexpr (std::is_same_v<T, ReplicatedOperation::Abort>) {
-    res = trx->abort();
-  }
+  auto res = std::invoke(
+      overload{
+          [&](ReplicatedOperation::Commit const&) { return trx->commit(); },
+          [&](ReplicatedOperation::Abort const&) { return trx->abort(); }
+      }, op);
+
   removeTransaction(op.tid);
   return res;
 }

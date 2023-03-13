@@ -160,6 +160,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
     auto abortAllResFut =
         self->replicateOperation(abortAll, ReplicationOptions{});
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
     TRI_ASSERT(abortAllResFut.isReady());
     auto abortAllRes = abortAllResFut.get();
     if (abortAllRes.fail()) {
