@@ -144,9 +144,40 @@ is returned if the body does not contain a valid JSON representation
 of an array of documents. The response body contains
 an error document in this case.
 
+@RESTRETURNCODE{403}
+is returned if the specified write concern for the collection cannot be
+fulfilled, the error code in this case is 1429. This can happen if less
+than the number of specified replicas for a shard are currently in sync
+are online. For example, if the write concern is 2 and the replication
+factor is 3, then the write concern is not fulfilled, if two replicas
+are offline.
+
+Note that this return code is configurable, 403 happens, if the
+configuration option `--cluster.failed-write-concern-error-code` is
+set to 403 (which is currently the default for backwards compatibility
+reasons, since this is the legacy behavior). The other possibility is
+503 (see below).
+
 @RESTRETURNCODE{404}
 is returned if the collection specified by `collection` is unknown.
 The response body contains an error document in this case.
+
+@RESTRETURNCODE{503}
+is returned, if the system is temporarily not available. This can be a
+system overload or temporary failure. In this case it makes sense to
+retry the request later.
+
+In particular, 503 can be returned if the specified write concern for
+the collection cannot be fulfilled, in this case the error code is
+1429. This can happen if less than the number of specified replicas for
+a shard are currently in sync are online. For example, if the write
+concern is 2 and the replication factor is 3, then the write concern is
+not fulfilled, if two replicas are offline.
+
+Note that this return code is configurable, 503 happens, if the
+configuration option `--cluster.failed-write-concern-error-code` is
+set to 503 (which is currently not the default for backwards compatibility
+reasons). The other possibility is 403 (see above).
 
 @EXAMPLES
 
