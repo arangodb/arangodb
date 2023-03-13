@@ -22,19 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Worker/Handler.h"
+#include <unordered_map>
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/State.h"
+#include "State.h"
 
-namespace arangodb::pregel::worker {
+namespace arangodb::pregel::conductor {
 
-template<typename V, typename E, typename M>
-struct WorkerActor {
-  using State = WorkerState<V, E, M>;
-  using Message = message::WorkerMessages;
-  template<typename Runtime>
-  using Handler = WorkerHandler<V, E, M, Runtime>;
-  static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
+struct ConductorState;
+
+// TODO implement in GORDO-1548
+struct Computing : ExecutionState {
+  Computing(ConductorState& conductor,
+            std::unique_ptr<MasterContext> masterContext);
+  ~Computing();
+  auto name() const -> std::string override { return "computing"; };
+  auto message() -> worker::message::WorkerMessages override;
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
+  ConductorState& conductor;
+  std::unique_ptr<MasterContext> masterContext;
 };
 
-}  // namespace arangodb::pregel::worker
+}  // namespace arangodb::pregel::conductor

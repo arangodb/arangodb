@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,19 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Worker/Handler.h"
-#include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/State.h"
+#include "Basics/ErrorCode.h"
 
-namespace arangodb::pregel::worker {
+namespace arangodb {
 
-template<typename V, typename E, typename M>
-struct WorkerActor {
-  using State = WorkerState<V, E, M>;
-  using Message = message::WorkerMessages;
-  template<typename Runtime>
-  using Handler = WorkerHandler<V, E, M, Runtime>;
-  static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
+class LogicalCollection;
+class ClusterInfo;
+
+namespace pregel {
+
+class WorkerConfig;
+
+struct ResolveShard {
+  static ErrorCode resolve(ClusterInfo& ci, WorkerConfig const* config,
+                           std::string const& collectionName,
+                           std::string const& shardKey,
+                           std::string_view vertexKey,
+                           std::string& responsibleShard);
 };
 
-}  // namespace arangodb::pregel::worker
+}  // namespace pregel
+
+}  // namespace arangodb

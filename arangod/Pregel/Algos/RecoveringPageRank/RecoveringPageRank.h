@@ -30,12 +30,29 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct RecoveringPageRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   explicit RecoveringPageRank(arangodb::velocypack::Slice params)
-      : SimpleAlgorithm("pagerank", params) {}
+      : SimpleAlgorithm(params) {}
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "pagerank";
+  };
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
