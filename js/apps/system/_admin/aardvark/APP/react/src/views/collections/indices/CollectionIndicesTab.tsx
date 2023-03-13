@@ -12,7 +12,8 @@ export const CollectionIndicesTab = () => {
     collectionName,
     onOpenForm,
     onCloseForm,
-    isFormOpen
+    isFormOpen,
+    readOnly
   } = useCollectionIndicesContext();
   useSetupNav({ collectionName });
   const { indices } = useFetchIndices({ collectionName });
@@ -38,6 +39,7 @@ export const CollectionIndicesTab = () => {
           colorScheme="green"
           variant="ghost"
           leftIcon={<AddIcon />}
+          isDisabled={readOnly}
         >
           Add Index
         </Button>

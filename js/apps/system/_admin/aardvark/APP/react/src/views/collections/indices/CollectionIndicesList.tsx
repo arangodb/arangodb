@@ -83,7 +83,7 @@ export const CollectionIndicesList = ({
                 <Td>{JSON.stringify(indexRow.fields)}</Td>
                 <Td>{indexRow.name}</Td>
                 <Td>
-                  <ActionCell indexRow={indexRow} />
+                  <IndexActionCell indexRow={indexRow} />
                 </Td>
               </Tr>
             );
@@ -93,7 +93,7 @@ export const CollectionIndicesList = ({
     </TableContainer>
   );
 };
-const ActionCell = ({ indexRow }: { indexRow: IndexType }) => {
+const IndexActionCell = ({ indexRow }: { indexRow: IndexType }) => {
   const { type } = indexRow;
   if (type === "primary" || type === "edge") {
     return (
@@ -102,14 +102,16 @@ const ActionCell = ({ indexRow }: { indexRow: IndexType }) => {
       </Box>
     );
   }
-  return <DeleteButton indexRow={indexRow} />;
+  return <DeleteIndexButton indexRow={indexRow} />;
 };
 
-const DeleteButton = ({ indexRow }: { indexRow: IndexType }) => {
+const DeleteIndexButton = ({ indexRow }: { indexRow: IndexType }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
+  const { readOnly } = useCollectionIndicesContext();
   return (
     <Box display="flex" justifyContent="center">
       <IconButton
+        isDisabled={readOnly}
         colorScheme="red"
         variant="ghost"
         size="sm"

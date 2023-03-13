@@ -1,0 +1,63 @@
+import { ArangojsResponse } from "arangojs/lib/request";
+import useSWR from "swr";
+import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+
+interface EngineResponse extends ArangojsResponse {
+  body: {
+    supports: {
+      indexes: string[];
+      aliases?: {
+        indexes: { [key: string]: string };
+      };
+    };
+  };
+}
+
+export const useSupportedIndexTypes = () => {
+  const { data, ...rest } = useSWR<EngineResponse>(`/engine`, path => {
+    return (getApiRouteForCurrentDB().get(path) as any) as Promise<
+      EngineResponse
+    >;
+  });
+
+  const indexes = data?.body.supports.indexes;
+  const aliases = data?.body.supports.aliases?.indexes || {};
+  const supported = indexes?.filter(indexType => {
+    return !aliases.hasOwnProperty(indexType);
+  });
+  const options = indexTypeOptions.filter(option =>
+    supported?.includes(option.value)
+  );
+  return { supported, indexTypeOptions: options, ...rest };
+};
+
+const indexTypeOptions = [
+  {
+    label: "Persistent Index",
+    value: "persistent"
+  },
+  {
+    label: "Geo Index",
+    value: "geo"
+  },
+  {
+    label: "Hash Index",
+    value: "hash"
+  },
+  {
+    label: "Fulltext Index",
+    value: "fulltext"
+  },
+  {
+    label: "Skiplist Index",
+    value: "skiplist"
+  },
+  {
+    label: "TTL Index",
+    value: "ttl"
+  },
+  {
+    label: "ZKD Index (EXPERIMENTAL)",
+    value: "zkd"
+  }
+];

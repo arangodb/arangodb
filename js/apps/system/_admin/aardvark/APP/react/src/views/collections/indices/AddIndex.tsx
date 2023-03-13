@@ -1,32 +1,13 @@
 import { Box, Stack } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../components/select/SingleSelect";
+import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
+import { PersistentIndexForm } from "./PersistentIndexForm";
 
-const indexTypeOptions = [
-  {
-    label: "Persistent Index",
-    value: "persistent"
-  },
-  {
-    label: "Geo Index",
-    value: "geo"
-  },
-  {
-    label: "Fulltext Index",
-    value: "fulltext"
-  },
-  {
-    label: "TTL Index",
-    value: "ttl"
-  },
-  {
-    label: "ZKD Index (EXPERIMENTAL)",
-    value: "zdk"
-  }
-];
 export const AddIndex = ({ onClose }: { onClose: () => void }) => {
   const [indexType, setIndexType] = useState("");
+  const { indexTypeOptions } = useCollectionIndicesContext();
   return (
     <Box width="100%" padding="4">
       <Stack padding="4" background="white" spacing="4">
@@ -54,6 +35,9 @@ const IndexTypeForm = ({
 }) => {
   if (type === "fulltext") {
     return <FulltextIndexForm onClose={onClose} />;
+  }
+  if (type === "persistent") {
+    return <PersistentIndexForm onClose={onClose} />;
   }
   return <></>;
 };
