@@ -51,12 +51,9 @@ class WorkerContext {
     return (T*)_readAggregators->getAggregatedValue(name);
   }
 
-  AggregatorHandler& getWriteAggregators() { return *_writeAggregators; }
-
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}
   virtual void postGlobalSuperstep(uint64_t gss) {}
-  virtual void postApplication() {}
 
  public:
   WorkerContext()

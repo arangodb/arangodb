@@ -97,17 +97,25 @@ namespace arangodb::pregel::algos {
  *    - send the new colors to all successors outside our own collection.
  */
 
+struct ColorPropagationType {
+  using Vertex = ColorPropagationValue;
+  using Edge = int8_t;
+  using Message = ColorPropagationMessageValue;
+};
+
 struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
   explicit ColorPropagation(VPackSlice userParams)
-      : Algorithm<ColorPropagationValue, int8_t, ColorPropagationMessageValue>(
-            "colorpropagation"),
-        _numColors{getNumColors(userParams)},
+      : _numColors{getNumColors(userParams)},
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
         _equivalenceClassFieldName(getEquivalenceClassFieldName(userParams)),
         _maxGss{getMaxGss(userParams)} {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "colorpropagation";
+  };
 
   [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
       const override;
@@ -122,6 +130,15 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 

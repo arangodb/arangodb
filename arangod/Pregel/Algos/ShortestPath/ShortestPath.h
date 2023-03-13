@@ -27,6 +27,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct ShortestPathType {
+  using Vertex = int64_t;
+  using Edge = int64_t;
+  using Message = int64_t;
+};
+
 struct SPGraphFormat;
 
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
@@ -37,6 +43,10 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
 
  public:
   explicit ShortestPathAlgorithm(VPackSlice userParams);
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "ShortestPath";
+  };
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override {
@@ -51,5 +61,14 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
       std::shared_ptr<WorkerConfig const> config) const override;
   IAggregator* aggregator(std::string const& name) const override;
   std::set<std::string> initialActiveSet() override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos
