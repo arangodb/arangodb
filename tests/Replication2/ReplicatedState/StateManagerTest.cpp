@@ -307,18 +307,6 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   }
 }
 
-// TODO follower tests
-//  - either:
-//    - start with a valid snapshot, then
-//      - send a truncating append entries (invalidating the snapshot)
-//    - or start with an invalid snapshot
-//    - or start with a valid snapshot and don't truncate it
-//  - in either order:
-//    - send a (successful) append entries
-//    - finish acquiring the snapshot (if one was started)
-//  At every point, check that the stateMachine is not available until the
-//  very end.
-
 TEST_F(StateManagerTest,
        get_follower_state_machine_early_with_snapshot_without_truncate) {
   // Overview:
