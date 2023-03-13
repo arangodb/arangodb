@@ -40,6 +40,7 @@
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
 
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/IScheduler.h"

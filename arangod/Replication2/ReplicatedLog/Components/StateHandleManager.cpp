@@ -68,7 +68,6 @@ void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
   guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
 }
 
-auto StateHandleManager::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
-  return guardedData.getLockedGuard()->stateHandle->getQuickStatus();
+auto StateHandleManager::getInternalStatus() const -> replicated_state::Status {
+  return guardedData.getLockedGuard()->stateHandle->getInternalStatus();
 }

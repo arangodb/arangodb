@@ -75,11 +75,6 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
     // append entries request that was sent after leadership was established,
     // which we don't necessarily need.
     return follower.commit->getCommitIndex() > LogIndex{0};
-    // Check whether a snapshot is available.
-    // auto const snapshotAvailable =
-    //     follower.snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
-
-    // return leaderConnectionEstablished and snapshotAvailable;
   }
 
   auto checkSnapshotState() const noexcept
@@ -158,14 +153,61 @@ auto FollowerManager::getStatus() const -> LogStatus {
           snapshot->checkSnapshotState() == SnapshotState::AVAILABLE,
   }};
 }
+namespace {
+auto getLocalState(LogIndex const& commitIndex, bool const snapshotAvailable,
+                   replicated_state::Status const& stateStatus)
+    -> LocalStateMachineStatus {
+  return std::visit(
+      overload{
+          [&](replicated_state::Status::Follower const& status) {
+            using namespace replicated_state;
+            return std::visit(
+                overload{
+                    [](Status::Follower::Resigned const&) {
+                      return LocalStateMachineStatus::kUnconfigured;
+                    },
+                    [&](Status::Follower::Constructed const&) {
+                      bool const leaderConnectionEstablished =
+                          commitIndex > LogIndex{0};
+                      if (!leaderConnectionEstablished) {
+                        return LocalStateMachineStatus::kConnecting;
+                      } else if (!snapshotAvailable) {
+                        return LocalStateMachineStatus::kAcquiringSnapshot;
+                      } else {
+                        return LocalStateMachineStatus::kOperational;
+                      }
+                    },
+                },
+                status.value);
+          },
+          [](replicated_state::Status::Unconfigured const&) {
+            return LocalStateMachineStatus::kUnconfigured;
+          },
+          [](replicated_state::Status::Leader const&) {
+            return LocalStateMachineStatus::kUnconfigured;
+          },
+      },
+      stateStatus.value);
+}
+}  // namespace
 
 auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
-  auto commitIndex = commit->getCommitIndex();
-  auto log = storage->getCommittedLog();
-  auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
+  // Please note that it is important that the commit index is checked before
+  // the snapshot. Otherwise the local state could be reported operational,
+  // while it isn't (and never was during this term).
+  auto const commitIndex = commit->getCommitIndex();
+  auto const log = storage->getCommittedLog();
+  auto const [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
+  bool const snapshotAvailable =
+      snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
+  auto const stateStatus = stateHandle->getInternalStatus();
+
+  auto const localState =
+      getLocalState(commitIndex, snapshotAvailable, stateStatus);
+
   return QuickLogStatus{
       .role = ParticipantRole::kFollower,
-      .localState = stateHandle->getQuickStatus(),
+      .localState = localState,
       .term = termInfo->term,
       .local =
           LogStatistics{
@@ -175,8 +217,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
               .releaseIndex = releaseIndex,
           },
       .leadershipEstablished = commitIndex.value > 0,
-      .snapshotAvailable =
-          snapshot->checkSnapshotState() == SnapshotState::AVAILABLE,
+      .snapshotAvailable = snapshotAvailable,
   };
 }
 

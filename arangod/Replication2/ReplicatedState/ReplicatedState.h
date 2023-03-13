@@ -197,8 +197,7 @@ struct LeaderStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getQuickStatus() const
-      -> replicated_log::LocalStateMachineStatus;
+  [[nodiscard]] auto getInternalStatus() const -> Status::Leader;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedLeaderState<S>>;
@@ -241,8 +240,7 @@ struct FollowerStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getQuickStatus() const
-      -> replicated_log::LocalStateMachineStatus;
+  [[nodiscard]] auto getInternalStatus() const -> Status::Follower;
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedFollowerState<S>>;
@@ -292,8 +290,7 @@ struct UnconfiguredStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getQuickStatus() const
-      -> replicated_log::LocalStateMachineStatus;
+  [[nodiscard]] auto getInternalStatus() const -> Status::Unconfigured;
 
  private:
   LoggerContext const _loggerContext;
@@ -336,12 +333,9 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods)
       override;
 
-  void dropEntries() override;
-
   auto resign() && -> std::unique_ptr<CoreType>;
 
-  [[nodiscard]] auto getQuickStatus() const
-      -> replicated_log::LocalStateMachineStatus override;
+  [[nodiscard]] auto getInternalStatus() const -> Status override;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
   // the stunts for covariance here.

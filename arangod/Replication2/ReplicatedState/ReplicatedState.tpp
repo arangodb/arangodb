@@ -184,17 +184,12 @@ void ReplicatedStateManager<S>::becomeFollower(
 }
 
 template<typename S>
-void ReplicatedStateManager<S>::dropEntries() {
-  ADB_PROD_ASSERT(false);
-}
-
-template<typename S>
-auto ReplicatedStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto ReplicatedStateManager<S>::getInternalStatus() const -> Status {
   auto manager = _guarded.getLockedGuard()->_currentManager;
-  auto status = std::visit(
-      overload{[](auto const& manager) { return manager->getQuickStatus(); }},
-      manager);
+  auto status = std::visit(overload{[](auto const& manager) -> Status {
+                             return {manager->getInternalStatus()};
+                           }},
+                           manager);
 
   return status;
 }
@@ -423,17 +418,16 @@ auto LeaderStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto LeaderStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto LeaderStateManager<S>::getInternalStatus() const -> Status::Leader {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->_leaderState == NULL) {
+  if (guard->_leaderState == nullptr) {
     // we have already resigned
-    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+    return {Status::Leader::Resigned{}};
+  } else if (guard->_recoveryCompleted) {
+    return {Status::Leader::Operational{}};
+  } else {
+    return {Status::Leader::InRecovery{}};
   }
-  if (guard->_recoveryCompleted) {
-    return replicated_log::LocalStateMachineStatus::kOperational;
-  }
-  return replicated_log::LocalStateMachineStatus::kRecovery;
 }
 
 template<typename S>
@@ -455,7 +449,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
-  _leaderState = NULL;
+  _leaderState = nullptr;
   return {std::move(core), std::move(methods)};
 }
 
@@ -796,24 +790,14 @@ auto FollowerStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto FollowerStateManager<S>::getInternalStatus() const -> Status::Follower {
   auto guard = _guardedData.getLockedGuard();
   // TODO maybe this logic should be moved into the replicated log instead, it
   //      seems to contain all the information.
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
-    // already resigned
-    return replicated_log::LocalStateMachineStatus::kUnconfigured;
-  } else if (not guard->_stream->methods().leaderConnectionEstablished()) {
-    // Note that if we neither have a snapshot nor the connection established,
-    // we deliberately prefer to return kConnecting rather than
-    // kAcquiringSnapshot.
-    return replicated_log::LocalStateMachineStatus::kConnecting;
-  } else if (guard->_stream->methods().checkSnapshotState() ==
-             replicated_log::SnapshotState::MISSING) {
-    return replicated_log::LocalStateMachineStatus::kAcquiringSnapshot;
+    return {Status::Follower::Resigned{}};
   } else {
-    return replicated_log::LocalStateMachineStatus::kOperational;
+    return {Status::Follower::Constructed{}};
   }
 }
 
@@ -873,9 +857,9 @@ auto UnconfiguredStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto UnconfiguredStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
-  return replicated_log::LocalStateMachineStatus::kUnconfigured;
+auto UnconfiguredStateManager<S>::getInternalStatus() const
+    -> Status::Unconfigured {
+  return {};
 }
 
 template<typename S>
@@ -1039,11 +1023,10 @@ auto ReplicatedState<S>::createStateHandle(
     void updateCommitIndex(LogIndex index) override {
       return manager.updateCommitIndex(index);
     }
-    void dropEntries() override { return manager.dropEntries(); }
+
     // MSVC chokes on trailing return type notation here
-    [[nodiscard]] replicated_log::LocalStateMachineStatus getQuickStatus()
-        const override {
-      return manager.getQuickStatus();
+    [[nodiscard]] Status getInternalStatus() const override {
+      return manager.getInternalStatus();
     }
 
     ReplicatedStateManager<S>& manager;
