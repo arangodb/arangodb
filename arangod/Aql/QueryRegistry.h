@@ -28,6 +28,7 @@
 #include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Promise.h"
 
 #include <unordered_map>
 
@@ -96,8 +97,11 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase,
-                                             QueryId id, ErrorCode errorCode);
+  void destroyQuery(std::string const& vocbase, QueryId id,
+                    ErrorCode errorCode);
+
+  futures::Future<std::shared_ptr<ClusterQuery>> finishQuery(
+      std::string const& vocbase, QueryId id, ErrorCode errorCode);
 
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
@@ -141,6 +145,9 @@ class QueryRegistry {
     ~QueryInfo();
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
+
+    bool _finished = false;
+    futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
 
     const double _timeToLive;  // in seconds
     double _expires;           // UNIX UTC timestamp of expiration
