@@ -67,6 +67,7 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/IScheduler.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -149,10 +150,9 @@ auto replicated_log::LogLeader::instantiateFollowers(
 }
 
 namespace {
-auto delayedFuture(replicated_log::IScheduler* sched,
+auto delayedFuture(IScheduler* sched,
                    std::chrono::steady_clock::duration duration)
-    -> std::pair<replicated_log::IScheduler::WorkItemHandle,
-                 futures::Future<futures::Unit>> {
+    -> std::pair<IScheduler::WorkItemHandle, futures::Future<futures::Unit>> {
   if (sched) {
     auto p = futures::Promise<futures::Unit>();
     auto f = p.getFuture();
@@ -176,7 +176,7 @@ auto delayedFuture(replicated_log::IScheduler* sched,
 }  // namespace
 
 void replicated_log::LogLeader::handleResolvedPromiseSet(
-    replicated_log::IScheduler* sched, ResolvedPromiseSet resolvedPromises,
+    IScheduler* sched, ResolvedPromiseSet resolvedPromises,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   auto const commitTp = InMemoryLogEntry::clock::now();
 

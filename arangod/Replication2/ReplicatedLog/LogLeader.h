@@ -48,6 +48,7 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
+#include "Replication2/IScheduler.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -387,7 +388,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics, IScheduler*);
   static void handleResolvedPromiseSet(
-      replicated_log::IScheduler* sched, ResolvedPromiseSet set,
+      IScheduler* sched, ResolvedPromiseSet set,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 };
 

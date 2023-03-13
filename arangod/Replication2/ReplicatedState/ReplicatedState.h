@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/WaitForQueue.h"
 #include "Replication2/Streams/Streams.h"
+#include "Replication2/IScheduler.h"
 
 #include "Basics/Guarded.h"
 
@@ -93,7 +94,6 @@ struct ReplicatedStateBase {
 
   virtual void drop(
       std::shared_ptr<replicated_log::IReplicatedStateHandle>) && = 0;
-  [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
@@ -194,7 +194,6 @@ struct LeaderStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -232,13 +231,13 @@ struct FollowerStateManager
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
-      std::shared_ptr<StreamImpl> stream);
+      std::shared_ptr<StreamImpl> stream,
+      std::shared_ptr<IScheduler> scheduler);
   void acquireSnapshot(ServerID leader, LogIndex index, std::uint64_t);
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -249,15 +248,18 @@ struct FollowerStateManager
  private:
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
+  std::shared_ptr<IScheduler> const _scheduler;
   void handleApplyEntriesResult(Result);
   auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
   void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
     [[nodiscard]] auto updateCommitIndex(
-        LogIndex index, std::shared_ptr<ReplicatedStateMetrics> const& metrics)
+        LogIndex index, std::shared_ptr<ReplicatedStateMetrics> const& metrics,
+        std::shared_ptr<IScheduler> const& scheduler)
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto maybeScheduleApplyEntries(
-        std::shared_ptr<ReplicatedStateMetrics> const& metrics)
+        std::shared_ptr<ReplicatedStateMetrics> const& metrics,
+        std::shared_ptr<IScheduler> const& scheduler)
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
@@ -268,8 +270,6 @@ struct FollowerStateManager
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::shared_ptr<StreamImpl> _stream;
-    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
-        _logMethods{};
     WaitForQueue _waitQueue{};
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
@@ -289,7 +289,6 @@ struct UnconfiguredStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
-  [[nodiscard]] auto getStatus() const -> StateStatus;
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus;
 
@@ -316,7 +315,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   ReplicatedStateManager(LoggerContext loggerContext,
                          std::shared_ptr<ReplicatedStateMetrics> metrics,
                          std::unique_ptr<CoreType> logCore,
-                         std::shared_ptr<Factory> factory);
+                         std::shared_ptr<Factory> factory,
+                         std::shared_ptr<IScheduler> scheduler);
 
   void acquireSnapshot(ServerID leader, LogIndex index,
                        std::uint64_t version) override;
@@ -339,7 +339,6 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   [[nodiscard]] auto getQuickStatus() const
       -> replicated_log::LocalStateMachineStatus override;
-  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus>;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
   // the stunts for covariance here.
@@ -352,6 +351,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<Factory> const _factory;
+  std::shared_ptr<IScheduler> const _scheduler;
 
   struct GuardedData {
     template<typename... Args>
@@ -380,7 +380,8 @@ struct ReplicatedState final
                            std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
-                           std::shared_ptr<ReplicatedStateMetrics>);
+                           std::shared_ptr<ReplicatedStateMetrics> metrics,
+                           std::shared_ptr<IScheduler> scheduler);
   ~ReplicatedState() override;
 
   void drop(std::shared_ptr<replicated_log::IReplicatedStateHandle>) &&
@@ -395,8 +396,6 @@ struct ReplicatedState final
    * machine is present. (i.e. this server is not a leader)
    */
   [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
-
-  [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   auto createStateHandle(
       TRI_vocbase_t& vocbase,
@@ -423,6 +422,7 @@ struct ReplicatedState final
   LoggerContext const loggerContext;
   DatabaseID const database;
   std::shared_ptr<ReplicatedStateMetrics> const metrics;
+  std::shared_ptr<IScheduler> const scheduler;
 };
 
 }  // namespace replicated_state

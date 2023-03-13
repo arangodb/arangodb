@@ -120,6 +120,10 @@ auto arangodb::replication2::replicated_state::operator<<(
   return out << builder.slice().toJson();
 }
 
+auto replicated_state::to_string(FollowerStatus const& status) -> std::string {
+  return velocypack::serialize(status).toJson();
+}
+
 auto FollowerInternalStateStringTransformer::toSerialized(
     FollowerInternalState source, std::string& target) const
     -> inspection::Status {
