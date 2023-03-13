@@ -1,7 +1,8 @@
 devel
 -----
 
-* Ran automated migrations on all .scss files to remove deprecated division opearator usage.
+* Ran automated migrations on all .scss files to remove deprecated division
+  operator usage.
 
 * Auto-flush RocksDB WAL files and in-memory column family data if the number
   of live WAL files exceeds a certain threshold. This is to make sure that
