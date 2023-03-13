@@ -2165,9 +2165,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
-        (!groupVariables.empty() && !collectNode->hasOutVariable() &&
-         collectNode->getOptions().canUseMethod(
-             CollectOptions::CollectMethod::HASH));
+        (!groupVariables.empty() && collectNode->getOptions().canUseMethod(
+                                        CollectOptions::CollectMethod::HASH));
 
     if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
       if (collectNode->getOptions().shouldUseMethod(

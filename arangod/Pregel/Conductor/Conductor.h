@@ -71,7 +71,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   const DatabaseGuard _vocbaseGuard;
   ExecutionSpecifications _specifications;
 
-  std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   std::unique_ptr<IAlgorithm> _algorithm;
 

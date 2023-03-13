@@ -45,7 +45,7 @@ class Worker;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
-class WorkerConfig {
+class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   template<typename V, typename E, typename M>
   friend class Worker;
 
@@ -133,7 +133,7 @@ class WorkerConfig {
       ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
-  VertexID documentIdToPregel(std::string const& documentID) const;
+  VertexID documentIdToPregel(std::string_view documentID) const;
 
  private:
   ExecutionNumber _executionNumber{};

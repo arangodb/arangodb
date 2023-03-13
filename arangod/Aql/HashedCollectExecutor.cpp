@@ -40,6 +40,9 @@
 
 #include <utility>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -47,13 +50,18 @@ static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-    RegisterId collectRegister, std::vector<std::string> aggregateTypes,
+    RegisterId collectRegister, RegisterId expressionRegister,
+    Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
+      _expressionRegister(expressionRegister),
+      _inputVariables(std::move(inputVariables)),
+      _expressionVariable(expressionVariable),
       _vpackOptions(opts),
       _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
@@ -112,7 +120,7 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _allGroups(1024, AqlValueGroupHash(_infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getVPackOptions())),
       _isInitialized(false),
-      _aggregatorFactories() {
+      _memoryUsageForInto(0) {
   _aggregatorFactories = createAggregatorFactories(_infos);
   _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 };
@@ -132,7 +140,10 @@ void HashedCollectExecutor::destroyAllGroupsAqlValues() {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
+  memoryUsage += _memoryUsageForInto;
+
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
+  _memoryUsageForInto = 0;
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
@@ -142,7 +153,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
   if (!_infos.getAggregateTypes().empty()) {
     // reduce the aggregates
-    ValueAggregators* aggregateValues = currentGroupIt->second.get();
+    ValueAggregators* aggregateValues = currentGroupIt->second.first.get();
 
     // apply the aggregators for the group
     TRI_ASSERT(aggregateValues != nullptr &&
@@ -179,8 +190,8 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 
   if (!_infos.getAggregatedRegisters().empty()) {
-    TRI_ASSERT(_currentGroup->second != nullptr);
-    auto& aggregators = *_currentGroup->second;
+    TRI_ASSERT(_currentGroup->second.first != nullptr);
+    auto& aggregators = *_currentGroup->second.first;
     TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size();
@@ -190,6 +201,19 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
                            _lastInitializedInputRow, guard);
     }
+  }
+  if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    auto& builder = *_currentGroup->second.second;
+    builder.close();
+
+    // steals the Builder's Buffer
+    AqlValue val(std::move(*builder.steal()));
+    AqlValueGuard guard{val, true};
+    // destroys the Builder
+    _currentGroup->second.second.reset();
+
+    output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
+                         guard);
   }
 }
 
@@ -316,6 +340,12 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   auto it = _allGroups.find(_nextGroup);
   if (it != _allGroups.end()) {
     // group already exists
+    if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+      // fill INTO register
+      TRI_ASSERT(it->second.second != nullptr);
+      auto& builder = *(it->second.second);
+      addToIntoRegister(input, builder);
+    }
     return it;
   }
 
@@ -355,9 +385,19 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForGroup(_nextGroup, true));
 
+  std::unique_ptr<velocypack::Builder> builder;
+
+  if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    // fill INTO register
+    builder = std::make_unique<velocypack::Builder>();
+    builder->openArray();
+    addToIntoRegister(input, *builder);
+  }
+
   // note: aggregateValues may be a nullptr!
-  auto [result, emplaced] =
-      _allGroups.try_emplace(std::move(_nextGroup), std::move(aggregateValues));
+  auto [result, emplaced] = _allGroups.try_emplace(
+      std::move(_nextGroup),
+      std::make_pair(std::move(aggregateValues), std::move(builder)));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
@@ -398,6 +438,36 @@ HashedCollectExecutor::Infos const& HashedCollectExecutor::infos()
   return _infos;
 }
 
+void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
+                                              velocypack::Builder& builder) {
+  size_t previousSize = builder.buffer()->size();
+
+  if (_infos.getExpressionVariable() != nullptr) {
+    // get result of INTO expression variable
+    input.getValue(_infos.getExpressionRegister())
+        .toVelocyPack(_infos.getVPackOptions(), builder,
+                      /*resolveExternals*/ false,
+                      /*allowUnindexed*/ false);
+  } else {
+    // copy variables / keep variables into result register
+    builder.openObject();
+    for (auto const& pair : _infos.getInputVariables()) {
+      builder.add(VPackValue(pair.first));
+      input.getValue(pair.second)
+          .toVelocyPack(_infos.getVPackOptions(), builder,
+                        /*resolveExternals*/ false,
+                        /*allowUnindexed*/ false);
+    }
+    builder.close();
+  }
+
+  // track memory usage of what we just added
+  size_t memoryUsage = builder.buffer()->size() - previousSize;
+  _infos.getResourceMonitor().increaseMemoryUsage(memoryUsage);
+
+  _memoryUsageForInto += memoryUsage;
+}
+
 size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
                                                   bool withBase) const {
   // track memory usage of unordered_map entry (somewhat)
@@ -406,6 +476,11 @@ size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
     memoryUsage += 4 * sizeof(void*) + /* generic overhead */
                    group.values.size() * sizeof(AqlValue) +
                    _aggregatorFactories.size() * sizeof(void*);
+
+    if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+      // add overhead per per-group Builder object (allocated on the heap)
+      memoryUsage += sizeof(void*) + sizeof(velocypack::Builder);
+    }
   }
 
   for (auto const& it : group.values) {

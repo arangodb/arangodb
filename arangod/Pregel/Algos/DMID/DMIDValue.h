@@ -36,9 +36,12 @@ struct DMIDValue {
 
 template<typename Inspector>
 auto inspect(Inspector& f, DMIDValue& v) {
-  return f.object(v).fields(f.field("weightedInDegree", v.weightedInDegree),
-                            f.field("membershipDegree", v.membershipDegree),
-                            f.field("disCol", v.disCol));
+  return f.object(v).fields(
+      f.field("weightedInDegree", v.weightedInDegree)
+      //                           ,f.field("membershipDegree",
+      //                           v.membershipDegree), f.field("disCol",
+      //                           v.disCol)
+  );
 }
 
 }  // namespace arangodb::pregel::algos

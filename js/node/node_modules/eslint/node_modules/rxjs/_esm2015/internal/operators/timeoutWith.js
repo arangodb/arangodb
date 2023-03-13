@@ -1,7 +1,6 @@
 import { async } from '../scheduler/async';
 import { isDate } from '../util/isDate';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function timeoutWith(due, withObservable, scheduler = async) {
     return (source) => {
         let absoluteTimeout = isDate(due);
@@ -20,20 +19,19 @@ class TimeoutWithOperator {
         return source.subscribe(new TimeoutWithSubscriber(subscriber, this.absoluteTimeout, this.waitFor, this.withObservable, this.scheduler));
     }
 }
-class TimeoutWithSubscriber extends OuterSubscriber {
+class TimeoutWithSubscriber extends SimpleOuterSubscriber {
     constructor(destination, absoluteTimeout, waitFor, withObservable, scheduler) {
         super(destination);
         this.absoluteTimeout = absoluteTimeout;
         this.waitFor = waitFor;
         this.withObservable = withObservable;
         this.scheduler = scheduler;
-        this.action = null;
         this.scheduleTimeout();
     }
     static dispatchTimeout(subscriber) {
         const { withObservable } = subscriber;
         subscriber._unsubscribeAndRecycle();
-        subscriber.add(subscribeToResult(subscriber, withObservable));
+        subscriber.add(innerSubscribe(withObservable, new SimpleInnerSubscriber(subscriber)));
     }
     scheduleTimeout() {
         const { action } = this;
@@ -51,7 +49,7 @@ class TimeoutWithSubscriber extends OuterSubscriber {
         super._next(value);
     }
     _unsubscribe() {
-        this.action = null;
+        this.action = undefined;
         this.scheduler = null;
         this.withObservable = null;
     }
