@@ -66,7 +66,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       try {
         // TODO GORDO-1546
         // add graph store to state
-        // this->state->graphStore->loadShards(&_config, statusUpdateCallback,
+        // this->state->graphStore->loadShards(_config, statusUpdateCallback,
         // []() {});
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
@@ -93,6 +93,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
+  // ----- computing -----
+
   auto operator()(message::RunGlobalSuperStep message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("0f658", INFO, Logger::PREGEL)
@@ -102,6 +104,38 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // finish
     return std::move(this->state);
   }
+
+  auto operator()(message::PregelMessage message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} received message {}", this->self, message);
+    if (message.gss != this->state->config->globalSuperstep() &&
+        message.gss != this->state->config->globalSuperstep() + 1) {
+      LOG_TOPIC("da39a", ERR, Logger::PREGEL)
+          << "Expected: " << this->state->config->globalSuperstep()
+          << " Got: " << message.gss;
+      this->template dispatch<conductor::message::ConductorMessages>(
+          this->state->conductor,
+          ResultT<conductor::message::GlobalSuperStepFinished>::error(
+              TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
+    }
+    // queue message if read and write cache are not swapped yet, otherwise you
+    // will loose this message
+    if (message.gss == this->state->config->globalSuperstep() + 1 ||
+        // if config->gss == 0 and _computationStarted == false: read and write
+        // cache are not swapped yet, config->gss is currently 0 only due to its
+        // initialization
+        (this->state->config->globalSuperstep() == 0 &&
+         !this->state->computationStarted)) {
+      this->state->messagesForNextGss.push_back(message);
+    } else {
+      this->state->writeCache->parseMessages(message);
+    }
+
+    return std::move(this->state);
+  }
+
+  // ------ end computing ----
 
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {

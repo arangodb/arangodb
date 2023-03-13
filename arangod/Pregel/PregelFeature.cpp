@@ -1051,8 +1051,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     }
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
-    auto message = inspection::deserializeWithErrorT<PregelMessage>(
-        velocypack::SharedSlice({}, body));
+    auto message =
+        inspection::deserializeWithErrorT<worker::message::PregelMessage>(
+            velocypack::SharedSlice({}, body));
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,

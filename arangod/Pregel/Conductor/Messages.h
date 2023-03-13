@@ -42,11 +42,13 @@ template<typename Inspector>
 auto inspect(Inspector& f, ConductorStart& x) {
   return f.object(x).fields();
 }
+
 struct WorkerCreated {};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {
   return f.object(x).fields();
 }
+
 struct GraphLoaded {
   ExecutionNumber executionNumber;
   uint64_t vertexCount;
@@ -58,15 +60,11 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
-struct StatusUpdate {
-  ExecutionNumber executionNumber;
-  Status status;
-};
+
+struct GlobalSuperStepFinished {};
 template<typename Inspector>
-auto inspect(Inspector& f, StatusUpdate& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("status", x.status));
+auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
+  return f.object(x).fields();
 }
 
 struct ResultCreated {
@@ -77,12 +75,23 @@ auto inspect(Inspector& f, ResultCreated& x) {
   return f.object(x).fields(f.field("results", x.results));
 }
 
+struct StatusUpdate {
+  ExecutionNumber executionNumber;
+  Status status;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusUpdate& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("status", x.status));
+}
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
-                   StatusUpdate, ResultCreated> {
+                   ResultT<GlobalSuperStepFinished>, ResultCreated,
+                   StatusUpdate> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
-                     ResultT<GraphLoaded>, StatusUpdate,
-                     ResultCreated>::variant;
+                     ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
+                     ResultCreated, StatusUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -90,6 +99,8 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ConductorStart>("Start"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"),
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
+      arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
+          "GlobalSuperStepFinished"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }

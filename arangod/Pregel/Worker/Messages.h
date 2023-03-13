@@ -102,10 +102,25 @@ auto inspect(Inspector& f, ProduceResults& x) {
   return f.object(x).fields(f.field("withID", x.withID));
 }
 
-struct WorkerMessages : std::variant<WorkerStart, CreateWorker, LoadGraph,
-                                     RunGlobalSuperStep, ProduceResults> {
+struct PregelMessage {
+  ExecutionNumber executionNumber;
+  uint64_t gss;
+  PregelShard shard;
+  VPackBuilder messages;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelMessage& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("globalSuperStep", x.gss), f.field("shard", x.shard),
+      f.field("messages", x.messages));
+}
+
+struct WorkerMessages
+    : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
+                   PregelMessage, ProduceResults> {
   using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                     ProduceResults>::variant;
+                     PregelMessage, ProduceResults>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
@@ -114,6 +129,7 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<CreateWorker>("CreateWorker"),
       arangodb::inspection::type<LoadGraph>("LoadGraph"),
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
+      arangodb::inspection::type<PregelMessage>("PregelMessage"),
       arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 
@@ -197,21 +213,6 @@ auto inspect(Inspector& f, PregelResults& x) {
   return f.object(x).fields(f.field("results", x.results));
 }
 
-struct PregelMessage {
-  ExecutionNumber executionNumber;
-  uint64_t gss;
-  PregelShard shard;
-  VPackBuilder messages;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, PregelMessage& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss), f.field("shard", x.shard),
-      f.field("messages", x.messages));
-}
-
 }  // namespace arangodb::pregel
 
 template<>
@@ -231,6 +232,9 @@ struct fmt::formatter<arangodb::pregel::worker::message::LoadGraph>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::RunGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::PregelMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::WorkerMessages>

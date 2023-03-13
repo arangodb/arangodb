@@ -265,7 +265,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
+void Worker<V, E, M>::receivedMessages(
+    worker::message::PregelMessage const& data) {
   if (data.gss == _config->_globalSuperstep) {
     {  // make sure the pointer is not changed while
       // parsing messages

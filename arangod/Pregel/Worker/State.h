@@ -64,7 +64,7 @@ struct WorkerState {
         auto incoming = std::make_unique<CombiningInCache<M>>(
             nullptr, messageFormat.get(), messageCombiner.get());
         inCaches.push_back(std::move(incoming));
-        outCaches.push_back(new CombiningOutCache<M>(
+        outCaches.push_back(std::make_unique<CombiningOutCache<M>>(
             config, messageFormat.get(), messageCombiner.get()));
       }
     } else {
@@ -74,7 +74,8 @@ struct WorkerState {
         auto incoming =
             std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
         inCaches.push_back(std::move(incoming));
-        outCaches.push_back(new ArrayOutCache<M>(config, messageFormat.get()));
+        outCaches.push_back(
+            std::make_unique<ArrayOutCache<M>>(config, messageFormat.get()));
       }
     }
   }
@@ -98,7 +99,11 @@ struct WorkerState {
 
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
-  std::vector<PregelMessage> messagesForNextGss;
+  std::vector<worker::message::PregelMessage> messagesForNextGss;
+  // distinguishes config.globalSuperStep being initialized to 0 and
+  // config.globalSuperStep being explicitely set to 0 when the first superstep
+  // starts: needed to process incoming messages in its dedicated gss
+  bool computationStarted = false;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
