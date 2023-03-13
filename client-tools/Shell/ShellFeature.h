@@ -82,6 +82,7 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _scriptParameters;
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
+  bool _sendToEndpoint{true};
 };
 
 }  // namespace arangodb

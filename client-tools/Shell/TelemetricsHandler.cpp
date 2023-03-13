@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/Exceptions.h"
-#include "Basics/EncodingUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
@@ -45,9 +44,13 @@
 
 #include "V8/v8-deadline.h"
 
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
 namespace arangodb {
-TelemetricsHandler::TelemetricsHandler(ArangoshServer& server)
-    : _server(server), _printTelemetrics(false) {}
+TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
+                                       bool sendToEndpoint)
+    : _server(server), _sendToEndpoint(sendToEndpoint) {}
 
 TelemetricsHandler::~TelemetricsHandler() {
   if (_telemetricsThread.joinable()) {
@@ -92,7 +95,7 @@ Result TelemetricsHandler::checkHttpResponse(
 }
 
 void TelemetricsHandler::fetchTelemetricsFromServer() {
-  std::string const url = "/_admin/server-info";
+  std::string const url = "/_admin/telemetrics";
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 1;
   while (!_server.isStopping()) {
@@ -127,10 +130,10 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
       "ssl://europe-west3-telemetrics-project.cloudfunctions.net:443";
   std::string const relative = "/telemetrics-cf-3";
   Result result = {TRI_ERROR_NO_ERROR};
-  uint32_t timeoutInSecs = 1;
+  uint32_t timeoutInSecs = 10;
   uint64_t sslProtocol = TLS_V12;
 
-  std::string const body = _telemetricsResult.slice().toJson();
+  std::string const body = _telemetricsResult.toJson();
   auto bodyData = body.data();
   size_t bodySize = body.size();
 
@@ -140,22 +143,7 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
     std::unordered_map<std::string, std::string> headers;
     headers.emplace(StaticStrings::ContentTypeHeader,
                     StaticStrings::MimeTypeJson);
-
-    basics::StringBuffer resultDeflated;
-
-    ErrorCode deflateRes = encoding::gzipDeflate(
-        reinterpret_cast<uint8_t const*>(bodyData), bodySize, resultDeflated);
-
-    if (deflateRes == TRI_ERROR_NO_ERROR) {
-      headers.emplace(StaticStrings::ContentEncoding,
-                      StaticStrings::EncodingDeflate);
-      headers.emplace(StaticStrings::ContentLength,
-                      std::to_string(resultDeflated.size()));
-    } else {
-      // send the body instead
-      //  headers.emplace(StaticStrings::ContentLength,
-      //                std::to_string(body.size()));
-    }
+    headers.emplace(StaticStrings::ContentLength, std::to_string(body.size()));
 
     ClientFeature& client =
         _server.getFeature<HttpEndpointProvider, ClientFeature>();
@@ -166,7 +154,7 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
     TRI_ASSERT(newEndpoint.get() != nullptr);
     std::unique_ptr<httpclient::GeneralClientConnection> connection(
         httpclient::GeneralClientConnection::factory(
-            client.getCommFeaturePhase(), newEndpoint, 30, 30, 3, sslProtocol));
+            client.getCommFeaturePhase(), newEndpoint, 30, 60, 3, sslProtocol));
 
     TRI_ASSERT(connection != nullptr);
 
@@ -180,30 +168,25 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
     lk.unlock();
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(_httpClient->request(
-        rest::RequestType::POST, relative, resultDeflated.data(),
-        resultDeflated.size(), headers));
+        rest::RequestType::POST, relative, bodyData, bodySize, headers));
     lk.lock();
     result = this->checkHttpResponse(response, false);
     if (result.ok()) {
       break;
-    } else {
-      // just for debugging for now
-      LOG_DEVEL << "ERROR " << result.errorMessage();
     }
-
     _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
                            [this] { return _server.isStopping(); });
-    timeoutInSecs *= 2;
-    timeoutInSecs = std::min<uint32_t>(100, timeoutInSecs);
-    LOG_DEVEL << "increased timeout to " << timeoutInSecs;
+    timeoutInSecs *= 3;
+    timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
     connection.reset(nullptr);
+    _httpClient.reset(nullptr);
   }
 }
 
 void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
   // as this is for printing the telemetrics result in the tests, we send the
-  // telemetrics object if the request returned ok and the error if not to parse
-  // the error in the tests
+  // telemetrics object if the request returned ok and the error if not to
+  // parse the error in the tests
   std::unique_lock lk(_mtx);
   if (_telemetricsResponse.ok()) {
     builder.add(_telemetricsResult.slice());
@@ -221,9 +204,14 @@ void TelemetricsHandler::arrangeTelemetrics() {
     this->fetchTelemetricsFromServer();
 
     if (_telemetricsResponse.ok()) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      if (_sendToEndpoint) {
+        this->sendTelemetricsToEndpoint();
+      }
+#else
       this->sendTelemetricsToEndpoint();
+#endif
     }
-
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
         << "Exception on handling telemetrics " << err.what();

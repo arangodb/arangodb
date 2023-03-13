@@ -3,7 +3,7 @@ devel
 
 * APM-294: Added telemetrics API that gathers info about a deployment for 
   the receiving side to generate statistics. It's accessible via 
-  `_admin/server-info`. It's on by default and can be turned off with
+  `_admin/telemetrics`. It's on by default and can be turned off with
   server startup parameter `--server.send-telemetrics` set to false. 
   If set to true, every time the user logs into arangosh, one request is
   sent to gather telemetrics from `_admin/server-info`. Only users that are 

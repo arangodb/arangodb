@@ -30,11 +30,11 @@ namespace velocypack {
 class Builder;
 }
 
-class RestServerInfoHandler : public arangodb::RestBaseHandler {
+class RestTelemetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestServerInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestTelemetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  char const* name() const override final { return "RestServerInfoHandler"; }
+  char const* name() const override final { return "RestTelemetricsHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 };

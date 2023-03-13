@@ -84,6 +84,11 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  options->addOption("--telemetrics.send-to-endpoint",
+                     "Send telemetrics to endpoint",
+                     new BooleanParameter(&_sendToEndpoint));
+#endif
 }
 
 void ShellFeature::validateOptions(
@@ -207,7 +212,12 @@ void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
 }
 
 void ShellFeature::startTelemetrics() {
-  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server());
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  _telemetricsHandler =
+      std::make_unique<TelemetricsHandler>(server(), _sendToEndpoint);
+#else
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
+#endif
   _telemetricsHandler->runTelemetrics();
 }
 

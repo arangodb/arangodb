@@ -21,7 +21,7 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServerInfoHandler.h"
+#include "RestTelemetricsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -36,12 +36,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestServerInfoHandler::RestServerInfoHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+RestTelemetricsHandler::RestTelemetricsHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestServerInfoHandler::execute() {
+RestStatus RestTelemetricsHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   if (!gs.isTelemetricsEnabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,

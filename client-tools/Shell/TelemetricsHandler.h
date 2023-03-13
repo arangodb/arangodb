@@ -41,17 +41,13 @@ class SimpleHttpResult;
 
 class TelemetricsHandler {
  public:
-  TelemetricsHandler(ArangoshServer& server);
+  TelemetricsHandler(ArangoshServer& server, bool sendToEndpoint);
 
   ~TelemetricsHandler();
 
   void runTelemetrics();
 
   void beginShutdown();
-
-  void setPrintTelemetrics(bool printTemeletrics) {
-    _printTelemetrics = printTemeletrics;
-  }
 
   void getTelemetricsInfo(VPackBuilder& builder);
 
@@ -61,6 +57,7 @@ class TelemetricsHandler {
       bool storeResult);
   void fetchTelemetricsFromServer();
   void sendTelemetricsToEndpoint();
+  void sendTelemetricsToEndpointCompressed();
   void arrangeTelemetrics();
 
   ArangoshServer& _server;
@@ -71,7 +68,7 @@ class TelemetricsHandler {
   Result _telemetricsResponse;
   Result _response;
   VPackBuilder _telemetricsResult;
-  bool _printTelemetrics;
+  bool _sendToEndpoint;
 };
 
 }  // namespace arangodb
