@@ -398,8 +398,7 @@ const VisJsGraph = () => {
   }
 
   const setStartnode = (nodeId) => {
-    const newUrlParameters = urlParameters;
-    newUrlParameters.nodeStart = nodeId;
+    const newUrlParameters = {...urlParameters, nodeStart: nodeId};
     setUrlParameters(newUrlParameters);
 
     const paramsObj = {
@@ -418,7 +417,7 @@ const VisJsGraph = () => {
       edgeEditable: `${urlParameters.edgeEditable}`,
       nodeLabelByCollection: `${urlParameters.nodeLabelByCollection}`,
       edgeLabelByCollection: `${urlParameters.edgeLabelByCollection}`,
-      nodeStart: `${urlParameters.nodeStart}`,
+      nodeStart: nodeId,
       barnesHutOptimize: `${urlParameters.barnesHutOptimize}`
     };
 
