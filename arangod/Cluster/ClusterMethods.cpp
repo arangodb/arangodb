@@ -1570,9 +1570,6 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     network::RequestOptions reqOpts;
     reqOpts.database = trx.vocbase().name();
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-    TRI_IF_FAILURE("CoordinatorInsert::TimeoutLow") {
-      reqOpts.timeout = network::Timeout(10.0);
-    }
     reqOpts.retryNotFound = true;
     reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
     reqOpts

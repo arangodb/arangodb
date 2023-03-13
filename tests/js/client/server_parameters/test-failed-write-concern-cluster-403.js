@@ -64,7 +64,6 @@ function testSuite() {
         arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
         arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
         reconnectRetry(coordinator, "_system", "root", "");
-        arango.PUT_RAW("/_admin/debug/failat/CoordinatorInsert::TimeoutLow", {});
 
         c.insert({Hallo:1});  // This drops the followers, but works
         let startTime = new Date();
@@ -75,18 +74,13 @@ function testSuite() {
         // With this error code the coordinator does not do a retry. Therefore,
         // we should not get a significant delay. The 5 seconds are enough to
         // keep the test stable (usually, the call returns after
-        // 3 milliseconds). Note that just in case we have used the failure
-        // point CoordinatorInsert::TimeoutLow which sets the timeout from
-        // the default of 900 down to 10 seconds, so if something changes
-        // and a retry happens, we do not time out the whole test, but
-        // rather run into this, more specific assertion here.
+        // 3 milliseconds).
         assertTrue(timeSpentMs < 5000);
       } finally {
         reconnectRetry(follower1, "_system", "root", "");
         arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
         arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
         reconnectRetry(coordinator, "_system", "root", "");
-        arango.DELETE_RAW("/_admin/debug/failat/CoordinatorInsert::TimeoutLow");
       }
     },
     

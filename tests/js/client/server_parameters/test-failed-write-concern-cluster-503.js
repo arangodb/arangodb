@@ -64,26 +64,22 @@ function testSuite() {
         arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
         arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
         reconnectRetry(coordinator, "_system", "root", "");
-        arango.PUT_RAW("/_admin/debug/failat/CoordinatorInsert::TimeoutLow", {});
 
         c.insert({Hallo:1});  // This drops the followers, but works
         let startTime = new Date();
         let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo:2});
         assertEqual(503, res.code);
         let timeSpentMs = new Date() - startTime;
-        // The failure point CoordinatorInsert::TimeoutLow we use sets the
-        // timeout to 10 seconds (as opposed to the default 900 seconds).
-        // This means that this call usually returns after about 9 seconds
-        // due to the exponential backoff we are using. Therefore the
-        // tolerance of 2 to 30 seconds should be good enough to make the
-        // test stable.
-        assertTrue(timeSpentMs > 2000 && timeSpentMs < 30000);
+        // With this error code the coordinator does not do a retry
+        // either. Therefore, we should not get a significant delay. The
+        // 5 seconds are enough to keep the test stable (usually, the
+        // call returns after 3 milliseconds).
+        assertTrue(timeSpentMs < 5000);
       } finally {
         reconnectRetry(follower1, "_system", "root", "");
         arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
         arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
         reconnectRetry(coordinator, "_system", "root", "");
-        arango.DELETE_RAW("/_admin/debug/failat/CoordinatorInsert::TimeoutLow");
       }
     },
     
