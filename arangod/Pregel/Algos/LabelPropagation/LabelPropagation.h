@@ -36,11 +36,21 @@ namespace arangodb::pregel::algos {
 /// most frequently. Tries to avoid osscilation, usually won't converge so
 /// specify a
 /// maximum superstep number.
+
+struct LabelPropagationType {
+  using Vertex = LPValue;
+  using Edge = int8_t;
+  using Message = uint64_t;
+};
+
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   explicit LabelPropagation(VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("labelpropagation",
-                                                   userParams) {}
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "labelpropagation";
+  };
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {
@@ -49,5 +59,14 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
 
   VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos
