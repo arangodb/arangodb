@@ -574,6 +574,9 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
 auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
     std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
+  // TODO for now only waitForSync=true is supported.
+  waitForSync = true;  // by setting this to true, the waitForSync flag is set
+                       // for all log entries, independent of the log config.
   if (this->_didResign) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
