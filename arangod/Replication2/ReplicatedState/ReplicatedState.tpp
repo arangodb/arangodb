@@ -818,7 +818,7 @@ auto FollowerStateManager<S>::getStateMachine() const
         //  b) knows the snapshot won't be invalidated in the current term.
         bool const followerEstablished = std::invoke([&] {
           auto methodsGuard = stream.methods();
-          return stream.isResigned() or
+          return methodsGuard.isResigned() or
                  (methodsGuard->leaderConnectionEstablished() and
                   methodsGuard->checkSnapshotState() ==
                       replicated_log::SnapshotState::AVAILABLE);

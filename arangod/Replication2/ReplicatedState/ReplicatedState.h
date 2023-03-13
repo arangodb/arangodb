@@ -145,6 +145,7 @@ struct StreamProxy : Interface<typename ReplicatedStateTraits<S>::EntryType> {
     auto operator->() noexcept -> ILogMethodsT* { return guard.get().get(); }
     auto operator*() noexcept -> ILogMethodsT& { return *guard.get().get(); }
     explicit MethodsGuard(Guard&& guard) : guard(std::move(guard)) {}
+    auto isResigned() const noexcept -> bool { return guard.get() == nullptr; }
 
    private:
     Guard guard;
