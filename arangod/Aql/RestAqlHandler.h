@@ -136,16 +136,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  // Guard that keeps the lock on the QueryContext to serialize
-  // concurrent snippet execution
-  struct QueryGuard {
-    explicit QueryGuard(aql::ExecutionEngine* engine);
-    ~QueryGuard();
-
-   private:
-    aql::ExecutionEngine* _engine = nullptr;
-  };
-
   aql::ExecutionEngine* _engine;
 };
 }  // namespace aql

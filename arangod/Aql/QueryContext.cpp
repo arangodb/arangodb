@@ -131,9 +131,9 @@ void QueryContext::addDataSource(  // track DataSource
 
 aql::Ast* QueryContext::ast() { return _ast.get(); }
 
-void QueryContext::lock() { _mutex.lock(); }
-
-void QueryContext::unlock() { _mutex.unlock(); }
+std::lock_guard<std::mutex> QueryContext::acquireLockGuard() {
+  return std::lock_guard(_mutex);
+}
 
 void QueryContext::enterV8Context() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,

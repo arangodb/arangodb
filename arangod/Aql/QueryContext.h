@@ -103,8 +103,9 @@ class QueryContext {
 
   aql::Ast* ast();
 
-  void lock();
-  void unlock();
+  /// @brief Acquire a lock_guard on the mutex to serialize concurrent snippet
+  /// execution
+  std::lock_guard<std::mutex> acquireLockGuard();
 
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);

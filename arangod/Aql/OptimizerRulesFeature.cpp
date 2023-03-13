@@ -84,7 +84,7 @@ state.)");
   options
       ->addObsoleteOption(
           "--query.parallelize-gather-writes",
-          "Whether to enable write parallelization for gather nodes.")
+          "Whether to enable write parallelization for gather nodes.", false)
       .setIntroducedIn(30600)
       .setLongDescription(
           "Starting with 3.11 almost all queries support parallelization of "
