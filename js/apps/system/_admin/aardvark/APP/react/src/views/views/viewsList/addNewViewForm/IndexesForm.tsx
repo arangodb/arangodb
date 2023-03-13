@@ -21,7 +21,8 @@ export const IndexesForm = () => {
             {values.indexes.map((value, index) => {
               return (
                 <CollectionIndexRow
-                  key={index}
+                  indexCount={values.indexes.length}
+                  key={`${value.collection}-${value.index}-${index}`}
                   value={value}
                   index={index}
                   collectionsOptions={collectionsOptions}
@@ -48,11 +49,13 @@ export const IndexesForm = () => {
 const CollectionIndexRow = ({
   value,
   index,
+  indexCount,
   collectionsOptions,
   remove
 }: {
   value: { collection: string; index: string };
   index: number;
+  indexCount: number;
   collectionsOptions: { value: string; label: string }[] | undefined;
   remove: <T>(index: number) => T | undefined;
 }) => {
@@ -62,6 +65,8 @@ const CollectionIndexRow = ({
   const indexesOptions = indexesList?.map(indexItem => {
     return { value: indexItem.name, label: indexItem.name };
   });
+  const isClearable = index === 0 && indexCount === 1;
+  const showDeleteButton = indexCount > 1;
   return (
     <Box
       display={"grid"}
@@ -78,6 +83,7 @@ const CollectionIndexRow = ({
         <SelectControl
           name={`indexes.${index}.collection`}
           selectProps={{
+            isClearable,
             options: collectionsOptions
           }}
         />
@@ -87,18 +93,21 @@ const CollectionIndexRow = ({
         <SelectControl
           name={`indexes.${index}.index`}
           selectProps={{
+            isClearable,
             options: indexesOptions
           }}
         />
       </Box>
-      {index > 0 ? (
+      {showDeleteButton ? (
         <IconButton
           size="sm"
           variant="ghost"
           colorScheme="red"
           aria-label="Remove field"
           icon={<CloseIcon />}
-          onClick={() => remove(index)}
+          onClick={() => {
+            remove(index);
+          }}
         />
       ) : null}
     </Box>
