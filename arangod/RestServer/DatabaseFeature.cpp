@@ -507,7 +507,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--database.io-heartbeat",
                   "perform IO heartbeat to test underlying volume",
                   new BooleanParameter(&_performIOHeartbeat))
-      .setIntroducedIn(30807);
+      .setIntroducedIn(30807)
+      .setIntroducedIn(30902);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
