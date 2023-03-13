@@ -30,38 +30,41 @@
 
 namespace arangodb::pregel::worker {
 
-template<typename Runtime>
-struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState> {
-  auto operator()(message::WorkerStart start) -> std::unique_ptr<WorkerState> {
+template<typename V, typename E, typename M, typename Runtime>
+struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  auto operator()(message::WorkerStart start)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
+    // TODO GORDO-1556
+    // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
     return std::move(this->state);
   }
 
   auto operator()(actor::message::UnknownMessage unknown)
-      -> std::unique_ptr<WorkerState> {
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
   auto operator()(actor::message::ActorNotFound notFound)
-      -> std::unique_ptr<WorkerState> {
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(actor::message::NetworkError notFound)
-      -> std::unique_ptr<WorkerState> {
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("1c3d9", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - network error {}", notFound.message);
     return std::move(this->state);
   }
 
-  auto operator()(auto&& rest) -> std::unique_ptr<WorkerState> {
+  auto operator()(auto&& rest) -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
         << "Worker Actor: Got unhandled message";
     LOG_TOPIC("f5bac", INFO, Logger::PREGEL) << fmt::format("{}", rest);
