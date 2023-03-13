@@ -378,7 +378,7 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     if (errorCode != TRI_ERROR_NO_ERROR &&
         errorCode != TRI_ERROR_SHUTTING_DOWN) {
       // insert a tombstone with a higher-than-query timeout
-      LOG_TOPIC("779f5", DEBUG, arangodb::Logger::AQL)
+      LOG_TOPIC("779f6", DEBUG, arangodb::Logger::AQL)
           << "inserting tombstone for query " << id << " into query registry";
       auto inserted =
           m->second
