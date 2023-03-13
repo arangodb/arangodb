@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Basics/application-exit.h"
 
 using namespace arangodb::replication2::replicated_state::document;
@@ -35,19 +36,24 @@ DocumentCore::DocumentCore(
     DocumentCoreParameters coreParameters,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
     LoggerContext loggerContext)
-    : loggerContext(std::move(loggerContext)),
+    : gid(std::move(gid)),
+      loggerContext(std::move(loggerContext)),
       _vocbase(vocbase),
-      _gid(std::move(gid)),
       _params(std::move(coreParameters)),
-      _shardHandler(handlersFactory->createShardHandler(_gid)) {}
-
-auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
+      _shardHandler(handlersFactory->createShardHandler(this->gid)),
+      _transactionHandler(handlersFactory->createTransactionHandler(
+          _vocbase, this->gid, _shardHandler)) {}
 
 void DocumentCore::drop() {
-  if (auto result = dropAllShards(); result.fail()) {
-    LOG_CTX("b7f0d", FATAL, this->loggerContext)
-        << "Failed to drop all shards for replicated state: " << result;
-    FATAL_ERROR_EXIT();
+  if (auto res = _transactionHandler->applyEntry(
+          ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+      res.fail()) {
+    LOG_CTX("f3b3c", ERR, loggerContext)
+        << "Failed to abort all ongoing transactions: " << res;
+  }
+  if (auto res = _shardHandler->dropAllShards(); res.fail()) {
+    LOG_CTX("f3b3d", ERR, loggerContext)
+        << "Failed to drop all shards: " << res;
   }
 }
 
@@ -57,67 +63,12 @@ auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
   return _vocbase;
 }
 
-auto DocumentCore::createShard(ShardID shardId, CollectionID collectionId,
-                               velocypack::SharedSlice properties) -> Result {
-  // TODO assertion should not fail, but it does
-  // TRI_ASSERT(!_shards.contains(shardId));
-
-  // TODO remove this unnecessary copy when api is better
-  auto propertiesCopy = std::make_shared<VPackBuilder>();
-  propertiesCopy->add(properties.slice());
-
-  auto result =
-      _shardHandler->createLocalShard(shardId, collectionId, propertiesCopy);
-  if (result.ok()) {
-    auto shardProperties = ShardProperties{collectionId, propertiesCopy};
-    _shards.emplace(std::move(shardId), std::move(shardProperties));
-  }
-  return result;
+auto DocumentCore::getTransactionHandler()
+    -> std::shared_ptr<IDocumentStateTransactionHandler> {
+  return _transactionHandler;
 }
 
-auto DocumentCore::dropShard(ShardID shardId, CollectionID collectionId)
-    -> Result {
-  if (!_shards.contains(shardId)) {
-    LOG_CTX("d335b", DEBUG, loggerContext) << fmt::format(
-        "Skipping dropping of shard {}, because it is already dropped.",
-        shardId);
-    return {};
-  }
-  auto result = _shardHandler->dropLocalShard(shardId, collectionId);
-  if (result.ok()) {
-    _shards.erase(shardId);
-  }
-  return result;
+auto DocumentCore::getShardHandler()
+    -> std::shared_ptr<IDocumentStateShardHandler> {
+  return _shardHandler;
 }
-
-auto DocumentCore::dropAllShards() -> Result {
-  for (auto it = _shards.begin(); it != _shards.end(); it = _shards.erase(it)) {
-    auto const& [shardId, shardProperties] = *it;
-    auto result =
-        _shardHandler->dropLocalShard(shardId, shardProperties.collectionId);
-    if (result.fail()) {
-      return Result{result.errorNumber(),
-                    fmt::format("Failed to drop shard {}: {}", shardId,
-                                result.errorMessage())};
-    }
-  }
-  return {};
-}
-
-auto DocumentCore::ensureShard(ShardID shardId, CollectionID collectionId,
-                               velocypack::SharedSlice properties) -> Result {
-  if (_shards.contains(shardId)) {
-    LOG_CTX("69bf5", DEBUG, loggerContext) << fmt::format(
-        "Skipping creation of shard {}, because it is already created.",
-        shardId);
-    return {};
-  }
-  return createShard(std::move(shardId), std::move(collectionId),
-                     std::move(properties));
-}
-
-auto DocumentCore::isShardAvailable(ShardID const& shardId) -> bool {
-  return _shards.contains(shardId);
-}
-
-auto DocumentCore::getShardMap() -> ShardMap const& { return _shards; }
