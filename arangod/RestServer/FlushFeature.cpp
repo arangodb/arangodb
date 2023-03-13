@@ -29,6 +29,8 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -38,10 +40,17 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+DECLARE_GAUGE(arangodb_flush_subscriptions, uint64_t,
+              "Number of active flush subscriptions");
+
 namespace arangodb {
 
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this}, _stopped(false) {
+    : ArangodFeature{server, *this},
+      _stopped(false),
+      _metricsFlushSubscriptions(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<StorageEngineFeature>();
@@ -92,6 +101,10 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
         itr = _flushSubscriptions.erase(itr);
         ++stale;
       } else {
+        LOG_TOPIC("5a4fb", TRACE, arangodb::Logger::FLUSH)
+            << "found flush subscription: " << entry->name() << ", tick "
+            << entry->tick();
+
         minTick = std::min(minTick, entry->tick());
         ++active;
         ++itr;
@@ -120,8 +133,10 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
       << "Flush tick released: '" << minTick << "'"
       << ", stale flush subscription(s) released: " << stale
-      << ", active flush subscription(s) released: " << active
+      << ", active flush subscription(s): " << active
       << ", initial engine tick: " << initialTick;
+
+  _metricsFlushSubscriptions.store(active, std::memory_order_relaxed);
 
   return std::tuple{active, stale, minTick};
 }

@@ -138,6 +138,8 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view kEngineName = "rocksdb";
+
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
@@ -363,6 +365,9 @@ class RocksDBEngine final : public StorageEngine {
                                std::string const& collection,
                                IndexId iid) override;
 
+  bool autoRefillIndexCaches() const override;
+  bool autoRefillIndexCachesOnFollowers() const override;
+
   void syncIndexCaches() override;
 
   /// @brief whether or not the database existed at startup. this function
@@ -488,10 +493,6 @@ class RocksDBEngine final : public StorageEngine {
   Result encryptInternalKeystore();
 #endif
 
- public:
-  static constexpr std::string_view kEngineName = "rocksdb";
-
- private:
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
@@ -668,7 +669,9 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _recoveryStartSequence = 0;
 #endif
 
+  metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
