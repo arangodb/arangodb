@@ -252,8 +252,11 @@ auto LogFollowerImpl::getParticipantId() const noexcept
 
 auto LogFollowerImpl::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
-  return guarded.getLockedGuard()->appendEntriesManager->appendEntries(
-      std::move(request));
+  LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION;
+  auto guard = guarded.getLockedGuard();
+  LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION << " "
+            << guard->loggerContext;
+  return guard->appendEntriesManager->appendEntries(std::move(request));
 }
 
 LogFollowerImpl::LogFollowerImpl(
