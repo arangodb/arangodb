@@ -132,7 +132,7 @@ jobs:
         type: string
       extraArgs:
         type: string
-        default: "--noStartStopLogs false"
+        default: ""
       buckets:
         type: integer
         default: 1

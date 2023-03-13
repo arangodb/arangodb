@@ -48,8 +48,6 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
 
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
-  LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION << " "
-            << loggerContext;
   if (guard->resigned) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
@@ -99,14 +97,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
           << startRemoveIndex;
       auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
-      LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION << " "
-                << loggerContext;
       auto result = co_await asResult(std::move(f));
-      LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION << " "
-                << loggerContext;
       guard = self->guarded.getLockedGuard();
-      LOG_DEVEL << ADB_HERE << " " << ARANGODB_PRETTY_FUNCTION << " "
-                << loggerContext;
       if (guard->resigned) {
         throw ParticipantResignedException(
             TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);

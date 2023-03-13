@@ -74,24 +74,19 @@ RestStatus RestLogInternalHandler::handleAppendEntries() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  LOG_DEVEL << "received append entries for " << logId
-            << " (mid=" << messageId() << ")";
   auto request = replicated_log::AppendEntriesRequest::fromVelocyPack(body);
-  auto f =
-      _vocbase.getReplicatedLogFollowerById(logId)
-          ->appendEntries(request)
-          .thenValue([this, logId](replicated_log::AppendEntriesResult&& res) {
-            LOG_DEVEL << "generating append entries response for " << logId
-                      << " (mid=" << messageId() << ")";
-            VPackBuilder builder;
-            res.toVelocyPack(builder);
-            // TODO fix the result type here. Currently we always return
-            // the error under the
-            //      `result` field. Maybe we want to change the HTTP status
-            //      code as well? Don't forget to update the deserializer
-            //      that reads the response!
-            generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
-          });
+  auto f = _vocbase.getReplicatedLogFollowerById(logId)
+               ->appendEntries(request)
+               .thenValue([this](replicated_log::AppendEntriesResult&& res) {
+                 VPackBuilder builder;
+                 res.toVelocyPack(builder);
+                 // TODO fix the result type here. Currently we always return
+                 // the error under the
+                 //      `result` field. Maybe we want to change the HTTP status
+                 //      code as well? Don't forget to update the deserializer
+                 //      that reads the response!
+                 generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
+               });
 
   return waitForFuture(std::move(f));
 }
