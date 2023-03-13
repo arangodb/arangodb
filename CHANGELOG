@@ -1,6 +1,9 @@
 v3.9.10 (XXXX-XX-XX)
 --------------------
 
+* Fix potential memory under-accounting on cache shutdown for in-memory caches
+  for edge indexes.
+
 * Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
   control whether automatic refilling of in-memory caches should happen on
   followers or just leaders. The default value is `true`, i.e. refilling happens
