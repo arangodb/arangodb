@@ -14,4 +14,5 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateSnapshot.cpp
   DocumentStateSnapshotHandler.cpp
   DocumentStateTransaction.cpp
-  DocumentStateTransactionHandler.cpp)
+  DocumentStateTransactionHandler.cpp
+  ReplicatedOperation.cpp)

@@ -25,8 +25,7 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -34,7 +33,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
-enum class OperationType;
+struct IDocumentStateTransactionHandler;
 struct SnapshotConfig;
 struct SnapshotBatch;
 
@@ -57,10 +56,10 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
-  auto forceLocalTransaction(ShardID shardId, OperationType opType,
-                             velocypack::SharedSlice slice) -> Result;
-  auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
-      -> Result;
+  static auto populateLocalShard(
+      ShardID shardId, velocypack::SharedSlice slice,
+      std::shared_ptr<IDocumentStateTransactionHandler> const&
+          transactionHandler) -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
@@ -78,14 +77,26 @@ struct DocumentFollowerState
         : core(std::move(core)), currentSnapshotVersion{0} {};
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
+    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
+    ActiveTransactionsQueue activeTransactions;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -73,7 +73,8 @@ bool DropCollection::dropReplication2Shard(ShardID const& shard,
                       ->dropShard(shard, std::to_string(coll->planId().id()))
                       .get();
     if (result.fail()) {
-      LOG_DEVEL << "failed to drop shard: " << result.errorMessage();
+      LOG_TOPIC("2e981", ERR, Logger::MAINTENANCE)
+          << "failed to drop shard " << result;
     }
   }
 

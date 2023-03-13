@@ -30,12 +30,10 @@ const internal = require("internal");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
-const request = require("@arangodb/request");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
-const sh = require("@arangodb/testutils/replicated-state-helper");
-const sp = require("@arangodb/testutils/replicated-state-predicates");
+const dh = require("@arangodb/testutils/document-state-helper");
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
@@ -47,117 +45,6 @@ function makeTestSuites(testSuite) {
   helper.deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
   return [suiteV1, suiteV2];
 }
-
-/**
- * Checks if a given key exists (or not) on all servers.
- */
-const checkFollowersValue = function (servers, shardId, logId, key, value, isReplication2) {
-  let localValues = {};
-  for (const [serverId, endpoint] of Object.entries(servers)) {
-    if (value === null) {
-      // Check for absence of key
-      lh.waitFor(sp.localKeyStatus(endpoint, database, shardId, key, false));
-    } else {
-      // Check for key and value
-      lh.waitFor(sp.localKeyStatus(endpoint, database, shardId, key, true, value));
-    }
-    localValues[serverId] = sh.getLocalValue(endpoint, database, shardId, key);
-  }
-
-  let replication2Log = '';
-  if (isReplication2) {
-    replication2Log = `Log entries: ${JSON.stringify(lh.dumpLogHead(logId))}`;
-  }
-  let extraErrorMessage = `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`;
-
-  for (const [serverId, res] of Object.entries(localValues)) {
-    if (value === null) {
-      assertTrue(res.code === 404,
-          `Expected 404 while reading key from ${serverId}/${database}/${shardId}, ` +
-          `but the response was ${JSON.stringify(res)}.\n` + extraErrorMessage);
-    } else {
-      assertTrue(res.code === undefined,
-          `Error while reading key from ${serverId}/${database}/${shardId}/${key}, ` +
-          `got: ${JSON.stringify(res)}.\n` + extraErrorMessage);
-      assertEqual(res.value, value,
-          `Wrong value returned by ${serverId}/${database}/${shardId}, expected ${value} but ` +
-          `got: ${JSON.stringify(res)}. ` + extraErrorMessage);
-    }
-  }
-
-  if (value !== null) {
-    // All ids and revisions should be equal
-    const revs = Object.values(localValues).map(value => value._rev);
-    assertTrue(revs.every((val, i, arr) => val === arr[0]), `_rev mismatch ${JSON.stringify(localValues)}` +
-      `\n${replication2Log}`);
-
-    const ids = Object.values(localValues).map(value => value._id);
-    assertTrue(ids.every((val, i, arr) => val === arr[0]), `_id mismatch ${JSON.stringify(localValues)}` +
-      `\n${replication2Log}`);
-  }
-};
-
-/**
- * Returns first entry with the same key and type as the document provided.
- * If no document is provided, all entries of the specified type are returned.
- */
-const getDocumentEntries = function (entries, type, document) {
-  if (document === undefined) {
-    let matchingType = [];
-    for (const entry of entries) {
-      if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
-        matchingType.push(entry);
-      }
-    }
-    return matchingType;
-  }
-  for (const entry of entries) {
-    if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
-      // replication entries can contain an array of documents (batch op)
-      if (Array.isArray(entry.payload.data)) {
-        // in this case try to find the document in the batch
-        let res = entry.payload.data.filter((doc) => doc._key === document._key);
-        if (res.length === 1) {
-          return entry;
-        }
-      } else if (entry.payload.data._key === document._key) {
-        // single document operation was replicated
-        return entry;
-      }
-    }
-  }
-  return null;
-};
-
-const mergeLogs = function(logs) {
-  return logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
-};
-
-/**
- * Check if all the documents are in the logs and have the provided type.
- */
-const searchDocs = function(logs, docs, opType) {
-  let allEntries = mergeLogs(logs);
-  for (const doc of docs) {
-    let entry = getDocumentEntries(allEntries, opType, doc);
-    assertNotNull(entry);
-    assertEqual(entry.payload.operation, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
-  }
-};
-
-/**
- * Unroll all array entries from all logs and optionally filter by name.
- */
-const getArrayElements = function(logs, opType, name) {
-  let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
-      .filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation === opType
-          && Array.isArray(entry.payload.data))
-      .reduce((previous, current) => previous.concat(current.payload.data), []);
-  if (name === undefined) {
-    return entries;
-  }
-  return entries.filter(entry => entry.name === name);
-};
 
 /**
  * This test suite validates the correctness of most basic operations, checking replicated log entries.
@@ -216,14 +103,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       const opType = "Commit";
 
       collection.insert({_key: "abcd"});
-      let commitEntries = getDocumentEntries(mergeLogs(logs), opType);
-      let insertEntries = getDocumentEntries(mergeLogs(logs), "Insert");
+      const mergedLogs = dh.mergeLogs(logs);
+      let commitEntries = dh.getDocumentEntries(mergedLogs, opType);
+      let insertEntries = dh.getDocumentEntries(mergedLogs, "Insert");
       assertEqual(commitEntries.length, 1,
-          `Found more commitEntries than expected: ${commitEntries}. Insert entries: ${insertEntries}`);
+          `Found more commitEntries than expected: ${JSON.stringify(commitEntries)}. Insert entries: ${JSON.stringify(insertEntries)}`);
       assertEqual(insertEntries.length, commitEntries.length,
-          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
+          `Insert entries: ${JSON.stringify(insertEntries)} do not match Commit entries ${JSON.stringify(commitEntries)}`);
       assertEqual(insertEntries[0].trx, commitEntries[0].trx,
-          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
+          `Insert entries: ${JSON.stringify(insertEntries)} do not match Commit entries ${JSON.stringify(commitEntries)}`);
     },
 
     testReplicateOperationsInsert: function() {
@@ -232,12 +120,12 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // Insert single document
       let documents = [{_key: "foo"}, {_key: "bar"}];
       documents.forEach(doc => collection.insert(doc));
-      searchDocs(logs, documents, opType);
+      dh.searchDocs(logs, documents, opType);
 
       // Insert multiple documents
       documents = [...Array(10).keys()].map(i => {return {name: "testInsert1", foobar: i};});
       collection.insert(documents);
-      let result = getArrayElements(logs, opType, "testInsert1");
+      let result = dh.getArrayElements(logs, opType, "testInsert1");
       for (const doc of documents) {
         assertTrue(result.find(entry => entry.foobar === doc.foobar) !== undefined);
       }
@@ -245,7 +133,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // AQL INSERT
       documents = [...Array(10).keys()].map(i => {return {name: "testInsert2", baz: i};});
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('test', i), name: "testInsert2", baz: i} INTO ${collectionName}`);
-      result = getArrayElements(logs, opType, "testInsert2");
+      result = dh.getArrayElements(logs, opType, "testInsert2");
       for (const doc of documents) {
         assertTrue(result.find(entry => entry.baz === doc.baz) !== undefined);
       }
@@ -268,13 +156,13 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
         let d = collection.insert(doc);
         docHandles.push(collection.update(d, docUpdate));
-        searchDocs(logs, [docUpdate], opType);
+        dh.searchDocs(logs, [docUpdate], opType);
       });
 
       // Replace multiple documents
       let replacements = [{value: 10, name: "testR"}, {value: 20, name: "testR"}];
       docHandles = collection.replace(docHandles, replacements);
-      let result = getArrayElements(logs, "Replace",  "testR");
+      let result = dh.getArrayElements(logs, "Replace",  "testR");
       for (const doc of replacements) {
         assertTrue(result.find(entry => entry.value === doc.value) !== undefined);
       }
@@ -282,12 +170,12 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // Update multiple documents
       let updates = documents.map(_ => {return {name: "testModify10"};});
       docHandles = collection.update(docHandles, updates);
-      result = getArrayElements(logs, opType, "testModify10");
+      result = dh.getArrayElements(logs, opType, "testModify10");
       assertEqual(result.length, updates.length);
 
       // AQL UPDATE
       db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, name: "testModify100"} IN ${collectionName}`);
-      result = getArrayElements(logs, opType, "testModify100");
+      result = dh.getArrayElements(logs, opType, "testModify100");
       assertEqual(result.length, updates.length);
     },
 
@@ -298,7 +186,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let doc = {_key: `test${_.random(1000)}`};
       let d = collection.insert(doc);
       collection.remove(d);
-      searchDocs(logs, [doc], opType);
+      dh.searchDocs(logs, [doc], opType);
 
       // AQL REMOVE
       let documents = [
@@ -306,7 +194,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       ];
       collection.insert(documents);
       db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
-      let result = getArrayElements(logs, opType);
+      let result = dh.getArrayElements(logs, opType);
       for (const doc of documents) {
         assertTrue(result.find(entry => entry._key === doc._key) !== undefined);
       }
@@ -332,16 +220,16 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let found = [];
       let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1010)), []);
       for (const entry of allEntries) {
-        if (entry.hasOwnProperty("payload") && entry.payload.operation === opType) {
-          let colName = entry.payload.data.collection;
+        if (entry.hasOwnProperty("payload") && entry.payload.operation.type === opType) {
+          let colName = entry.payload.operation.shard;
           assertTrue(shards.includes(colName) && !found.includes(colName));
           found.push(colName);
         }
       }
       assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
           JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
-              entry.hasOwnProperty("payload") && entry.payload.operation !== "Insert"
-              && entry.payload.operation !== "Commit")));
+              entry.hasOwnProperty("payload") && entry.payload.operation.type !== "Insert"
+              && entry.payload.operation.type !== "Commit")));
     }
   };
 };
@@ -381,14 +269,14 @@ const replicatedStateIntermediateCommitsSuite = function() {
 
     testIntermediateCommitsNoLogEntries: function(testName) {
       db._query(`FOR i in 0..10 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`);
-      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      let intermediateCommitEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "IntermediateCommit");
       assertEqual(intermediateCommitEntries.length, 0);
     },
 
     testIntermediateCommitsLogEntries: function(testName) {
       db._query(`FOR i in 0..1000 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`,
         {}, {intermediateCommitCount: 1});
-      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      let intermediateCommitEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "IntermediateCommit");
       assertEqual(intermediateCommitEntries.length, 2);
     },
 
@@ -403,10 +291,10 @@ const replicatedStateIntermediateCommitsSuite = function() {
       }
 
       // Wait for the last key to be applied on all servers
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `test2000`, 2000, true);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `test2000`, 2000, true);
       // Check that all keys are applied on all servers
       for (let server of Object.values(servers)) {
-        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        let bulk = dh.getBulkDocuments(server, database, shardId, keys);
         let keysSet = new Set(keys);
         for (let doc of bulk) {
           assertTrue(keysSet.has(doc._key));
@@ -436,11 +324,11 @@ const replicatedStateIntermediateCommitsSuite = function() {
       }
 
       // Wait for the last key to be applied on all servers
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `test999`, 999, true);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `test999`, 999, true);
 
       // Check that first batch of keys is applied on all servers
       for (let server of Object.values(servers)) {
-        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        let bulk = dh.getBulkDocuments(server, database, shardId, keys);
         for (let doc of bulk) {
           assertEqual(doc.value < 1000, doc._key !== undefined);
         }
@@ -486,16 +374,16 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
     testFollowersSingleDocument: function(testName) {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       handle = collection.update(handle, {value: `${testName}-baz`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, isReplication2);
 
       handle = collection.replace(handle, {_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       collection.remove(handle);
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
     },
 
     testFollowersMultiDocuments: function(testName) {
@@ -503,23 +391,23 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
       let handles = collection.insert(documents);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       let updates = documents.map(doc => {return {value: doc.value + 100};});
       handles = collection.update(handles, updates);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
       }
 
       handles = collection.replace(handles, documents);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       collection.remove(handles);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
       }
     },
 
@@ -528,30 +416,30 @@ const replicatedStateFollowerSuite = function (dbParams) {
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('${testName}-foo', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value + 100} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value + 100, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc._key + "bar", isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc._key + "bar", isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, null, isReplication2);
       }
     },
 
     testFollowersTruncate: function(testName) {
       collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
     }
   };
 };
@@ -635,13 +523,12 @@ const replicatedStateRecoverySuite = function () {
     }),
 
     testRecoveryFromFailover: function (testName) {
-      //require('internal').print(db._collections().map(c => c.name()));
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       assertTrue(participants !== undefined);
       let servers = Object.assign({}, ...participants.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, true);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, true);
 
       // We unset the leader here so that once the old leader node is resumed we
       // do not move leadership back to that node.
@@ -661,20 +548,20 @@ const replicatedStateRecoverySuite = function () {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
         }
-        return entry.payload.operation === "AbortAllOngoingTrx";
+        return entry.payload.operation.type === "AbortAllOngoingTrx";
       });
       assertTrue(abortAllEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
 
       // Try a new transaction.
       servers = Object.assign({}, ...followers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       collection.update(handle, {value: `${testName}-baz`});
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
 
       // Try an AQL query.
       let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-${i}`, value: i};});
       db._query(`FOR i in 0..3 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
       }
 
       // Resume the dead server.
@@ -682,9 +569,9 @@ const replicatedStateRecoverySuite = function () {
 
       // Expect to find all values on the awakened server.
       servers = {[leader]: lh.getServerUrl(leader)};
-      checkFollowersValue(servers, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, true);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
+        dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
       }
     },
   };
@@ -787,7 +674,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       }
 
       // Replace the follower.
-      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
 
       // Wait for replicated state to be available on the new follower.
@@ -804,7 +691,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       });
 
       let checkKeys = [...documents1.map(doc => doc._key)].concat([...documents2.map(doc => doc._key)]);
-      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
+      let bulk = dh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
       let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
         assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
@@ -833,7 +720,7 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       let checkKeys = documents.map(doc => doc._key);
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
-      let bulk = sh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
+      let bulk = dh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
       let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
         assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
