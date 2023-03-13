@@ -50,7 +50,8 @@ struct WCC
     return "wcc";
   };
 
-  GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<WCCValue, uint64_t> const> inputFormat()
+      const override;
 
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();

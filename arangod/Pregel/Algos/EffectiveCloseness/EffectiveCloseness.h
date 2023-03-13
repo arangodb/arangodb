@@ -47,7 +47,8 @@ struct EffectiveCloseness
     return "effectivecloseness";
   };
 
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<ECValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
 

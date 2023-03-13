@@ -150,7 +150,8 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      SLPAValue& value, uint64_t& vertexIdRange) override {
+                      SLPAValue& value,
+                      uint64_t& vertexIdRange) const override {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
@@ -198,8 +199,10 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   }
 };
 
-GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
+std::shared_ptr<GraphFormat<SLPAValue, int8_t> const> SLPA::inputFormat()
+    const {
+  return std::make_shared<SLPAGraphFormat>(_resultField, _threshold,
+                                           _maxCommunities);
 }
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {

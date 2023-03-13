@@ -59,7 +59,8 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
     return "hits";
   };
 
-  [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] std::shared_ptr<GraphFormat<HITSValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
       const override {
     return new SenderMessageFormat<double>();
