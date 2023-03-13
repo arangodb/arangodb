@@ -6,9 +6,9 @@ devel
   Previously (and now by default), a code of HTTP 403 is returned and the
   request returns immediately. If the command line option
     --cluster.failed-write-concern-error-code=503
-  is set, then HTTP 503 is returned and the coordinator retries the request
-  for 900 seconds before returning the error to the client. This will cover
-  up most temporary write concern problems for the client.
+  is set, then HTTP 503 is returned. Note that no cluster-internal retry
+  is happening, such that a client is informed right away about the problem.
+  Retry loops have to be organised in the client program.
 
 * Updated arangosync to v2.16.0-preview-1.
 
