@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Pregel/Worker/Handler.h"
-#include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/State.h"
+namespace arangodb {
 
-namespace arangodb::pregel::worker {
+struct OperationResult;
 
-template<typename V, typename E, typename M>
-struct WorkerActor {
-  using State = WorkerState<V, E, M>;
-  using Message = message::WorkerMessages;
-  template<typename Runtime>
-  using Handler = WorkerHandler<V, E, M, Runtime>;
-  static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
+namespace pregel {
+struct ExecutionNumber;
+}
+}  // namespace arangodb
+
+namespace arangodb::pregel::statuswriter {
+
+struct StatusWriterInterface {
+  virtual ~StatusWriterInterface() = default;
+
+  // CRUD interface definition
+  [[nodiscard]] virtual auto createResult(VPackSlice data)
+      -> OperationResult = 0;
+  [[nodiscard]] virtual auto readResult(VPackSlice data) -> OperationResult = 0;
+  [[nodiscard]] virtual auto updateResult(VPackSlice data)
+      -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteResult(VPackSlice data)
+      -> OperationResult = 0;
 };
 
-}  // namespace arangodb::pregel::worker
+}  // namespace arangodb::pregel::statuswriter

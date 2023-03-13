@@ -35,29 +35,32 @@ struct Initial;
 
 struct ConductorState {
   ConductorState(ExecutionSpecifications specifications,
-                 std::unique_ptr<CollectionLookup>&& lookupInfo)
-      : _specifications{std::move(specifications)},
-        _lookupInfo(std::move(lookupInfo)) {}
+                 std::unique_ptr<CollectionLookup>&& lookupInfo,
+                 actor::ActorPID spawnActor)
+      : specifications{std::move(specifications)},
+        lookupInfo(std::move(lookupInfo)),
+        spawnActor{std::move(spawnActor)} {}
 
-  ExecutionTimings _timing;
-  uint64_t _globalSuperstep = 0;
-  std::unique_ptr<ExecutionState> _executionState = std::make_unique<Initial>();
+  ExecutionTimings timing;
+  uint64_t globalSuperstep = 0;
+  std::unique_ptr<ExecutionState> executionState = std::make_unique<Initial>();
   // TODO how to update metrics in feature (needed for 'loading' and subsequent
   // states)
-  ConductorStatus _status;
-  std::vector<actor::ActorPID> _workers;
-  const ExecutionSpecifications _specifications;
-  std::unique_ptr<CollectionLookup> _lookupInfo;
+  ConductorStatus status;
+  std::vector<actor::ActorPID> workers;
+  const ExecutionSpecifications specifications;
+  std::unique_ptr<CollectionLookup> lookupInfo;
+  actor::ActorPID spawnActor;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorState& x) {
-  return f.object(x).fields(
-      f.field("timing", x._timing),
-      f.field("globalSuperstep", x._globalSuperstep),
-      f.field("executionState", x._executionState->name()),
-      f.field("status", x._status), f.field("workers", x._workers),
-      f.field("specifications", x._specifications));
+  return f.object(x).fields(f.field("timing", x.timing),
+                            f.field("globalSuperstep", x.globalSuperstep),
+                            f.field("executionState", x.executionState->name()),
+                            f.field("status", x.status),
+                            f.field("workers", x.workers),
+                            f.field("specifications", x.specifications));
 }
 
 }  // namespace arangodb::pregel::conductor
