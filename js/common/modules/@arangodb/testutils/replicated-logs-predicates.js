@@ -83,7 +83,7 @@ const replicatedLogIsGone = function (database, logId) {
 
 const replicatedLogLeaderEstablished = function (database, logId, term, participants) {
   return function () {
-    let {current} = LH.readReplicatedLogAgency(database, logId);
+    let {plan, current} = LH.readReplicatedLogAgency(database, logId);
     if (current === undefined) {
       return Error("current not yet defined");
     }
@@ -96,6 +96,13 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
+    }
+
+    if (term === undefined) {
+      if (!plan.currentTerm) {
+        return Error(`No term in plan`);
+      }
+      term = plan.currentTerm.term;
     }
 
     if (!current.leader || current.leader.term < term) {

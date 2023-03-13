@@ -215,6 +215,12 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
+const triggerLeaderElection = function (database, logId) {
+  serverHelper.agency.increaseVersion(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`);
+  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
+};
+
 const replicatedLogSetPlanTermConfig = function (database, logId, term) {
   serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
   serverHelper.agency.increaseVersion(`Plan/Version`);
@@ -639,17 +645,13 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
 
-  const terms = Object.fromEntries(
-    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
-  );
+  const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
 
-  const increaseTerm = ([stateId, term]) => replicatedLogSetPlanTerm(dbn, stateId, term + 1);
+  stateMachineIds.forEach(increaseTerm);
 
-  Object.entries(terms).forEach(increaseTerm);
+  const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
 
-  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term + 1, []);
-
-  Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
+  stateMachineIds.forEach(x => waitFor(leaderReady(x)));
 };
 
 const getLocalStatus = function (serverId, database, logId) {
@@ -717,4 +719,3 @@ exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
 exports.getShardsToLogsMapping = getShardsToLogsMapping;
 exports.replaceParticipant = replaceParticipant;
-
