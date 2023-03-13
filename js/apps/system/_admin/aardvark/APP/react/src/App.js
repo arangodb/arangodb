@@ -190,7 +190,6 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 // require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
-  // <Overview />
   render() {
     return (
       <div className="App" />
