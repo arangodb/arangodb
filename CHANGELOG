@@ -5,12 +5,12 @@ v3.9.10 (XXXX-XX-XX)
   - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
   - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
     onwards WAL files will be kept (i.e. not deleted from the archive) because
-    of external flushing needs. Candidates for these are arangosearch links
-    and background index creation.
+    of external flushing needs. Candidates for these are arangosearch links and
+    background index creation.
   - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
     which onwards WAL files will be kept because they may be needed by the
     replication.
-  - `arangodb_flush_subscriptions`: number of currently active flush 
+  - `arangodb_flush_subscriptions`: number of currently active flush
     subscriptions.
 
 * Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
