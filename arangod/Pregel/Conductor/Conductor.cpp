@@ -763,7 +763,7 @@ void Conductor::persistPregelState(ExecutionState state) {
   debugOut.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(debugOut);
   debugOut.close();
-  _aggregators->serializeValues(debugOut);
+  _masterContext->_aggregators->serializeValues(debugOut);
   debugOut.close();
   // Replace this later
 
