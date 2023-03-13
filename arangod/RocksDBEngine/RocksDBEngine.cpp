@@ -238,6 +238,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _autoFlushCheckInterval(60.0 * 60.0),
+      _autoFlushMinWalFiles(10),
       _metricsWalReleasedTickFlush(
           server.getFeature<arangodb::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -336,6 +338,30 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
   delete _db;
   _db = nullptr;
+}
+
+void RocksDBEngine::flushOpenFilesIfRequired() {
+  if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+  if (_autoFlushLastExecuted.time_since_epoch().count() == 0 ||
+      (now - _autoFlushLastExecuted) >=
+          std::chrono::duration<double>(_autoFlushCheckInterval)) {
+    LOG_TOPIC("9bf16", INFO, Logger::ENGINES)
+        << "auto flushing RocksDB wal and column families because number of "
+           "live WAL files is "
+        << _metricsLiveWalFiles.load();
+    Result res = flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ true);
+    if (res.fail()) {
+      LOG_TOPIC("e936c", WARN, Logger::ENGINES)
+          << "unable to flush RocksDB wal: " << res.errorMessage();
+    }
+    // set _autoFlushLastExecuted regardless of whether flushing has worked or
+    // not. we don't want to put too much stress onto the db
+    _autoFlushLastExecuted = now;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -570,6 +596,30 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
           arangodb::options::Flags::Hidden));
+
+  options
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
+                  "The minimum number of live WAL files that triggers an "
+                  "auto-flush of WAL "
+                  "and column family data.",
+                  new UInt64Parameter(&_autoFlushMinWalFiles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30910);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-flush-check-interval",
+          "The interval (in seconds) in which auto-flushes of WAL and column "
+          "family data is executed.",
+          new DoubleParameter(&_autoFlushCheckInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30910);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
