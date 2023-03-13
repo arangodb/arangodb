@@ -243,6 +243,7 @@ const replicatedLogRegressionSuite = function () {
         target.config.writeConcern = 2;
       });
       waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+      replicatedLogDeleteTarget(database, logId);
     },
 
     testWriteConcernBiggerThanReplicationFactor: function () {
@@ -279,9 +280,8 @@ const replicatedLogRegressionSuite = function () {
       });
 
       waitFor(preds.replicatedLogTargetVersion(database, logId, lastVersion));
+      replicatedLogDeleteTarget(database, logId);
     },
-
-
   };
 };
 
