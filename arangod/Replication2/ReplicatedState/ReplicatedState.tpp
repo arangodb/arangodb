@@ -259,7 +259,7 @@ template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface, ILogMethodsT>::isResigned() const noexcept
     -> bool {
-  return _logMethods == nullptr;
+  return _logMethods.getLockedGuard().get() == nullptr;
 }
 
 template<typename S, template<typename> typename Interface,
@@ -816,11 +816,13 @@ auto FollowerStateManager<S>::getStateMachine() const
         // A follower is established if it
         //  a) has a snapshot, and
         //  b) knows the snapshot won't be invalidated in the current term.
-        bool const followerEstablished =
-            stream.isResigned() or
-            (stream.methods().leaderConnectionEstablished() and
-             stream.methods().checkSnapshotState() ==
-                 replicated_log::SnapshotState::AVAILABLE);
+        bool const followerEstablished = std::invoke([&] {
+          auto methodsGuard = stream.methods();
+          return stream.isResigned() or
+                 (methodsGuard->leaderConnectionEstablished() and
+                  methodsGuard->checkSnapshotState() ==
+                      replicated_log::SnapshotState::AVAILABLE);
+        });
         // It is essential that, in the lines above this comment, the snapshot
         // state is checked *after* the leader connection to prevent races. Note
         // that a log truncate will set the snapshot to missing. After a
