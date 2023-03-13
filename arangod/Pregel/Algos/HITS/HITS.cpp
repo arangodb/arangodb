@@ -25,7 +25,7 @@
 #include <cmath>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -98,7 +98,7 @@ struct HITSComputation
 };
 
 VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-HITS::createComputation(WorkerConfig const* config) const {
+HITS::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new HITSComputation();
 }
 
@@ -137,7 +137,12 @@ struct HITSMasterContext : public MasterContext {
   // and could be unified, but
   // (1) we are going to refactor it anyway
   // (2) this would introduce common code for different algorithms
-  HITSMasterContext(VPackSlice userParams) : authNorm(0), hubNorm(0) {
+  HITSMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators,
+                    VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)),
+        authNorm(0),
+        hubNorm(0) {
     if (userParams.hasKey(Utils::threshold)) {
       if (!userParams.get(Utils::threshold).isNumber()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -164,8 +169,18 @@ struct HITSMasterContext : public MasterContext {
   }
 };
 
-MasterContext* HITS::masterContext(VPackSlice userParams) const {
-  return new HITSMasterContext(userParams);
+[[nodiscard]] auto HITS::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new HITSMasterContext(0, 0, std::move(aggregators), userParams);
+}
+[[nodiscard]] auto HITS::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<HITSMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* HITS::aggregator(std::string const& name) const {

@@ -23,32 +23,43 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
 #include "Pregel/PregelOptions.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel::worker {
 
+template<typename V, typename E, typename M>
 struct WorkerState {
   WorkerState(actor::ActorPID conductor,
               ExecutionSpecifications executionSpecifications,
-              CollectionSpecifications collectionSpecifications)
+              CollectionSpecifications collectionSpecifications,
+              std::unique_ptr<Algorithm<V, E, M>> algorithm,
+              TRI_vocbase_t& vocbase)
       : conductor{std::move(conductor)},
         executionSpecifications{std::move(executionSpecifications)},
-        collectionSpecifications{std::move(collectionSpecifications)} {};
+        collectionSpecifications{std::move(collectionSpecifications)},
+        algorithm{std::move(algorithm)},
+        vocbaseGuard{vocbase} {};
   actor::ActorPID conductor;
   const ExecutionSpecifications executionSpecifications;
   const CollectionSpecifications collectionSpecifications;
+  std::unique_ptr<Algorithm<V, E, M>> algorithm;
+  const DatabaseGuard vocbaseGuard;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerState& x) {
+template<typename V, typename E, typename M, typename Inspector>
+auto inspect(Inspector& f, WorkerState<V, E, M>& x) {
   return f.object(x).fields(
       f.field("conductor", x.conductor),
       f.field("executionSpecifications", x.executionSpecifications),
-      f.field("collectionSpecifications", x.collectionSpecifications));
+      f.field("collectionSpecifications", x.collectionSpecifications),
+      f.field("algorithm", x.algorithm->name()));
 }
 
 }  // namespace arangodb::pregel::worker
 
-template<>
-struct fmt::formatter<arangodb::pregel::worker::WorkerState>
+template<typename V, typename E, typename M>
+struct fmt::formatter<arangodb::pregel::worker::WorkerState<V, E, M>>
     : arangodb::inspection::inspection_formatter {};

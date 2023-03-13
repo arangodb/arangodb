@@ -121,10 +121,14 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "server endpoint, otherwise http+tcp:// or unix://";
   }
 
-  options->addOption(
+  auto& opt = options->addOption(
       "--server.endpoint", endpointHelp,
       new VectorParameter<StringParameter>(&_endpoints),
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
+  if (isArangosh) {
+    opt.setLongDescription(R"(You can use `--server.endpoint none` to start
+arangosh without connecting to a server.)");
+  }
 
   options->addOption("--server.password",
                      "The password to use when connecting. If not specified "
@@ -384,8 +388,10 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
-        << "invalid value for --server.endpoint ('" << definition << "')";
+    if (definition != "none") {
+      LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
+          << "invalid value for --server.endpoint ('" << definition << "')";
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 

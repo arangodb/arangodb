@@ -27,11 +27,37 @@
 #include "Actor/HandlerBase.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/SpawnMessages.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/State.h"
+#include "VocBase/vocbase.h"
 #include "fmt/core.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagation.h"
+#include "Pregel/Algos/ConnectedComponents/ConnectedComponents.h"
+#include "Pregel/Algos/DMID/DMID.h"
+#include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
+#include "Pregel/Algos/HITS/HITS.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinberg.h"
+#include "Pregel/Algos/LabelPropagation/LabelPropagation.h"
+#include "Pregel/Algos/LineRank/LineRank.h"
+#include "Pregel/Algos/PageRank/PageRank.h"
+#include "Pregel/Algos/RecoveringPageRank/RecoveringPageRank.h"
+#include "Pregel/Algos/SCC/SCC.h"
+#include "Pregel/Algos/ShortestPath/ShortestPath.h"
+#include "Pregel/Algos/SLPA/SLPA.h"
+#include "Pregel/Algos/SSSP/SSSP.h"
+#include "Pregel/Algos/WCC/WCC.h"
+#include "Pregel/Utils.h"
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#include "Pregel/Algos/ReadWrite/ReadWrite.h"
+#endif
 
 namespace arangodb::pregel {
 
-struct SpawnState {};
+struct SpawnState {
+  SpawnState(TRI_vocbase_t& vocbase) : vocbaseGuard{vocbase} {}
+  const DatabaseGuard vocbaseGuard;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnState& x) {
   return f.object(x).fields();
@@ -45,14 +71,124 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
+  template<typename V, typename E, typename M>
+  auto spawnWorker(std::unique_ptr<Algorithm<V, E, M>> algorithm,
+                   message::SpawnWorker msg) -> void {
+    this->template spawn<worker::WorkerActor<V, E, M>>(
+        std::make_unique<worker::WorkerState<V, E, M>>(
+            msg.conductor, msg.message.executionSpecifications,
+            msg.message.collectionSpecifications, std::move(algorithm),
+            this->state->vocbaseGuard.database()),
+        worker::message::WorkerStart{});
+  }
+
+  auto spawnWorker(message::SpawnWorker msg) -> void {
+    VPackSlice userParams =
+        msg.message.executionSpecifications.userParameters.slice();
+    std::string algorithm = msg.message.executionSpecifications.algorithm;
+
+    if (algorithm == "sssp") {
+      spawnWorker<algos::SSSPType::Vertex, algos::SSSPType::Edge,
+                  algos::SSSPType::Message>(
+          std::make_unique<algos::SSSPAlgorithm>(userParams), std::move(msg));
+    } else if (algorithm == "pagerank") {
+      spawnWorker<algos::PageRankType::Vertex, algos::PageRankType::Edge,
+                  algos::PageRankType::Message>(
+          std::make_unique<algos::PageRank>(userParams), std::move(msg));
+    } else if (algorithm == "recoveringpagerank") {
+      spawnWorker<algos::RecoveringPageRankType::Vertex,
+                  algos::RecoveringPageRankType::Edge,
+                  algos::RecoveringPageRankType::Message>(
+          std::make_unique<algos::RecoveringPageRank>(userParams),
+          std::move(msg));
+    } else if (algorithm == "shortestpath") {
+      spawnWorker<algos::ShortestPathType::Vertex,
+                  algos::ShortestPathType::Edge,
+                  algos::ShortestPathType::Message>(
+          std::make_unique<algos::ShortestPathAlgorithm>(userParams),
+          std::move(msg));
+    } else if (algorithm == "linerank") {
+      spawnWorker<algos::LineRankType::Vertex, algos::LineRankType::Edge,
+                  algos::LineRankType::Message>(
+          std::make_unique<algos::LineRank>(userParams), std::move(msg));
+    } else if (algorithm == "effectivecloseness") {
+      spawnWorker<algos::EffectiveClosenessType::Vertex,
+                  algos::EffectiveClosenessType::Edge,
+                  algos::EffectiveClosenessType::Message>(
+          std::make_unique<algos::EffectiveCloseness>(userParams),
+          std::move(msg));
+    } else if (algorithm == "connectedcomponents") {
+      spawnWorker<algos::ConnectedComponentsType::Vertex,
+                  algos::ConnectedComponentsType::Edge,
+                  algos::ConnectedComponentsType::Message>(
+          std::make_unique<algos::ConnectedComponents>(userParams),
+          std::move(msg));
+    } else if (algorithm == "scc") {
+      spawnWorker<algos::SCCType::Vertex, algos::SCCType::Edge,
+                  algos::SCCType::Message>(
+          std::make_unique<algos::SCC>(userParams), std::move(msg));
+    } else if (algorithm == "hits") {
+      spawnWorker<algos::HITSType::Vertex, algos::HITSType::Edge,
+                  algos::HITSType::Message>(
+          std::make_unique<algos::HITS>(userParams), std::move(msg));
+    } else if (algorithm == "hitskleinberg") {
+      spawnWorker<algos::HITSKleinbergType::Vertex,
+                  algos::HITSKleinbergType::Edge,
+                  algos::HITSKleinbergType::Message>(
+          std::make_unique<algos::HITSKleinberg>(userParams), std::move(msg));
+    } else if (algorithm == "labelpropagation") {
+      spawnWorker<algos::LabelPropagationType::Vertex,
+                  algos::LabelPropagationType::Edge,
+                  algos::LabelPropagationType::Message>(
+          std::make_unique<algos::LabelPropagation>(userParams),
+          std::move(msg));
+    } else if (algorithm == "slpa") {
+      spawnWorker<algos::SLPAType::Vertex, algos::SLPAType::Edge,
+                  algos::SLPAType::Message>(
+          std::make_unique<algos::SLPA>(userParams), std::move(msg));
+    } else if (algorithm == "dmid") {
+      spawnWorker<algos::DMIDType::Vertex, algos::DMIDType::Edge,
+                  algos::DMIDType::Message>(
+          std::make_unique<algos::DMID>(userParams), std::move(msg));
+    } else if (algorithm == "wcc") {
+      spawnWorker<algos::WCCType::Vertex, algos::WCCType::Edge,
+                  algos::WCCType::Message>(
+          std::make_unique<algos::WCC>(userParams), std::move(msg));
+    } else if (algorithm == "colorpropagation") {
+      spawnWorker<algos::ColorPropagationType::Vertex,
+                  algos::ColorPropagationType::Edge,
+                  algos::ColorPropagationType::Message>(
+          std::make_unique<algos::ColorPropagation>(userParams),
+          std::move(msg));
+    }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+    else if (algorithm == "readwrite") {
+      spawnWorker<algos::ReadWriteType::Vertex, algos::ReadWriteType::Edge,
+                  algos::ReadWriteType::Message>(
+          std::make_unique<algos::ReadWrite>(userParams), std::move(msg));
+    }
+#endif
+    else {
+      this->template dispatch<conductor::message::ConductorMessages>(
+          msg.conductor, ResultT<conductor::message::WorkerCreated>::error(
+                             TRI_ERROR_BAD_PARAMETER, "Unsupported algorithm"));
+    }
+  }
+
   auto operator()(message::SpawnWorker msg) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("2452c", INFO, Logger::PREGEL)
         << "Spawn Actor: Spawn worker actor";
-    this->template spawn<worker::WorkerActor>(
-        std::make_unique<worker::WorkerState>(
-            msg.conductor, msg.message.executionSpecifications,
-            msg.message.collectionSpecifications),
-        worker::message::WorkerStart{});
+    if (msg.destinationServer == this->self.server) {
+      spawnWorker(std::move(msg));
+    } else {
+      // ActorID 0 is a reserved ID that is used here to tell the RestHandler
+      // that it needs to spawn a new actor instead of searching for an existing
+      // actor
+      this->dispatch(actor::ActorPID{.server = msg.destinationServer,
+                                     .database = this->self.database,
+                                     .id = {0}},
+                     message::SpawnMessages{msg});
+    }
     return std::move(this->state);
   }
 

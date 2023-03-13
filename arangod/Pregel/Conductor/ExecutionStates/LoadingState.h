@@ -35,12 +35,12 @@ struct ConductorState;
 // TODO implement in GORDO-1548
 struct Loading : ExecutionState {
   Loading(ConductorState& conductor) : conductor{conductor} {
-    conductor._timing.loading.start();
+    conductor.timing.loading.start();
     // TODO GORDO-1510
     // _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
   }
   ~Loading() {
-    conductor._timing.loading.finish();
+    conductor.timing.loading.finish();
     // TODO GORDO-1510
     // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
   }

@@ -71,7 +71,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   const DatabaseGuard _vocbaseGuard;
   ExecutionSpecifications _specifications;
 
-  std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   std::unique_ptr<IAlgorithm> _algorithm;
 
@@ -94,6 +93,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _created;
   std::chrono::system_clock::time_point _expires;
   ExecutionTimings _timing;
+  /// Variable to identify whether ArangoDB is in shutdown mode.
+  bool _shutdown{false};
   // Work in Progress: Move data incrementally into this
   // struct; sort it into categories and make it (de)serialisable
   // with the Inspecotr framework
@@ -107,7 +108,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ErrorCode _sendToAllDBServers(std::string const& path,
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
-  void _ensureUniqueResponse(VPackSlice body);
   void _ensureUniqueResponse(std::string const& sender);
 
   // === REST callbacks ===
@@ -126,6 +126,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void cancel();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void persistPregelState(ExecutionState state);
 
   bool canBeGarbageCollected() const;
 

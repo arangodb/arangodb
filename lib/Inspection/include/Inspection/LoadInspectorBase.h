@@ -415,6 +415,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
 
   template<class T>
   Status processList(T& list) {
+    constexpr auto isSet = detail::IsSetLike<T>::value;
     std::size_t idx = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
@@ -422,7 +423,11 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }
-      list.push_back(std::move(val));
+      if constexpr (isSet) {
+        list.insert(std::move(val));
+      } else {
+        list.push_back(std::move(val));
+      }
       ++idx;
       return {};
     });

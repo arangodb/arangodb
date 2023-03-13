@@ -52,7 +52,8 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 template<typename M>
-OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
+OutCache<M>::OutCache(std::shared_ptr<WorkerConfig const> state,
+                      MessageFormat<M> const* format)
     : _config(state),
       _format(format),
       _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
@@ -170,9 +171,9 @@ void ArrayOutCache<M>::flushMessages() {
 // ================= CombiningOutCache ==================
 
 template<typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
-                                        MessageFormat<M> const* format,
-                                        MessageCombiner<M> const* combiner)
+CombiningOutCache<M>::CombiningOutCache(
+    std::shared_ptr<WorkerConfig const> state, MessageFormat<M> const* format,
+    MessageCombiner<M> const* combiner)
     : OutCache<M>(state, format), _combiner(combiner) {}
 
 template<typename M>
