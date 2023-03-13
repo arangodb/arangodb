@@ -184,8 +184,10 @@ struct StateManagerTest : testing::Test {
       storageContext->getMethods().release();
   std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
       std::make_shared<test::ReplicatedLogMetricsMock>();
-  std::shared_ptr<test::ReplicatedStateMetricsMock> stateMetricsMock =
-      std::make_shared<test::ReplicatedStateMetricsMock>("foo");
+  std::shared_ptr<replication2::tests::ReplicatedStateMetricsMock>
+      stateMetricsMock =
+          std::make_shared<replication2::tests::ReplicatedStateMetricsMock>(
+              "foo");
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);
