@@ -37,7 +37,7 @@ export const IndexesForm = () => {
               variant="ghost"
               justifySelf="start"
             >
-              + Add field
+              + Add index
             </Button>
           </Box>
         )}
