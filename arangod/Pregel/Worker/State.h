@@ -56,33 +56,28 @@ struct WorkerState {
     config->updateConfig(specifications);
 
     if (messageCombiner) {
-      readCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
-                                              messageCombiner.get()));
-      writeCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
-                                               messageCombiner.get()));
-      for (size_t i = 0; i < config->parallelism(); i++) {
-        auto incoming = std::make_unique<CombiningInCache<M>>(
-            nullptr, messageFormat.get(), messageCombiner.get());
-        inCaches.push_back(std::move(incoming));
-        outCaches.push_back(std::make_unique<CombiningOutCache<M>>(
-            config, messageFormat.get(), messageCombiner.get()));
-      }
+      readCache = std::make_unique<CombiningInCache<M>>(
+          config, messageFormat.get(), messageCombiner.get());
+      writeCache = std::make_unique<CombiningInCache<M>>(
+          config, messageFormat.get(), messageCombiner.get());
+      inCache = std::make_unique<CombiningInCache<M>>(
+          nullptr, messageFormat.get(), messageCombiner.get());
+      outCache = std::make_unique<CombiningOutActorCache<M>>(
+          config, messageFormat.get(), messageCombiner.get());
     } else {
-      readCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
-      writeCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
-      for (size_t i = 0; i < config->parallelism(); i++) {
-        auto incoming =
-            std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
-        inCaches.push_back(std::move(incoming));
-        outCaches.push_back(
-            std::make_unique<ArrayOutCache<M>>(config, messageFormat.get()));
-      }
+      readCache =
+          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
+      writeCache =
+          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
+      inCache = std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
+      outCache =
+          std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
     }
   }
 
   auto observeStatus() -> Status const {
     auto currentGss = currentGssObservables.observe();
-    auto fullGssStatus = allGssStatus.copy();
+    auto fullGssStatus = allGssStatus;
 
     if (!currentGss.isDefault()) {
       fullGssStatus.gss.emplace_back(currentGss);
@@ -96,7 +91,6 @@ struct WorkerState {
   }
 
   std::shared_ptr<WorkerConfig> config;
-  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
@@ -109,17 +103,19 @@ struct WorkerState {
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  std::vector<std::unique_ptr<InCache<M>>> inCaches;
-  std::vector<std::unique_ptr<OutCache<M>>> outCaches;
+  std::unique_ptr<InCache<M>> inCache = nullptr;
+  std::unique_ptr<OutCache<M>> outCache = nullptr;
+  uint32_t messageBatchSize = 500;
 
   actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID resultActor;
-  // TODO GORDO-1546
-  // GraphStore graphStore;
+  // TODO GOROD-1546 add graph store when it is not dependent any more on
+  // feature: std::unique_ptr<GraphStore> graphStore;
+  MessageStats messageStats;
   GssObservables currentGssObservables;
-  Guarded<AllGssStatus> allGssStatus;
+  AllGssStatus allGssStatus;
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {

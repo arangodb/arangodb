@@ -30,6 +30,7 @@
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
@@ -62,10 +63,35 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
-struct GlobalSuperStepFinished {};
+struct GlobalSuperStepFinished {
+  GlobalSuperStepFinished() noexcept = default;
+  GlobalSuperStepFinished(
+      MessageStats messageStats,
+      std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
+      uint64_t activeCount, uint64_t vertexCount, uint64_t edgeCount,
+      VPackBuilder aggregators)
+      : messageStats{std::move(messageStats)},
+        sendCountPerActor{std::move(sendCountPerActor)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        aggregators{std::move(aggregators)} {};
+  MessageStats messageStats;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  uint64_t activeCount;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  VPackBuilder aggregators;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field("messageStats", x.messageStats),
+      // f.field("sentCounts", x.sendCountPerActor), // make inspection worker
+      // with self-defined hashtable
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("aggregators", x.aggregators));
 }
 
 struct ResultCreated {
@@ -169,4 +195,8 @@ struct fmt::formatter<arangodb::pregel::PrepareGlobalSuperStep>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::RunGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<
+    arangodb::pregel::conductor::message::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};
