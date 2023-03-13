@@ -192,6 +192,13 @@ void RocksDBBackgroundThread::run() {
           << ", earliest seq needed: " << earliestSeqNeeded
           << ", min tick for replication: " << minTickForReplication;
 
+      try {
+        _engine.flushOpenFilesIfRequired();
+      } catch (...) {
+        // whatever happens here, we don't want it to block/skip any of
+        // the following operations
+      }
+
       bool canPrune =
           TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
       TRI_IF_FAILURE("BuilderIndex::purgeWal") { canPrune = true; }
