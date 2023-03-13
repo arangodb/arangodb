@@ -10,7 +10,8 @@ const GraphInfo = ({ children }: GraphInfoProps) => {
         <div
             style={{
             'display': 'flex',
-            'width': '100%',
+            'width': '97%',
+            'margin': 'auto',
             'background': '#ffffff',
             'padding': '8px'
             }}>
