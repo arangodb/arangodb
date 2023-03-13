@@ -34,15 +34,21 @@
 namespace arangodb::pregel::actor::test {
 
 struct TrivialState {
+  TrivialState(std::string state, std::size_t called)
+      : state{std::move(state)}, called{called} {}
+  TrivialState(std::string state) : state{std::move(state)}, called{0} {}
+  TrivialState() = default;
+  bool operator==(const TrivialState&) const = default;
   std::string state;
   std::size_t called{};
-  bool operator==(const TrivialState&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TrivialState& x) {
   return f.object(x).fields(f.field("state", x.state),
                             f.field("called", x.called));
 }
+
+namespace message {
 
 struct TrivialStart {};
 template<typename Inspector>
@@ -70,34 +76,40 @@ auto inspect(Inspector& f, TrivialMessages& x) {
       arangodb::inspection::type<TrivialMessage>("msg1"));
 }
 
+}  // namespace message
+
 template<typename Runtime>
 struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
-  auto operator()(TrivialStart msg) -> std::unique_ptr<TrivialState> {
+  auto operator()(message::TrivialStart msg) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(TrivialMessage msg) -> std::unique_ptr<TrivialState> {
+  auto operator()(message::TrivialMessage msg)
+      -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state += msg.store;
     return std::move(this->state);
   }
 
-  auto operator()(UnknownMessage unknown) -> std::unique_ptr<TrivialState> {
+  auto operator()(actor::message::UnknownMessage unknown)
+      -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
         fmt::format("sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(ActorNotFound notFound) -> std::unique_ptr<TrivialState> {
+  auto operator()(actor::message::ActorNotFound notFound)
+      -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
         fmt::format("receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
-  auto operator()(NetworkError notFound) -> std::unique_ptr<TrivialState> {
+  auto operator()(actor::message::NetworkError notFound)
+      -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state = fmt::format("network error: {}", notFound.message);
     return std::move(this->state);
@@ -111,7 +123,7 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
 
 struct TrivialActor {
   using State = TrivialState;
-  using Message = TrivialMessages;
+  using Message = message::TrivialMessages;
   template<typename Runtime>
   using Handler = TrivialHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
@@ -124,5 +136,5 @@ template<>
 struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessages>
+struct fmt::formatter<arangodb::pregel::actor::test::message::TrivialMessages>
     : arangodb::inspection::inspection_formatter {};

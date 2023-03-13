@@ -52,12 +52,10 @@ typename A::template Handler<Runtime> > ;
 template<typename Runtime, typename A>
 concept MessageIsVariant = requires(ActorPID pid,
                                     std::shared_ptr<Runtime> runtime,
-                                    typename A::State state,
                                     typename A::Message message) {
   {std::visit(
       typename A::template Handler<Runtime>{
-          {pid, pid, std::move(std::make_unique<typename A::State>(state)),
-           runtime}},
+          {pid, pid, std::unique_ptr<typename A::State>(), runtime}},
       message)};
 };
 template<typename A>
@@ -95,13 +93,14 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     if (auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(&msg);
         m != nullptr) {
       push(sender, std::move(m->payload));
-    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(&msg);
+    } else if (auto* n =
+                   dynamic_cast<MessagePayload<message::ActorError>*>(&msg);
                n != nullptr) {
       push(sender, std::move(n->payload));
     } else {
-      runtime->dispatch(
-          pid, sender,
-          ActorError{UnknownMessage{.sender = sender, .receiver = pid}});
+      runtime->dispatch(pid, sender,
+                        message::ActorError{message::UnknownMessage{
+                            .sender = sender, .receiver = pid}});
     }
   }
 
@@ -110,12 +109,13 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
             inspection::deserializeWithErrorT<typename Config::Message>(msg);
         m.ok()) {
       push(sender, std::move(m.get()));
-    } else if (auto n = inspection::deserializeWithErrorT<ActorError>(msg);
+    } else if (auto n =
+                   inspection::deserializeWithErrorT<message::ActorError>(msg);
                n.ok()) {
       push(sender, std::move(n.get()));
     } else {
-      auto error =
-          ActorError{UnknownMessage{.sender = sender, .receiver = pid}};
+      auto error = message::ActorError{
+          message::UnknownMessage{.sender = sender, .receiver = pid}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       runtime->dispatch(pid, sender, payload.get());
@@ -151,12 +151,14 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   void push(ActorPID sender, typename Config::Message&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
-        std::make_unique<MessageOrError<typename Config::Message>>(msg)));
+        std::make_unique<message::MessageOrError<typename Config::Message>>(
+            msg)));
   }
-  void push(ActorPID sender, ActorError&& msg) {
+  void push(ActorPID sender, message::ActorError&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
-        std::make_unique<MessageOrError<typename Config::Message>>(msg)));
+        std::make_unique<message::MessageOrError<typename Config::Message>>(
+            msg)));
   }
 
   void kick() {
@@ -207,10 +209,11 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
       : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
     InternalMessage(
         ActorPID sender,
-        std::unique_ptr<MessageOrError<typename Config::Message>>&& payload)
+        std::unique_ptr<message::MessageOrError<typename Config::Message>>&&
+            payload)
         : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
-    std::unique_ptr<MessageOrError<typename Config::Message>> payload;
+    std::unique_ptr<message::MessageOrError<typename Config::Message>> payload;
   };
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {

@@ -317,25 +317,48 @@ function CollectionDocumentSuiteBabies() {
           _key: k
         }];
 
-        if (!cluster) {
-          const docs = collection.insert(batch);
-          assertEqual(docs.length, 2);
-          assertEqual(docs[0]._key, "a");
-          assertTrue(docs[1].error);
-          assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
-          collection.remove("a");
-          assertEqual(collection.count(), 0);
-        } else {
-          try {
-            collection.insert(batch);
-            fail();
-          } catch (err) {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
-              err.errorNum);
-          }
-          assertEqual(collection.count(), 0);
-        }
+        const docs = collection.insert(batch);
+        assertEqual(docs.length, 2);
+        assertEqual(docs[0]._key, "a");
+        assertTrue(docs[1].error);
+        assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+        collection.remove("a");
+        assertEqual(collection.count(), 0);
       });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief insert with bad key types
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsertErrorBadStringKey: function () {
+      // in comparison to the above test, this test also tests the behaviour
+      // if a string-based user key has been supplied, but is invalid. In that case
+      // the cluster will forbid any insertion of all elements inside that batch.
+      const batch = [{
+        _key: "validKey"
+      }, {
+        _key: "invalid whitespace inbetween"
+      }];
+
+      if (cluster) {
+        try {
+          collection.insert(batch);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
+            err.errorNum);
+        }
+        assertEqual(collection.count(), 0);
+      } else {
+        const docs = collection.insert(batch);
+        assertEqual(docs.length, 2);
+        assertEqual(docs[0]._key, "validKey");
+        assertTrue(docs[1].error);
+        assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+        collection.remove("validKey");
+        assertEqual(collection.count(), 0);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////

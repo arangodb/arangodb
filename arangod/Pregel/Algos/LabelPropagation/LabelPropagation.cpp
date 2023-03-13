@@ -23,11 +23,10 @@
 
 #include "LabelPropagation.h"
 #include <cmath>
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -105,16 +104,16 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
 };
 
 VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+LabelPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new LPComputation();
 }
 
 struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
 
-  explicit LPGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<LPValue, int8_t>(server), _resultField(result) {}
+  explicit LPGraphFormat(std::string const& result)
+      : GraphFormat<LPValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
@@ -135,5 +134,24 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 };
 
 GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
-  return new LPGraphFormat(_server, _resultField);
+  return new LPGraphFormat(_resultField);
+}
+
+struct LabelPropagationMasterContext : public MasterContext {
+  LabelPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                                std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto LabelPropagation::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new LabelPropagationMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto LabelPropagation::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<LabelPropagationMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }

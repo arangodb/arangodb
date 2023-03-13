@@ -28,12 +28,21 @@
 
 namespace arangodb::pregel::algos {
 
+struct ReadWriteType {
+  using Vertex = float;
+  using Edge = uint8_t;
+  using Message = float;
+};
+
 using V = float;  // need to simulate MaxAggregator
 using E = uint8_t;
 
 struct ReadWrite : public SimpleAlgorithm<V, E, V> {
-  explicit ReadWrite(application_features::ApplicationServer& server,
-                     arangodb::velocypack::Slice const& params);
+  explicit ReadWrite(arangodb::velocypack::Slice const& params);
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "readwrite";
+  };
 
   [[nodiscard]] GraphFormat<V, E>* inputFormat() const override;
 
@@ -46,13 +55,19 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
   }
 
   VertexComputation<V, E, V>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;
 
-  [[nodiscard]] MasterContext* masterContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };

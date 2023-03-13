@@ -35,13 +35,18 @@
 
 namespace arangodb::pregel::algos {
 
+struct HITSKleinbergType {
+  using Vertex = HITSKleinbergValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<double>;
+};
+
 struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
                                               SenderMessage<double>> {
  public:
-  HITSKleinberg(application_features::ApplicationServer& server,
-                VPackSlice userParams)
+  HITSKleinberg(VPackSlice userParams)
       : SimpleAlgorithm<HITSKleinbergValue, int8_t, SenderMessage<double>>(
-            server, "HITSKleinberg", userParams) {
+            userParams) {
     if (userParams.hasKey(Utils::maxNumIterations)) {
       numIterations = userParams.get(Utils::maxNumIterations).getInt();
     }
@@ -49,6 +54,10 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
       maxGSS = userParams.get(Utils::maxGSS).getInt();
     }
   }
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "HITSKleinberg";
+  };
 
   [[nodiscard]] GraphFormat<HITSKleinbergValue, int8_t>* inputFormat()
       const override;
@@ -58,12 +67,19 @@ struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
   }
 
   VertexComputation<HITSKleinbergValue, int8_t, SenderMessage<double>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;
-  [[nodiscard]] MasterContext* masterContext(
-      VPackSlice userParams) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 

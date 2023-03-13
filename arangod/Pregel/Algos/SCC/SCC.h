@@ -93,12 +93,21 @@ namespace arangodb::pregel::algos {
  * (3) Propagate also a color backwards (as suggested in the paper).
  */
 
+struct SCCType {
+  using Vertex = SCCValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<uint64_t>;
+};
+
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  explicit SCC(application_features::ApplicationServer& server,
-               VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
-            server, "scc", userParams) {}
+  explicit SCC(VPackSlice userParams)
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(userParams) {
+  }
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "scc";
+  };
 
   [[nodiscard]] GraphFormat<SCCValue, int8_t>* inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<uint64_t>>* messageFormat()
@@ -107,10 +116,16 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
   }
 
   VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] MasterContext* masterContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };

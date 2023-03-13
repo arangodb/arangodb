@@ -40,8 +40,8 @@
       processData: false,
       async: true,
       success: function (data) {
-        var currentVersion =
-        window.versionHelper.fromString(data.version);
+        window.frontendConfig.version = data;
+        var currentVersion = window.versionHelper.fromString(data.version);
 
         $('.navbar #currentVersion').html(
           data.version + '<i class="fa fa-check-circle"></i>'

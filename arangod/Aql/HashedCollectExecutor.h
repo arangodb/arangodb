@@ -39,9 +39,15 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace arangodb {
 struct ResourceMonitor;
+
+namespace velocypack {
+class Builder;
+struct Options;
+}  // namespace velocypack
 
 namespace aql {
 
@@ -70,7 +76,10 @@ class HashedCollectExecutorInfos {
    */
   HashedCollectExecutorInfos(
       std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-      RegisterId collectRegister, std::vector<std::string> aggregateTypes,
+      RegisterId collectRegister, RegisterId expressionRegister,
+      Variable const* expressionVariable,
+      std::vector<std::string> aggregateTypes,
+      std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       velocypack::Options const* vpackOptions,
       arangodb::ResourceMonitor& resourceMonitor);
@@ -88,6 +97,14 @@ class HashedCollectExecutorInfos {
   std::vector<std::string> const& getAggregateTypes() const;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
+  RegisterId getExpressionRegister() const noexcept {
+    return _expressionRegister;
+  }
+  Variable const* getExpressionVariable() const { return _expressionVariable; }
+  std::vector<std::pair<std::string, RegisterId>> const& getInputVariables()
+      const {
+    return _inputVariables;
+  }
   arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
@@ -105,6 +122,15 @@ class HashedCollectExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
+
+  /// @brief the optional register that contains the input expression values for
+  /// each group
+  RegisterId _expressionRegister;
+
+  std::vector<std::pair<std::string, RegisterId>> _inputVariables;
+
+  /// @brief input expression variable (might be null)
+  Variable const* _expressionVariable;
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
@@ -178,7 +204,8 @@ class HashedCollectExecutor {
     std::size_t _size;
   };
   using GroupKeyType = HashedAqlValueGroup;
-  using GroupValueType = std::unique_ptr<ValueAggregators>;
+  using GroupValueType = std::pair<std::unique_ptr<ValueAggregators>,
+                                   std::unique_ptr<velocypack::Builder>>;
   using GroupMapType =
       containers::FlatHashMap<GroupKeyType, GroupValueType, AqlValueGroupHash,
                               AqlValueGroupEqual>;
@@ -213,11 +240,13 @@ class HashedCollectExecutor {
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
 
+  void addToIntoRegister(InputAqlItemRow const& input,
+                         velocypack::Builder& builder);
+
   std::unique_ptr<ValueAggregators> makeAggregateValues() const;
 
   size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
 
- private:
   Infos const& _infos;
 
   /// @brief We need to save any input row (it really doesn't matter, except for
@@ -227,7 +256,7 @@ class HashedCollectExecutor {
 
   /// @brief hashmap of all encountered groups
   GroupMapType _allGroups;
-  GroupMapType::const_iterator _currentGroup;
+  GroupMapType::iterator _currentGroup;
 
   bool
       _isInitialized;  // init() was called successfully (e.g. it returned DONE)
@@ -237,6 +266,8 @@ class HashedCollectExecutor {
   GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
+
+  size_t _memoryUsageForInto;
 };
 
 }  // namespace aql

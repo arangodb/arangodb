@@ -1,7 +1,9 @@
+
 # note that typedbuffer.cpp is excluded intentionally
 # since it seems to have a big dependency footprint;
 # we intent to remove the TypedBuffer construct soon
 add_library(arango_tests_pregel OBJECT
+  ConductorStateTest.cpp
   DurationTest.cpp
   PregelShardTest.cpp
   StatusTest.cpp)
@@ -15,6 +17,8 @@ target_link_libraries(arango_tests_pregel
   PRIVATE
   arango_inspection
   gtest
+  arango_actor
+  arango_pregel_conductor
   date_interface
   velocypack
   fmt)
@@ -25,10 +29,12 @@ add_executable(arangodbtests_pregel
 target_link_libraries(arangodbtests_pregel
     gtest_main
     arango_tests_pregel
+    arango_tests_pregel_graphstore
     arango_crashhandler_light
     arango_assertions)
 
 add_test(NAME pregel
-         COMMAND arangodbtests_pregel)
+  COMMAND arangodbtests_pregel)
 
 add_subdirectory(Actor)
+add_subdirectory(GraphStore)

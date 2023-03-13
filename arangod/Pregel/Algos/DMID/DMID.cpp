@@ -29,7 +29,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/DMID/DMIDMessageFormat.h"
 #include "Pregel/Algos/DMID/VertexSumAggregator.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -162,10 +162,8 @@ struct DMIDComputation
    */
   void superstep0(MessageIterator<DMIDMessage> const& messages) {
     DMIDMessage message(pregelId(), 0);
-    RangeIterator<Edge<float>> edges = getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<float>* edge = *edges;
-      message.weight = edge->data();  // edge weight
+    for (auto& edge : getEdges()) {
+      message.weight = edge.data();  // edge weight
       sendMessage(edge, message);
     }
   }
@@ -332,11 +330,9 @@ struct DMIDComputation
        */
       bool hasEdgeToSender = false;
 
-      for (auto edges = getEdges(); edges.hasMore(); ++edges) {
-        Edge<float>* edge = *edges;
-
-        if (edge->targetShard() == senderID.shard &&
-            edge->toKey() == senderID.key) {
+      for (auto& edge : getEdges()) {
+        if (edge.targetShard() == senderID.shard &&
+            edge.toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
            * Has this vertex more influence on the sender than the
@@ -344,7 +340,7 @@ struct DMIDComputation
            */
           float senderInfluence =
               (float)vecLS->getAggregatedValue(senderID.shard, senderID.key);
-          senderInfluence *= edge->data();
+          senderInfluence *= edge.data();
 
           if (myInfluence > senderInfluence) {
             /** send new message */
@@ -591,7 +587,7 @@ struct DMIDComputation
 };
 
 VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new DMIDComputation();
 }
 
@@ -599,9 +595,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   const std::string _resultField;
   unsigned _maxCommunities;
 
-  explicit DMIDGraphFormat(application_features::ApplicationServer& server,
-                           std::string const& result, unsigned mc)
-      : GraphFormat<DMIDValue, float>(server),
+  explicit DMIDGraphFormat(std::string const& result, unsigned mc)
+      : GraphFormat<DMIDValue, float>(),
         _resultField(result),
         _maxCommunities(mc) {}
 
@@ -664,11 +659,14 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
 };
 
 GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_server, _resultField, _maxCommunities);
+  return new DMIDGraphFormat(_resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threshold
+  DMIDMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
+  }  // TODO use _threshold
 
   void preGlobalSuperstep() override {
     /**
@@ -786,8 +784,18 @@ struct DMIDMasterContext : public MasterContext {
   }
 };
 
-MasterContext* DMID::masterContext(VPackSlice userParams) const {
-  return new DMIDMasterContext();
+[[nodiscard]] auto DMID::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new DMIDMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto DMID::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<DMIDMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }
 
 IAggregator* DMID::aggregator(std::string const& name) const {

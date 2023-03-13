@@ -230,6 +230,7 @@ start() {
       --log.level $LOG_LEVEL_CLUSTER
       --server.descriptors-minimum 0
       --javascript.allow-admin-execute true
+      --http.trusted-origin all
 EOM
 
     SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"

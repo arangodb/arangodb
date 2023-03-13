@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <map>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 

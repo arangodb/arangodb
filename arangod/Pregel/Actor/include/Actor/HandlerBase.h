@@ -43,10 +43,10 @@ struct HandlerBase {
   }
 
   template<typename ActorConfig>
-  auto spawn(typename ActorConfig::State initialState,
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
-    return runtime->template spawn<ActorConfig>(self.database, initialState,
-                                                initialMessage);
+    return runtime->template spawn<ActorConfig>(
+        self.database, std::move(initialState), initialMessage);
   }
 
   auto finish() -> void { runtime->finish(self); }

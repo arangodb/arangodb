@@ -27,6 +27,12 @@
 
 namespace arangodb::pregel::algos {
 
+struct ConnectedComponentsType {
+  using Vertex = uint64_t;
+  using Edge = uint8_t;
+  using Message = uint64_t;
+};
+
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
@@ -35,9 +41,12 @@ namespace arangodb::pregel::algos {
 struct ConnectedComponents
     : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
-  explicit ConnectedComponents(application_features::ApplicationServer& server,
-                               VPackSlice userParams)
-      : SimpleAlgorithm(server, "connectedcomponents", userParams) {}
+  explicit ConnectedComponents(VPackSlice userParams)
+      : SimpleAlgorithm(userParams) {}
+
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "connectedcomponents";
+  };
 
   GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 
@@ -48,8 +57,17 @@ struct ConnectedComponents
     return new MinCombiner<uint64_t>();
   }
   VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos
