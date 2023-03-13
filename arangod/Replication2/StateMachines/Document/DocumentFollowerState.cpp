@@ -101,8 +101,7 @@ auto DocumentFollowerState::applyEntries(
             auto [index, doc] = *entry;
 
             auto currentReleaseIndex = std::visit(
-                [&data, index](
-                    auto&& op) -> ResultT<std::optional<LogIndex>> {
+                [&data, index](auto&& op) -> ResultT<std::optional<LogIndex>> {
                   return data.applyEntry(op, index);
                 },
                 doc.getInnerOperation());
@@ -350,6 +349,8 @@ auto DocumentFollowerState::GuardedData::applyEntry(
   }
 
   // We don't need to update the release index after an intermediate commit.
+  // However, we could release everything in this transaction up to this point
+  // and update the start LogIndex of this transaction to the current log index.
   return ResultT<std::optional<LogIndex>>::success(std::nullopt);
 }
 
