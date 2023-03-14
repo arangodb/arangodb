@@ -74,7 +74,6 @@ function testSuite() {
         // INSERT test, single document:
         let startTime = new Date();
         let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo:2});
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         let timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -86,7 +85,6 @@ function testSuite() {
         // INSERT test, batch:
         startTime = new Date();
         res = arango.POST_RAW(`/_api/document/${cn}`, [{Hallo:2},{Hallo:3}]);
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -98,7 +96,6 @@ function testSuite() {
         // REPLACE test, single document:
         startTime = new Date();
         res = arango.PUT_RAW(`/_api/document/${cn}/d._key`, {Hallo:2});
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -111,7 +108,6 @@ function testSuite() {
         startTime = new Date();
         res = arango.PUT_RAW(`/_api/document/${cn}`,
              [{_key:d1._key, Hallo:2},{_key:d2._key, Hallo:3}]);
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -123,7 +119,6 @@ function testSuite() {
         // UPDATE test, single document:
         startTime = new Date();
         res = arango.PATCH_RAW(`/_api/document/${cn}/d._key`, {Hallo:2});
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -136,7 +131,6 @@ function testSuite() {
         startTime = new Date();
         res = arango.PATCH_RAW(`/_api/document/${cn}`,
              [{_key:d1._key, Hallo:2},{_key:d2._key, Hallo:3}]);
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -148,7 +142,6 @@ function testSuite() {
         // DELETE test, single document:
         startTime = new Date();
         res = arango.DELETE_RAW(`/_api/document/${cn}/d._key`, {});
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -160,7 +153,6 @@ function testSuite() {
         // DELETE test, batch:
         startTime = new Date();
         res = arango.DELETE_RAW(`/_api/document/${cn}`, [d1._key, d2._key]);
-        console.error(JSON.stringify(res), new Date() - startTime);
         assertEqual(403, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
