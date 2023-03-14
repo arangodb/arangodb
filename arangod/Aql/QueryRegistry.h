@@ -188,11 +188,17 @@ class QueryRegistry {
     bool _isOpen;
   };
 
+  using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
+  using QueryInfoMapPerVocbase = std::unordered_map<std::string, QueryInfoMap>;
+
+  bool lookupQueryForFinalization(
+      std::string const& vocbase, QueryId id, ErrorCode errorCode,
+      QueryInfoMapPerVocbase::iterator& vocbaseQueriesIt,
+      QueryInfoMap::iterator& queryMapIt);
+
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string,
-                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
-      _queries;
+  QueryInfoMapPerVocbase _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 
