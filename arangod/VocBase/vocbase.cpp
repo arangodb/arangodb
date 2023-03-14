@@ -190,7 +190,7 @@ struct arangodb::VocBaseLogManager {
           });
       return {};
     } else {
-      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+      return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
     }
   }
 
@@ -2263,7 +2263,8 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
       iter != guard->statesAndLogs.end()) {
     return iter->second.log;
   } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND);
+    throw basics::Exception::fmt(
+        ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 }
 

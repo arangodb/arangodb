@@ -151,7 +151,7 @@ const coordinators = (function () {
  *         },
  *         currentTerm?: {
  *           term: number,
- *           leader: {
+ *           leader?: {
  *             serverId: string,
  *             rebootId: number
  *           }

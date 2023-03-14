@@ -184,17 +184,12 @@ void ReplicatedStateManager<S>::becomeFollower(
 }
 
 template<typename S>
-void ReplicatedStateManager<S>::dropEntries() {
-  ADB_PROD_ASSERT(false);
-}
-
-template<typename S>
-auto ReplicatedStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto ReplicatedStateManager<S>::getInternalStatus() const -> Status {
   auto manager = _guarded.getLockedGuard()->_currentManager;
-  auto status = std::visit(
-      overload{[](auto const& manager) { return manager->getQuickStatus(); }},
-      manager);
+  auto status = std::visit(overload{[](auto const& manager) -> Status {
+                             return {manager->getInternalStatus()};
+                           }},
+                           manager);
 
   return status;
 }
@@ -262,6 +257,13 @@ auto StreamProxy<S, Interface,
 
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
+auto StreamProxy<S, Interface, ILogMethodsT>::isResigned() const noexcept
+    -> bool {
+  return _logMethods.getLockedGuard().get() == nullptr;
+}
+
+template<typename S, template<typename> typename Interface,
+         ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface, ILogMethodsT>::waitFor(LogIndex index)
     -> futures::Future<WaitForResult> {
   // TODO We might want to remove waitFor here, in favor of updateCommitIndex.
@@ -308,7 +310,7 @@ void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
     } else if constexpr (std::is_same_v<
                              ILogMethodsT,
-                             replicated_log::IReplicatedLogMethodsBase>) {
+                             replicated_log::IReplicatedLogFollowerMethods>) {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED;
     } else {
       []<bool flag = false>() {
@@ -421,23 +423,27 @@ auto LeaderStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto LeaderStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto LeaderStateManager<S>::getInternalStatus() const -> Status::Leader {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->_leaderState == NULL) {
+  if (guard->_leaderState == nullptr) {
     // we have already resigned
-    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+    return {Status::Leader::Resigned{}};
+  } else if (guard->_recoveryCompleted) {
+    return {Status::Leader::Operational{}};
+  } else {
+    return {Status::Leader::InRecovery{}};
   }
-  if (guard->_recoveryCompleted) {
-    return replicated_log::LocalStateMachineStatus::kOperational;
-  }
-  return replicated_log::LocalStateMachineStatus::kRecovery;
 }
 
 template<typename S>
 auto LeaderStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
-  return _guardedData.getLockedGuard()->_leaderState;
+  auto guard = _guardedData.getLockedGuard();
+  if (guard->_recoveryCompleted) {
+    return guard->_leaderState;
+  } else {
+    return nullptr;
+  }
 }
 
 template<typename S>
@@ -448,7 +454,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
-  _leaderState = NULL;
+  _leaderState = nullptr;
   return {std::move(core), std::move(methods)};
 }
 
@@ -789,20 +795,52 @@ auto FollowerStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
+auto FollowerStateManager<S>::getInternalStatus() const -> Status::Follower {
   auto guard = _guardedData.getLockedGuard();
-  if (guard->_followerState == NULL) {
-    // already resigned
-    return replicated_log::LocalStateMachineStatus::kUnconfigured;
+  // TODO maybe this logic should be moved into the replicated log instead, it
+  //      seems to contain all the information.
+  if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
+    return {Status::Follower::Resigned{}};
+  } else {
+    return {Status::Follower::Constructed{}};
   }
-  return replicated_log::LocalStateMachineStatus::kOperational;
 }
 
 template<typename S>
 auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-  return _guardedData.getLockedGuard()->_followerState;
+  return _guardedData.doUnderLock(
+      [](auto& data) -> std::shared_ptr<IReplicatedFollowerState<S>> {
+        auto& stream = *data._stream;
+
+        // A follower is established if it
+        //  a) has a snapshot, and
+        //  b) knows the snapshot won't be invalidated in the current term.
+        bool const followerEstablished = std::invoke([&] {
+          auto methodsGuard = stream.methods();
+          return methodsGuard.isResigned() or
+                 (methodsGuard->leaderConnectionEstablished() and
+                  methodsGuard->checkSnapshotState() ==
+                      replicated_log::SnapshotState::AVAILABLE);
+        });
+        // It is essential that, in the lines above this comment, the snapshot
+        // state is checked *after* the leader connection to prevent races. Note
+        // that a log truncate will set the snapshot to missing. After a
+        // successful append entries, the log won't be truncated again -- during
+        // the current term at least. So the snapshot state can toggle from
+        // AVAILABLE to MISSING and back to AVAILABLE, but only once; and the
+        // commit index will be updated only after the (possible) switch from
+        // AVAILABLE to MISSING.
+
+        // Disallow access unless we have a snapshot and are sure the log
+        // won't be truncated (and thus the snapshot invalidated) in this
+        // term.
+        if (followerEstablished) {
+          return data._followerState;
+        } else {
+          return nullptr;
+        }
+      });
 }
 
 template<typename S>
@@ -826,9 +864,9 @@ auto UnconfiguredStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto UnconfiguredStateManager<S>::getQuickStatus() const
-    -> replicated_log::LocalStateMachineStatus {
-  return replicated_log::LocalStateMachineStatus::kUnconfigured;
+auto UnconfiguredStateManager<S>::getInternalStatus() const
+    -> Status::Unconfigured {
+  return {};
 }
 
 template<typename S>
@@ -992,11 +1030,10 @@ auto ReplicatedState<S>::createStateHandle(
     void updateCommitIndex(LogIndex index) override {
       return manager.updateCommitIndex(index);
     }
-    void dropEntries() override { return manager.dropEntries(); }
+
     // MSVC chokes on trailing return type notation here
-    [[nodiscard]] replicated_log::LocalStateMachineStatus getQuickStatus()
-        const override {
-      return manager.getQuickStatus();
+    [[nodiscard]] Status getInternalStatus() const override {
+      return manager.getInternalStatus();
     }
 
     ReplicatedStateManager<S>& manager;

@@ -28,10 +28,16 @@ const _ = require("lodash");
 
 const replicatedLogIsReady = function (database, logId, term, participants, leader) {
   return function () {
-    let {current} = LH.readReplicatedLogAgency(database, logId);
+    const {current, plan} = LH.readReplicatedLogAgency(database, logId);
+    if (plan === undefined) {
+      return Error("plan not yet defined");
+    }
     if (current === undefined) {
       return Error("current not yet defined");
     }
+    const electionTerm = !plan.currentTerm.hasOwnProperty('leader');
+    // If there's no leader, followers will stay in "Connecting".
+    const readyState = electionTerm ? 'Connecting' : 'ServiceOperational';
 
     for (const srv of participants) {
       if (!current.localStatus || !current.localStatus[srv]) {
@@ -41,9 +47,9 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
-      if (current.localStatus[srv].state !== "ServiceOperational") {
+      if (current.localStatus[srv].state !== readyState) {
         return Error(`Participant ${srv} state not yet ready, found  ${current.localStatus[srv].state}` +
-            `, expected = "ServiceOperational".`);
+            `, expected = "${readyState}".`);
       }
     }
 

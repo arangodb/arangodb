@@ -34,7 +34,7 @@ auto to_string(SnapshotState) noexcept -> std::string_view;
 struct ISnapshotManager {
   virtual ~ISnapshotManager() = default;
   virtual auto invalidateSnapshotState() -> Result = 0;
-  virtual auto checkSnapshotState() noexcept -> SnapshotState = 0;
+  virtual auto checkSnapshotState() const noexcept -> SnapshotState = 0;
 };
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
