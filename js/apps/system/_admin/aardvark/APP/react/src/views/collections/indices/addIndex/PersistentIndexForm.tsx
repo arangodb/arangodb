@@ -5,7 +5,12 @@ import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
 import { useCreatePersistentIndex } from "./useCreatePersistentIndex";
 
 export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
-  const { onCreate, initialValues, schema, fields } = useCreatePersistentIndex();
+  const {
+    onCreate,
+    initialValues,
+    schema,
+    fields
+  } = useCreatePersistentIndex();
 
   return (
     <Formik
