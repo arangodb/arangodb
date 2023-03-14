@@ -18,7 +18,8 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
     localStorage.setItem(`${graphName}-gv-urlparameters`, JSON.stringify(urlParameters[0]));
     setIsLoadingData(true);
     onIsLoadingData(true);
-    responseTimesObject.fetchStarted = new Date();
+    let newResponseTimesObject = {...responseTimesObject};
+    newResponseTimesObject = {...responseTimesObject, fetchStarted: new Date()};
 
     $.ajax({
       type: 'GET',
@@ -26,12 +27,15 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
       contentType: 'application/json',
       data: urlParameters[0],
       success: function (data) {
-        responseTimesObject.fetchFinished = new Date();
-        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
-        setResponseTimes(responseTimesObject);
+        newResponseTimesObject = {...responseTimesObject, fetchFinished: new Date()};
+
+        const fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        newResponseTimesObject = {...responseTimesObject, fetchDuration: fetchDuration};
+        
+        setResponseTimes(newResponseTimesObject);
         setIsLoadingData(false);
         onIsLoadingData(false);
-        onGraphDataLoaded(data, responseTimesObject);
+        onGraphDataLoaded(data, newResponseTimesObject);
       },
       error: function (e) {
         console.log(e);
