@@ -37,7 +37,6 @@ if (getOptions === true) {
 
 let jsunity = require('jsunity');
 let internal = require('internal');
-const {HTTP_FORBIDDEN} = require("../../../../js/server/modules/@arangodb/actions");
 
 function getTelemetricsResult() {
   try {
@@ -66,7 +65,7 @@ function telemetricsOnShellTestsuite() {
         const res = getTelemetricsResult();
         assertTrue(res.hasOwnProperty("errorNum"));
         assertTrue(res.hasOwnProperty("errorMessage"));
-        assertEqual(res.errorNum, HTTP_FORBIDDEN);
+        assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
         assertTrue(res.errorMessage.includes("telemetrics is disabled"));
       } catch (err) {
       }
@@ -81,7 +80,7 @@ function telemetricsApiUsageTestsuite() {
 
     testTelemetricsApiRequestByUserNotEnabled: function () {
       const res = arango.GET("/_admin/telemetrics");
-      assertEqual(res.errorNum, HTTP_FORBIDDEN);
+      assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertTrue(res.errorMessage.includes("telemetrics is disabled"));
     },
 

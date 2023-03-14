@@ -40,7 +40,6 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 const users = require('@arangodb/users');
 const smartGraph = require("@arangodb/smart-graph");
-const {HTTP_FORBIDDEN} = require("../../../../js/server/modules/@arangodb/actions");
 const isCluster = require("internal").isCluster();
 const userName = "abc";
 const databaseName = "databaseTest";
@@ -303,7 +302,7 @@ function telemetricsShellReconnectTestsuite() {
         const res = getTelemetricsResult();
         assertTrue(res.hasOwnProperty("errorNum"));
         assertTrue(res.hasOwnProperty("errorMessage"));
-        assertEqual(res.errorNum, HTTP_FORBIDDEN);
+        assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
         assertTrue(res.errorMessage.includes("insufficient permissions"));
       } finally {
         arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
@@ -419,7 +418,7 @@ function telemetricsApiReconnectTestsuite() {
         const res = arango.GET("/_admin/telemetrics");
         assertTrue(res.hasOwnProperty("errorNum"));
         assertTrue(res.hasOwnProperty("errorMessage"));
-        assertEqual(res.errorNum, HTTP_FORBIDDEN);
+        assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
         assertTrue(res.errorMessage.includes("insufficient permissions"));
       } finally {
         arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
