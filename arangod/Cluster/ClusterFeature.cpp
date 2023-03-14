@@ -431,7 +431,7 @@ clicked in the web interface. For backwards compatibility, the default value is
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31100)
       .setLongDescription(
-          R"(The old legacy behavior is to send a 403 FORBIDDEN. The new,
+          R"(The legacy behavior is to send a 403 FORBIDDEN. The new,
 more correct behavior is to send a 503 SERVICE UNAVAILABLE, which leads
 to retries on the coordinator. Therefore, the two only valid values are 403
 and 503, all other values will be interpreted as not specified and the
