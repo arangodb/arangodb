@@ -27,10 +27,10 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
       contentType: 'application/json',
       data: urlParameters[0],
       success: function (data) {
-        newResponseTimesObject = {...responseTimesObject, fetchFinished: new Date()};
+        newResponseTimesObject = {...newResponseTimesObject, fetchFinished: new Date()};
 
-        const fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
-        newResponseTimesObject = {...responseTimesObject, fetchDuration: fetchDuration};
+        const fetchDuration = Math.abs(newResponseTimesObject.fetchFinished.getTime() - newResponseTimesObject.fetchStarted.getTime());
+        newResponseTimesObject = {...newResponseTimesObject, fetchDuration: fetchDuration};
         
         setResponseTimes(newResponseTimesObject);
         setIsLoadingData(false);
