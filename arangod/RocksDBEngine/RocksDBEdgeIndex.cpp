@@ -849,11 +849,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     if (n % 1024 == 0) {
       if (collection().vocbase().server().isStopping()) {
         // periodically check for server shutdown
-        return;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      if (collection().vocbase().isDropped() || collection().deleted()) {
-        // collection or database was dropped
-        return;
+      if (collection().vocbase().isDropped()) {
+        // database was dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (collection().deleted()) {
+        // collection was dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
 
