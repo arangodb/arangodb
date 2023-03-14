@@ -118,7 +118,7 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
-      ]
+      ];
 
       queries.forEach(function(query) {
         // the one rule is singled out here because it leads to a different execution
@@ -147,7 +147,7 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
-      ]
+      ];
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query,);
