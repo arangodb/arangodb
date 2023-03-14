@@ -68,8 +68,12 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
   return network::sendRequest(_pool, "server:" + _participantId,
                               fuerte::RestVerb::Delete, std::move(path), {},
                               opts)
-      .thenValue([](network::Response&& resp) -> Result {
-        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+      .thenValue([self = shared_from_this(), id = id](
+                     network::Response&& resp) -> futures::Future<Result> {
+        if (resp.fail()) {
+          std::this_thread::sleep_for(std::chrono::seconds(5));
+          return self->finishSnapshot(id);
+        } else if (!fuerte::statusIsSuccess(resp.statusCode())) {
           return resp.combinedResult();
         }
         return Result{};

@@ -35,11 +35,13 @@ auto DocumentStateSnapshotHandler::create(ShardMap shards)
     -> ResultT<std::weak_ptr<Snapshot>> {
   try {
     auto snapshot = _databaseSnapshotFactory->createSnapshot();
-
     auto id = SnapshotId::create();
-    auto emplacement = _snapshots.emplace(
+
+    std::unique_lock lock(_snapshotsMap.mutex);
+    auto emplacement = _snapshotsMap.snapshots.emplace(
         id,
         std::make_shared<Snapshot>(id, std::move(shards), std::move(snapshot)));
+
     TRI_ASSERT(emplacement.second);
     return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
   } catch (basics::Exception const& ex) {
@@ -55,25 +57,48 @@ auto DocumentStateSnapshotHandler::create(ShardMap shards)
 
 auto DocumentStateSnapshotHandler::find(SnapshotId const& id)
     -> ResultT<std::weak_ptr<Snapshot>> {
-  auto it = _snapshots.find(id);
-  if (it == _snapshots.end()) {
-    return ResultT<std::weak_ptr<Snapshot>>::error(
-        TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
+  std::shared_lock lock(_snapshotsMap.mutex);
+  if (auto it = _snapshotsMap.snapshots.find(id);
+      it != _snapshotsMap.snapshots.end()) {
+    return ResultT<std::weak_ptr<Snapshot>>::success(it->second);
   }
-  return ResultT<std::weak_ptr<Snapshot>>::success(it->second);
+  return ResultT<std::weak_ptr<Snapshot>>::error(
+      TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
+}
+
+auto DocumentStateSnapshotHandler::abort(SnapshotId const& id) -> Result {
+  std::unique_lock lock(_snapshotsMap.mutex);
+  if (auto it = _snapshotsMap.snapshots.find(id);
+      it != _snapshotsMap.snapshots.end()) {
+    auto res = it->second->abort();
+    _snapshotsMap.snapshots.erase(it);
+    return res;
+  }
+  return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
+}
+
+auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) -> Result {
+  std::unique_lock lock(_snapshotsMap.mutex);
+  if (auto it = _snapshotsMap.snapshots.find(id);
+      it != _snapshotsMap.snapshots.end()) {
+    auto res = it->second->finish();
+    _snapshotsMap.snapshots.erase(it);
+    return res;
+  }
+  return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
 }
 
 auto DocumentStateSnapshotHandler::status() const -> AllSnapshotsStatus {
   AllSnapshotsStatus result;
-  for (auto const& it : _snapshots) {
+  std::shared_lock lock(_snapshotsMap.mutex);
+  for (auto const& it : _snapshotsMap.snapshots) {
     result.snapshots.emplace(it.first, it.second->status());
   }
   return result;
 }
 
-void DocumentStateSnapshotHandler::clear() { _snapshots.clear(); }
-
-void DocumentStateSnapshotHandler::clearInactiveSnapshots() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void DocumentStateSnapshotHandler::clear() {
+  std::unique_lock lock(_snapshotsMap.mutex);
+  _snapshotsMap.snapshots.clear();
 }
 }  // namespace arangodb::replication2::replicated_state::document

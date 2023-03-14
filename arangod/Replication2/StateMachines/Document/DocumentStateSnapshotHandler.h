@@ -27,6 +27,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <shared_mutex>
 
 struct TRI_vocbase_t;
 
@@ -43,9 +44,10 @@ struct IDocumentStateSnapshotHandler {
   virtual auto create(ShardMap shards) -> ResultT<std::weak_ptr<Snapshot>> = 0;
   virtual auto find(SnapshotId const& id)
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
+  virtual auto abort(SnapshotId const& id) -> Result = 0;
+  virtual auto finish(SnapshotId const& id) -> Result = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
   virtual void clear() = 0;
-  virtual void clearInactiveSnapshots() = 0;
 };
 
 class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
@@ -59,17 +61,23 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
   // Find a snapshot by id
   auto find(SnapshotId const& id) -> ResultT<std::weak_ptr<Snapshot>> override;
 
+  // Abort a snapshot and remove it
+  auto abort(SnapshotId const& id) -> Result override;
+
+  // Finish a snapshot and remove it
+  auto finish(SnapshotId const& id) -> Result override;
+
   // Get the status of every snapshot
   auto status() const -> AllSnapshotsStatus override;
 
   // Clear all snapshots
   void clear() override;
 
-  // Clear finished and aborted snapshots
-  void clearInactiveSnapshots() override;
-
  private:
   std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
-  std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> _snapshots;
+  struct {
+    std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> snapshots;
+    mutable std::shared_mutex mutex;
+  } _snapshotsMap;
 };
 }  // namespace arangodb::replication2::replicated_state::document

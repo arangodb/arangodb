@@ -54,7 +54,9 @@ struct IDocumentStateLeaderInterface {
   virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
 };
 
-class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
+class DocumentStateLeaderInterface
+    : public IDocumentStateLeaderInterface,
+      public std::enable_shared_from_this<DocumentStateLeaderInterface> {
  public:
   explicit DocumentStateLeaderInterface(ParticipantId participantId,
                                         GlobalLogIdentifier gid,

@@ -132,7 +132,7 @@ struct SnapshotParams {
 struct SnapshotBatch {
   SnapshotId snapshotId;
   // optional since we always have to send at least one batch, even though we
-  // might not have a single shard
+  // might not have any shards
   std::optional<ShardID> shardId;
   bool hasMore{false};
   velocypack::SharedSlice payload{};

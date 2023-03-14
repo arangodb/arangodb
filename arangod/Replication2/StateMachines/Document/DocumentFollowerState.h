@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
@@ -60,16 +61,24 @@ struct DocumentFollowerState
       ShardID shardId, velocypack::SharedSlice slice,
       std::shared_ptr<IDocumentStateTransactionHandler> const&
           transactionHandler) -> Result;
+
+  struct SnapshotTransferResult {
+    Result res;
+    bool reportFailure;
+    std::optional<SnapshotId> snapshotId;
+  };
+
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
-      -> futures::Future<Result>;
+      -> futures::Future<SnapshotTransferResult>;
   auto handleSnapshotTransfer(
+      SnapshotId shapshotId,
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
-      -> futures::Future<Result>;
+      -> futures::Future<SnapshotTransferResult>;
 
  private:
   struct GuardedData {
