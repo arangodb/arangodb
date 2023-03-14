@@ -1296,11 +1296,12 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {
+    // TODO get more information if available (e.g. is the leader resigned or in
+    //      recovery?)
     throwUnavailable(ADB_HERE,
                      "Replicated state {} is not available as leader, accessed "
-                     "from {}/{}. Status is {}.",
-                     *_replicatedStateId, vocbase().name(), name(),
-                     /* to_string(leaderStatus->managerState.state) */ "n/a");
+                     "from {}/{}.",
+                     *_replicatedStateId, vocbase().name(), name());
   }
 
   return leader;

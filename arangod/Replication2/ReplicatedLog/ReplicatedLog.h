@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
@@ -47,6 +48,9 @@ namespace arangodb::replication2::replicated_log {
 class LogLeader;
 struct AbstractFollower;
 }  // namespace arangodb::replication2::replicated_log
+namespace arangodb::replication2::maintenance {
+struct LogStatus;
+}
 
 namespace arangodb::replication2::replicated_log {
 
@@ -78,7 +82,11 @@ struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
-  virtual auto snapshotCompleted(std::uint64_t version) -> Result = 0;
+  [[nodiscard]] virtual auto snapshotCompleted(std::uint64_t version)
+      -> Result = 0;
+  [[nodiscard]] virtual auto leaderConnectionEstablished() const -> bool = 0;
+  [[nodiscard]] virtual auto checkSnapshotState() const noexcept
+      -> replicated_log::SnapshotState = 0;
 };
 
 // TODO Move to namespace replicated_state (and different file?)
@@ -92,10 +100,8 @@ struct IReplicatedStateHandle {
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex, std::uint64_t) = 0;
   virtual void updateCommitIndex(LogIndex) = 0;
-  [[nodiscard]] virtual auto getQuickStatus() const
-      -> replicated_log::LocalStateMachineStatus = 0;
-  // TODO
-  virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
+  [[nodiscard]] virtual auto getInternalStatus() const
+      -> replicated_state::Status = 0;
 };
 
 struct LeaderTermInfo {

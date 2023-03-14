@@ -19,9 +19,11 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
@@ -148,10 +150,9 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
               (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
   MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex, std::uint64_t),
               (noexcept, override));
-  MOCK_METHOD(replicated_log::LocalStateMachineStatus, getQuickStatus, (),
+  MOCK_METHOD(replicated_state::Status, getInternalStatus, (),
               (const, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
-  MOCK_METHOD(void, dropEntries, (), (override));
 };
 }  // namespace
 

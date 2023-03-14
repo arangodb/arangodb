@@ -159,6 +159,6 @@ auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
   std::abort();
 }
 
-auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
+auto SnapshotManager::checkSnapshotState() const noexcept -> SnapshotState {
   return guardedData.getLockedGuard()->state;
 }

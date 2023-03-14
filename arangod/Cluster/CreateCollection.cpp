@@ -85,7 +85,8 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
-             properties().get(StaticStrings::DataSourceType).isNumber());
+             properties().get(StaticStrings::DataSourceType).isNumber())
+      << properties().toJson() << desc;
 
   uint32_t const type =
       properties().get(StaticStrings::DataSourceType).getNumber<uint32_t>();
