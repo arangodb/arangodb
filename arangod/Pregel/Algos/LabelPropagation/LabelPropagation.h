@@ -52,7 +52,8 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
     return "labelpropagation";
   };
 
-  GraphFormat<LPValue, int8_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<LPValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }

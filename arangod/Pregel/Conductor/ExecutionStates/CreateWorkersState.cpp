@@ -1,4 +1,4 @@
-#include "CreateWorkers.h"
+#include "CreateWorkersState.h"
 
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
@@ -35,7 +35,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   if (not workerCreated.ok()) {
     return std::make_unique<FatalError>(conductor);
   }
-  conductor.workers.emplace_back(sender);
+  conductor.workers.emplace(sender);
   respondedServers.emplace(sender.server);
   responseCount++;
 

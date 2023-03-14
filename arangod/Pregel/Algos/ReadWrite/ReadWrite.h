@@ -44,7 +44,8 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
     return "readwrite";
   };
 
-  [[nodiscard]] GraphFormat<V, E>* inputFormat() const override;
+  [[nodiscard]] std::shared_ptr<GraphFormat<V, E> const> inputFormat()
+      const override;
 
   [[nodiscard]] MessageFormat<V>* messageFormat() const override {
     return new NumberMessageFormat<V>();

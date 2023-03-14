@@ -102,7 +102,7 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       ECValue& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ECValue const* ptr) const override {
@@ -125,8 +125,9 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   }
 };
 
-GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
-  return new ECGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<ECValue, int8_t> const>
+EffectiveCloseness::inputFormat() const {
+  return std::make_shared<ECGraphFormat>(_resultField);
 }
 
 struct EffectiveClosenessMasterContext : public MasterContext {

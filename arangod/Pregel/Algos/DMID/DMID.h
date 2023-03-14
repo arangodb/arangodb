@@ -56,7 +56,8 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
     return "DMID";
   };
 
-  GraphFormat<DMIDValue, float>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<DMIDValue, float> const> inputFormat()
+      const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;
 
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(

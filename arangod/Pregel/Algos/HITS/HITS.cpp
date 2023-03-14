@@ -114,7 +114,7 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       HITSValue& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            HITSValue const* value) const override {
@@ -124,8 +124,9 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
   }
 };
 
-GraphFormat<HITSValue, int8_t>* HITS::inputFormat() const {
-  return new HITSGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<HITSValue, int8_t> const> HITS::inputFormat()
+    const {
+  return std::make_shared<HITSGraphFormat>(_resultField);
 }
 
 WorkerContext* HITS::workerContext(VPackSlice userParams) const {

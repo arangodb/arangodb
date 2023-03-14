@@ -43,6 +43,57 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
+  auto operator()(message::LoadGraph start)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is loading", this->self);
+    std::function<void()> statusUpdateCallback =
+        [/*self = shared_from_this(),*/ this] {
+          // TODO
+          this->template dispatch<conductor::message::ConductorMessages>(
+              this->state->conductor,
+              conductor::message::StatusUpdate{
+                  .executionNumber =
+                      this->state->executionSpecifications.executionNumber,
+                  .status = this->state->observeStatus()});
+        };
+
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+
+    auto graphLoaded = [/*self = shared_from_this(),*/ this]()
+        -> ResultT<conductor::message::GraphLoaded> {
+      try {
+        // TODO GORDO-1546
+        // add graph store to state
+        // this->state->graphStore->loadShards(&_config, statusUpdateCallback,
+        // []() {});
+        return {conductor::message::GraphLoaded{
+            .executionNumber =
+                this->state->executionSpecifications.executionNumber,
+            .vertexCount = 0,  // TODO GORDO-1546
+                               // this->state->graphStore->localVertexCount(),
+            .edgeCount = 0,    // TODO GORDO-1546
+                               // this->state->_graphStore->localEdgeCount()
+        }};
+        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
+            << fmt::format("Worker {} has finished loading.", this->self);
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("caught exception in loadShards: {}", ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception exception in loadShards"};
+      }
+    };
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, graphLoaded());
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
@@ -66,8 +117,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(auto&& rest) -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
-        << "Worker Actor: Got unhandled message";
-    LOG_TOPIC("f5bac", INFO, Logger::PREGEL) << fmt::format("{}", rest);
+        << fmt::format("Worker Actor: Got unhandled message: {}", rest);
     return std::move(this->state);
   }
 };
