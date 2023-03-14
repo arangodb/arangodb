@@ -37,8 +37,7 @@ auto DocumentStateSnapshotHandler::create(ShardMap shards)
     auto snapshot = _databaseSnapshotFactory->createSnapshot();
     auto id = SnapshotId::create();
 
-    std::unique_lock lock(_snapshotsMap.mutex);
-    auto emplacement = _snapshotsMap.snapshots.emplace(
+    auto emplacement = _snapshots.emplace(
         id,
         std::make_shared<Snapshot>(id, std::move(shards), std::move(snapshot)));
 
@@ -57,9 +56,7 @@ auto DocumentStateSnapshotHandler::create(ShardMap shards)
 
 auto DocumentStateSnapshotHandler::find(SnapshotId const& id)
     -> ResultT<std::weak_ptr<Snapshot>> {
-  std::shared_lock lock(_snapshotsMap.mutex);
-  if (auto it = _snapshotsMap.snapshots.find(id);
-      it != _snapshotsMap.snapshots.end()) {
+  if (auto it = _snapshots.find(id); it != _snapshots.end()) {
     return ResultT<std::weak_ptr<Snapshot>>::success(it->second);
   }
   return ResultT<std::weak_ptr<Snapshot>>::error(
@@ -67,22 +64,18 @@ auto DocumentStateSnapshotHandler::find(SnapshotId const& id)
 }
 
 auto DocumentStateSnapshotHandler::abort(SnapshotId const& id) -> Result {
-  std::unique_lock lock(_snapshotsMap.mutex);
-  if (auto it = _snapshotsMap.snapshots.find(id);
-      it != _snapshotsMap.snapshots.end()) {
+  if (auto it = _snapshots.find(id); it != _snapshots.end()) {
     auto res = it->second->abort();
-    _snapshotsMap.snapshots.erase(it);
+    _snapshots.erase(it);
     return res;
   }
   return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
 }
 
 auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) -> Result {
-  std::unique_lock lock(_snapshotsMap.mutex);
-  if (auto it = _snapshotsMap.snapshots.find(id);
-      it != _snapshotsMap.snapshots.end()) {
+  if (auto it = _snapshots.find(id); it != _snapshots.end()) {
     auto res = it->second->finish();
-    _snapshotsMap.snapshots.erase(it);
+    _snapshots.erase(it);
     return res;
   }
   return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
@@ -90,15 +83,29 @@ auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) -> Result {
 
 auto DocumentStateSnapshotHandler::status() const -> AllSnapshotsStatus {
   AllSnapshotsStatus result;
-  std::shared_lock lock(_snapshotsMap.mutex);
-  for (auto const& it : _snapshotsMap.snapshots) {
+  for (auto const& it : _snapshots) {
     result.snapshots.emplace(it.first, it.second->status());
   }
   return result;
 }
 
 void DocumentStateSnapshotHandler::clear() {
-  std::unique_lock lock(_snapshotsMap.mutex);
-  _snapshotsMap.snapshots.clear();
+  for (auto& [_, snapshot] : _snapshots) {
+    snapshot->abort();
+  }
+  _snapshots.clear();
+}
+
+void DocumentStateSnapshotHandler::giveUpOnShard(ShardID const& shardId) {
+  std::erase_if(_snapshots, [&](auto& it) {
+    if (auto res = it.second->giveUpOnShard(shardId); res.fail()) {
+      LOG_TOPIC("b08ba", ERR, Logger::REPLICATION2)
+          << "Failed to reset snapshot " << it.first << " containing shard "
+          << shardId << ", the snapshot will be aborted: " << res;
+      it.second->abort();
+      return true;
+    }
+    return false;
+  });
 }
 }  // namespace arangodb::replication2::replicated_state::document

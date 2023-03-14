@@ -48,6 +48,7 @@ struct IDocumentStateSnapshotHandler {
   virtual auto finish(SnapshotId const& id) -> Result = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
   virtual void clear() = 0;
+  virtual void giveUpOnShard(ShardID const& shardId) = 0;
 };
 
 class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
@@ -73,11 +74,12 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
   // Clear all snapshots
   void clear() override;
 
+  // Aborts all snapshots containing a shard , so the shard is free to be
+  // dropped afterwards
+  void giveUpOnShard(ShardID const& shardId) override;
+
  private:
   std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
-  struct {
-    std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> snapshots;
-    mutable std::shared_mutex mutex;
-  } _snapshotsMap;
+  std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document

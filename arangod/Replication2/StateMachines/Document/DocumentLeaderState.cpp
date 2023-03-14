@@ -414,10 +414,11 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
         return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
       }
 
-      // TODO we clear snapshot here, to release the shard lock. This is
-      //   very invasive and aborts all snapshot transfers. Maybe there is
-      //   a better solution?
-      self->_snapshotHandler.getLockedGuard().get()->clear();
+      // This will release the shard lock. Currently ongoing snapshot transfers
+      // will not suffer from it, they will simply stop receiving batches for
+      // this shard. Later, when they start applying entries, it is going to be
+      // dropped anyway.
+      self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
       auto transactionHandler = data.core->getTransactionHandler();
       self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {

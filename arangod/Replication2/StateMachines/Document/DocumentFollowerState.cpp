@@ -101,8 +101,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
               }
 
               TRI_ASSERT(snapshotTransferResult.res.fail() ||
-                         snapshotTransferResult.res.ok() &&
-                             !snapshotTransferResult.reportFailure);
+                         (snapshotTransferResult.res.ok() &&
+                          !snapshotTransferResult.reportFailure));
 
               if (snapshotTransferResult.reportFailure) {
                 return snapshotTransferResult.res;

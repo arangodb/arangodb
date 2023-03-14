@@ -34,6 +34,7 @@
 #include <memory>
 #include <optional>
 #include <variant>
+#include <shared_mutex>
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
@@ -260,6 +261,7 @@ class Snapshot {
 
   explicit Snapshot(SnapshotId id, ShardMap shardsConfig,
                     std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
+  ~Snapshot();
 
   Snapshot(Snapshot const&) = delete;
   Snapshot(Snapshot&&) = delete;
@@ -272,6 +274,7 @@ class Snapshot {
   auto abort() -> Result;
   [[nodiscard]] auto status() const -> SnapshotStatus;
   auto getId() const -> SnapshotId;
+  auto giveUpOnShard(ShardID const& shardId) -> Result;
 
  private:
   std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
@@ -279,5 +282,6 @@ class Snapshot {
   SnapshotConfig _config;
   SnapshotState _state;
   SnapshotStatistics _statistics;
+  std::shared_mutex _shardsMutex;
 };
 }  // namespace arangodb::replication2::replicated_state::document
