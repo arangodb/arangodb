@@ -31,6 +31,8 @@
 #include "Basics/Guarded.h"
 #include "Logger/LogContextKeys.h"
 
+using namespace arangodb;
+using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 struct comp::StorageManager::StorageOperation {

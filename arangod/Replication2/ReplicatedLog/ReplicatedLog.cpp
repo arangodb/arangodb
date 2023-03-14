@@ -242,7 +242,7 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
         << "reset participant of replicated log";
     DeferredAction action;
     std::tie(data.methods, data.stateHandle, action) =
-        std::move(*data.participant).resign2();
+        std::move(*data.participant).resign();
 #ifndef ARANGODB_USE_GOOGLE_TESTS
     ADB_PROD_ASSERT(data.methods != nullptr);
     ADB_PROD_ASSERT(data.stateHandle != nullptr);

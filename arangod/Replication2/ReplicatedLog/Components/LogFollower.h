@@ -107,7 +107,7 @@ struct LogFollowerImpl : ILogFollower {
 
   auto getQuickStatus() const -> QuickLogStatus override;
 
-  [[nodiscard]] auto resign2() && -> std::tuple<
+  [[nodiscard]] auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 

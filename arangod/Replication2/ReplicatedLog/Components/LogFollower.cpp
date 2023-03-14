@@ -259,7 +259,7 @@ auto LogFollowerImpl::getStatus() const -> LogStatus {
   return guarded.getLockedGuard()->getStatus();
 }
 
-auto LogFollowerImpl::resign2() && -> std::tuple<
+auto LogFollowerImpl::resign() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   return guarded.getLockedGuard()->resign();
