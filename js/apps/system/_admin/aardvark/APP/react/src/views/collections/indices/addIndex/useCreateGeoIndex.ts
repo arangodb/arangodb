@@ -1,17 +1,18 @@
 import * as Yup from "yup";
-import { commonFields, useCreateIndex } from "./useCreateIndex";
+import { useCreateIndex } from "./useCreateIndex";
+import { commonFieldsMap } from "./IndexFieldsHelper";
 
 const initialValues = {
   type: "geo",
-  fields: "",
-  geoJson: false,
-  inBackground: true,
-  name: ""
+  fields: commonFieldsMap.fields.initialValue,
+  inBackground: commonFieldsMap.inBackground.initialValue,
+  name: commonFieldsMap.name.initialValue,
+  geoJson: false
 };
 
 const fields = [
-  commonFields.fields,
-  commonFields.name,
+  commonFieldsMap.fields,
+  commonFieldsMap.name,
   {
     label: "Geo JSON",
     name: "geoJson",
@@ -19,7 +20,7 @@ const fields = [
     tooltip:
       "Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude]."
   },
-  commonFields.inBackground
+  commonFieldsMap.inBackground
 ];
 
 const schema = Yup.object({

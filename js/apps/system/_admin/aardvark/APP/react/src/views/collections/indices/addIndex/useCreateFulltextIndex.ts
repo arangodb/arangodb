@@ -1,18 +1,19 @@
 import { toNumber } from "lodash";
-import { commonFields, useCreateIndex } from "./useCreateIndex";
+import { useCreateIndex } from "./useCreateIndex";
+import { commonFieldsMap } from "./IndexFieldsHelper";
 import * as Yup from "yup";
 
 const initialValues = {
   type: "fulltext",
-  fields: "",
-  minLength: 0,
-  inBackground: true,
-  name: ""
+  fields: commonFieldsMap.fields.initialValue,
+  inBackground: commonFieldsMap.inBackground.initialValue,
+  name: commonFieldsMap.name.initialValue,
+  minLength: 0
 };
 
 const fields = [
-  commonFields.fields,
-  commonFields.name,
+  commonFieldsMap.fields,
+  commonFieldsMap.name,
   {
     label: "Min. Length",
     name: "minLength",
@@ -20,7 +21,7 @@ const fields = [
     tooltip:
       "Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."
   },
-  commonFields.inBackground
+  commonFieldsMap.inBackground
 ];
 
 const schema = Yup.object({

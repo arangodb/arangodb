@@ -1,17 +1,18 @@
 import * as Yup from "yup";
-import { commonFields, useCreateIndex } from "./useCreateIndex";
+import { commonFieldsMap } from "./IndexFieldsHelper";
+import { useCreateIndex } from "./useCreateIndex";
 
 const initialValues = {
   type: "zkd",
-  fields: "",
-  fieldValueTypes: "double",
-  inBackground: true,
-  name: ""
+  fields: commonFieldsMap.fields.initialValue,
+  inBackground: commonFieldsMap.inBackground.initialValue,
+  name: commonFieldsMap.name.initialValue,
+  fieldValueTypes: "double"
 };
 
 const fields = [
-  commonFields.fields,
-  commonFields.name,
+  commonFieldsMap.fields,
+  commonFieldsMap.name,
   {
     label: "Field Value Types",
     name: "fieldValueTypes",
@@ -20,7 +21,7 @@ const fields = [
     tooltip:
       "The value type of the fields being indexed (only double supported for now)."
   },
-  commonFields.inBackground
+  commonFieldsMap.inBackground
 ];
 
 const schema = Yup.object({

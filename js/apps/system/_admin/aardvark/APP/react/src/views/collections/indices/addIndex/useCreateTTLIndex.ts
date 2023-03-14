@@ -1,18 +1,19 @@
 import { toNumber } from "lodash";
-import { commonFields, useCreateIndex } from "./useCreateIndex";
 import * as Yup from "yup";
+import { commonFieldsMap } from "./IndexFieldsHelper";
+import { useCreateIndex } from "./useCreateIndex";
 
 const initialValues = {
   type: "ttl",
-  fields: "",
-  expireAfter: 0,
-  inBackground: true,
-  name: ""
+  fields: commonFieldsMap.fields.initialValue,
+  inBackground: commonFieldsMap.inBackground.initialValue,
+  name: commonFieldsMap.name.initialValue,
+  expireAfter: 0
 };
 
 const fields = [
-  commonFields.fields,
-  commonFields.name,
+  commonFieldsMap.fields,
+  commonFieldsMap.name,
   {
     label: "Documents expire after (s)",
     name: "expireAfter",
@@ -20,7 +21,7 @@ const fields = [
     tooltip:
       "Number of seconds to be added to the timestamp attribute value of each document. If documents have reached their expiration timepoint, they will eventually get deleted by a background process."
   },
-  commonFields.inBackground
+  commonFieldsMap.inBackground
 ];
 
 const schema = Yup.object({

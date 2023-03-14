@@ -1,32 +1,15 @@
-import {
-  commonFields,
-  commonPersistentIndexFields,
-  useCreateIndex
-} from "./useCreateIndex";
 import * as Yup from "yup";
+import {
+  persistentIndexFields,
+  persistentIndexInitialValues
+} from "./IndexFieldsHelper";
+import { useCreateIndex } from "./useCreateIndex";
 
 const initialValues = {
   type: "skiplist",
-  fields: commonFields.fields.initialValue,
-  name: commonFields.fields.name,
-  unique: commonPersistentIndexFields.unique.initialValue,
-  sparse: commonPersistentIndexFields.sparse.initialValue,
-  deduplicate: commonPersistentIndexFields.deduplicate.initialValue,
-  estimates: commonPersistentIndexFields.estimates.initialValue,
-  cacheEnabled: commonPersistentIndexFields.estimates.initialValue,
-  inBackground: commonFields.inBackground.initialValue
+  ...persistentIndexInitialValues
 };
 
-const fields = [
-  commonFields.fields,
-  commonFields.name,
-  commonPersistentIndexFields.unique,
-  commonPersistentIndexFields.sparse,
-  commonPersistentIndexFields.deduplicate,
-  commonPersistentIndexFields.estimates,
-  commonPersistentIndexFields.cacheEnabled,
-  commonFields.inBackground
-];
 const schema = Yup.object({
   fields: Yup.string().required("Fields are required")
 });
@@ -41,5 +24,5 @@ export const useCreateSkiplistIndex = () => {
       fields: values.fields.split(",")
     });
   };
-  return { onCreate, initialValues, schema, fields };
+  return { onCreate, initialValues, schema, fields: persistentIndexFields };
 };
