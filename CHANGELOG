@@ -1,16 +1,32 @@
 v3.9.10 (XXXX-XX-XX)
 --------------------
 
+* Auto-flush RocksDB WAL files and in-memory column family data if the number of
+  live WAL files exceeds a certain threshold. This is to make sure that WAL
+  files are moved to the archive when there are a lot of live WAL files present
+  (e.g. after a restart; in this case RocksDB does not count any previously
+  existing WAL files when calculating the size of WAL files and comparing it
+  `max_total_wal_size`.
+  The feature can be configured via the following startup options:
+  - `--rocksdb.auto-flush-min-live-wal-files`: minimum number of live WAL files
+    that triggers an auto-flush. Defaults to `10`.
+  - `--rocksdb.auto-flush-check-interval`: interval (in seconds) in which
+    auto-flushes are executed. Defaults to `3600`.
+  Note that an auto-flush is only executed if the number of live WAL files
+  exceeds the configured threshold and the last auto-flush is longer ago than
+  the configured auto-flush check interval. That way too frequent auto-flushes
+  can be avoided.
+
 * Added the following metrics for WAL file tracking:
   - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
   - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
     onwards WAL files will be kept (i.e. not deleted from the archive) because
-    of external flushing needs. Candidates for these are arangosearch links and
-    background index creation.
+    of external flushing needs. Candidates for these are arangosearch links
+    and background index creation.
   - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
     which onwards WAL files will be kept because they may be needed by the
     replication.
-  - `arangodb_flush_subscriptions`: number of currently active flush
+  - `arangodb_flush_subscriptions`: number of currently active flush 
     subscriptions.
 
 * Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
