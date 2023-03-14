@@ -117,8 +117,9 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
     return "colorpropagation";
   };
 
-  [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
-      const override;
+  [[nodiscard]] std::shared_ptr<
+      GraphFormat<ColorPropagationValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] ColorPropagationValueMessageFormat* messageFormat()
       const override {
     return new ColorPropagationValueMessageFormat();
@@ -239,7 +240,7 @@ struct ColorPropagationGraphFormat
                       std::string const& documentId,
                       arangodb::velocypack::Slice document,
                       ColorPropagationValue& senders,
-                      uint64_t& vertexIdRange) override;
+                      uint64_t& vertexIdRange) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ColorPropagationValue const* ptr) const override;

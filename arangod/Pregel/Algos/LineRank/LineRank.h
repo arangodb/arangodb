@@ -82,8 +82,10 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
     return "linerank";
   };
 
-  GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_resultField, 0);
+  std::shared_ptr<GraphFormat<float, float> const> inputFormat()
+      const override {
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             0.0f);
   }
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();

@@ -61,11 +61,13 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
       : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 };
 
-GraphFormat<float, float>* PageRank::inputFormat() const {
+std::shared_ptr<GraphFormat<float, float> const> PageRank::inputFormat() const {
   if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_sourceField, _resultField, -1.0);
+    return std::make_shared<SeededPRGraphFormat>(_sourceField, _resultField,
+                                                 -1.0f);
   } else {
-    return new VertexGraphFormat<float, float>(_resultField, -1.0);
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             -1.0f);
   }
 }
 

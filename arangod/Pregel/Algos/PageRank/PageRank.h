@@ -42,7 +42,7 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
     return "pagerank";
   };
 
-  GraphFormat<float, float>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<float, float> const> inputFormat() const override;
 
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();

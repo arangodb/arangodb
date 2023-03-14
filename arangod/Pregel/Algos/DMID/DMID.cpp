@@ -604,11 +604,11 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice document,
                       DMIDValue& /*value*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,
-                    float& targetPtr) override {
+                    float& targetPtr) const override {
     targetPtr = 1.0f;
   }
 
@@ -658,8 +658,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   }
 };
 
-GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_resultField, _maxCommunities);
+std::shared_ptr<GraphFormat<DMIDValue, float> const> DMID::inputFormat() const {
+  return std::make_shared<DMIDGraphFormat>(_resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {

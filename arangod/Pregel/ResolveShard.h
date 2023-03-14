@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,28 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+#include "Basics/ErrorCode.h"
 
-namespace arangodb::pregel::conductor {
+namespace arangodb {
 
-struct ConductorState;
+class LogicalCollection;
+class ClusterInfo;
 
-struct Loading : ExecutionState {
-  Loading(ConductorState& conductor);
-  ~Loading();
-  auto name() const -> std::string override { return "loading"; };
-  auto message() -> worker::message::WorkerMessages override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+namespace pregel {
 
-  ConductorState& conductor;
-  std::unordered_set<actor::ActorPID> respondedWorkers;
-  uint64_t totalVerticesCount = 0;
-  uint64_t totalEdgesCount = 0;
+class WorkerConfig;
+
+struct ResolveShard {
+  static ErrorCode resolve(ClusterInfo& ci, WorkerConfig const* config,
+                           std::string const& collectionName,
+                           std::string const& shardKey,
+                           std::string_view vertexKey,
+                           std::string& responsibleShard);
 };
 
-}  // namespace arangodb::pregel::conductor
+}  // namespace pregel
+
+}  // namespace arangodb
