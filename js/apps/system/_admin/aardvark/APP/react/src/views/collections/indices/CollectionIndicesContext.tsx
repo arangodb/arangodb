@@ -7,6 +7,7 @@ import { useSetupBreadcrumbs } from "./useSetupBreadcrumbs";
 
 type CollectionIndicesContextType = {
   collectionName: string;
+  collectionId: string;
   indexTypeOptions?: { value: string; label: string }[];
   onDeleteIndex: (data: { id: string; onSuccess: () => void }) => void;
   onOpenForm: () => void;
@@ -20,9 +21,11 @@ const CollectionIndicesContext = createContext<CollectionIndicesContextType>(
 
 export const CollectionIndicesProvider = ({
   collectionName,
+  collection,
   children
 }: {
   collectionName: string;
+  collection: { id: string; attributes: { id: string } };
   children: ReactNode;
 }) => {
   const {
@@ -30,7 +33,8 @@ export const CollectionIndicesProvider = ({
     onClose: onCloseForm,
     isOpen: isFormOpen
   } = useDisclosure();
-  const { onDeleteIndex } = useDeleteIndex();
+  const collectionId = collection.attributes.id;
+  const { onDeleteIndex } = useDeleteIndex({ collectionId });
   const { indexTypeOptions } = useSupportedIndexTypes();
   const [readOnly, setReadOnly] = useState(false);
   usePermissionsCheck({ setReadOnly, collectionName });
@@ -39,6 +43,7 @@ export const CollectionIndicesProvider = ({
     <CollectionIndicesContext.Provider
       value={{
         onDeleteIndex,
+        collectionId,
         collectionName,
         onOpenForm,
         onCloseForm,

@@ -3,13 +3,17 @@ import { CollectionIndicesProvider } from "./CollectionIndicesContext";
 import { CollectionIndicesTab } from "./CollectionIndicesTab";
 
 export const CollectionIndicesTabWrap = ({
-  collectionName
+  collectionName,
+  collection
 }: {
   collectionName: string;
-  collection: any;
+  collection: { id: string; attributes: { id: string } };
 }) => {
   return (
-    <CollectionIndicesProvider collectionName={collectionName}>
+    <CollectionIndicesProvider
+      collectionName={collectionName}
+      collection={collection}
+    >
       <CollectionIndicesTab />
     </CollectionIndicesProvider>
   );

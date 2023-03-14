@@ -1,6 +1,6 @@
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
-export const useDeleteIndex = () => {
+export const useDeleteIndex = ({ collectionId }: { collectionId: string }) => {
   const onDeleteIndex = ({
     id,
     onSuccess
@@ -8,7 +8,7 @@ export const useDeleteIndex = () => {
     id: string;
     onSuccess: () => void;
   }) => {
-    postDeleteIndex({ id, onSuccess });
+    postDeleteIndex({ id, onSuccess, collectionId });
   };
   return { onDeleteIndex };
 };
@@ -19,19 +19,33 @@ const handleError = () => {
 
 const handleSuccess = ({
   id,
+  asyncId,
+  collectionId,
   onSuccess
 }: {
-  onSuccess: () => void;
   id: string;
+  collectionId: string;
+  asyncId: string;
+  onSuccess: () => void;
 }) => {
-  window.arangoHelper.arangoNotification(`Index deleted (ID: ${id}`);
+  window.arangoHelper.addAardvarkJob({
+    id: asyncId,
+    type: "index",
+    desc: "Removing Index",
+    collection: collectionId
+  });
+  window.arangoHelper.arangoNotification(
+    `Index deletion in progress (ID: ${id}`
+  );
   onSuccess();
 };
 const postDeleteIndex = async ({
   id,
+  collectionId,
   onSuccess
 }: {
   id: string;
+  collectionId: string;
   onSuccess: () => void;
 }) => {
   window.arangoHelper.checkDatabasePermissions(
@@ -43,15 +57,23 @@ const postDeleteIndex = async ({
     async () => {
       let result;
       try {
-        result = await getApiRouteForCurrentDB().delete(`index/${id}`);
-        if (result.body.code === 200) {
-          handleSuccess({ onSuccess, id });
+        result = await getApiRouteForCurrentDB().delete(
+          `index/${id}`,
+          undefined,
+          {
+            "x-arango-async": "store"
+          }
+        );
+        const asyncId = result.headers["x-arango-async-id"] as string;
+
+        if (asyncId) {
+          handleSuccess({ onSuccess, id, asyncId, collectionId });
+          return;
         }
+        handleError();
       } catch {
         handleError();
       }
-
-      console.log(result);
       // $.ajax({
       //   cache: false,
       //   type: 'DELETE',

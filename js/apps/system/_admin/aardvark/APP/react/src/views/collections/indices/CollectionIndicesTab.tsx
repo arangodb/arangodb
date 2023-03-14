@@ -1,9 +1,9 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button } from "@chakra-ui/react";
 import React from "react";
-import { AddIndex } from "./AddIndex";
+import { AddIndexForm } from "./addIndex/AddIndexForm";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
-import { CollectionIndicesList } from "./CollectionIndicesList";
+import { CollectionIndicesTable } from "./CollectionIndicesTable";
 import { useFetchIndices } from "./useFetchIndices";
 import { useSetupNav } from "./useSetupNav";
 
@@ -18,7 +18,7 @@ export const CollectionIndicesTab = () => {
   useSetupNav({ collectionName });
   const { indices } = useFetchIndices({ collectionName });
   if (isFormOpen) {
-    return <AddIndex onClose={onCloseForm} />;
+    return <AddIndexForm onClose={onCloseForm} />;
   }
   return (
     <Box padding="4" height="full" width="full">
@@ -29,7 +29,7 @@ export const CollectionIndicesTab = () => {
         width="full"
         paddingBottom="2"
       >
-        <CollectionIndicesList indices={indices} />
+        <CollectionIndicesTable indices={indices} />
         <Button
           marginTop="2"
           marginRight="4"
