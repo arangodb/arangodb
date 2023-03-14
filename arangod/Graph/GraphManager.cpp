@@ -568,33 +568,50 @@ Result GraphManager::ensureCollections(
     std::unordered_set<std::shared_ptr<LogicalCollection>> const&
         existentEdgeCollections,
     std::unordered_set<std::string> const& satellites, bool waitForSync) const {
+  auto anyExistingCollection =
+      std::invoke([&]() -> std::shared_ptr<LogicalCollection> {
+        if (!existentDocumentCollections.empty()) {
+          // Prefer Vertex collections
+          return *existentDocumentCollections.begin();
+        }
+        if (!existentEdgeCollections.empty()) {
+          // over edge collections
+          return *existentEdgeCollections.begin();
+        }
+        return nullptr;
+      });
+  // This will only have effect in Enterprise Version
+  std::optional<std::string_view> leadingCollection =
+      graph.getLeadingCollection(documentCollectionsToCreate, satellites,
+                                 anyExistingCollection);
+
   // Validate if the existing collections can be used within this graph type.
 
   // document collections
   for (auto const& col : existentDocumentCollections) {
-    Result res = graph.validateCollection(*col);
+    Result res = graph.validateCollection(*col, leadingCollection);
     if (res.fail()) {
       return res;
     }
   }
   // edge collections
   for (auto const& col : existentEdgeCollections) {
-    Result res = graph.validateCollection(*col);
+    Result res = graph.validateCollection(*col, leadingCollection);
     if (res.fail()) {
       return res;
     }
   }
 
   std::vector<CreateCollectionBody> createRequests;
-  // This will only have effect in Enterprise Version
-  std::optional<std::string_view> leadingCollection =
-      graph.getLeadingCollection(documentCollectionsToCreate, satellites);
   auto config = _vocbase.getDatabaseConfiguration();
+
   if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
     // We create the leader within this call, rewire distributeShardsLike
     // lookup:
+    auto originalCallback = config.getCollectionGroupSharding;
     config.getCollectionGroupSharding =
-        [&leadingCollection, &createRequests, &vocbase = _vocbase](
+        [&leadingCollection, &createRequests,
+         originalCallback = std::move(originalCallback)](
             std::string const& name) -> ResultT<UserInputCollectionProperties> {
       // We can only search for the leading collection.
       TRI_ASSERT(name == leadingCollection.value());
@@ -605,9 +622,8 @@ Result GraphManager::ensureCollections(
           return c;
         }
       }
-      return Result{
-          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-          "Collection not found: " + name + " in database " + vocbase.name()};
+      // Try lookup via Database
+      return originalCallback(name);
     };
   }
   for (auto const& c : documentCollectionsToCreate) {
@@ -637,6 +653,11 @@ Result GraphManager::ensureCollections(
   }
   if (createRequests.empty()) {
     // Nothing to do.
+    if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+      // We can only end up here if we have an existing collection
+      TRI_ASSERT(anyExistingCollection != nullptr);
+      graph.updateInitial({anyExistingCollection}, leadingCollection);
+    }
     return {};
   }
 
@@ -653,7 +674,6 @@ Result GraphManager::ensureCollections(
       false, allowEnterpriseCollectionsOnSingleServer);
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
-
   if (finalResult.ok() && leadingCollection.has_value() &&
       graph.requiresInitialUpdate()) {
     graph.updateInitial(finalResult.get(), leadingCollection);

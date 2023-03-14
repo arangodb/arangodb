@@ -387,7 +387,8 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
                              options);
     }
 
-    res = _graph.validateCollection(*(def.get()));
+    res = _graph.validateCollection(
+        *(def.get()), _graph.getLeadingCollection({}, {}, nullptr));
     if (res.fail()) {
       return OperationResult{std::move(res), options};
     }

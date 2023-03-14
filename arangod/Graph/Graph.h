@@ -247,10 +247,14 @@ class Graph {
    * within this graph
    *
    * @param col The collection
+   * @param leadingCollection The leading collection for EE graphs
    *
-   * @return TRUE if we are safe to use it.
+   * @return Result, if ok() we can us it, of fail() there is an error reason
+   * contained
    */
-  virtual Result validateCollection(LogicalCollection& col) const;
+  virtual Result validateCollection(
+      LogicalCollection const& col,
+      std::optional<std::string_view> const& leadingCollection) const;
   virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
@@ -305,8 +309,9 @@ class Graph {
 
   virtual auto getLeadingCollection(
       std::unordered_set<std::string> const& documentCollectionsToCreate,
-      std::unordered_set<std::string> const& satellites) const noexcept
-      -> std::optional<std::string_view>;
+      std::unordered_set<std::string> const& satellites,
+      std::shared_ptr<LogicalCollection> const& anyExistingCollection)
+      const noexcept -> std::optional<std::string_view>;
 
   virtual auto requiresInitialUpdate() const noexcept -> bool;
 

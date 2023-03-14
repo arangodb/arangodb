@@ -745,7 +745,8 @@ void Graph::graphForClient(VPackBuilder& builder) const {
   builder.close();  // graph object
 }
 
-Result Graph::validateCollection(LogicalCollection& col) const {
+Result Graph::validateCollection(LogicalCollection const&,
+                                 std::optional<std::string_view> const&) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -876,7 +877,8 @@ auto Graph::injectShardingToCollectionBody(
 }
 
 auto Graph::getLeadingCollection(std::unordered_set<std::string> const&,
-                                 std::unordered_set<std::string> const&)
+                                 std::unordered_set<std::string> const&,
+                                 std::shared_ptr<LogicalCollection> const&)
     const noexcept -> std::optional<std::string_view> {
   // Community Graphs have no leading collection
   return std::nullopt;
