@@ -27,6 +27,7 @@
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/ResultMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -91,6 +92,65 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->conductor, graphLoaded());
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ProduceResults msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    std::string tmp;
+
+    VPackBuilder results;
+    results.openArray(/*unindexed*/ true);
+    // TODO: re-enable as soon as we do have access to the config and graphstore
+    //  Ticket: [GORDO-1546] see details here.
+    /*for (auto& vertex : this->state->graphStore->quiver()) {
+      TRI_ASSERT(vertex.shard().value <
+                 this->state->config->globalShardIDs().size());
+      ShardID const& shardId =
+          this->state->config->globalShardID(vertex.shard());
+
+      results.openObject(true);
+
+      if (msg.withID) {
+        std::string const& cname =
+            this->state->config->shardIDToCollectionName(shardId);
+        if (!cname.empty()) {
+          tmp.clear();
+          tmp.append(cname);
+          tmp.push_back('/');
+          tmp.append(vertex.key().data(), vertex.key().size());
+          results.add(StaticStrings::IdString, VPackValue(tmp));
+        }
+      }
+
+      results.add(StaticStrings::KeyString,
+                  VPackValuePair(vertex.key().data(), vertex.key().size(),
+                                 VPackValueType::String));
+
+      V const& data = vertex.data();
+      if (auto res =
+              this->state->graphStore->graphFormat()->buildVertexDocument(
+                  results, &data);
+          !res) {
+        std::string const failureString = "Failed to build vertex document";
+        LOG_TOPIC("eee4d", ERR, Logger::PREGEL) << failureString;
+        this->template dispatch<message::WorkerMessages>(
+            this->state->resultActor,
+            pregel::message::SaveResults{
+                .results = Result(TRI_ERROR_INTERNAL, failureString)});
+        return;
+      }
+      results.close();
+    }*/
+    results.close();
+
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor,
+        pregel::message::SaveResults{.results = {PregelResults{results}}});
+    this->template dispatch<pregel::conductor::message::ConductorMessages>(
+        this->state->conductor, pregel::conductor::message::ResultCreated{
+                                    .results = {PregelResults{results}}});
+
     return std::move(this->state);
   }
 

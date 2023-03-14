@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,31 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
-#include "Actor/ActorPID.h"
-#include "Cluster/ClusterTypes.h"
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Worker/Messages.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 
 namespace arangodb::pregel::conductor {
 
-#define LOG_PREGEL_CONDUCTOR_STATE(logId, level)              \
-  LOG_TOPIC(logId, level, Logger::PREGEL)                     \
-      << "[job " << conductor._specifications.executionNumber \
-      << "] Conductor " << name() << " state "
+struct ConductorState;
 
-struct ExecutionState {
-  virtual auto name() const -> std::string = 0;
-  virtual auto message() -> worker::message::WorkerMessages = 0;
-  virtual auto receive(actor::ActorPID sender,
-                       conductor::message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> = 0;
-  virtual auto aqlResultsAvailable() const -> bool { return false; }
-  virtual ~ExecutionState() = default;
+/*
+  This state is the final successful state if a pregel run is started with
+  parameter store = false.
+
+  In this state the pregel results can be queried via AQL:
+  PregelFeature::getResults returns these results.
+ */
+struct AQLResultsAvailable : ExecutionState {
+  AQLResultsAvailable() = default;
+  auto name() const -> std::string override { return "done"; }
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
+  }
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  }
+
+  auto aqlResultsAvailable() const -> bool override { return true; }
 };
 
 }  // namespace arangodb::pregel::conductor
