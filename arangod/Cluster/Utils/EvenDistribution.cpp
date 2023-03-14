@@ -44,7 +44,8 @@ Result EvenDistribution::planShardsOnServers(
     std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
   if (availableServers.empty()) {
-    return  {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "Do not have a single server to make responsible for shards"};
+    return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,
+            "Do not have a single server to make responsible for shards"};
   }
 
   if (_enforceReplicationFactor &&

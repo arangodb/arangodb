@@ -67,7 +67,8 @@ auto getHealthyParticipants(replicated_log::ParticipantsHealth const& health)
 
 auto computeEvenDistributionForServers(
     std::size_t numberOfShards, std::size_t replicationFactor,
-    replicated_log::ParticipantsHealth const& health) -> ResultT<EvenDistribution> {
+    replicated_log::ParticipantsHealth const& health)
+    -> ResultT<EvenDistribution> {
   auto servers = getHealthyParticipants(health);
   {
     // TODO reuse random device?
