@@ -26,6 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -71,6 +73,9 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
       .thenValue([self = shared_from_this(), id = id](
                      network::Response&& resp) -> futures::Future<Result> {
         if (resp.fail()) {
+          LOG_TOPIC("2e771", ERR, Logger::REPLICATION2)
+              << "Failed to finish snapshot " << id << " on "
+              << self->_participantId << ", retrying in 5 seconds";
           std::this_thread::sleep_for(std::chrono::seconds(5));
           return self->finishSnapshot(id);
         } else if (!fuerte::statusIsSuccess(resp.statusCode())) {
