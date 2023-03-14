@@ -113,6 +113,19 @@ struct ReplicatedLogMethodsDBServer final
         [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
   }
 
+  auto getLogEntryByIndex(LogId id, LogIndex index) const
+      -> futures::Future<std::optional<PersistingLogEntry>> override {
+    auto entry = vocbase.getReplicatedLogById(id)
+                     ->getParticipant()
+                     ->copyInMemoryLog()
+                     .getEntryByIndex(index);
+    if (entry.has_value()) {
+      return entry->entry();
+    } else {
+      return std::nullopt;
+    }
+  }
+
   auto slice(LogId id, LogIndex start, LogIndex stop) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
     return vocbase.getReplicatedLogById(id)
@@ -461,6 +474,24 @@ struct ReplicatedLogMethodsCoordinator final
     return getGlobalStatus(id, GlobalStatus::SpecificationSource::kRemoteAgency)
         .thenValue([](GlobalStatus&& status) {
           return GenericLogStatus(std::move(status));
+        });
+  }
+
+  auto getLogEntryByIndex(LogId id, LogIndex index) const
+      -> futures::Future<std::optional<PersistingLogEntry>> override {
+    auto path =
+        basics::StringUtils::joinT("/", "_api/log", id, "entry", index.value);
+    network::RequestOptions opts;
+    opts.database = vocbaseName;
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Get, path, {}, opts)
+        .thenValue([](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto entry =
+              PersistingLogEntry::fromVelocyPack(resp.slice().get("result"));
+          return std::optional<PersistingLogEntry>(std::move(entry));
         });
   }
 
