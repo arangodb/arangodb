@@ -8000,6 +8000,7 @@ namespace {
 struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool _isParallelizable = true;
+  bool _hasParallelTraversal = false;
 
   ~ParallelizableFinder() = default;
 
@@ -8008,10 +8009,18 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
+    if ((node->getType() == ExecutionNode::SCATTER ||
+         node->getType() == ExecutionNode::DISTRIBUTE) &&
+        _hasParallelTraversal) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      _hasParallelTraversal |= gn->options()->parallelism() > 1;
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
