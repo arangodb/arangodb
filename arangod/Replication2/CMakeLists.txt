@@ -25,7 +25,7 @@ target_include_directories(arango_replication2 PRIVATE
 
 add_library(arango_replication2_pure STATIC
   MetricsHelper.cpp
-  ReplicatedState/StateStatus.cpp
+  ReplicatedState/StateStatus.h
   ReplicatedState/StateCommon.cpp
   ReplicatedLog/NetworkMessages.cpp
   ReplicatedLog/Algorithms.cpp
