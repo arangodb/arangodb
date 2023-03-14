@@ -25,7 +25,7 @@
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const request = require("@arangodb/request");
 const jsunity = require('jsunity');
-const {assertEqual, assertNotEqual, assertIdentical} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertNotNull} = jsunity.jsUnity.assertions;
 
 /**
  * Returns the value of a key from a server.
@@ -143,7 +143,7 @@ const getOperation = function(entry) {
     return entry.payload.operation;
   }
   return null;
-}
+};
 
 const getOperationType = function(entry) {
   const op = getOperation(entry);
@@ -151,7 +151,7 @@ const getOperationType = function(entry) {
     return null;
   }
   return op.type;
-}
+};
 
 const getOperationPayload = function(entry) {
   const op = getOperation(entry);
@@ -159,7 +159,7 @@ const getOperationPayload = function(entry) {
     return null;
   }
   return op.payload;
-}
+};
 
 /**
  * Returns the first entry with the same key and type as provided.
