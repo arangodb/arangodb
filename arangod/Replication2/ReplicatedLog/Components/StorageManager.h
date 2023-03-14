@@ -76,6 +76,7 @@ struct StorageManager : IStorageManager,
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
+    // TODO remove InMemoryLogs
     InMemoryLog onDiskLog, spearheadLog;
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;

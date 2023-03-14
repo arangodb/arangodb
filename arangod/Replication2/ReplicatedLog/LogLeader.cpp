@@ -1277,6 +1277,16 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
+auto replicated_log::LogLeader::getCommittedLogIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+  auto log = _guardedLeaderData.getLockedGuard()->_inMemoryLog;
+  if (bounds.has_value()) {
+    return log.getIteratorRange(*bounds);
+  } else {
+    return log.getRangeIteratorFrom(LogIndex{0});
+  }
+}
+
 auto replicated_log::LogLeader::copyInMemoryLog() const
     -> replicated_log::InMemoryLog {
   return _guardedLeaderData.getLockedGuard()->_inMemoryLog;

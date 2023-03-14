@@ -114,6 +114,8 @@ struct LogFollowerImpl : ILogFollower {
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
+  [[nodiscard]] auto getCommittedLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<LogRangeIterator> override;
   auto copyInMemoryLog() const -> InMemoryLog override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
