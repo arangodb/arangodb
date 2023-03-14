@@ -148,9 +148,9 @@ an error document in this case.
 is returned if the specified write concern for the collection cannot be
 fulfilled, the error code in this case is 1429. This can happen if less
 than the number of specified replicas for a shard are currently in sync
-are online. For example, if the write concern is 2 and the replication
+with the leader. For example, if the write concern is 2 and the replication
 factor is 3, then the write concern is not fulfilled, if two replicas
-are offline.
+are not in sync.
 
 Note that this return code is configurable, 403 happens, if the
 configuration option `--cluster.failed-write-concern-error-code` is
@@ -170,9 +170,9 @@ retry the request later.
 In particular, 503 can be returned if the specified write concern for
 the collection cannot be fulfilled, in this case the error code is
 1429. This can happen if less than the number of specified replicas for
-a shard are currently in sync are online. For example, if the write
+a shard are currently in sync with the leader. For example, if the write
 concern is 2 and the replication factor is 3, then the write concern is
-not fulfilled, if two replicas are offline.
+not fulfilled, if two replicas are not in sync.
 
 Note that this return code is configurable, 503 happens, if the
 configuration option `--cluster.failed-write-concern-error-code` is
