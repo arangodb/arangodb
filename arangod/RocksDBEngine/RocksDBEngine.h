@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <deque>
 #include <map>
 #include <memory>
@@ -35,6 +36,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -154,6 +156,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
+  void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(
@@ -238,7 +241,8 @@ class RocksDBEngine final : public StorageEngine {
   /// The function parameter name are a remainder from MMFiles times, when
   /// they made more sense. This can be refactored at any point, so that
   /// flushing column families becomes a separate API.
-  Result flushWal(bool waitForSync, bool waitForCollector) override;
+  Result flushWal(bool waitForSync = false,
+                  bool flushColumnFamilies = false) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
@@ -667,7 +671,17 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _recoveryStartSequence = 0;
 #endif
 
+  // last point in time when an auto-flush happened
+  std::chrono::steady_clock::time_point _autoFlushLastExecuted;
+  // interval (in s) in which auto-flushing is tried
+  double _autoFlushCheckInterval;
+  // minimum number of live WAL files that need to be present to trigger
+  // an auto-flush
+  uint64_t _autoFlushMinWalFiles;
+
+  Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  Gauge<uint64_t>& _metricsLiveWalFiles;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
   Gauge<uint64_t>& _metricsWalPruningActive;

@@ -337,7 +337,8 @@ namespace {
 
 class LowerBoundTracker final : public FlushSubscription {
  public:
-  explicit LowerBoundTracker(TRI_voc_tick_t tick = 0) noexcept : _tick{tick} {}
+  explicit LowerBoundTracker(TRI_voc_tick_t tick, std::string const& name)
+      : _tick{tick}, _name{name} {}
 
   /// @brief earliest tick that can be released
   [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
@@ -357,8 +358,11 @@ class LowerBoundTracker final : public FlushSubscription {
     }
   }
 
+  std::string const& name() const final { return _name; }
+
  private:
   std::atomic<TRI_voc_tick_t> _tick;
+  std::string const _name;
 };
 
 struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
@@ -695,9 +699,12 @@ Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     }
   });
 
+  std::string name = std::string("index creation for ") +
+                     _collection.vocbase().name() + "/" + _collection.name();
+
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
-      std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber());
+      std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
   auto& flushFeature =
       _collection.vocbase().server().getFeature<FlushFeature>();
   flushFeature.registerFlushSubscription(lowerBoundTracker);
