@@ -196,12 +196,6 @@ void RocksDBBackgroundThread::run() {
         // whatever happens here, we don't want it to block/skip any of
         // the following operations
       }
-      _metricsWalReleasedTickReplication.operator=(minTickForReplication);
-
-      LOG_TOPIC("cfe65", DEBUG, Logger::ENGINES)
-          << "latest seq number: " << latestSeqNo
-          << ", earliest seq needed: " << earliestSeqNeeded
-          << ", min tick for replication: " << minTickForReplication;
 
       bool canPrune =
           TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
