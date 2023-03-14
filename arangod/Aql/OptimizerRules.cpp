@@ -8012,6 +8012,9 @@ struct ParallelizableFinder final
     if ((node->getType() == ExecutionNode::SCATTER ||
          node->getType() == ExecutionNode::DISTRIBUTE) &&
         _hasParallelTraversal) {
+      // we cannot parallelize the gather if we have a parallel traversal which
+      // itself depends again on a scatter/distribute node, because we are
+      // currently lacking synchronization for that scatter/distribute node.
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
