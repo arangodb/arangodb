@@ -24,6 +24,7 @@
 #include "ConnectedComponents.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -62,7 +63,8 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+                      uint64_t& targetPtr,
+                      uint64_t& vertexIdRange) const override {
     targetPtr = vertexIdRange++;
   }
 };
@@ -82,15 +84,38 @@ struct MyCompensation : public VertexCompensation<uint64_t, uint8_t, uint64_t> {
 }  // namespace
 
 VertexComputation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createComputation(WorkerConfig const* config) const {
+ConnectedComponents::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new MyComputation();
 }
 
-GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<uint64_t, uint8_t> const>
+ConnectedComponents::inputFormat() const {
+  return std::make_shared<MyGraphFormat>(_resultField);
 }
 
 VertexCompensation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createCompensation(WorkerConfig const* config) const {
+ConnectedComponents::createCompensation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new MyCompensation();
+}
+
+struct ConnectedComponentsMasterContext : public MasterContext {
+  ConnectedComponentsMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ConnectedComponents::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ConnectedComponentsMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ConnectedComponents::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ConnectedComponentsMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }

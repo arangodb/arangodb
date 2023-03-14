@@ -28,11 +28,12 @@
 
 namespace arangodb::pregel::worker {
 
+template<typename V, typename E, typename M>
 struct WorkerActor {
-  using State = WorkerState;
+  using State = WorkerState<V, E, M>;
   using Message = message::WorkerMessages;
   template<typename Runtime>
-  using Handler = WorkerHandler<Runtime>;
+  using Handler = WorkerHandler<V, E, M, Runtime>;
   static constexpr auto typeName() -> std::string_view { return "WorkerActor"; }
 };
 

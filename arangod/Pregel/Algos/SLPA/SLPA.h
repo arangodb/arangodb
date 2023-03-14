@@ -89,13 +89,20 @@ namespace arangodb::pregel::algos {
  * this accumulated sum reaches r (the randomly generated number), choose the
  * current ID and send it.
  */
+
+struct SLPAType {
+  using Vertex = SLPAValue;
+  using Edge = int8_t;
+  using Message = uint64_t;
+};
+
 struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
   double _threshold = 0.15;
   unsigned _maxCommunities = 1;
 
  public:
   explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>(userParams) {
     arangodb::velocypack::Slice val = userParams.get("threshold");
     if (val.isNumber()) {
       _threshold = std::min(1.0, std::max(val.getDouble(), 0.0));
@@ -107,13 +114,27 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     }
   }
 
-  GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "slpa";
+  };
+
+  std::shared_ptr<GraphFormat<SLPAValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }
 
   VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   WorkerContext* workerContext(velocypack::Slice userParams) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos

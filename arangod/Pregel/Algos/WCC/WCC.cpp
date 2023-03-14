@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -148,13 +149,14 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      WCCValue& targetPtr, uint64_t& vertexIdRange) override {
+                      WCCValue& targetPtr,
+                      uint64_t& vertexIdRange) const override {
     targetPtr.component = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,
-                    uint64_t& targetPtr) override {
+                    uint64_t& targetPtr) const override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
@@ -167,10 +169,30 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
 }  // namespace
 
 VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
-WCC::createComputation(WorkerConfig const* config) const {
+WCC::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new ::WCCComputation();
 }
 
-GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
-  return new ::WCCGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<WCCValue, uint64_t> const> WCC::inputFormat()
+    const {
+  return std::make_shared<::WCCGraphFormat>(_resultField);
+}
+
+struct WCCMasterContext : public MasterContext {
+  WCCMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                   std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto WCC::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new WCCMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto WCC::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<WCCMasterContext>(vertexCount, edgeCount,
+                                            std::move(aggregators));
 }

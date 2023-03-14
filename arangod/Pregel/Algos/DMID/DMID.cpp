@@ -587,7 +587,7 @@ struct DMIDComputation
 };
 
 VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new DMIDComputation();
 }
 
@@ -604,11 +604,11 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice document,
                       DMIDValue& /*value*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,
-                    float& targetPtr) override {
+                    float& targetPtr) const override {
     targetPtr = 1.0f;
   }
 
@@ -658,12 +658,15 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   }
 };
 
-GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_resultField, _maxCommunities);
+std::shared_ptr<GraphFormat<DMIDValue, float> const> DMID::inputFormat() const {
+  return std::make_shared<DMIDGraphFormat>(_resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threshold
+  DMIDMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
+  }  // TODO use _threshold
 
   void preGlobalSuperstep() override {
     /**
@@ -781,8 +784,18 @@ struct DMIDMasterContext : public MasterContext {
   }
 };
 
-MasterContext* DMID::masterContext(VPackSlice userParams) const {
-  return new DMIDMasterContext();
+[[nodiscard]] auto DMID::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new DMIDMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto DMID::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<DMIDMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }
 
 IAggregator* DMID::aggregator(std::string const& name) const {

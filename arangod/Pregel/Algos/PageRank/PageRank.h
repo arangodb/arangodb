@@ -28,11 +28,21 @@
 
 namespace arangodb::pregel::algos {
 
+struct PageRankType {
+  using Vertex = float;
+  using Edge = float;
+  using Message = float;
+};
+
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
   explicit PageRank(arangodb::velocypack::Slice const& params);
 
-  GraphFormat<float, float>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "pagerank";
+  };
+
+  std::shared_ptr<GraphFormat<float, float> const> inputFormat() const override;
 
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
@@ -43,11 +53,18 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   }
 
   VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
   WorkerContext* workerContext(VPackSlice userParams) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   IAggregator* aggregator(std::string const& name) const override;
 

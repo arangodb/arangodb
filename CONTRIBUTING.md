@@ -335,10 +335,16 @@ exposing _all_ dependencies of _all_ modules to ArangoDB users.
 Finally add the module's licensing information to
 `LICENSES-OTHER-COMPONENTS.md`.
 
-When updating dependencies make sure that any mocked dependencies (like `glob`
-for `mocha`) match the versions required by the updated module and delete any
-duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`) to
-make sure the global (mocked) version is used instead.
+If you need to make adjustments/modifications to dependencies or replace
+transitive dependencies with mocks, make sure to run `npx patch-package $dependencyName`
+in the `js/node` folder and commit the resulting patch file in `js/node/patches`.
+This will ensure the changes are persisted if the dependency is overwritten by `npm`
+in the future.
+
+For example to commit a patch for the transitive dependency `is-wsl` of the dependency
+`node-netstat`, make your changes in `js/node/node_modules/node-netstat/node_modules/is-wsl`
+and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
+patch file in `js/node/patches`.
 
 ---
 

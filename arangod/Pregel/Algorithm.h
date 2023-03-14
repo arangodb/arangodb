@@ -56,20 +56,17 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  [[nodiscard]] virtual MasterContext* masterContext(
-      arangodb::velocypack::Slice userParams) const {
-    return nullptr;
-  }
+  [[nodiscard]] virtual auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* = 0;
 
-  // ============= Configure runtime parameters ============
+  [[nodiscard]] virtual auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> = 0;
 
-  [[nodiscard]] std::string const& name() const { return _name; }
-
- protected:
-  explicit IAlgorithm(std::string name) : _name(std::move(name)) {}
-
- private:
-  std::string _name;
+  [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };
 
 // specify serialization, whatever
@@ -96,30 +93,30 @@ struct Algorithm : IAlgorithm {
       velocypack::Slice userParams) const {
     return new WorkerContext();
   }
-  virtual graph_format* inputFormat() const = 0;
+  virtual std::shared_ptr<graph_format const> inputFormat() const = 0;
   virtual message_format* messageFormat() const = 0;
   virtual message_combiner* messageCombiner() const { return nullptr; }
-  virtual vertex_computation* createComputation(WorkerConfig const*) const = 0;
-  virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
+  virtual vertex_computation* createComputation(
+      std::shared_ptr<WorkerConfig const>) const = 0;
+  virtual vertex_compensation* createCompensation(
+      std::shared_ptr<WorkerConfig const>) const {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() { return {}; }
 
   [[nodiscard]] virtual uint32_t messageBatchSize(
-      WorkerConfig const& config, MessageStats const& stats) const {
-    if (config.localSuperstep() == 0) {
+      std::shared_ptr<WorkerConfig const> config,
+      MessageStats const& stats) const {
+    if (config->localSuperstep() == 0) {
       return 500;
     } else {
       double msgsPerSec =
           static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
-      msgsPerSec /= static_cast<double>(config.parallelism());  // per thread
+      msgsPerSec /= static_cast<double>(config->parallelism());  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }
   }
-
- protected:
-  Algorithm(std::string const& name) : IAlgorithm(name) {}
 };
 
 template<typename V, typename E, typename M>
@@ -127,8 +124,7 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
  protected:
   std::string _sourceField, _resultField;
 
-  SimpleAlgorithm(std::string const& name, VPackSlice userParams)
-      : Algorithm<V, E, M>(name) {
+  SimpleAlgorithm(VPackSlice userParams) {
     arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
     field = userParams.get("resultField");

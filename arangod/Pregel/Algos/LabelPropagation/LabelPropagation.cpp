@@ -104,7 +104,8 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
 };
 
 VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+LabelPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new LPComputation();
 }
 
@@ -120,7 +121,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/, LPValue& value,
-                      uint64_t& vertexIdRange) override {
+                      uint64_t& vertexIdRange) const override {
     value.currentCommunity = vertexIdRange++;
   }
 
@@ -132,6 +133,26 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   }
 };
 
-GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
-  return new LPGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<LPValue, int8_t> const>
+LabelPropagation::inputFormat() const {
+  return std::make_shared<LPGraphFormat>(_resultField);
+}
+
+struct LabelPropagationMasterContext : public MasterContext {
+  LabelPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                                std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto LabelPropagation::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new LabelPropagationMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto LabelPropagation::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<LabelPropagationMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }
