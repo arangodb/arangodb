@@ -1191,6 +1191,11 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   auto idxs = coll.getIndexes();
   for (auto const& idx : idxs) {
     if (idx->canWarmup()) {
+      TRI_IF_FAILURE("warmup::executeDirectly") {
+        // when this failure point is set, execute the warmup directly
+        idx->warmup();
+        continue;
+      }
       engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
     }
   }
