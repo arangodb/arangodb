@@ -334,8 +334,6 @@ RestStatus RestLogHandler::handleGetRequest(
     return handleGetHead(methods, logId);
   } else if (verb == "tail") {
     return handleGetTail(methods, logId);
-  } else if (verb == "entry") {
-    return handleGetEntry(methods, logId);
   } else if (verb == "slice") {
     return handleGetSlice(methods, logId);
   } else if (verb == "local-status") {
@@ -345,7 +343,7 @@ RestStatus RestLogHandler::handleGetRequest(
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the resources 'poll', 'head', 'tail', "
-                  "'entry', 'slice', 'local-status', 'global-status'");
+                  "'slice', 'local-status', 'global-status'");
   }
   return RestStatus::DONE;
 }
@@ -589,28 +587,4 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
                              status.toVelocyPack(buffer);
                              generateOk(rest::ResponseCode::OK, buffer.slice());
                            }));
-}
-
-RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
-                                          replication2::LogId logId) {
-  auto const& suffixes = _request->suffixes();
-  if (suffixes.size() != 3) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect GET /_api/log/<log-id>/entry/<id>");
-    return RestStatus::DONE;
-  }
-  LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
-
-  return waitForFuture(
-      methods.getLogEntryByIndex(logId, logIdx)
-          .thenValue([this](std::optional<PersistingLogEntry>&& entry) {
-            if (entry) {
-              VPackBuilder result;
-              entry->toVelocyPack(result);
-              generateOk(rest::ResponseCode::OK, result.slice());
-            } else {
-              generateError(rest::ResponseCode::NOT_FOUND,
-                            TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
-            }
-          }));
 }

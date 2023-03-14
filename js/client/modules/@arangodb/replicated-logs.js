@@ -128,12 +128,6 @@ ArangoReplicatedLog.prototype.poll = function(first, limit) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.at = function(index) {
-  let requestResult = this._database._connection.GET(this._baseurl() + `/entry/${index}`);
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.result;
-};
-
 ArangoReplicatedLog.prototype.release = function(index) {
   let requestResult = this._database._connection.POST(this._baseurl() + `/release?index=${index}`, {});
   arangosh.checkRequestResult(requestResult);
