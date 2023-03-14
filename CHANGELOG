@@ -1,3 +1,11 @@
+v3.10.6 (XXXX-XX-XX)
+--------------------
+
+* Make long-running operations such as foreground or background index creation
+  or index warmup abort early in case the underlying collection or database
+  gets dropped.
+
+
 v3.10.5 (XXXX-XX-XX)
 --------------------
 

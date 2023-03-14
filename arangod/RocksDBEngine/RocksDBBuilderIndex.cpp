@@ -154,13 +154,25 @@ Result fillIndexSingleThreaded(
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
+
+      // here come our 13 reasons why we may want to abort the index creation...
+
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }
-
       if (ridx.collection().vocbase().server().isStopping()) {
         res.reset(TRI_ERROR_SHUTTING_DOWN);
+        break;
+      }
+      if (ridx.collection().vocbase().isDropped()) {
+        // database dropped
+        res.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+        break;
+      }
+      if (ridx.collection().deleted()) {
+        // collection dropped
+        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         break;
       }
     }
@@ -418,6 +430,16 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     if (_index.collection().vocbase().server().isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
     }
+    if (++_iterations % 128 == 0) {
+      // check every now and then if we can abort replaying
+      if (_index.collection().vocbase().isDropped()) {
+        // database dropped
+        tmpRes.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      } else if (_index.collection().deleted()) {
+        // collection dropped
+        tmpRes.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+    }
     return tmpRes.ok();
   }
 
@@ -580,6 +602,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::SequenceNumber _currentSequence = 0;
   bool _startOfBatch = false;
   uint64_t _lastObjectID = 0;
+  uint64_t _iterations = 0;
 };
 
 Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
@@ -650,7 +673,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
       << "Scanning from " << startingFrom;
 
   lastScannedTick = startingFrom;
-  uint64_t ops = 0;
 
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -677,9 +699,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
     }
     lastScannedTick = replay.endBatch();
 
-    if (++ops % 1024 == 0) {
-      lowerBoundTracker.tick(batch.sequence);
-    }
+    lowerBoundTracker.tick(batch.sequence);
   }
 
   s = iterator->status();

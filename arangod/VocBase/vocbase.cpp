@@ -472,6 +472,18 @@ arangodb::Result TRI_vocbase_t::loadCollection(
 /// @brief drops a collection, worker function
 ErrorCode TRI_vocbase_t::dropCollectionWorker(
     arangodb::LogicalCollection* collection, DropState& state, double timeout) {
+  TRI_ASSERT(collection != nullptr);
+  // intentionally set the deleted flag of the collection already
+  // here, without holding the lock. this is thread-safe, because
+  // setDeleted() only modifies an atomic boolean value.
+  // we want to switch the flag here already so that any other
+  // actions can observe the deletion and abort prematurely.
+  // these other actions may have acquired the collection's status
+  // lock in read mode, and if we ourselves try to acquire the
+  // collection's status lock in write mode, we would just block
+  // here.
+  collection->deleted(true);
+
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
