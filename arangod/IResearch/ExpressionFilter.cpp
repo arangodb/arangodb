@@ -230,8 +230,8 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::IndexReader const& index, irs::Order const& order,
-    irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
+    irs::IndexReader const& index, irs::Scorers const& order, irs::score_t filter_boost,
+    irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();

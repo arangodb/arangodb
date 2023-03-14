@@ -54,7 +54,7 @@ class PrimaryKeyFilter final : public irs::filter,
 
   using irs::filter::prepare;
   filter::prepared::ptr prepare(
-      irs::IndexReader const& index, irs::Order const& /*ord*/,
+      irs::IndexReader const& index, irs::Scorers const& /*ord*/,
       irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
 
@@ -145,7 +145,7 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   void clear() noexcept { _filters.clear(); }
 
   filter::prepared::ptr prepare(
-      irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
+      irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
       irs::attribute_provider const* ctx) const override;
 
  private:

@@ -4145,7 +4145,7 @@ class mock_term_reader : public irs::term_reader {
 
   irs::doc_iterator::ptr wanderator(
       const irs::seek_cookie&, irs::IndexFeatures,
-      const irs::WanderatorOptions&) const override {
+      const irs::WanderatorOptions&, irs::WandContext) const override {
     return nullptr;
   }
 

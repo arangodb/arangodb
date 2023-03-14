@@ -56,8 +56,8 @@
 
 namespace {
 
-bool operator==(std::span<irs::sort::ptr const> lhs,
-                std::vector<irs::sort::ptr> const& rhs) noexcept {
+bool operator==(std::span<irs::ScorerFactory::ptr const> lhs,
+                std::vector<irs::ScorerFactory::ptr> const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -82,7 +82,7 @@ bool operator==(std::span<irs::sort::ptr const> lhs,
   return true;
 }
 
-struct dummy_scorer : public irs::sort {
+struct dummy_scorer : public irs::ScorerFactory {
   static std::function<bool(std::string_view)> validateArgs;
   static constexpr std::string_view type_name() noexcept {
     return "TEST::TFIDF";
@@ -91,8 +91,8 @@ struct dummy_scorer : public irs::sort {
     if (!validateArgs(args)) return nullptr;
     return std::make_unique<dummy_scorer>();
   }
-  dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
-  virtual sort::prepared::ptr prepare() const override { return nullptr; }
+  dummy_scorer() : irs::ScorerFactory(irs::type<dummy_scorer>::get()) {}
+  virtual irs::Scorer::ptr prepare() const override { return nullptr; }
 };
 
 /*static*/ std::function<bool(std::string_view)> dummy_scorer::validateArgs =
@@ -102,7 +102,8 @@ REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
     arangodb::ArangodServer& server, bool parseOk, bool execOk,
-    std::string const& queryString, std::span<irs::sort::ptr const> expected,
+    std::string const& queryString,
+    std::span<irs::ScorerFactory::ptr const> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -164,8 +165,8 @@ void assertOrder(
 
   // execution time check
   {
-    std::vector<irs::sort::ptr> actual;
-    irs::sort::ptr actualScorer;
+    std::vector<irs::ScorerFactory::ptr> actual;
+    irs::ScorerFactory::ptr actualScorer;
 
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
@@ -196,7 +197,7 @@ void assertOrder(
 
 void assertOrderSuccess(
     arangodb::ArangodServer& server, std::string const& queryString,
-    std::span<const irs::sort::ptr> expected,
+    std::span<const irs::ScorerFactory::ptr> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {

@@ -426,7 +426,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(_snapshot, irs::Order::kUnordered, irs::kNoBoost,
+    _filter = root.prepare(_snapshot, irs::Scorers::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
@@ -532,7 +532,7 @@ class IResearchInvertedIndexIterator final
 
         _itr = segmentReader.mask(_filter->execute(
             irs::ExecutionContext{.segment = segmentReader,
-                                  .scorers = irs::Order::kUnordered,
+                                  .scorers = irs::Scorers::kUnordered,
                                   .ctx = &kEmptyAttributeProvider}));
         _doc = irs::get<irs::document>(*_itr);
       } else {

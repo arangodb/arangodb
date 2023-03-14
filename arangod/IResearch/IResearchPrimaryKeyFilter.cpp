@@ -86,7 +86,7 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::IndexReader const& /*index*/, irs::Order const& /*ord*/,
+    irs::IndexReader const& /*index*/, irs::Scorers const& /*ord*/,
     irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during regular runtime should have at most 1 identical
   // primary key in the entire datastore
@@ -104,7 +104,7 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
+    irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
     irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }

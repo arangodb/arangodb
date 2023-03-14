@@ -96,35 +96,36 @@
 
 namespace {
 
-struct DocIdScorer : public irs::sort {
+struct DocIdScorer : public irs::ScorerFactory {
   static constexpr std::string_view type_name() noexcept {
     return "test_doc_id";
   }
 
   static ptr make(std::string_view) { return std::make_unique<DocIdScorer>(); }
-  DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
-  sort::prepared::ptr prepare() const override {
+  DocIdScorer() : irs::ScorerFactory(irs::type<DocIdScorer>::get()) {}
+  irs::Scorer::ptr prepare() const override {
     return std::make_unique<Prepared>();
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-    virtual void collect(irs::byte_type*, const irs::IndexReader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+  struct Prepared : public irs::ScorerBase<void> {
+    virtual void collect(irs::byte_type*,
+                         irs::FieldCollector const*,
+                         irs::TermCollector const*) const override {
     }
-    virtual irs::IndexFeatures features() const override {
+    virtual irs::IndexFeatures index_features() const override {
       return irs::IndexFeatures::NONE;
     }
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
+    virtual irs::FieldCollector::ptr prepare_field_collector()
         const override {
       return nullptr;
     }
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
+    virtual irs::TermCollector::ptr prepare_term_collector()
         const override {
       return nullptr;
     }
     virtual irs::ScoreFunction prepare_scorer(
-        irs::SubReader const& segment, irs::term_reader const& field,
+        irs::ColumnProvider const&,
+        std::map<irs::type_info::type_id, irs::field_id> const&,
         irs::byte_type const*, irs::attribute_provider const& doc_attrs,
         irs::score_t) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
@@ -136,6 +137,10 @@ struct DocIdScorer : public irs::sort {
             *res = static_cast<irs::score_t>(state->_doc->value);
           },
           doc);
+    }
+
+    bool equals(Scorer const& other) const noexcept final {
+      return other.type() == type();
     }
   };
 
