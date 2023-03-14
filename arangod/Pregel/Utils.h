@@ -24,17 +24,9 @@
 #pragma once
 
 #include <cstdint>
-#include "Basics/ErrorCode.h"
+#include <string>
 
-struct TRI_vocbase_t;
-
-namespace arangodb {
-class LogicalCollection;
-class ClusterInfo;
-
-namespace pregel {
-
-class WorkerConfig;
+namespace arangodb::pregel {
 
 class Utils {
   Utils() = delete;
@@ -137,15 +129,6 @@ class Utils {
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);
-
-  static int64_t countDocuments(TRI_vocbase_t* vocbase,
-                                std::string const& collection);
-
-  static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                                std::string const& collectionName,
-                                std::string const& shardKey,
-                                std::string_view vertexKey,
-                                std::string& responsibleShard);
 };
-}  // namespace pregel
-}  // namespace arangodb
+
+}  // namespace arangodb::pregel

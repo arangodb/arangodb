@@ -1,10 +1,8 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, fail, AQL_EXECUTE */
+/*global assertEqual, assertTrue, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ INTO var = expr
-///
-/// @file
 ///
 /// DISCLAIMER
 ///
@@ -28,13 +26,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var internal = require("internal");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
 
 function optimizerCollectExpressionTestSuite () {
   var assertFailingQuery = function (query, code) {
@@ -49,45 +43,132 @@ function optimizerCollectExpressionTestSuite () {
     }
   };
 
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 1000; ++i) {
-        c.save({ gender: (i % 2 === 0 ? "m" : "f"), age: 11 + (i % 71), value: i });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ gender: (i % 2 === 0 ? "m" : "f"), age: 11 + (i % 71), value: i });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
+    
+    testCollectMethods : function () {
+      ["hash", "sorted"].forEach((method) => {
+        const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = i OPTIONS { method: '" + method + "' } SORT gender RETURN { gender, docs }";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
+        let results = AQL_EXECUTE(query);
+        assertEqual(2, results.json.length);
+
+        let row = results.json[0];
+        assertEqual("f", row.gender);
+        assertEqual(500, row.docs.length);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("f", row.docs[i].gender);
+        }
+        
+        row = results.json[1];
+        assertEqual("m", row.gender);
+        assertEqual(500, row.docs.length);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("m", row.docs[i].gender);
+        }
+
+        let nodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === 'CollectNode');
+        assertEqual(1, nodes.length);
+        assertEqual(method, nodes[0].collectOptions.method);
+      });
+    },
+    
+    testCollectMethodsIntoExpression : function () {
+      ["hash", "sorted"].forEach((method) => {
+        const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = { age: i.age, gender: i.gender, value: RAND() } OPTIONS { method: '" + method + "' } SORT gender RETURN { gender, docs }";
+
+        let results = AQL_EXECUTE(query);
+        assertEqual(2, results.json.length);
+
+        let row = results.json[0];
+        assertEqual("f", row.gender);
+        assertEqual(500, row.docs.length);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("f", row.docs[i].gender);
+          assertTrue(row.docs[i].age >= 11 && row.docs[i].age <= 81);
+          assertTrue(row.docs[i].value >= 0 && row.docs[i].value < 1);
+        }
+        
+        row = results.json[1];
+        assertEqual("m", row.gender);
+        assertEqual(500, row.docs.length);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("m", row.docs[i].gender);
+          assertTrue(row.docs[i].age >= 11 && row.docs[i].age <= 81);
+          assertTrue(row.docs[i].value >= 0 && row.docs[i].value < 1);
+        }
+
+        let nodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === 'CollectNode');
+        assertEqual(1, nodes.length);
+        assertEqual(method, nodes[0].collectOptions.method);
+      });
+    },
+    
+    testCollectMethodsIntoAndAgreegate : function () {
+      ["hash", "sorted"].forEach((method) => {
+        const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender AGGREGATE minAge = MIN(i.age), maxAge = MAX(i.age) INTO docs = { age: i.age, gender: i.gender, value: RAND() } OPTIONS { method: '" + method + "' } SORT gender RETURN { gender, minAge, maxAge, docs }";
+
+        let results = AQL_EXECUTE(query);
+        assertEqual(2, results.json.length);
+
+        let row = results.json[0];
+        assertEqual("f", row.gender);
+        assertEqual(11, row.minAge);
+        assertEqual(81, row.maxAge);
+        assertEqual(500, row.docs.length);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("f", row.docs[i].gender);
+          assertTrue(row.docs[i].age >= 11 && row.docs[i].age <= 81);
+          assertTrue(row.docs[i].value >= 0 && row.docs[i].value < 1);
+        }
+        
+        row = results.json[1];
+        assertEqual("m", row.gender);
+        assertEqual(500, row.docs.length);
+        assertEqual(11, row.minAge);
+        assertEqual(81, row.maxAge);
+        for (let i = 0; i < 500; ++i) {
+          assertEqual("m", row.docs[i].gender);
+          assertTrue(row.docs[i].age >= 11 && row.docs[i].age <= 81);
+          assertTrue(row.docs[i].value >= 0 && row.docs[i].value < 1);
+        }
+
+        let nodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === 'CollectNode');
+        assertEqual(1, nodes.length);
+        assertEqual(method, nodes[0].collectOptions.method);
+      });
+    },
 
     testReference : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = i RETURN { gender: gender, age: MIN(docs[*].age) }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = i RETURN { gender: gender, age: MIN(docs[*].age) }";
 
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
       assertEqual(11, results.json[0].age);
       assertEqual("m", results.json[1].gender);
       assertEqual(11, results.json[1].age);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
 
     testSubAttribute : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO ages = i.age RETURN { gender: gender, age: MIN(ages) }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO ages = i.age RETURN { gender: gender, age: MIN(ages) }";
 
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
       assertEqual(11, results.json[0].age);
@@ -95,19 +176,15 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(11, results.json[1].age);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testConst : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO values = 1 RETURN { gender: gender, values: values }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO values = 1 RETURN { gender: gender, values: values }";
 
-      var values = [ ];
-      for (var i = 0; i < 500; ++i) {
+      let values = [ ];
+      for (let i = 0; i < 500; ++i) {
         values.push(1);
       }
 
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
       assertEqual(values, results.json[0].values);
@@ -115,20 +192,16 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(values, results.json[1].values);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testDocAttribute : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO values = i.value RETURN { gender: gender, values: values }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO values = i.value RETURN { gender: gender, values: values }";
 
-      var f = [ ], m = [ ];
-      for (var i = 0; i < 500; ++i) {
+      let f = [ ], m = [ ];
+      for (let i = 0; i < 500; ++i) {
         m.push(i * 2);
         f.push((i * 2) + 1);
       }
 
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
       assertEqual(f, results.json[0].values.sort(function (l, r) { return l - r; }));
@@ -136,20 +209,16 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(m, results.json[1].values.sort(function (l, r) { return l - r; }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testCalculation : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO names = (i.gender == 'f' ? 'female' : 'male') RETURN { gender: gender, names: names }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO names = (i.gender == 'f' ? 'female' : 'male') RETURN { gender: gender, names: names }";
       
-      var m = [ ], f = [ ];
-      for (var i = 0; i < 500; ++i) {
+      let m = [ ], f = [ ];
+      for (let i = 0; i < 500; ++i) {
         m.push('male');
         f.push('female');
       }
 
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
       assertEqual(f, results.json[0].names);
@@ -157,69 +226,50 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(m, results.json[1].names);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testIntoWithGrouping : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }";
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }";
       
-      var i;
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[0].ages[i] === 'number');
       }
       assertEqual("m", results.json[1].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[1].ages[i] === 'number');
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testIntoWithGroupingInSubquery : function () {
-      var query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) RETURN values";
+      const query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) RETURN values";
       
-      var i;
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json[0].length);
       assertEqual("f", results.json[0][0].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[0][0].ages[i] === 'number');
       }
       assertEqual("m", results.json[0][1].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[0][1].ages[i] === 'number');
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
-
     testIntoWithGroupingInSupportFollowingFor : function () {
-      var query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) FOR i IN values RETURN i";
+      const query = "LET values = (FOR i IN " + c.name() + " COLLECT gender = i.gender INTO g RETURN { gender: gender, ages: g[*].i.age }) FOR i IN values RETURN i";
       
-      var i;
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual(2, results.json.length);
       assertEqual("f", results.json[0].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[0].ages[i] === 'number');
       }
       assertEqual("m", results.json[1].gender);
-      for (i = 0; i < 500; ++i) {
+      for (let i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[1].ages[i] === 'number');
       }
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test expression
-////////////////////////////////////////////////////////////////////////////////
 
     testIntoWithOutVariableUsedInAssignment : function () {
       assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age, v2 = doc.value INTO g = v1 RETURN [v1,v2,g]", internal.errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code);
@@ -227,7 +277,7 @@ function optimizerCollectExpressionTestSuite () {
     },
 
     testMultiCollectWithConstExpression : function () {
-      var query = `
+      let query = `
         LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ]
         FOR p1 IN values
           COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time)
@@ -236,7 +286,7 @@ function optimizerCollectExpressionTestSuite () {
             COLLECT q = 0 INTO qs = p2
             RETURN {q}
       `;
-      var results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
       
       query = `
@@ -310,11 +360,6 @@ function optimizerCollectExpressionTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerCollectExpressionTestSuite);
 
 return jsunity.done();
-

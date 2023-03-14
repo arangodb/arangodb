@@ -60,7 +60,8 @@ template<class Inspector, class T>
     return f.tuple(x);
   } else if constexpr (detail::IsMapLike<TT>::value) {
     return f.map(x);
-  } else if constexpr (detail::IsListLike<TT>::value) {
+  } else if constexpr (detail::IsListLike<TT>::value or
+                       detail::IsSetLike<TT>::value) {
     return f.list(x);
   }
 }

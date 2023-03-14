@@ -22,21 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <thread>
 
 #include <fmt/core.h>
 
+#include "Cluster/ClusterFeature.h"
 #include "Conductor.h"
 
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
-#include "Pregel/Aggregator.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelOptions.h"
-#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
@@ -46,9 +45,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -56,11 +53,10 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/Worker/Messages.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
 
@@ -85,16 +81,15 @@ Conductor::Conductor(ExecutionSpecifications const& specifications,
       _vocbaseGuard(vocbase),
       _specifications(specifications),
       _algorithm(AlgoRegistry::createAlgorithm(
-          vocbase.server(), specifications.algorithm,
-          specifications.userParameters.slice())),
+          specifications.algorithm, specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
-  _masterContext.reset(
-      _algorithm->masterContext(specifications.userParameters.slice()));
-  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
+  _masterContext.reset(_algorithm->masterContext(
+      std::make_unique<AggregatorHandler>(_algorithm.get()),
+      specifications.userParameters.slice()));
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
@@ -143,7 +138,7 @@ bool Conductor::_startGlobalStep() {
   _callbackMutex.assertLockedByCurrentThread();
 
   /// collect the aggregators
-  _aggregators->resetValues();
+  _masterContext->_aggregators->resetValues();
   _statistics.resetActiveCount();
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
@@ -176,7 +171,8 @@ bool Conductor::_startGlobalStep() {
                   "Cannot deserialize GlobalSuperStepPrepared message: {}",
                   prepared.error().error()));
         }
-        _aggregators->aggregateValues(prepared.get().aggregators.slice());
+        _masterContext->_aggregators->aggregateValues(
+            prepared.get().aggregators.slice());
         _statistics.accumulateActiveCounts(prepared.get().sender,
                                            prepared.get().activeCount);
         _totalVerticesCount += prepared.get().vertexCount;
@@ -237,7 +233,7 @@ bool Conductor::_startGlobalStep() {
   VPackBuilder agg;
   {
     VPackObjectBuilder ob(&agg);
-    _aggregators->serializeValues(agg);
+    _masterContext->_aggregators->serializeValues(agg);
   }
   auto runGss =
       RunGlobalSuperStep{.executionNumber = _specifications.executionNumber,
@@ -310,7 +306,6 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_aggregators = _aggregators.get();
     _masterContext->preApplication();
   }
 
@@ -477,7 +472,7 @@ ErrorCode Conductor::_initializeWorkers() {
 
     auto createWorker =
         CreateWorker{.executionNumber = _specifications.executionNumber,
-                     .algorithm = _algorithm->name(),
+                     .algorithm = std::string{_algorithm->name()},
                      .userParameters = _specifications.userParameters,
                      .coordinatorId = coordinatorId,
                      .useMemoryMaps = _specifications.useMemoryMaps,
@@ -559,9 +554,6 @@ ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
 
   bool store = _state == ExecutionState::STORING;
-  if (_masterContext) {
-    _masterContext->postApplication();
-  }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   auto finalize = FinalizeExecution{
@@ -601,7 +593,7 @@ void Conductor::finishedWorkerFinalize(Finished const& data) {
   debugOut.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(debugOut);
   debugOut.close();
-  _aggregators->serializeValues(debugOut);
+  _masterContext->_aggregators->serializeValues(debugOut);
   debugOut.close();
 
   LOG_PREGEL("063b5", INFO)
@@ -734,7 +726,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
       result.add(VPackValue(gssTime.elapsedSeconds().count()));
     }
   }
-  _aggregators->serializeValues(result);
+  _masterContext->_aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -752,6 +744,60 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   serialize(result, conductorStatus);
 
   result.close();
+}
+
+void Conductor::persistPregelState(ExecutionState state) {
+  // Persist current pregel state into historic pregel system collection.
+
+  statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
+                                               _specifications.executionNumber};
+  // Replace this later
+  // TODO: ongoing <WIP>
+  // Note: I wanted to just use the toVelocyPack method. This fails because of
+  // the mutex there. Therefore temporarly, I'll write data that works for now.
+  // VPackBuilder b;
+  // toVelocyPack(b);
+
+  VPackBuilder debugOut;
+  debugOut.openObject();
+  debugOut.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+  debugOut.add("stats", VPackValue(VPackValueType::Object));
+  _statistics.serializeValues(debugOut);
+  debugOut.close();
+  _masterContext->_aggregators->serializeValues(debugOut);
+  debugOut.close();
+  // Replace this later
+
+  TRI_ASSERT(state != ExecutionState::DEFAULT);
+  if (state == ExecutionState::LOADING) {
+    // During state LOADING we need to initially create the document in the
+    // collection
+    auto storeResult = cWriter.createResult(debugOut.slice());
+    if (storeResult.ok()) {
+      LOG_PREGEL("063x1", INFO)
+          << "Stored result into: \"" << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    } else {
+      LOG_PREGEL("063x2", INFO)
+          << "Could not store result into: \""
+          << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    }
+  } else {
+    // During all other states, we will just simply update the already created
+    // document
+    auto updateResult = cWriter.updateResult(debugOut.slice());
+    if (updateResult.ok()) {
+      LOG_PREGEL("063x3", INFO)
+          << "Updated state into: \"" << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    } else {
+      LOG_PREGEL("063x4", INFO)
+          << "Could not store result into: \""
+          << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    }
+  }
 }
 
 ErrorCode Conductor::_sendToAllDBServers(std::string const& path,
@@ -847,5 +893,10 @@ void Conductor::updateState(ExecutionState state) {
   if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
       _state == ExecutionState::FATAL_ERROR) {
     _expires = std::chrono::system_clock::now() + _specifications.ttl.duration;
+  }
+
+  if (!_shutdown) {
+    // Only persist the state if we're not in shutdown phase.
+    persistPregelState(state);
   }
 }
