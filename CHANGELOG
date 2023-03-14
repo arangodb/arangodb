@@ -8,7 +8,7 @@ devel
     --cluster.failed-write-concern-error-code=503
   is set, then HTTP 503 is returned. Note that no cluster-internal retry
   is happening, such that a client is informed right away about the problem.
-  Retry loops have to be organised in the client program.
+  Retry loops have to be organized in the client program.
 
 * Auto-flush RocksDB WAL files and in-memory column family data if the number
   of live WAL files exceeds a certain threshold. This is to make sure that
