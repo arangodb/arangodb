@@ -41,6 +41,7 @@ const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadl
 const userManager = require("@arangodb/users");
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -260,7 +261,7 @@ function doOnePathInner (path) {
 
 function scanTestPaths (paths, options) {
   // add Enterprise Edition tests
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+  if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));

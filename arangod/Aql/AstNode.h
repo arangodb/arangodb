@@ -411,6 +411,10 @@ struct AstNode {
   /// this may also set the FLAG_V8 flag for the node
   bool willUseV8() const;
 
+  /// @brief whether or not a node's filter condition can be used inside a
+  /// TraversalNode
+  bool canBeUsedInFilter(bool isOneShard) const;
+
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;
 

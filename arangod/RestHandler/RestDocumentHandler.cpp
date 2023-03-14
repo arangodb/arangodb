@@ -30,12 +30,15 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
@@ -44,24 +47,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-RefillIndexCaches readFillIndexCachesValue(GeneralRequest const& request) {
-  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
-
-  bool found = false;
-  // this attribute can have 3 values: default, true and false. only
-  // pick it up when it is set to true or false
-  std::string const& value =
-      request.value(StaticStrings::RefillIndexCachesString, found);
-  if (found) {
-    refillIndexCaches = StringUtils::boolean(value)
-                            ? RefillIndexCaches::kRefill
-                            : RefillIndexCaches::kDontRefill;
-  }
-  return refillIndexCaches;
-}
-}  // namespace
 
 RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
                                          GeneralRequest* request,
@@ -106,7 +91,15 @@ RequestLane RestDocumentHandler::lane() const {
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (!suffixes.empty()) {
+    TRI_IF_FAILURE("failOnCRUDAPI" + suffixes[0]) {
+      generateError(GeneralResponse::responseCode(TRI_ERROR_DEBUG),
+                    TRI_ERROR_DEBUG, "Intentional test error");
+    }
+  }
+#endif
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
@@ -198,6 +191,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
   arangodb::OperationOptions opOptions(_context);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync =
@@ -207,7 +202,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew =
       _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
+  handleFillIndexCachesValue(opOptions);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
@@ -234,8 +229,6 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -248,9 +241,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
 
-  if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(cname, isMultiple,
+                      opOptions.isOverwriteModeUpdateReplace());
 
   Result res = _activeTrx->begin();
 
@@ -537,6 +529,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs =
@@ -550,9 +544,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  handleFillIndexCachesValue(opOptions);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -607,9 +599,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   // find and load collection given by name or identifier
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
 
-  if (!isArrayCase) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(cname, isArrayCase, false);
 
   // ...........................................................................
   // inside write transaction
@@ -715,6 +705,8 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   OperationOptions opOptions(_context);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs =
@@ -722,9 +714,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  handleFillIndexCachesValue(opOptions);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -765,10 +755,9 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
+  bool const isMultiple = search.isArray();
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
-  if (suffixes.size() == 2 || !search.isArray()) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  addTransactionHints(cname, isMultiple, false);
 
   Result res = _activeTrx->begin();
 
@@ -795,8 +784,6 @@ RestStatus RestDocumentHandler::removeDocument() {
             "' does not contain collection '" + cname +
             "' with the required access mode.");
   }
-
-  bool const isMultiple = search.isArray();
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
@@ -904,4 +891,49 @@ RestStatus RestDocumentHandler::readManyDocuments() {
                       _activeTrx->transactionContextPtr()->getVPackOptions());
                 });
           }));
+}
+
+void RestDocumentHandler::handleFillIndexCachesValue(
+    OperationOptions& options) {
+  RefillIndexCaches ric = RefillIndexCaches::kDefault;
+
+  if (!options.isSynchronousReplicationFrom.empty() &&
+      !_vocbase.server()
+           .template getFeature<EngineSelectorFeature>()
+           .engine()
+           .autoRefillIndexCachesOnFollowers()) {
+    // do not refill caches on followers if this is intentionally turned off
+    ric = RefillIndexCaches::kDontRefill;
+  } else {
+    bool found = false;
+    std::string const& value =
+        _request->value(StaticStrings::RefillIndexCachesString, found);
+    if (found) {
+      // this attribute can have 3 values: default, true and false. only
+      // pick it up when it is set to true or false
+      ric = StringUtils::boolean(value) ? RefillIndexCaches::kRefill
+                                        : RefillIndexCaches::kDontRefill;
+    }
+  }
+
+  options.refillIndexCaches = ric;
+}
+
+void RestDocumentHandler::addTransactionHints(std::string const& collectionName,
+                                              bool isMultiple,
+                                              bool isOverwritingInsert) {
+  if (ServerState::instance()->isCoordinator()) {
+    CollectionNameResolver resolver{_vocbase};
+    auto col = resolver.getCollection(collectionName);
+    if (col != nullptr && col->isSmartEdgeCollection()) {
+      // Smart Edge Collections hit multiple shards with dependent requests,
+      // they have to be globally managed.
+      _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+      return;
+    }
+  }
+  // For non multiple operations we can optimize to use SingleOperations.
+  if (!isMultiple && !isOverwritingInsert) {
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  }
 }

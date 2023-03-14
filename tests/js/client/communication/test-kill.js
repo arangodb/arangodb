@@ -29,11 +29,10 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+const versionHas = require("@arangodb/test-helper").versionHas;
 
 let timeout = 60;
-if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-    process.env.hasOwnProperty('GCOV_PREFIX')) {
+if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
   timeout *= 10;
 }
 function KillSuite () {

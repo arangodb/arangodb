@@ -32,7 +32,6 @@
 
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
-#include "Basics/cpu-relax.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -53,8 +52,7 @@ Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              std::size_t slotsPerBucket)
-    : _taskLock(),
-      _shutdown(false),
+    : _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
@@ -329,6 +327,8 @@ std::shared_ptr<Table> Cache::table() const {
 }
 
 void Cache::shutdown() {
+  SpinLocker shutdownGuard(SpinLocker::Mode::Write, _shutdownLock);
+
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
@@ -343,7 +343,10 @@ void Cache::shutdown() {
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
-      std::this_thread::sleep_for(std::chrono::microseconds(10));
+      SpinUnlocker shutdownUnguard(SpinUnlocker::Mode::Write, _shutdownLock);
+
+      // sleep a bit without holding the locks
+      std::this_thread::sleep_for(std::chrono::microseconds(20));
     }
 
     std::shared_ptr<cache::Table> table = this->table();
@@ -375,15 +378,6 @@ bool Cache::canResize() noexcept {
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return !(_metadata.isResizing() || _metadata.isMigrating());
-}
-
-bool Cache::canMigrate() noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !_metadata.isMigrating();
 }
 
 /// TODO Improve freeing algorithm
@@ -431,6 +425,12 @@ bool Cache::freeMemory() {
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
   if (ADB_UNLIKELY(isShutdown())) {
+    // unmarking migrating flag
+    SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+
+    TRI_ASSERT(_metadata.isMigrating());
+    _metadata.toggleMigrating();
+    TRI_ASSERT(!_metadata.isMigrating());
     return false;
   }
 
@@ -464,7 +464,9 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   {
     SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
     _metadata.changeTable(newTable->memoryUsage());
+    TRI_ASSERT(_metadata.isMigrating());
     _metadata.toggleMigrating();
+    TRI_ASSERT(!_metadata.isMigrating());
   }
 
   // clear out old table and release it

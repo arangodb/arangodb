@@ -29,10 +29,9 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
@@ -469,7 +468,7 @@ void Optimizer::disableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name.front() == '-') {
+  if (name.starts_with('-')) {
     name = name.substr(1);
   }
 
@@ -493,7 +492,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name.front() == '+') {
+  if (name.starts_with('+')) {
     name = name.substr(1);
   }
 
@@ -511,7 +510,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
 }
 
 void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
-  velocypack::ObjectBuilder guard(&b, true);
+  TRI_ASSERT(b.isOpenObject());
   b.add("rulesExecuted", velocypack::Value(rulesExecuted));
   b.add("rulesSkipped", velocypack::Value(rulesSkipped));
   b.add("plansCreated", velocypack::Value(plansCreated));

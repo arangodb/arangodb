@@ -101,7 +101,7 @@ set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "4")
+  set(ARANGODB_VERSION_PATCH "5")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -305,6 +305,13 @@ endif()
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
+endif ()
+
+# enable code coverage
+option(USE_COVERAGE "enable gcov code coverage" OFF)
+if (USE_COVERAGE)
+  add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
+  add_definitions("-DUSE_COVERAGE=1")
 endif ()
 
 # enable Enterprise Edition features
@@ -654,7 +661,7 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
 endif ()
 
 # need c++20
-# XXX this should really be set on a per target level using cmake compile_features capabilties
+# XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
@@ -884,7 +891,7 @@ if (NOT WINDOWS)
 endif ()
 
 # ------------------------------------------------------------------------------
-# IMPLICIT INCLUDES AND LIBIRARY DIRECTORIES
+# IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
 # ------------------------------------------------------------------------------
 
 function(CREATE_FLAGS OUTPUT GLUE)
@@ -1071,7 +1078,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
   # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
@@ -1082,7 +1089,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
   # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
@@ -1098,8 +1105,8 @@ else () # NOT MSVC
 endif ()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -1107,6 +1114,10 @@ if (VERBOSE)
   message(STATUS "Info BASE_CXX_FLAGS: ${BASE_CXX_FLAGS}")
   message(STATUS "Info BASE_LD_FLAGS:  ${BASE_LD_FLAGS}")
   message(STATUS "Info BASE_LIBS:      ${BASE_LIBS}")
+  message(STATUS)
+
+  message(STATUS "Info EXTRA_C_FLAGS:   ${EXTRA_C_FLAGS}")
+  message(STATUS "Info EXTRA_CXX_FLAGS: ${EXTRA_CXX_FLAGS}")
   message(STATUS)
 
   if (NOT CMAKE_BUILD_TYPE STREQUAL "None")

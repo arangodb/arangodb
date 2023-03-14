@@ -515,7 +515,8 @@ collections (e.g. test suites).)");
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30807);
+      .setIntroducedIn(30807)
+      .setIntroducedIn(30902);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(

@@ -78,12 +78,10 @@ class ServerState {
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
- public:
   explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
- public:
   /// @brief create the (sole) instance
   static ServerState* instance() noexcept;
 
@@ -137,7 +135,6 @@ class ServerState {
 
   static void reset();
 
- public:
   /// @brief sets the initialized flag
   void setInitialized() { _initialized = true; }
 

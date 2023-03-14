@@ -36,6 +36,7 @@ const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -57,17 +58,8 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestP
   // just a convenience wrapper for the regular tests
   testFns['license'] = ['license-api'];
 
-  // turn off license tests by default.
-  opts['skipLicense'] = true;
-
   // only enable them in Enterprise Edition
-  let version = {};
-  if (global.ARANGODB_CLIENT_VERSION) {
-    version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version['enterprise-version']) {
-      opts['skipLicense'] = false;
-    }
-  }
+  opts['skipLicense'] = !isEnterprise();
 
   for (var attrname in functionsDocumentation) {
     fnDocs[attrname] = functionsDocumentation[attrname];

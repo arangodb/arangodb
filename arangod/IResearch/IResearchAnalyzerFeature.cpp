@@ -61,6 +61,7 @@
 #include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchKludge.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -87,6 +88,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
 
 namespace {
@@ -119,8 +121,8 @@ REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make,
                         IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
-REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make,
-                        GeoJSONAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
+                        GeoVPackAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
@@ -791,9 +793,14 @@ std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   TRI_ASSERT(analyzer);
   auto const type = analyzer->type();
-  if (type == irs::type<GeoJSONAnalyzer>::id()) {
+  if (type == irs::type<GeoVPackAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
-            AnalyzerValueType::String, &GeoJSONAnalyzer::store};
+            AnalyzerValueType::String, &GeoVPackAnalyzer::store};
+#ifdef USE_ENTERPRISE
+  } else if (type == irs::type<GeoS2Analyzer>::id()) {
+    return {AnalyzerValueType::Object | AnalyzerValueType::Array,
+            AnalyzerValueType::String, &GeoS2Analyzer::store};
+#endif
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
@@ -943,7 +950,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
         _type = irs::string_ref(_config.c_str() + _properties.byteSize(),
                                 type.size());
       }
-      _requireMangling = isGeoAnalyzer(_type);
+      _requireMangling = kludge::isGeoAnalyzer(_type);
 
       if (instance->type() ==
           irs::type<irs::analysis::pipeline_token_stream>::id()) {
@@ -1520,6 +1527,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       SingleCollectionTransaction trx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::EXCLUSIVE);
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
       auto res = trx.begin();
       if (res.fail()) {
@@ -1991,6 +1999,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     trx.begin();
 
     auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);

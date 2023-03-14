@@ -59,6 +59,7 @@
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -1297,6 +1298,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     newDocumentBuilder->clear();
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
 
     if (!value.isObject()) {
       return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
@@ -1730,6 +1736,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     newDocumentBuilder->clear();
     previousDocumentBuilder->clear();
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
+
     if (!newValue.isObject()) {
       return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
     }
@@ -2084,6 +2096,11 @@ Future<OperationResult> transaction::Methods::removeLocal(
 
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     std::string_view key;
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("failOnCRUDAction" + collectionName) {
+      return {TRI_ERROR_DEBUG, "Intentional test error"};
+    }
+#endif
 
     if (value.isString()) {
       key = value.stringView();
@@ -2878,13 +2895,41 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+
+  // index cache refilling...
+  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+    // index cache refilling opt-out
+    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  } else {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    bool const refill =
+        engine.autoRefillIndexCachesOnFollowers() &&
+        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+          engine.autoRefillIndexCaches()));
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+      if (refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      if (!refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
     reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
-                      ? "true"
-                      : "false");
+                  refill ? "true" : "false");
   }
 
   std::string url = "/_api/document/";

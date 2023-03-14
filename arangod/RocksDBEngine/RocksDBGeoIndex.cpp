@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -273,9 +273,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -311,9 +311,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -492,9 +492,9 @@ class RDBCoveringIterator final : public IndexIterator {
                          TRI_ASSERT(res.ok());  // this should never fail here
                          if (res.fail() ||
                              (ft == geo::FilterType::CONTAINS &&
-                              !filter.contains(&test)) ||
+                              !filter.contains(test)) ||
                              (ft == geo::FilterType::INTERSECTS &&
-                              !filter.intersects(&test))) {
+                              !filter.intersects(test))) {
                            result = false;
                            return false;
                          }
@@ -529,9 +529,9 @@ class RDBCoveringIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -906,4 +906,16 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
     }
   }
   return res;
+}
+
+arangodb::Index::FilterCosts RocksDBGeoIndex::supportsFilterCondition(
+    transaction::Methods& /*trx*/,
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
+  arangodb::Index::FilterCosts costs =
+      arangodb::Index::FilterCosts::defaultCosts(itemsInIndex, 1);
+  costs.estimatedItems /= 100;
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
+  return costs;
 }

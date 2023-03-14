@@ -163,6 +163,11 @@ void Version::initialize() {
 #else
   Values["ndebug"] = "false";
 #endif
+#ifdef USE_COVERAGE
+  Values["coverage"] = "true";
+#else
+  Values["coverage"] = "false";
+#endif
 #ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif

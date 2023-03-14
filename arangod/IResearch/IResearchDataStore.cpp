@@ -55,6 +55,7 @@
 #include <utils/singleton.hpp>
 #include <utils/file_utils.hpp>
 #include <chrono>
+#include <string>
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
@@ -66,8 +67,9 @@ namespace {
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
-  explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
-      : _tick{tick} {}
+  explicit IResearchFlushSubscription(TRI_voc_tick_t tick,
+                                      std::string const& name)
+      : _tick{tick}, _name{name} {}
 
   /// @brief earliest tick that can be released
   [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
@@ -87,8 +89,11 @@ class IResearchFlushSubscription final : public FlushSubscription {
     }
   }
 
+  std::string const& name() const final { return _name; }
+
  private:
   std::atomic<TRI_voc_tick_t> _tick;
+  std::string const _name;
 };
 
 enum class SegmentPayloadVersion : uint32_t {
@@ -185,7 +190,8 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
   auto const oldTime = oldTimeNum >> 32U;
   auto const oldNum = oldTimeNum & std::numeric_limits<uint32_t>::max();
   if (oldNum >= kWindowSize) {
-    timeNum.fetch_sub((oldTime / oldNum) + 1, std::memory_order_relaxed);
+    timeNum.fetch_sub(((oldTime / oldNum) << 32U) + 1,
+                      std::memory_order_relaxed);
   }
   return (oldTime + newTime) / (oldNum + 1);
 }
@@ -1308,7 +1314,7 @@ Result IResearchDataStore::initDataStore(
   if (pathExists) {
     try {
       _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
-                                                       nullptr, readerOptions);
+                                                       _format, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
@@ -1330,8 +1336,11 @@ Result IResearchDataStore::initDataStore(
     }
   }
   _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
-  _flushSubscription =
-      std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
+
+  std::string name = absl::StrCat("flush subscription for ArangoSearch index '",
+                                  id().id(), "'");
+  _flushSubscription = std::make_shared<IResearchFlushSubscription>(
+      _dataStore._recoveryTickLow, name);
 
   irs::index_writer::init_options options;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
