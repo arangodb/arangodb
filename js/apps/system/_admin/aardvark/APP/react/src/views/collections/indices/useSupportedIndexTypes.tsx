@@ -51,5 +51,9 @@ const indexTypeOptions = [
   {
     label: "ZKD Index (EXPERIMENTAL)",
     value: "zkd"
+  },
+  {
+    label: "Inverted Index",
+    value: "inverted"
   }
 ];
