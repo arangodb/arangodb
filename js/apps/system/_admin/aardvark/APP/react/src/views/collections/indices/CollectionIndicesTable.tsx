@@ -49,8 +49,8 @@ export const CollectionIndicesTable = ({
                 <Td>{`${indexRow.sparse}`}</Td>
                 <Td>{JSON.stringify(extras)}</Td>
                 <Td>{selectivityEstimate}</Td>
-                <Td>{JSON.stringify(indexRow.storedValues)}</Td>
                 <Td>{JSON.stringify(indexRow.fields)}</Td>
+                <Td>{JSON.stringify(indexRow.storedValues)}</Td>
                 <Td>{indexRow.name}</Td>
                 <Td>
                   <IndexActionCell indexRow={indexRow} />
