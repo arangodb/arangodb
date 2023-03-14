@@ -73,6 +73,9 @@ function BaseTestConfig (dropCb, expectedError) {
         c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
         fail();
       } catch (err) {
+        // unfortunately it is possible that this fails because of unexpected
+        // scheduling. the whole test is time-based and assumes reasonable
+        // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
       }
 
@@ -87,6 +90,9 @@ function BaseTestConfig (dropCb, expectedError) {
         c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], inBackground: true });
         fail();
       } catch (err) {
+        // unfortunately it is possible that this fails because of unexpected
+        // scheduling. the whole test is time-based and assumes reasonable
+        // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
       }
 
@@ -107,6 +113,9 @@ function BaseTestConfig (dropCb, expectedError) {
         c.loadIndexesIntoMemory();
         fail();
       } catch (err) {
+        // unfortunately it is possible that this fails because of unexpected
+        // scheduling. the whole test is time-based and assumes reasonable
+        // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
       }
 
