@@ -67,7 +67,7 @@ auto getHealthyParticipants(replicated_log::ParticipantsHealth const& health)
 
 auto computeEvenDistributionForServers(
     std::size_t numberOfShards, std::size_t replicationFactor,
-    replicated_log::ParticipantsHealth const& health) -> EvenDistribution {
+    replicated_log::ParticipantsHealth const& health) -> ResultT<EvenDistribution> {
   auto servers = getHealthyParticipants(health);
   {
     // TODO reuse random device?
@@ -78,7 +78,10 @@ auto computeEvenDistributionForServers(
 
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
-  distribution.planShardsOnServers(servers, plannedServers);
+  auto res = distribution.planShardsOnServers(servers, plannedServers);
+  if (res.fail()) {
+    return res;
+  }
   return distribution;
 }
 
@@ -143,12 +146,15 @@ auto createCollectionPlanSpec(
 auto createCollectionGroupTarget(
     DatabaseID const& database, CollectionGroup const& group,
     UniqueIdProvider& uniqid, replicated_log::ParticipantsHealth const& health)
-    -> AddCollectionGroupToPlan {
+    -> Action {
   auto const& attributes = group.target.attributes;
 
   auto distribution = computeEvenDistributionForServers(
       attributes.immutableAttributes.numberOfShards,
       attributes.mutableAttributes.replicationFactor, health);
+  if (distribution.fail()) {
+    return NoActionPossible{std::string{distribution.errorMessage()}};
+  }
 
   std::size_t i = 0;
   std::unordered_map<LogId, ag::LogTarget> replicatedLogs;
@@ -162,7 +168,7 @@ auto createCollectionGroupTarget(
     target.config = createLogConfigFromGroupAttributes(group.target.attributes);
     target.properties.implementation.type = "document";
 
-    auto participants = distribution.getServersForShardIndex(i++);
+    auto participants = distribution->getServersForShardIndex(i++);
     target.leader = participants.getLeader();
     for (auto const& p : participants.servers) {
       target.participants.emplace(p, ParticipantFlags{});

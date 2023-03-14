@@ -43,7 +43,9 @@ Result EvenDistribution::planShardsOnServers(
     std::vector<ServerID> availableServers,
     std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
-  ADB_PROD_ASSERT(!availableServers.empty());
+  if (availableServers.empty()) {
+    return  {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "Do not have a single server to make responsible for shards"};
+  }
 
   if (_enforceReplicationFactor &&
       availableServers.size() < _replicationFactor) {
