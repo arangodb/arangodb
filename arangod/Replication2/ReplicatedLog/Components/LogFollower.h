@@ -55,7 +55,7 @@ struct AppendEntriesManager;
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
 
-namespace arangodb::replication2::replicated_log::refactor {
+namespace arangodb::replication2::replicated_log {
 
 struct MethodsProvider;
 struct FollowerManager {
@@ -129,4 +129,4 @@ struct LogFollowerImpl : ILogFollower {
   Guarded<FollowerManager> guarded;
 };
 
-}  // namespace arangodb::replication2::replicated_log::refactor
+}  // namespace arangodb::replication2::replicated_log

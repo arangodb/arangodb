@@ -320,7 +320,7 @@ auto DefaultParticipantsFactory::constructFollower(
   auto info2 = std::make_shared<FollowerTermInformation>(
       FollowerTermInformation{{info.term}, info.leader});
 
-  return std::make_shared<refactor::LogFollowerImpl>(
+  return std::make_shared<LogFollowerImpl>(
       info.myself, std::move(methods), std::move(context.stateHandle), info2,
       std::move(context.options), std::move(context.metrics), leaderComm);
 }
