@@ -121,7 +121,7 @@ with the leader. For example, if the write concern is 2 and the replication
 factor is 3, then the write concern is not fulfilled, if two replicas
 are not in sync.
 
-Note that this return code is configurable, 403 happens, if the
+Note that this return code is configurable, 403 is returned, if the
 configuration option `--cluster.failed-write-concern-error-code` is
 set to 403 (which is currently the default for backwards compatibility
 reasons, since this is the legacy behavior). The other possibility is
@@ -142,7 +142,7 @@ a shard are currently in sync with the leader. For example, if the write
 concern is 2 and the replication factor is 3, then the write concern is
 not fulfilled, if two replicas are not in sync.
 
-Note that this return code is configurable, 503 happens, if the
+Note that this return code is configurable, 503 is returned, if the
 configuration option `--cluster.failed-write-concern-error-code` is
 set to 503 (which is currently not the default for backwards compatibility
 reasons). The other possibility is 403 (see above).
