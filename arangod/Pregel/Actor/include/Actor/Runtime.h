@@ -64,7 +64,7 @@ struct Runtime
 
   template<typename ActorConfig>
   auto spawn(DatabaseName const& database,
-             typename ActorConfig::State initialState,
+             std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
@@ -72,8 +72,7 @@ struct Runtime
         ActorPID{.server = myServerID, .database = database, .id = newId};
 
     auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
-        address, this->shared_from_this(),
-        std::make_unique<typename ActorConfig::State>(initialState));
+        address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
@@ -84,7 +83,7 @@ struct Runtime
 
   template<typename ActorConfig>
   auto spawn(DatabaseName const& database,
-             typename ActorConfig::State initialState,
+             std::unique_ptr<typename ActorConfig::State> initialState,
              velocypack::SharedSlice initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
@@ -92,8 +91,7 @@ struct Runtime
         ActorPID{.server = myServerID, .database = database, .id = newId};
 
     auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
-        address, this->shared_from_this(),
-        std::make_unique<typename ActorConfig::State>(initialState));
+        address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
@@ -135,7 +133,8 @@ struct Runtime
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto error =
+          message::ActorError{message::ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -198,7 +197,8 @@ struct Runtime
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else {
-      dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
+      dispatch(receiver, sender,
+               message::ActorError{message::ActorNotFound{.actor = receiver}});
     }
   }
 

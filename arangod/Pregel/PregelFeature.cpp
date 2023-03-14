@@ -47,9 +47,11 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/SpawnActor.h"
@@ -70,13 +72,6 @@ using namespace arangodb::options;
 using namespace arangodb::pregel;
 
 namespace {
-
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 
 // locations for Pregel's temporary files
 std::unordered_set<std::string> const tempLocationTypes{
@@ -342,21 +337,25 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto ttl = TTL{.duration = std::chrono::seconds(
                      basics::VelocyPackHelper::getNumericValue(
                          options.userParameters.slice(), "ttl", 600))};
+  auto algorithmName = std::move(options.algorithm);
+  std::transform(algorithmName.begin(), algorithmName.end(),
+                 algorithmName.begin(), ::tolower);
 
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = options.algorithm,
-      .vertexCollections = vertexCollections,
-      .edgeCollections = edgeColls,
-      .edgeCollectionRestrictions = edgeCollectionRestrictionsPerShard,
+      .algorithm = std::move(algorithmName),
+      .vertexCollections = std::move(vertexCollections),
+      .edgeCollections = std::move(edgeColls),
+      .edgeCollectionRestrictions =
+          std::move(edgeCollectionRestrictionsPerShard),
       .maxSuperstep = maxSuperstep,
       .useMemoryMaps = useMemoryMapsVar,
       .storeResults = storeResults,
       .ttl = ttl,
       .parallelism = parallelismVar,
-      .userParameters = options.userParameters};
+      .userParameters = std::move(options.userParameters)};
 
   // TODO needs to be part of the conductor state
   auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
@@ -365,23 +364,31 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
-  _actorRuntime->spawn<ConductorActor>(vocbase.name(), ConductorState{},
-                                       ConductorStart{});
+  auto vocbaseLookupInfo =
+      std::make_unique<conductor::DatabaseCollectionLookup>(
+          vocbase, executionSpecifications.vertexCollections,
+          executionSpecifications.edgeCollections);
+  auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+      vocbase.name(), std::make_unique<SpawnState>(vocbase),
+      message::SpawnMessages{message::SpawnStart{}});
+  auto spawnActor = actor::ActorPID{
+      .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
+  auto algorithm = AlgoRegistry::createAlgorithmNew(
+      executionSpecifications.algorithm,
+      executionSpecifications.userParameters.slice());
+  if (not algorithm.has_value()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  fmt::format("Unsupported Algorithm: {}",
+                              executionSpecifications.algorithm)};
+  }
+  _actorRuntime->spawn<conductor::ConductorActor>(
+      vocbase.name(),
+      std::make_unique<conductor::ConductorState>(
+          std::move(algorithm.value()), executionSpecifications,
+          std::move(vocbaseLookupInfo), std::move(spawnActor)),
+      conductor::message::ConductorStart{});
 
   return en;
-}
-
-void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
-                               SpawnMessages msg) {
-  if (server == _actorRuntime->myServerID) {
-    _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{}, msg);
-  } else {
-    _actorRuntime->dispatch(
-        sender,
-        actor::ActorPID{
-            .server = server, .database = sender.database, .id = {0}},
-        msg);
-  }
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {
@@ -686,6 +693,7 @@ void PregelFeature::beginShutdown() {
 
   // cancel all conductors and workers
   for (auto& it : _conductors) {
+    it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
   for (auto it : _workers) {

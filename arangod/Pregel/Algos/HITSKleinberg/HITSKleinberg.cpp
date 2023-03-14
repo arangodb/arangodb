@@ -26,7 +26,7 @@
 #include <utility>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 
@@ -277,17 +277,16 @@ struct HITSKleinbergComputation
 };
 
 VertexComputation<VertexType, int8_t, SenderMessage<double>>*
-HITSKleinberg::createComputation(WorkerConfig const* config) const {
+HITSKleinberg::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new HITSKleinbergComputation();
 }
 
 struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   std::string const _resultField;
 
-  explicit HITSKleinbergGraphFormat(
-      application_features::ApplicationServer& server, std::string result)
-      : GraphFormat<VertexType, int8_t>(server),
-        _resultField(std::move(result)) {}
+  explicit HITSKleinbergGraphFormat(std::string result)
+      : GraphFormat<VertexType, int8_t>(), _resultField(std::move(result)) {}
 
   [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
@@ -295,7 +294,7 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       VertexType& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexType const* value) const override {
@@ -305,8 +304,9 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   }
 };
 
-GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
-  return new HITSKleinbergGraphFormat(_server, _resultField);
+std::shared_ptr<GraphFormat<VertexType, int8_t> const>
+HITSKleinberg::inputFormat() const {
+  return std::make_shared<HITSKleinbergGraphFormat>(_resultField);
 }
 
 WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
@@ -317,8 +317,11 @@ WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
 struct HITSKleinbergMasterContext : public MasterContext {
   double const threshold;
 
-  explicit HITSKleinbergMasterContext(VPackSlice userParams)
-      : threshold(getThreshold(userParams)) {}
+  explicit HITSKleinbergMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators, VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)),
+        threshold(getThreshold(userParams)) {}
 
   bool postGlobalSuperstep() override {
     double const authMaxDiff =
@@ -334,8 +337,19 @@ struct HITSKleinbergMasterContext : public MasterContext {
   }
 };
 
-MasterContext* HITSKleinberg::masterContext(VPackSlice userParams) const {
-  return new HITSKleinbergMasterContext(userParams);
+[[nodiscard]] auto HITSKleinberg::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new HITSKleinbergMasterContext(0, 0, std::move(aggregators),
+                                        userParams);
+}
+[[nodiscard]] auto HITSKleinberg::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<HITSKleinbergMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* HITSKleinberg::aggregator(std::string const& name) const {

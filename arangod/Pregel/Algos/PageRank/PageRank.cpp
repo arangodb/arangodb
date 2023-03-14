@@ -51,24 +51,23 @@ struct PRWorkerContext : public WorkerContext {
   }
 };
 
-PageRank::PageRank(application_features::ApplicationServer& server,
-                   VPackSlice const& params)
-    : SimpleAlgorithm(server, "pagerank", params),
-      _useSource(params.hasKey("sourceField")) {}
+PageRank::PageRank(VPackSlice const& params)
+    : SimpleAlgorithm(params), _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
-  SeededPRGraphFormat(application_features::ApplicationServer& server,
-                      std::string const& source, std::string const& result,
+  SeededPRGraphFormat(std::string const& source, std::string const& result,
                       float vertexNull)
-      : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
+      : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 };
 
-GraphFormat<float, float>* PageRank::inputFormat() const {
+std::shared_ptr<GraphFormat<float, float> const> PageRank::inputFormat() const {
   if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_server, _sourceField, _resultField, -1.0);
+    return std::make_shared<SeededPRGraphFormat>(_sourceField, _resultField,
+                                                 -1.0f);
   } else {
-    return new VertexGraphFormat<float, float>(_server, _resultField, -1.0);
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             -1.0f);
   }
 }
 
@@ -103,7 +102,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
 };
 
 VertexComputation<float, float, float>* PageRank::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new PRComputation();
 }
 
@@ -113,7 +112,10 @@ WorkerContext* PageRank::workerContext(VPackSlice userParams) const {
 
 struct PRMasterContext : public MasterContext {
   float _threshold = EPS;
-  explicit PRMasterContext(VPackSlice params) {
+  explicit PRMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                           std::unique_ptr<AggregatorHandler> aggregators,
+                           VPackSlice params)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)) {
     VPackSlice t = params.get("threshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   }
@@ -129,8 +131,18 @@ struct PRMasterContext : public MasterContext {
   };
 };
 
-MasterContext* PageRank::masterContext(VPackSlice userParams) const {
-  return new PRMasterContext(userParams);
+[[nodiscard]] auto PageRank::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new PRMasterContext(0, 0, std::move(aggregators), userParams);
+}
+[[nodiscard]] auto PageRank::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<PRMasterContext>(vertexCount, edgeCount,
+                                           std::move(aggregators), userParams);
 }
 
 IAggregator* PageRank::aggregator(std::string const& name) const {

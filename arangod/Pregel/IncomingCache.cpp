@@ -104,7 +104,7 @@ void InCache<M>::storeMessage(PregelShard shard, std::string_view vertexId,
 // ================== ArrayIncomingCache ==================
 
 template<typename M>
-ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
+ArrayInCache<M>::ArrayInCache(std::shared_ptr<WorkerConfig const> config,
                               MessageFormat<M> const* format)
     : InCache<M>(format) {
   if (config != nullptr) {
@@ -125,13 +125,13 @@ void ArrayInCache<M>::_set(PregelShard shard, std::string_view const& key,
 }
 
 template<typename M>
-void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
+void ArrayInCache<M>::mergeCache(std::shared_ptr<WorkerConfig const> config,
                                  InCache<M> const* otherCache) {
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
 
   std::random_device rd;
@@ -221,9 +221,9 @@ void ArrayInCache<M>::forEach(
 // ================== CombiningIncomingCache ==================
 
 template<typename M>
-CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
-                                      MessageFormat<M> const* format,
-                                      MessageCombiner<M> const* combiner)
+CombiningInCache<M>::CombiningInCache(
+    std::shared_ptr<WorkerConfig const> config, MessageFormat<M> const* format,
+    MessageCombiner<M> const* combiner)
     : InCache<M>(format), _combiner(combiner) {
   if (config != nullptr) {
     std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
@@ -249,13 +249,13 @@ void CombiningInCache<M>::_set(PregelShard shard, std::string_view const& key,
 }
 
 template<typename M>
-void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
+void CombiningInCache<M>::mergeCache(std::shared_ptr<WorkerConfig const> config,
                                      InCache<M> const* otherCache) {
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_device rd;
   std::mt19937 g(rd());

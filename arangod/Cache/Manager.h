@@ -249,7 +249,6 @@ class Manager {
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
-  std::uint64_t _resizeAttempt;
   std::atomic<std::uint64_t> _outstandingTasks;
   std::atomic<std::uint64_t> _rebalancingTasks;
   std::atomic<std::uint64_t> _resizingTasks;
@@ -293,7 +292,7 @@ class Manager {
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
-  void unprepareTask(TaskEnvironment environment);
+  void unprepareTask(TaskEnvironment environment) noexcept;
 
   // periodically run to rebalance allocations globally
   ErrorCode rebalance(bool onlyCalculate = false);

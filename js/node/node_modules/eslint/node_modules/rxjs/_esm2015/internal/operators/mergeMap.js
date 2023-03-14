@@ -1,8 +1,6 @@
-import { subscribeToResult } from '../util/subscribeToResult';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
 import { map } from './map';
 import { from } from '../observable/from';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function mergeMap(project, resultSelector, concurrent = Number.POSITIVE_INFINITY) {
     if (typeof resultSelector === 'function') {
         return (source) => source.pipe(mergeMap((a, i) => from(project(a, i)).pipe(map((b, ii) => resultSelector(a, b, i, ii))), concurrent));
@@ -21,7 +19,7 @@ export class MergeMapOperator {
         return source.subscribe(new MergeMapSubscriber(observer, this.project, this.concurrent));
     }
 }
-export class MergeMapSubscriber extends OuterSubscriber {
+export class MergeMapSubscriber extends SimpleOuterSubscriber {
     constructor(destination, project, concurrent = Number.POSITIVE_INFINITY) {
         super(destination);
         this.project = project;
@@ -50,13 +48,16 @@ export class MergeMapSubscriber extends OuterSubscriber {
             return;
         }
         this.active++;
-        this._innerSub(result, value, index);
+        this._innerSub(result);
     }
-    _innerSub(ish, value, index) {
-        const innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+    _innerSub(ish) {
+        const innerSubscriber = new SimpleInnerSubscriber(this);
         const destination = this.destination;
         destination.add(innerSubscriber);
-        subscribeToResult(this, ish, value, index, innerSubscriber);
+        const innerSubscription = innerSubscribe(ish, innerSubscriber);
+        if (innerSubscription !== innerSubscriber) {
+            destination.add(innerSubscription);
+        }
     }
     _complete() {
         this.hasCompleted = true;
@@ -65,12 +66,11 @@ export class MergeMapSubscriber extends OuterSubscriber {
         }
         this.unsubscribe();
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(innerValue) {
         this.destination.next(innerValue);
     }
-    notifyComplete(innerSub) {
+    notifyComplete() {
         const buffer = this.buffer;
-        this.remove(innerSub);
         this.active--;
         if (buffer.length > 0) {
             this._next(buffer.shift());
@@ -80,4 +80,5 @@ export class MergeMapSubscriber extends OuterSubscriber {
         }
     }
 }
+export const flatMap = mergeMap;
 //# sourceMappingURL=mergeMap.js.map

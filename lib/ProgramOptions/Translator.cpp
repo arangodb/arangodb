@@ -40,7 +40,7 @@ void arangodb::options::DefineEnvironment(std::string const& keyValues) {
     std::string key;
     std::string value;
 
-    size_t const delim = keyValue.find_first_of('=');
+    size_t const delim = keyValue.find('=');
 
     if (delim == std::string::npos) {
       key = keyValue;

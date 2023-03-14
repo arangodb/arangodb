@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstddef>
+#include "Basics/Exceptions.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>

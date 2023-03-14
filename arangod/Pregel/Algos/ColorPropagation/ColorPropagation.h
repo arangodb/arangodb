@@ -97,21 +97,29 @@ namespace arangodb::pregel::algos {
  *    - send the new colors to all successors outside our own collection.
  */
 
+struct ColorPropagationType {
+  using Vertex = ColorPropagationValue;
+  using Edge = int8_t;
+  using Message = ColorPropagationMessageValue;
+};
+
 struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
                                            ColorPropagationMessageValue> {
  public:
-  explicit ColorPropagation(application_features::ApplicationServer& server,
-                            VPackSlice userParams)
-      : Algorithm<ColorPropagationValue, int8_t, ColorPropagationMessageValue>(
-            server, "colorpropagation"),
-        _numColors{getNumColors(userParams)},
+  explicit ColorPropagation(VPackSlice userParams)
+      : _numColors{getNumColors(userParams)},
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
         _equivalenceClassFieldName(getEquivalenceClassFieldName(userParams)),
         _maxGss{getMaxGss(userParams)} {}
 
-  [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
-      const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "colorpropagation";
+  };
+
+  [[nodiscard]] std::shared_ptr<
+      GraphFormat<ColorPropagationValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] ColorPropagationValueMessageFormat* messageFormat()
       const override {
     return new ColorPropagationValueMessageFormat();
@@ -119,10 +127,19 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 
   VertexComputation<ColorPropagationValue, int8_t,
                     ColorPropagationMessageValue>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
   [[nodiscard]] WorkerContext* workerContext(
       VPackSlice userParams) const override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 
@@ -207,11 +224,11 @@ struct ColorPropagationGraphFormat
   const std::string equivalenceClassFieldName;
   const uint16_t numColors;
 
-  explicit ColorPropagationGraphFormat(
-      application_features::ApplicationServer& server,
-      std::string inputColorsFieldName, std::string outputColorsFieldName,
-      std::string equivalenceClassFieldName, uint16_t numColors)
-      : GraphFormat<ColorPropagationValue, int8_t>(server),
+  explicit ColorPropagationGraphFormat(std::string inputColorsFieldName,
+                                       std::string outputColorsFieldName,
+                                       std::string equivalenceClassFieldName,
+                                       uint16_t numColors)
+      : GraphFormat<ColorPropagationValue, int8_t>(),
         inputColorsFieldName(std::move(inputColorsFieldName)),
         outputColorsFieldName(outputColorsFieldName),
         equivalenceClassFieldName(std::move(equivalenceClassFieldName)),
@@ -223,7 +240,7 @@ struct ColorPropagationGraphFormat
                       std::string const& documentId,
                       arangodb::velocypack::Slice document,
                       ColorPropagationValue& senders,
-                      uint64_t& vertexIdRange) override;
+                      uint64_t& vertexIdRange) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ColorPropagationValue const* ptr) const override;

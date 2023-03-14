@@ -24,12 +24,17 @@
 
 #include <map>
 
+#include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 
 namespace arangodb::pregel {
+
+namespace conductor::message {
 
 struct ConductorStart {};
 template<typename Inspector>
@@ -41,15 +46,42 @@ template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {
   return f.object(x).fields();
 }
-struct ConductorMessages : std::variant<ConductorStart, WorkerCreated> {
-  using std::variant<ConductorStart, WorkerCreated>::variant;
+struct GraphLoaded {
+  ExecutionNumber executionNumber;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoaded& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+}
+struct StatusUpdate {
+  ExecutionNumber executionNumber;
+  Status status;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusUpdate& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("status", x.status));
+}
+struct ConductorMessages : std::variant<ConductorStart, ResultT<WorkerCreated>,
+                                        ResultT<GraphLoaded>, StatusUpdate> {
+  using std::variant<ConductorStart, ResultT<WorkerCreated>,
+                     ResultT<GraphLoaded>, StatusUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<ConductorStart>("Start"),
-      arangodb::inspection::type<WorkerCreated>("WorkerCreated"));
+      arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"),
+      arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
+      arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }
+
+}  // namespace conductor::message
 
 // TODO split LoadGraph off CreateWorker
 struct CreateWorker {
