@@ -285,10 +285,6 @@ auto LogFollowerImpl::getCommittedLogIterator(
   }
 }
 
-auto LogFollowerImpl::copyInMemoryLog() const -> InMemoryLog {
-  return guarded.getLockedGuard()->storage->getCommittedLog();
-}
-
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
   guarded.getLockedGuard()->compaction->updateReleaseIndex(doneWithIdx);
   return {};
