@@ -1,8 +1,8 @@
-import { InfoIcon } from "@chakra-ui/icons";
-import { FormLabel, Tooltip } from "@chakra-ui/react";
+import { FormLabel } from "@chakra-ui/react";
 import React from "react";
 import { InputControl } from "../../../../components/form/InputControl";
 import { SwitchControl } from "../../../../components/form/SwitchControl";
+import { InfoTooltip } from "./InfoTooltip";
 
 export type IndexFormFieldProps = {
   label: string;
@@ -63,10 +63,4 @@ export const IndexFormField = ({
   }
 };
 
-const InfoTooltip = ({ label }: { label: string }) => {
-  return (
-    <Tooltip hasArrow label={label} placement="top">
-      <InfoIcon position="relative" top="3" />
-    </Tooltip>
-  );
-};
+

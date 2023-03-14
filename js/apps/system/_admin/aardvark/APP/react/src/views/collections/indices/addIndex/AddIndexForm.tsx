@@ -1,11 +1,11 @@
-import { InfoIcon } from "@chakra-ui/icons";
-import { Box, Stack, Tooltip } from "@chakra-ui/react";
+import { Box, Stack } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { HashIndexForm } from "./HashIndexForm";
+import { InfoTooltip } from "./InfoTooltip";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { SkiplistIndexForm } from "./SkiplistIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
@@ -36,9 +36,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
               setIndexType((value as any).value);
             }}
           />
-          <Tooltip hasArrow label={tooltipText} placement="top">
-            <InfoIcon position="relative" top="3" />
-          </Tooltip>
+          <InfoTooltip label={tooltipText} />
         </Box>
         <IndexTypeForm onClose={onClose} type={indexType} />
       </Stack>
