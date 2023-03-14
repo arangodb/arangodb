@@ -125,6 +125,10 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
       const override {
     return new ColorPropagationValueMessageFormat();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<ColorPropagationValueMessageFormat>();
+  }
 
   VertexComputation<ColorPropagationValue, int8_t,
                     ColorPropagationMessageValue>*

@@ -65,6 +65,10 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
       const override {
     return new SenderMessageFormat<double>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<SenderMessageFormat<double>>();
+  }
 
   VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
       createComputation(std::shared_ptr<WorkerConfig const>) const override;

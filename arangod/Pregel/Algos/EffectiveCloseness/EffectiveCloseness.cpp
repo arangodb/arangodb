@@ -38,9 +38,17 @@ using namespace arangodb::pregel::algos;
 MessageFormat<HLLCounter>* EffectiveCloseness::messageFormat() const {
   return new HLLCounterFormat();
 }
+[[nodiscard]] auto EffectiveCloseness::messageFormatUnique() const
+    -> std::unique_ptr<message_format> {
+  return std::make_unique<HLLCounterFormat>();
+}
 
 MessageCombiner<HLLCounter>* EffectiveCloseness::messageCombiner() const {
   return new HLLCounterCombiner();
+}
+[[nodiscard]] auto EffectiveCloseness::messageCombinerUnique() const
+    -> std::unique_ptr<message_combiner> {
+  return std::make_unique<HLLCounterCombiner>();
 }
 
 struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {

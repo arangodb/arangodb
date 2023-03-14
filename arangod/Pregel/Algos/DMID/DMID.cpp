@@ -846,3 +846,7 @@ IAggregator* DMID::aggregator(std::string const& name) const {
 MessageFormat<DMIDMessage>* DMID::messageFormat() const {
   return new DMIDMessageFormat();
 }
+[[nodiscard]] auto DMID::messageFormatUnique() const
+    -> std::unique_ptr<message_format> {
+  return std::make_unique<DMIDMessageFormat>();
+}

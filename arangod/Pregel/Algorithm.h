@@ -56,7 +56,7 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  [[nodiscard]] virtual auto masterContext(
+  [[deprecated]] [[nodiscard]] virtual auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* = 0;
   [[nodiscard]] virtual auto masterContextUnique(
@@ -65,7 +65,7 @@ struct IAlgorithm {
       arangodb::velocypack::Slice userParams) const
       -> std::unique_ptr<MasterContext> = 0;
 
-  [[nodiscard]] virtual auto workerContext(
+  [[deprecated]] [[nodiscard]] virtual auto workerContext(
       std::unique_ptr<AggregatorHandler> readAggregators,
       std::unique_ptr<AggregatorHandler> writeAggregators,
       velocypack::Slice userParams) const -> WorkerContext* = 0;
@@ -98,8 +98,16 @@ struct Algorithm : IAlgorithm {
 
  public:
   virtual std::shared_ptr<graph_format const> inputFormat() const = 0;
-  virtual message_format* messageFormat() const = 0;
-  virtual message_combiner* messageCombiner() const { return nullptr; }
+  [[deprecated]] virtual message_format* messageFormat() const = 0;
+  [[nodiscard]] virtual auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> = 0;
+  [[deprecated]] virtual message_combiner* messageCombiner() const {
+    return nullptr;
+  }
+  [[nodiscard]] virtual auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> {
+    return nullptr;
+  }
   virtual vertex_computation* createComputation(
       std::shared_ptr<WorkerConfig const>) const = 0;
   virtual vertex_compensation* createCompensation(
