@@ -1,11 +1,11 @@
 import { Stack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
-import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
-import { useCreatePersistentIndex } from "./useCreatePersistentIndex";
+import { IndexFormFieldsList, FormActions } from "./IndexFormFieldList";
+import { useCreateTTLIndex } from "./useCreateTTLIndex";
 
-export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
-  const { onCreate, initialValues, schema, fields } = useCreatePersistentIndex();
+export const TTLIndexForm = ({ onClose }: { onClose: () => void }) => {
+  const { onCreate, initialValues, schema, fields } = useCreateTTLIndex();
 
   return (
     <Formik
@@ -14,7 +14,6 @@ export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
       }}
       initialValues={initialValues}
       validationSchema={schema}
-      isInitialValid={false}
     >
       {() => (
         <Form>
@@ -27,3 +26,5 @@ export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
     </Formik>
   );
 };
+
+

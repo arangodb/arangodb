@@ -3,9 +3,9 @@ import { commonFields, useCreateIndex } from "./useCreateIndex";
 import * as Yup from "yup";
 
 const initialValues = {
-  type: "fulltext",
+  type: "ttl",
   fields: "",
-  minLength: 0,
+  expireAfter: 0,
   inBackground: true,
   name: ""
 };
@@ -14,11 +14,11 @@ const fields = [
   commonFields.fields,
   commonFields.name,
   {
-    label: "Min. Length",
-    name: "minLength",
+    label: "Documents expire after (s)",
+    name: "expireAfter",
     type: "number",
     tooltip:
-      "Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."
+      "Number of seconds to be added to the timestamp attribute value of each document. If documents have reached their expiration timepoint, they will eventually get deleted by a background process."
   },
   commonFields.inBackground
 ];
@@ -31,12 +31,12 @@ type ValuesType = Omit<typeof initialValues, "fields"> & {
   fields: string[];
 };
 
-export const useCreateFulltextIndex = () => {
+export const useCreateTTLIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
   const onCreate = async ({ values }: { values: typeof initialValues }) => {
     return onCreateIndex({
       ...values,
-      minLength: toNumber(values.minLength),
+      expireAfter: toNumber(values.expireAfter),
       fields: values.fields.split(",")
     });
   };

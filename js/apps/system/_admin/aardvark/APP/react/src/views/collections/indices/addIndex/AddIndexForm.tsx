@@ -1,17 +1,33 @@
-import { Box, Stack } from "@chakra-ui/react";
+import { InfoIcon } from "@chakra-ui/icons";
+import { Box, Stack, Tooltip } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
+import { GeoIndexForm } from "./GeoIndexForm";
+import { HashIndexForm } from "./HashIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
+import { SkiplistIndexForm } from "./SkiplistIndexForm";
+import { TTLIndexForm } from "./TTLIndexForm";
+import { ZKDIndexForm } from "./ZKDIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
   const [indexType, setIndexType] = useState(indexTypeOptions?.[0].value || "");
+  let tooltipText = "Type of index to create.";
+  if (!indexTypeOptions?.find(option => option.value === "hash")) {
+    tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist' and "persistent" are identical, so that they are not offered seperately here.`;
+  }
   return (
     <Box width="100%" padding="4">
       <Stack padding="4" background="white" spacing="4">
-        <Box display={"grid"} gridTemplateColumns={"200px 1fr"} rowGap="5">
+        <Box
+          display={"grid"}
+          gridTemplateColumns={"200px 1fr 40px"}
+          rowGap="5"
+          columnGap="3"
+          maxWidth="500px"
+        >
           <Box fontSize={"lg"}>Add new index</Box>
           <SingleSelect
             defaultValue={indexTypeOptions?.[0]}
@@ -20,6 +36,9 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
               setIndexType((value as any).value);
             }}
           />
+          <Tooltip hasArrow label={tooltipText} placement="top">
+            <InfoIcon position="relative" top="3" />
+          </Tooltip>
         </Box>
         <IndexTypeForm onClose={onClose} type={indexType} />
       </Stack>
@@ -41,19 +60,19 @@ const IndexTypeForm = ({
     return <FulltextIndexForm onClose={onClose} />;
   }
   if (type === "skiplist") {
-    return <FulltextIndexForm onClose={onClose} />;
+    return <SkiplistIndexForm onClose={onClose} />;
   }
   if (type === "hash") {
-    return <FulltextIndexForm onClose={onClose} />;
+    return <HashIndexForm onClose={onClose} />;
   }
   if (type === "ttl") {
-    return <FulltextIndexForm onClose={onClose} />;
+    return <TTLIndexForm onClose={onClose} />;
   }
   if (type === "geo") {
-    return <FulltextIndexForm onClose={onClose} />;
+    return <GeoIndexForm onClose={onClose} />;
   }
   if (type === "zkd") {
-    return <FulltextIndexForm onClose={onClose} />;
+    return <ZKDIndexForm onClose={onClose} />;
   }
   return <></>;
 };

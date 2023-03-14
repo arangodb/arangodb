@@ -2,10 +2,10 @@ import { Stack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
-import { useCreatePersistentIndex } from "./useCreatePersistentIndex";
+import { useCreateHashIndex } from "./useCreateHashIndex";
 
-export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
-  const { onCreate, initialValues, schema, fields } = useCreatePersistentIndex();
+export const HashIndexForm = ({ onClose }: { onClose: () => void }) => {
+  const { onCreate, initialValues, schema, fields } = useCreateHashIndex();
 
   return (
     <Formik
@@ -14,7 +14,6 @@ export const PersistentIndexForm = ({ onClose }: { onClose: () => void }) => {
       }}
       initialValues={initialValues}
       validationSchema={schema}
-      isInitialValid={false}
     >
       {() => (
         <Form>

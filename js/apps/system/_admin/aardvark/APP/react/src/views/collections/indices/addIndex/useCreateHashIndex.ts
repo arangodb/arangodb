@@ -6,7 +6,7 @@ import {
 import * as Yup from "yup";
 
 const initialValues = {
-  type: "skiplist",
+  type: "hash",
   fields: commonFields.fields.initialValue,
   name: commonFields.fields.name,
   unique: commonPersistentIndexFields.unique.initialValue,
@@ -33,7 +33,7 @@ const schema = Yup.object({
 
 type ValuesType = Omit<typeof initialValues, "fields"> & { fields: string[] };
 
-export const useCreateSkiplistIndex = () => {
+export const useCreateHashIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
   const onCreate = async ({ values }: { values: typeof initialValues }) => {
     return onCreateIndex({

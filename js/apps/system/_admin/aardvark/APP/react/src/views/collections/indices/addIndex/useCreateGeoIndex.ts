@@ -1,11 +1,10 @@
-import { toNumber } from "lodash";
-import { commonFields, useCreateIndex } from "./useCreateIndex";
 import * as Yup from "yup";
+import { commonFields, useCreateIndex } from "./useCreateIndex";
 
 const initialValues = {
-  type: "fulltext",
+  type: "geo",
   fields: "",
-  minLength: 0,
+  geoJson: false,
   inBackground: true,
   name: ""
 };
@@ -14,11 +13,11 @@ const fields = [
   commonFields.fields,
   commonFields.name,
   {
-    label: "Min. Length",
-    name: "minLength",
-    type: "number",
+    label: "Geo JSON",
+    name: "geoJson",
+    type: "boolean",
     tooltip:
-      "Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."
+      "Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude]."
   },
   commonFields.inBackground
 ];
@@ -31,12 +30,11 @@ type ValuesType = Omit<typeof initialValues, "fields"> & {
   fields: string[];
 };
 
-export const useCreateFulltextIndex = () => {
+export const useCreateGeoIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
   const onCreate = async ({ values }: { values: typeof initialValues }) => {
     return onCreateIndex({
       ...values,
-      minLength: toNumber(values.minLength),
       fields: values.fields.split(",")
     });
   };
