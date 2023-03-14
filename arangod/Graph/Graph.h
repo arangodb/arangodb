@@ -254,7 +254,8 @@ class Graph {
    */
   virtual Result validateCollection(
       LogicalCollection const& col,
-      std::optional<std::string_view> const& leadingCollection) const;
+      std::optional<std::string> const& leadingCollection,
+      std::function<std::string(LogicalCollection const&)> const& getLeader) const;
   virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
@@ -297,32 +298,44 @@ class Graph {
 
   auto prepareCreateCollectionBodyEdge(
       std::string_view name,
-      std::optional<std::string_view> const& leadingCollection,
+      std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites) const noexcept
       -> ResultT<CreateCollectionBody>;
 
   auto prepareCreateCollectionBodyVertex(
       std::string_view name,
-      std::optional<std::string_view> const& leadingCollection,
+      std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites) const noexcept
       -> ResultT<CreateCollectionBody>;
 
+
+  /**
+   *
+   * @param documentCollectionsToCreate
+   * @param satellites
+   * @param anyExistingCollection
+   * @param getLeader
+   * @return First entry: Desired leading collection,
+   *         Second entry: if the handed in existing collection was picked
+   */
   virtual auto getLeadingCollection(
       std::unordered_set<std::string> const& documentCollectionsToCreate,
       std::unordered_set<std::string> const& satellites,
-      std::shared_ptr<LogicalCollection> const& anyExistingCollection)
-      const noexcept -> std::optional<std::string_view>;
+      std::shared_ptr<LogicalCollection> const& anyExistingCollection,
+      std::function<std::string(LogicalCollection const&)> const& getLeader)
+      const noexcept -> std::pair<std::optional<std::string>, bool>;
 
   virtual auto requiresInitialUpdate() const noexcept -> bool;
 
   virtual auto updateInitial(
       std::vector<std::shared_ptr<LogicalCollection>> const&,
-      std::optional<std::string_view> const& leadingCollection) -> void;
+      std::optional<std::string> const& leadingCollection,
+      std::function<std::string(LogicalCollection const&)> const& getLeader) -> void;
 
  protected:
   virtual auto injectShardingToCollectionBody(
       CreateCollectionBody& body,
-      std::optional<std::string_view> const& leadingCollection,
+      std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites) const noexcept
       -> Result;
 

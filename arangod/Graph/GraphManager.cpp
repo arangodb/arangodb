@@ -51,6 +51,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -568,35 +569,59 @@ Result GraphManager::ensureCollections(
     std::unordered_set<std::shared_ptr<LogicalCollection>> const&
         existentEdgeCollections,
     std::unordered_set<std::string> const& satellites, bool waitForSync) const {
+  CollectionNameResolver resolver(_vocbase);
+  auto getLeaderName = [&](LogicalCollection const& col) -> std::string {
+    auto const& distLike = col.distributeShardsLike();
+    if (distLike.empty()) {
+      return col.name();
+    }
+    return resolver.getCollectionNameCluster(
+        DataSourceId{basics::StringUtils::uint64(distLike)});
+  };
+
   auto anyExistingCollection =
       std::invoke([&]() -> std::shared_ptr<LogicalCollection> {
         if (!existentDocumentCollections.empty()) {
           // Prefer Vertex collections
-          return *existentDocumentCollections.begin();
+          for (auto const& col : existentDocumentCollections) {
+            // We need to ignore satelliteCollections on SmartGraphs
+            if (!graph.isSmart() || !col->isSatellite()) {
+              return col;
+            }
+          }
         }
         if (!existentEdgeCollections.empty()) {
           // over edge collections
-          return *existentEdgeCollections.begin();
+          for (auto const& col : existentEdgeCollections) {
+            // We need to ignore satelliteCollections on SmartGraphs
+            if (!graph.isSmart() || !col->isSatellite()) {
+              return col;
+            }
+          }
         }
         return nullptr;
       });
   // This will only have effect in Enterprise Version
-  std::optional<std::string_view> leadingCollection =
+  auto leadingCollectionResult =
       graph.getLeadingCollection(documentCollectionsToCreate, satellites,
-                                 anyExistingCollection);
+                                 anyExistingCollection, getLeaderName);
+  // NOTE: I would have loved to use auto [leadingCollection, pickedExisting] = above
+  // but compiler does not make real variables out them so i could not use them in the following lambdas.
+  auto leadingCollection = leadingCollectionResult.first;
+  auto pickedExisting =  leadingCollectionResult.second;
 
   // Validate if the existing collections can be used within this graph type.
 
   // document collections
   for (auto const& col : existentDocumentCollections) {
-    Result res = graph.validateCollection(*col, leadingCollection);
+    Result res = graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
   }
   // edge collections
   for (auto const& col : existentEdgeCollections) {
-    Result res = graph.validateCollection(*col, leadingCollection);
+    Result res = graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
@@ -656,7 +681,8 @@ Result GraphManager::ensureCollections(
     if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
       // We can only end up here if we have an existing collection
       TRI_ASSERT(anyExistingCollection != nullptr);
-      graph.updateInitial({anyExistingCollection}, leadingCollection);
+      TRI_ASSERT(pickedExisting);
+      graph.updateInitial({anyExistingCollection}, leadingCollection, getLeaderName);
     }
     return {};
   }
@@ -676,7 +702,13 @@ Result GraphManager::ensureCollections(
   // API guarantees all or none.
   if (finalResult.ok() && leadingCollection.has_value() &&
       graph.requiresInitialUpdate()) {
-    graph.updateInitial(finalResult.get(), leadingCollection);
+    if (pickedExisting) {
+      // Take initial from the selected existing one
+      graph.updateInitial({anyExistingCollection}, leadingCollection, getLeaderName);
+    } else {
+      // Take the initial from freshly created collections
+      graph.updateInitial(finalResult.get(), leadingCollection, getLeaderName);
+    }
   }
   return finalResult.result();
 }

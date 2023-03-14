@@ -746,7 +746,8 @@ void Graph::graphForClient(VPackBuilder& builder) const {
 }
 
 Result Graph::validateCollection(LogicalCollection const&,
-                                 std::optional<std::string_view> const&) const {
+                                 std::optional<std::string> const&,
+                                 std::function<std::string(LogicalCollection const&)> const&) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -830,7 +831,7 @@ auto Graph::addSatellites(VPackSlice const&) -> Result {
 
 auto Graph::prepareCreateCollectionBodyEdge(
     std::string_view name,
-    std::optional<std::string_view> const& leadingCollection,
+    std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
@@ -846,7 +847,7 @@ auto Graph::prepareCreateCollectionBodyEdge(
 
 auto Graph::prepareCreateCollectionBodyVertex(
     std::string_view name,
-    std::optional<std::string_view> const& leadingCollection,
+    std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
@@ -861,7 +862,7 @@ auto Graph::prepareCreateCollectionBodyVertex(
 }
 
 auto Graph::injectShardingToCollectionBody(
-    CreateCollectionBody& body, std::optional<std::string_view> const&,
+    CreateCollectionBody& body, std::optional<std::string> const&,
     std::unordered_set<std::string> const&) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection
@@ -878,17 +879,19 @@ auto Graph::injectShardingToCollectionBody(
 
 auto Graph::getLeadingCollection(std::unordered_set<std::string> const&,
                                  std::unordered_set<std::string> const&,
-                                 std::shared_ptr<LogicalCollection> const&)
-    const noexcept -> std::optional<std::string_view> {
+                                 std::shared_ptr<LogicalCollection> const&,
+                                 std::function<std::string(LogicalCollection const&)> const& getLeader)
+    const noexcept -> std::pair<std::optional<std::string>, bool> {
   // Community Graphs have no leading collection
-  return std::nullopt;
+  return std::make_pair(std::nullopt, false);
 }
 
 auto Graph::requiresInitialUpdate() const noexcept -> bool { return false; }
 
 auto Graph::updateInitial(
     std::vector<std::shared_ptr<LogicalCollection>> const&,
-    std::optional<std::string_view> const& leadingCollection) -> void {
+    std::optional<std::string> const&,
+    std::function<std::string(LogicalCollection const&)> const&) -> void {
   TRI_ASSERT(false)
       << "Called illegal internal function, other implementations of this "
          "class should have covered this call (Enterprise Edition)";
