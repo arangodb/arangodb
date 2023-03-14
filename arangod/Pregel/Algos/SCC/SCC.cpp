@@ -169,7 +169,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
                       arangodb::velocypack::Slice document, SCCValue& senders,
-                      uint64_t& vertexIdRange) override {
+                      uint64_t& vertexIdRange) const override {
     senders.vertexID = vertexIdRange++;
   }
 
@@ -186,8 +186,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
 }  // namespace
 
-GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
-  return new SCCGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<SCCValue, int8_t> const> SCC::inputFormat() const {
+  return std::make_shared<SCCGraphFormat>(_resultField);
 }
 
 struct SCCMasterContext : public MasterContext {

@@ -118,7 +118,8 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     return "slpa";
   };
 
-  GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<SLPAValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }

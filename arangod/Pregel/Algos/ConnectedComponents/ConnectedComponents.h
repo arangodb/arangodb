@@ -48,7 +48,8 @@ struct ConnectedComponents
     return "connectedcomponents";
   };
 
-  GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<uint64_t, uint8_t> const> inputFormat()
+      const override;
 
   MessageFormat<uint64_t>* messageFormat() const override {
     return new IntegerMessageFormat<uint64_t>();

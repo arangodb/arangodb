@@ -149,13 +149,14 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      WCCValue& targetPtr, uint64_t& vertexIdRange) override {
+                      WCCValue& targetPtr,
+                      uint64_t& vertexIdRange) const override {
     targetPtr.component = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,
-                    uint64_t& targetPtr) override {
+                    uint64_t& targetPtr) const override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
@@ -172,8 +173,9 @@ WCC::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new ::WCCComputation();
 }
 
-GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
-  return new ::WCCGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<WCCValue, uint64_t> const> WCC::inputFormat()
+    const {
+  return std::make_shared<::WCCGraphFormat>(_resultField);
 }
 
 struct WCCMasterContext : public MasterContext {

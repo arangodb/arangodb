@@ -13,7 +13,7 @@ exposedBy:
   - single
 description: |
   This metric exposes the RocksDB WAL sequence number from which onwards 
-  WAL files have to kept because the WAL data could be used by external
+  WAL files have to be kept because the WAL data could be used by external
   flushing needs. WAL files with sequence numbers higher than this value
   will not be garbage-collected.
   The candidates that can keep WAL files from being garbage-collected are

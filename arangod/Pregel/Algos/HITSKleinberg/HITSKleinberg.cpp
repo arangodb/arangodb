@@ -294,7 +294,7 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       VertexType& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexType const* value) const override {
@@ -304,8 +304,9 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   }
 };
 
-GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
-  return new HITSKleinbergGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<VertexType, int8_t> const>
+HITSKleinberg::inputFormat() const {
+  return std::make_shared<HITSKleinbergGraphFormat>(_resultField);
 }
 
 WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
