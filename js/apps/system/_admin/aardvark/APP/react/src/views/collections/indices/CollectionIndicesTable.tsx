@@ -7,7 +7,7 @@ import {
   Thead,
   Tr
 } from "@chakra-ui/react";
-import { isNumber, round } from "lodash";
+import { isNumber } from "lodash";
 import React from "react";
 import { IndexActionCell } from "./IndexActionCell";
 import { IndexType } from "./useFetchIndices";
@@ -38,20 +38,28 @@ export const CollectionIndicesTable = ({
         </Thead>
         <Tbody>
           {indices?.map(indexRow => {
-            var { indexId, extras, selectivityEstimate } = getIndexRowData(
-              indexRow
-            );
+            var {
+              indexId,
+              extras,
+              fields,
+              selectivityEstimate,
+              storedValues,
+              sparse,
+              unique,
+              name,
+              type
+            } = getIndexRowData(indexRow);
             return (
               <Tr>
                 <Td>{indexId}</Td>
-                <Td>{indexRow.type}</Td>
-                <Td>{`${indexRow.unique}`}</Td>
-                <Td>{`${indexRow.sparse}`}</Td>
-                <Td>{JSON.stringify(extras)}</Td>
+                <Td>{type}</Td>
+                <Td>{unique}</Td>
+                <Td>{sparse}</Td>
+                <Td>{extras}</Td>
                 <Td>{selectivityEstimate}</Td>
-                <Td>{JSON.stringify(indexRow.fields)}</Td>
-                <Td>{JSON.stringify(indexRow.storedValues)}</Td>
-                <Td>{indexRow.name}</Td>
+                <Td>{fields}</Td>
+                <Td>{storedValues}</Td>
+                <Td>{name}</Td>
                 <Td>
                   <IndexActionCell indexRow={indexRow} />
                 </Td>
@@ -64,10 +72,19 @@ export const CollectionIndicesTable = ({
   );
 };
 
-function getIndexRowData(indexRow: IndexType) {
-  const position = indexRow.id.indexOf("/");
-  const indexId = indexRow.id.substring(position + 1, indexRow.id.length);
-
+const getIndexRowData = (indexRow: IndexType) => {
+  const {
+    fields,
+    storedValues,
+    id,
+    selectivityEstimate,
+    sparse,
+    unique,
+    name,
+    type
+  } = indexRow;
+  const position = id.indexOf("/");
+  const indexId = id.substring(position + 1, id.length);
   let extras: string[] = [];
   [
     "deduplicate",
@@ -81,8 +98,26 @@ function getIndexRowData(indexRow: IndexType) {
       extras = [...extras, `${key}: ${(indexRow as any)[key]}`];
     }
   });
-  const selectivityEstimate = isNumber(indexRow.selectivityEstimate)
-    ? `${round(indexRow.selectivityEstimate * 100, 2)}%`
-    : "N/A";
-  return { indexId, extras, selectivityEstimate };
-}
+  const selectivityEstimateString = isNumber(selectivityEstimate)
+    ? `${(selectivityEstimate * 100).toFixed(2)}%`
+    : "n/a";
+  const fieldsString = fields
+    .map(field => {
+      if (typeof field === "object") {
+        return (field as any).name;
+      }
+      return field;
+    })
+    .join(", ");
+  return {
+    indexId,
+    extras: extras.join(", "),
+    fields: fieldsString,
+    sparse: sparse === undefined ? "n/a" : `${sparse}`,
+    selectivityEstimate: selectivityEstimateString,
+    storedValues: storedValues?.join(", "),
+    unique,
+    name,
+    type
+  };
+};
