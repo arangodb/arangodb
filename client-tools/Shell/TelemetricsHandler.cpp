@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
@@ -134,16 +135,25 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
   uint64_t sslProtocol = TLS_V12;
 
   std::string const body = _telemetricsResult.toJson();
-  auto bodyData = body.data();
-  size_t bodySize = body.size();
 
   httpclient::SimpleHttpClientParams const params(30, false);
 
   while (!_server.isStopping()) {
+    basics::StringBuffer compressedBody;
+
+    auto res =
+        encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
+                               body.size(), compressedBody);
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
     std::unordered_map<std::string, std::string> headers;
     headers.emplace(StaticStrings::ContentTypeHeader,
                     StaticStrings::MimeTypeJson);
-    headers.emplace(StaticStrings::ContentLength, std::to_string(body.size()));
+    headers.emplace(StaticStrings::ContentLength,
+                    std::to_string(compressedBody.size()));
+    headers.emplace(StaticStrings::ContentEncoding,
+                    StaticStrings::EncodingGzip);
 
     ClientFeature& client =
         _server.getFeature<HttpEndpointProvider, ClientFeature>();
@@ -168,7 +178,8 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
     lk.unlock();
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(_httpClient->request(
-        rest::RequestType::POST, relative, bodyData, bodySize, headers));
+        rest::RequestType::POST, relative, compressedBody.data(),
+        compressedBody.size(), headers));
     lk.lock();
     result = this->checkHttpResponse(response, false);
     if (result.ok()) {
@@ -178,8 +189,8 @@ void TelemetricsHandler::sendTelemetricsToEndpoint() {
                            [this] { return _server.isStopping(); });
     timeoutInSecs *= 3;
     timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
-    connection.reset(nullptr);
     _httpClient.reset(nullptr);
+    connection.reset(nullptr);
   }
 }
 

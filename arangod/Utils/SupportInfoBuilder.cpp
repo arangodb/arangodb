@@ -124,8 +124,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                              VPackValue(dbViews[dbName]));
         visitedDatabases[dbName].builder.add(
             "single_shard", VPackValue(dbIt.get("single_shard").getBoolean()));
-        // just now for debugging, add name
-        visitedDatabases[dbName].builder.add("name", VPackValue(dbName));
         visitedDatabases[dbName].builder.add("colls",
                                              VPackValue(VPackValueType::Array));
       }
@@ -190,8 +188,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
               if (foundIt != collNumDocs.end()) {
                 result.add(key2, VPackValue(foundIt->second));
               }
-              //       } else if (key2 != "name") {
-            } else {  // just now for debugging, add the name
+            } else if (key2 != "name") {
               result.add(key2, value2);
             }
           }

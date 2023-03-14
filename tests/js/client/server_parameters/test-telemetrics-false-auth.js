@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, arango */
+/* global getOptions, assertEqual, assertTrue, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief dropping followers while replicating
@@ -25,10 +25,13 @@
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
+const jwtSecret = 'abc';
+
 if (getOptions === true) {
   return {
     'server.send-telemetrics': 'false',
     'server.authentication': 'true',
+    'server.jwt-secret': jwtSecret,
   };
 }
 
@@ -54,12 +57,11 @@ function getTelemetricsResult() {
   }
 }
 
-function telemetricsOnShellReconnectTestsuite() {
-  'use strict';
+function telemetricsOnShellTestsuite() {
 
   return {
 
-    testTelemetricsRequestByUserNotEnabled: function () {
+    testTelemetricsShellRequestByUserNotEnabled: function () {
       try {
         const res = getTelemetricsResult();
         assertTrue(res.hasOwnProperty("errorNum"));
@@ -73,5 +75,19 @@ function telemetricsOnShellReconnectTestsuite() {
   };
 }
 
-jsunity.run(telemetricsOnShellReconnectTestsuite);
+function telemetricsApiUsageTestsuite() {
+
+  return {
+
+    testTelemetricsApiRequestByUserNotEnabled: function () {
+      const res = arango.GET("/_admin/telemetrics");
+      assertEqual(res.errorNum, HTTP_FORBIDDEN);
+      assertTrue(res.errorMessage.includes("telemetrics is disabled"));
+    },
+
+  };
+}
+
+jsunity.run(telemetricsOnShellTestsuite);
+jsunity.run(telemetricsApiUsageTestsuite);
 return jsunity.done();
