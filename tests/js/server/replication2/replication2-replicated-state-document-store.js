@@ -714,9 +714,6 @@ const replicatedStateSnapshotTransferSuite = function () {
       // Trigger compaction intentionally.
       log.compact();
 
-      // TODO this is not safe, we might loose already committed log entries.
-      //      either force the leader in the first place, or make sure a leader
-      //      election is done (by deleting the current leader when increasing the term)
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
       let checkKeys = documents.map(doc => doc._key);
