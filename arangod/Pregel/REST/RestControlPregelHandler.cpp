@@ -93,6 +93,13 @@ RestControlPregelHandler::forwardingTarget() {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
+  // Do NOT forward requests to any other arangod instance in case we're
+  // requesting the history API. Any coordinator is able to handle this
+  // request.
+  if (suffixes.size() >= 2 && suffixes.at(0) == "history") {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
@@ -173,8 +180,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     c->toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
     return;
-  } else if (suffixes.size() == 2) {
-    if (suffixes[1].empty()) {
+  } else if (suffixes.size() >= 2) {
+    if (suffixes.at(0).empty() || suffixes.at(0) != "history") {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous parameter, expecting "

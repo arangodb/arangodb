@@ -79,7 +79,7 @@ function pregelStatusWriterSuite() {
     }
 
     // 3.) verify using Pregel JavaScript module
-  }
+  };
 
   const createSimpleGraph = () => {
     examples.loadGraph("social");
