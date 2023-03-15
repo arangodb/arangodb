@@ -97,16 +97,19 @@ const VisJsGraph = () => {
   const [showEdgeToAddModal, setShowEdgeToAddModal] = useState();
 
   const fetchVisData = useCallback(() => {
-    responseTimesObject.fetchStarted = new Date();
+    let newResponseTimesObject = {...responseTimesObject, fetchStarted: new Date()};
     $.ajax({
       type: visQueryMethod,
       url: arangoHelper.databaseUrl(visQueryString),
       contentType: 'application/json',
       data: urlParameters,
       success: function (data) {
-        responseTimesObject.fetchFinished = new Date();
-        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
-        setResponseTimes(responseTimesObject);
+        newResponseTimesObject = {...newResponseTimesObject, fetchFinished: new Date()};
+
+        const fetchDuration = Math.abs(newResponseTimesObject.fetchFinished.getTime() - newResponseTimesObject.fetchStarted.getTime());
+        newResponseTimesObject = {...newResponseTimesObject, fetchDuration: fetchDuration};
+        
+        setResponseTimes(newResponseTimesObject);
         setVertexCollections(data.settings.vertexCollections);
         setEdgeCollections(data.settings.edgesCollections);
         setVisGraphData(data);
