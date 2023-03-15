@@ -35,11 +35,14 @@
 #include "Inspection/VPack.h"
 
 #include "Basics/StaticStrings.h"
+#include "Basics/ResultT.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/Utilities.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb::replication2;
 
@@ -87,6 +90,27 @@ static LogId UnwrapReplicatedLog(v8::Isolate* isolate,
       obj->GetInternalField(SLOT_CLASS)->Uint32Value(TRI_IGETC).ToChecked()};
 }
 
+namespace {
+auto getAsMaybeUint64(v8::Isolate* isolate, v8::Value* value)
+    -> arangodb::ResultT<std::uint64_t> {
+  using namespace arangodb;
+  auto intValue = value->ToInteger(TRI_IGETC);
+  if (intValue.IsEmpty()) {
+    return ResultT<std::uint64_t>::error(TRI_ERROR_ILLEGAL_NUMBER,
+                                         "Expected integer");
+  }
+  auto const signedValue = intValue.ToLocalChecked()->Value();
+  if (signedValue < 0) {
+    using namespace std::string_literals;
+    return ResultT<std::uint64_t>::error(
+        TRI_ERROR_ILLEGAL_NUMBER,
+        absl::StrCat("Expected non-negative integer, got ", signedValue));
+  }
+  return ResultT<std::uint64_t>::success(
+      static_cast<std::uint64_t>(signedValue));
+}
+}  // namespace
+
 static void JS_GetReplicatedLog(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -95,13 +119,14 @@ static void JS_GetReplicatedLog(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_replicatedLog(<id>)");
   }
-  auto arg = args[0]->ToUint32(TRI_IGETC);
-  if (arg.IsEmpty()) {
+  auto arg = getAsMaybeUint64(isolate, *args[0]);
+
+  if (!arg) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_replicatedLog(<id>) expects numerical identifier");
   }
 
-  auto id = LogId{arg.ToLocalChecked()->Value()};
+  auto id = LogId{arg.get()};
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -440,8 +465,10 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
     length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 10>)");
+  } else if (auto arg = getAsMaybeUint64(isolate, *args[0]); arg) {
+    length = arg.get();
   } else {
-    length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+    TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 10>)");
   }
 
   auto iter =
@@ -474,8 +501,10 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
     length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 10>)");
+  } else if (auto arg = getAsMaybeUint64(isolate, *args[0]); arg) {
+    length = arg.get();
   } else {
-    length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+    TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 10>)");
   }
 
   auto iter =
@@ -503,21 +532,31 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() > 2) {
+  if (args.Length() > 2 || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
   }
-  auto [start, stop] = std::invoke([&]() -> std::pair<LogIndex, LogIndex> {
-    auto startIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
-    if (args.Length() > 1) {
-      auto stopIdx = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
-      return std::make_pair(LogIndex{startIdx}, LogIndex{stopIdx});
+
+  auto startIdx = LogIndex();
+  auto stopIdx = LogIndex();
+  {
+    auto arg0 = getAsMaybeUint64(isolate, *args[0]);
+    if (!arg0) {
+      TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
     }
-    return std::make_pair(
-        LogIndex{startIdx},
-        LogIndex{startIdx + ReplicatedLogMethods::kDefaultLimit + 1});
-  });
+    startIdx = LogIndex(arg0.get());
+    if (args.Length() > 1) {
+      auto arg1 = getAsMaybeUint64(isolate, *args[1]);
+      if (!arg1) {
+        TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
+      }
+      stopIdx = LogIndex(arg1.get());
+    } else {
+      stopIdx = LogIndex(startIdx + ReplicatedLogMethods::kDefaultLimit + 1);
+    }
+  }
+
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
-                  ->slice(id, start, stop)
+                  ->slice(id, startIdx, stopIdx)
                   .get();
   VPackBuilder response;
   {
@@ -545,15 +584,23 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("poll(<first = 0, limit = 10>)");
   }
-  auto [first, limit] = std::invoke([&]() -> std::pair<LogIndex, std::size_t> {
-    auto firstIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
-    if (args.Length() > 1) {
-      auto limitValue = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
-      return std::make_pair(LogIndex{firstIdx}, limitValue);
+  auto first = LogIndex(0);
+  auto limit = ReplicatedLogMethods::kDefaultLimit;
+
+  if (args.Length() > 0) {
+    auto arg0 = getAsMaybeUint64(isolate, *args[0]);
+    if (!arg0) {
+      TRI_V8_THROW_EXCEPTION_USAGE("poll(<first = 0, limit = 10>)");
     }
-    return std::make_pair(LogIndex{firstIdx},
-                          ReplicatedLogMethods::kDefaultLimit);
-  });
+    first = LogIndex(arg0.get());
+  }
+  if (args.Length() > 1) {
+    auto arg1 = getAsMaybeUint64(isolate, *args[1]);
+    if (!arg1) {
+      TRI_V8_THROW_EXCEPTION_USAGE("poll(<first = 0, limit = 10>)");
+    }
+    limit = arg1.get();
+  }
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
                   ->poll(id, first, limit)
@@ -585,7 +632,12 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("at(<index>)");
   } else {
-    index = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+    auto arg0 = getAsMaybeUint64(isolate, *args[0]);
+    if (!arg0) {
+      TRI_V8_THROW_EXCEPTION_USAGE("at(<index>)");
+    }
+
+    index = LogIndex(arg0.get());
   }
 
   auto entry = ReplicatedLogMethods::createInstance(vocbase)
@@ -613,7 +665,12 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("release(<index>)");
   } else {
-    index = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+    auto arg0 = getAsMaybeUint64(isolate, *args[0]);
+    if (!arg0) {
+      TRI_V8_THROW_EXCEPTION_USAGE("release(<index>)");
+    }
+
+    index = LogIndex(arg0.get());
   }
 
   auto result =
