@@ -40,6 +40,7 @@ void ActiveTransactionsQueue::markAsActive(TransactionId tid, LogIndex index) {
 }
 
 void ActiveTransactionsQueue::markAsActive(LogIndex index) {
+  using namespace arangodb;
   ADB_PROD_ASSERT(_logIndices.empty() || index > _logIndices.back().first)
       << "Trying to add index " << index << " after " << _logIndices;
   _logIndices.emplace_back(index, Status::kActive);
