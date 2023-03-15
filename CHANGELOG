@@ -1,14 +1,16 @@
 devel
 -----
 
-* APM-283: Use parallel gather in almost all queries. The only case were we
-  still cannot use parallel gather is when using traversals. All other queries
-  should now be able to parallelize the gather node. This can not only speed up
-  queries quite significantly, but also reduce the memory required by the
-  coordinator for queries like `FOR i IN @n INSERT {} INTO collection`. The
-  serial gather node processes one db server after the other, but since the new
-  documents should be distributed evenly over all shards, the coordinator has
-  to buffer documents that need to be sent to other servers.
+* APM-283: Use parallel gather in almost all queries. The only case where we
+  cannot use parallel gather is when using traversals, although there are some
+  exceptions for disjoint SmartGraphs where the traversal can run completely on
+  the local DB-server. All other queries should now be able to parallelize the
+  gather node. This can not only speed up queries quite significantly, but also
+  reduce the memory required by the coordinator for queries like
+  `FOR i IN @n INSERT {} INTO collection`. The serial gather node processes one
+  DB-server after the other, but since the new documents should be distributed
+  evenly over all shards, the coordinator has to buffer documents that need to
+  be sent to other servers.
 
 * Auto-flush RocksDB WAL files and in-memory column family data if the number
   of live WAL files exceeds a certain threshold. This is to make sure that

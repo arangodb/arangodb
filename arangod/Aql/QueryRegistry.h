@@ -146,7 +146,8 @@ class QueryRegistry {
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
 
-    bool _finished = false;
+    /// @brief promise to finish a query that was still active when we
+    /// received the finish request
     futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
 
     const double _timeToLive;  // in seconds
@@ -156,6 +157,7 @@ class QueryRegistry {
 
     ErrorCode _errorCode;
     bool const _isTombstone;
+    bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
@@ -189,16 +191,16 @@ class QueryRegistry {
   };
 
   using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
-  using QueryInfoMapPerVocbase = std::unordered_map<std::string, QueryInfoMap>;
+  using VocbaseMap = std::unordered_map<std::string, QueryInfoMap>;
 
-  bool lookupQueryForFinalization(
-      std::string const& vocbase, QueryId id, ErrorCode errorCode,
-      QueryInfoMapPerVocbase::iterator& vocbaseQueriesIt,
-      QueryInfoMap::iterator& queryMapIt);
+  bool lookupQueryForFinalization(std::string const& vocbase, QueryId id,
+                                  ErrorCode errorCode,
+                                  VocbaseMap::iterator& vocbaseIt,
+                                  QueryInfoMap::iterator& queryMapIt);
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  QueryInfoMapPerVocbase _queries;
+  VocbaseMap _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 

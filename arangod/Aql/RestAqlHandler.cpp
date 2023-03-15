@@ -762,8 +762,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto f =
       _queryRegistry->finishQuery(_vocbase.name(), qid, errorCode)
           .thenValue([self = shared_from_this(), this, qid,
-                      errorCode](std::shared_ptr<ClusterQuery> query)
-                         -> futures::Future<futures::Unit> {
+                      errorCode](std::shared_ptr<ClusterQuery> query) mutable
+                     -> futures::Future<futures::Unit> {
             if (query == nullptr) {
               // this may be a race between query garbage collection and
               // the client  shutting down the query. it is debatable
@@ -776,7 +776,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
             _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
             return query->finalizeClusterQuery(errorCode).thenValue(
-                [self, this, q = std::move(query)](Result res) {
+                [self = std::move(self), this,
+                 q = std::move(query)](Result res) {
                   VPackBufferUInt8 buffer;
                   VPackBuilder answerBuilder(buffer);
                   answerBuilder.openObject(/*unindexed*/ true);

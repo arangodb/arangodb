@@ -246,12 +246,14 @@ void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
                                  ErrorCode errorCode) {
   WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMapPerVocbase::iterator vocbaseQueriesIt;
+  VocbaseMap::iterator vocbaseIt;
   QueryInfoMap::iterator queryMapIt;
-  if (!lookupQueryForFinalization(vocbase, id, errorCode, vocbaseQueriesIt,
+  if (!lookupQueryForFinalization(vocbase, id, errorCode, vocbaseIt,
                                   queryMapIt)) {
     return;
   }
+  TRI_ASSERT(vocbaseIt != _queries.end());
+  TRI_ASSERT(queryMapIt != vocbaseIt->second.end());
 
   if (queryMapIt->second->_numOpen > 0) {
     return;
@@ -264,7 +266,7 @@ void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
   TRI_ASSERT(queryInfo->_numOpen == 0);
 
   // remove query from the table of running queries
-  vocbaseQueriesIt->second.erase(queryMapIt);
+  vocbaseIt->second.erase(queryMapIt);
 
   // remove engines
   for (auto const& engine : queryInfo->_query->snippets()) {
@@ -284,9 +286,9 @@ void QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
     _engines.erase(engine->engineId());
   }
 
-  if (vocbaseQueriesIt->second.empty()) {
+  if (vocbaseIt->second.empty()) {
     // clear empty entries in database-to-queries map
-    _queries.erase(vocbaseQueriesIt);
+    _queries.erase(vocbaseIt);
   }
 
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
@@ -297,12 +299,14 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     std::string const& vocbase, QueryId id, ErrorCode errorCode) {
   WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMapPerVocbase::iterator vocbaseQueriesIt;
+  VocbaseMap::iterator vocbaseIt;
   QueryInfoMap::iterator queryMapIt;
-  if (!lookupQueryForFinalization(vocbase, id, errorCode, vocbaseQueriesIt,
+  if (!lookupQueryForFinalization(vocbase, id, errorCode, vocbaseIt,
                                   queryMapIt)) {
     return std::shared_ptr<ClusterQuery>();
   }
+  TRI_ASSERT(vocbaseIt != _queries.end());
+  TRI_ASSERT(queryMapIt != vocbaseIt->second.end());
 
   TRI_ASSERT(queryMapIt->second);
   auto& queryInfo = *queryMapIt->second;
@@ -323,11 +327,10 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
 
 bool QueryRegistry::lookupQueryForFinalization(
     std::string const& vocbase, QueryId id, ErrorCode errorCode,
-    QueryInfoMapPerVocbase::iterator& vocbaseQueriesIt,
-    QueryInfoMap::iterator& queryMapIt) {
-  vocbaseQueriesIt = _queries.find(vocbase);
+    VocbaseMap::iterator& vocbaseIt, QueryInfoMap::iterator& queryMapIt) {
+  vocbaseIt = _queries.find(vocbase);
 
-  if (vocbaseQueriesIt == _queries.end()) {
+  if (vocbaseIt == _queries.end()) {
     // database not found. this can happen as a consequence of a race between
     // garbage collection and query shutdown
     if (errorCode == TRI_ERROR_NO_ERROR ||
@@ -337,23 +340,23 @@ bool QueryRegistry::lookupQueryForFinalization(
 
     // we are about to insert a tombstone now.
     // first, insert a dummy entry for this database
-    vocbaseQueriesIt =
+    vocbaseIt =
         _queries
             .emplace(vocbase,
                      std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>())
             .first;
   }
 
-  queryMapIt = vocbaseQueriesIt->second.find(id);
+  queryMapIt = vocbaseIt->second.find(id);
 
-  if (queryMapIt == vocbaseQueriesIt->second.end()) {
+  if (queryMapIt == vocbaseIt->second.end()) {
     if (errorCode != TRI_ERROR_NO_ERROR &&
         errorCode != TRI_ERROR_SHUTTING_DOWN) {
       // insert a tombstone with a higher-than-query timeout
       LOG_TOPIC("779f6", DEBUG, arangodb::Logger::AQL)
           << "inserting tombstone for query " << id << " into query registry";
       auto inserted =
-          vocbaseQueriesIt->second
+          vocbaseIt->second
               .emplace(id, std::make_unique<QueryInfo>(
                                errorCode, std::max(_defaultTTL, 600.0) + 300.0))
               .second;
@@ -370,7 +373,7 @@ bool QueryRegistry::lookupQueryForFinalization(
   auto& queryInfo = *queryMapIt->second;
 
   if (queryInfo._isTombstone) {
-    vocbaseQueriesIt->second.erase(queryMapIt);
+    vocbaseIt->second.erase(queryMapIt);
     return false;
   }
 
