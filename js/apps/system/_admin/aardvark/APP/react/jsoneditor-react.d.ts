@@ -22,6 +22,10 @@ type Mode = "tree" | "view" | "form" | "code" | "text";
     sortObjectKeys?: boolean;
 
     /** Set a callback function triggered when json in the JSONEditor change */
+    onChangeJSON?: (value: any) => void;
+    /** Set a callback function triggered when json in the JSONEditor change */
+    onChangeText?: (value: any) => void;
+    /** Set a callback function triggered when json in the JSONEditor change */
     onChange?: (value: any) => void;
     /**
      * Set a callback function triggered when an error occurs.
