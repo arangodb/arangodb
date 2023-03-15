@@ -137,10 +137,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_released_tick_flush, uint64_t,
+              "Released tick for RocksDB WAL deletion (flush-induced)");
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(
     rocksdb_wal_sequence_lower_bound, uint64_t,
     "RocksDB WAL sequence number until which background thread has caught up");
+DECLARE_GAUGE(rocksdb_live_wal_files, uint64_t,
+              "Number of live RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t,
               "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t,
@@ -250,9 +254,16 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _autoFlushCheckInterval(60.0 * 60.0),
+      _autoFlushMinWalFiles(10),
+      _metricsWalReleasedTickFlush(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_sequence_lower_bound{})),
+      _metricsLiveWalFiles(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files{})),
       _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
       _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
@@ -333,6 +344,30 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
   delete _db;
   _db = nullptr;
+}
+
+void RocksDBEngine::flushOpenFilesIfRequired() {
+  if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+  if (_autoFlushLastExecuted.time_since_epoch().count() == 0 ||
+      (now - _autoFlushLastExecuted) >=
+          std::chrono::duration<double>(_autoFlushCheckInterval)) {
+    LOG_TOPIC("9bf16", INFO, Logger::ENGINES)
+        << "auto flushing RocksDB wal and column families because number of "
+           "live WAL files is "
+        << _metricsLiveWalFiles.load();
+    Result res = flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ true);
+    if (res.fail()) {
+      LOG_TOPIC("e936c", WARN, Logger::ENGINES)
+          << "unable to flush RocksDB wal: " << res.errorMessage();
+    }
+    // set _autoFlushLastExecuted regardless of whether flushing has worked or
+    // not. we don't want to put too much stress onto the db
+    _autoFlushLastExecuted = now;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -683,6 +718,30 @@ option is set and a leader deletes files from the archive that followers want to
 read, this aborts the replication on the followers. Followers can restart the
 replication doing a resync, however.)");
 
+  options
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
+                  "The minimum number of live WAL files that triggers an "
+                  "auto-flush of WAL "
+                  "and column family data.",
+                  new UInt64Parameter(&_autoFlushMinWalFiles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-flush-check-interval",
+          "The interval (in seconds) in which auto-flushes of WAL and column "
+          "family data is executed.",
+          new DoubleParameter(&_autoFlushCheckInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -861,13 +920,23 @@ void RocksDBEngine::start() {
       << _dbOptions.wal_dir << "'";
 
   if (_verifySst) {
+    // startup command was invoked to verify all .sst files
     rocksdb::Options options;
 #ifdef USE_ENTERPRISE
     configureEnterpriseRocksDBOptions(options, createdEngineDir);
 #else
     options.env = rocksdb::Env::Default();
 #endif
+    // we will not return from here
     verifySstFiles(options);
+    TRI_ASSERT(false);
+  }
+
+  if (!createdEngineDir) {
+    // database directory already existed before.
+    // now check if we have journal files of size 0 in the archive.
+    // these are useless, so we can as well delete them from the archive.
+    removeEmptyJournalFilesFromArchive();
   }
 
   if (_createShaFiles) {
@@ -2307,20 +2376,21 @@ void RocksDBEngine::determineWalFilesInitial() {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
-    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
-      continue;
+    if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      ++archivedFiles;
+    } else if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
     }
-
-    ++archivedFiles;
   }
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
@@ -2330,10 +2400,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
+  uint64_t minLogNumberToKeep = 0;
+  std::string v;
+  if (_db->GetProperty(rocksdb::DB::Properties::kMinLogNumberToKeep, &v)) {
+    minLogNumberToKeep = static_cast<uint64_t>(basics::StringUtils::int64(v));
+  }
+
   LOG_TOPIC("4673c", DEBUG, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
       << ", minTickExternal: " << minTickExternal
-      << ", releasedTick: " << _releasedTick;
+      << ", releasedTick: " << _releasedTick
+      << ", minLogNumberToKeep: " << minLogNumberToKeep;
 
   // Retrieve the sorted list of all wal files with earliest file first
   rocksdb::VectorLogPtr files;
@@ -2344,13 +2421,23 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
   uint64_t totalArchiveSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
+    if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
+      LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
+          << "live WAL file #" << current << "/" << files.size()
+          << ", filename: '" << f->PathName()
+          << "', start sequence: " << f->StartSequence();
+      continue;
+    }
+
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
+      // we are mostly interested in files of the archive
       continue;
     }
 
@@ -2368,27 +2455,50 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // following, we need to take its start tick into account as well, because
     // the following file's start tick can be assumed to be the end tick of the
     // current file!
+    bool eligibleStep1 = false;
+    bool eligibleStep2 = false;
     if (f->StartSequence() < minTickToKeep && current < files.size() - 1) {
+      eligibleStep1 = true;
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
         // still need
-        auto const [it, emplaced] = _prunableWalFiles.try_emplace(
-            f->PathName(), TRI_microtime() + _pruneWaitTime);
+        eligibleStep2 = true;
+
+        double stamp = TRI_microtime() + _pruneWaitTime;
+        auto const [it, emplaced] =
+            _prunableWalFiles.try_emplace(f->PathName(), stamp);
+
         if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
+              << ", expire stamp " << stamp
               << " added to prunable list because it is not needed anymore";
           TRI_ASSERT(it != _prunableWalFiles.end());
+        } else {
+          LOG_TOPIC("d2c9e", TRACE, Logger::ENGINES)
+              << "unable to add WAL file #" << current << "/" << files.size()
+              << ", filename: '" << f->PathName()
+              << "', start sequence: " << f->StartSequence()
+              << " to list of prunable WAL files. file already present in list "
+                 "with expire stamp "
+              << it->second;
         }
       }
     }
+
+    LOG_TOPIC("ec350", TRACE, Logger::ENGINES)
+        << "inspected WAL file #" << current << "/" << files.size()
+        << ", filename: '" << f->PathName()
+        << "', start sequence: " << f->StartSequence()
+        << ", eligible step1: " << eligibleStep1
+        << ", step2: " << eligibleStep2;
   }
 
-  LOG_TOPIC("01e20", TRACE, Logger::ENGINES)
-      << "found " << files.size() << " WAL file(s), with " << archivedFiles
-      << " files in the archive, "
+  LOG_TOPIC("01e20", DEBUG, Logger::ENGINES)
+      << "found " << files.size() << " WAL file(s), with " << liveFiles
+      << " live file(s) and " << archivedFiles << " file(s) in the archive, "
       << "number of prunable files: " << _prunableWalFiles.size();
 
   if (_maxWalArchiveSizeLimit > 0 &&
@@ -2450,11 +2560,13 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     }
   }
 
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
-  _metricsWalPruningActive.operator=(1);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
+  _metricsWalPruningActive.store(1, std::memory_order_relaxed);
 }
 
 RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
@@ -2489,9 +2601,15 @@ void RocksDBEngine::pruneWalFiles() {
       // but only if there are no other threads currently inside the WAL tailing
       // section
       deleteFile = purgeEnabler.canPurge();
+      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking overflowed file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     } else if ((*it).second < TRI_microtime()) {
       // file has expired, and it is always safe to delete it
       deleteFile = true;
+      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking expired file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     }
 
     if (deleteFile) {
@@ -2504,6 +2622,9 @@ void RocksDBEngine::pruneWalFiles() {
         // otherwise RocksDB may complain about non-existing files and log a big
         // error message
         s = _db->DeleteFile((*it).first);
+        LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
+            << "calling RocksDB DeleteFile for WAL file '" << (*it).first
+            << "'. status: " << rocksutils::convertStatus(s).errorMessage();
       } else {
         LOG_TOPIC("c2cc9", DEBUG, Logger::ENGINES)
             << "to-be-deleted RocksDB WAL file '" << (*it).first
@@ -2528,7 +2649,8 @@ void RocksDBEngine::pruneWalFiles() {
     ++it;
   }
 
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
 
   LOG_TOPIC("82a4c", TRACE, Logger::ENGINES)
       << "prune WAL files started with " << initialSize
@@ -3404,8 +3526,13 @@ TRI_voc_tick_t RocksDBEngine::releasedTick() const {
 
 void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _walFileLock);
+
   if (tick > _releasedTick) {
     _releasedTick = tick;
+    lock.unlock();
+
+    // update metric for released tick
+    _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
 }
 
@@ -3662,6 +3789,44 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
     return std::make_shared<RocksDBSnapshot>(*_db);
   } else {
     return nullptr;
+  }
+}
+
+void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
+  LOG_TOPIC("50812", DEBUG, Logger::ENGINES)
+      << "scanning WAL archive directory for empty files...";
+
+  std::string archiveDirectory =
+      basics::FileUtils::buildFilename(_dbOptions.wal_dir, "archive");
+
+  try {
+    for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
+      if (!f.ends_with(".log")) {
+        // we only care about .log files in there
+        continue;
+      }
+
+      std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
+      int64_t size = TRI_SizeFile(fn.c_str());
+      if (size == 0) {
+        // file size is exactly 0 bytes
+        LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
+            << "found empty WAL file in archive at startup: '" << f
+            << "', scheduling this file for later deletion";
+
+        WRITE_LOCKER(lock, _walFileLock);
+        _prunableWalFiles.emplace(
+            basics::FileUtils::buildFilename("archive", f),
+            TRI_microtime() + _pruneWaitTime);
+      }
+    }
+
+    _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                   std::memory_order_relaxed);
+  } catch (...) {
+    // we can continue even if an exception occurs here.
+    // it is possible that during hot backup restore the archive directory
+    // does not exist.
   }
 }
 

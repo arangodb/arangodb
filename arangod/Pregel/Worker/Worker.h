@@ -94,7 +94,7 @@ class Worker : public IWorker {
 
   PregelFeature& _feature;
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
-  WorkerConfig _config;
+  std::shared_ptr<WorkerConfig> _config;
   uint64_t _expectedGSS = 0;
   uint32_t _messageBatchSize = 500;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
@@ -104,8 +104,6 @@ class Worker : public IWorker {
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
-  std::unique_ptr<AggregatorHandler> _conductorAggregators;
-  std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
