@@ -45,6 +45,8 @@
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/IScheduler.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
