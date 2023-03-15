@@ -72,10 +72,10 @@ struct FakeScheduler : IScheduler {
     auto f = p.getFuture();
 
     auto thread = std::thread(
-        [delay, p = std::move(p), name = std::string(name)]() mutable noexcept {
-          // for debugging
-          __attribute__((used)) thread_local std::string const _name =
-              std::move(name);
+        [delay, p = std::move(p), [[maybe_unused]] name = std::string(name)]() mutable noexcept {
+          // // for debugging
+          // __attribute__((used)) thread_local std::string const _name =
+          //    std::move(name);
           std::this_thread::sleep_for(delay);
           p.setValue();
         });
