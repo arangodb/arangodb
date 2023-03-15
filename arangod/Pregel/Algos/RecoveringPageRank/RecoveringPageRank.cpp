@@ -113,6 +113,27 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
   return new RPRCompensation();
 }
 
+struct RPRWorkerContext : public WorkerContext {
+  RPRWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                   std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto RecoveringPageRank::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new RPRWorkerContext(std::move(readAggregators),
+                              std::move(writeAggregators));
+}
+[[nodiscard]] auto RecoveringPageRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<RPRWorkerContext>(std::move(readAggregators),
+                                            std::move(writeAggregators));
+}
+
 struct RPRMasterContext : public MasterContext {
   float _threshold;
 

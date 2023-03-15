@@ -64,6 +64,10 @@ struct LRMasterContext : MasterContext {
 
 /// do not recalculate startAtNodeProb in every compute call
 struct LRWorkerContext : WorkerContext {
+  LRWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                  std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
   float startAtNodeProb = 0;
 
   void preApplication() override { startAtNodeProb = 1.0f / edgeCount(); };
@@ -113,8 +117,19 @@ VertexComputation<float, float, float>* LineRank::createComputation(
   return new LRComputation();
 }
 
-WorkerContext* LineRank::workerContext(VPackSlice params) const {
-  return new LRWorkerContext();
+[[nodiscard]] auto LineRank::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new LRWorkerContext(std::move(readAggregators),
+                             std::move(writeAggregators));
+}
+[[nodiscard]] auto LineRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<LRWorkerContext>(std::move(readAggregators),
+                                           std::move(writeAggregators));
 }
 
 [[nodiscard]] auto LineRank::masterContext(
