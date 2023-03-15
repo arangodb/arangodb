@@ -12,7 +12,11 @@ const ParameterEdgeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setEdgeColorAttribute(event.target.value);
+    const newUrlParameters = {...urlParameters, edgeColorAttribute: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='24' mb='12'>
@@ -23,11 +27,7 @@ const ParameterEdgeColorAttribute = () => {
         width='200px'
         min={1}
         value={edgeColorAttribute}
-        onChange={(e) => {
-          setEdgeColorAttribute(e.target.value);
-          newUrlParameters.edgeColorAttribute = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         disabled={urlParameters.edgeColorByCollection}
       />
       <Spacer />

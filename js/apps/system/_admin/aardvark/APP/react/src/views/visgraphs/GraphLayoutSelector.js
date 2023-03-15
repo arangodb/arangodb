@@ -6,8 +6,6 @@ const GraphLayoutSelector = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [layout, setLayout] = useState(urlParameters.layout);
 
-  const newUrlParameters = { ...urlParameters };
-
   const layouts = [
     {
       layout: 'forceAtlas2'
@@ -18,11 +16,10 @@ const GraphLayoutSelector = () => {
   ];
 
   const handleChange = (event) => {
-    const layout = event.target.value;
-    setLayout(layout);
-    newUrlParameters.layout = layout;
+    setLayout(event.target.value);
+    const newUrlParameters = {...urlParameters, layout: event.target.value};
     setUrlParameters(newUrlParameters);
-  };
+  }
 
   return (
     <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>

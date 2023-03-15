@@ -11,7 +11,11 @@ const ParameterNodeSizeByEdges = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeSizeByEdges, setNodeSizeByEdges] = useState(urlParameters.nodeSizeByEdges);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeSizeByEdges(event.target.checked);
+    const newUrlParameters = {...urlParameters, nodeSizeByEdges: event.target.checked};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -21,12 +25,7 @@ const ParameterNodeSizeByEdges = () => {
       <Checkbox
         inline
         checked={nodeSizeByEdges}
-        onChange={() => {
-          const newNodeSizeByEdges = !nodeSizeByEdges;
-          setNodeSizeByEdges(newNodeSizeByEdges);
-          newUrlParameters.nodeSizeByEdges = newNodeSizeByEdges;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
        <Center>

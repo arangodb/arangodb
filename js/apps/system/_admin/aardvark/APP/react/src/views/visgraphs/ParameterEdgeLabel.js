@@ -12,7 +12,11 @@ const ParameterEdgeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeLabel, setEdgeLabel] = useState(urlParameters.edgeLabel);
 
-  const newUrlParameters = { ...urlParameters };  
+  const handleChange = (event) => {
+    setEdgeLabel(event.target.value);
+    const newUrlParameters = {...urlParameters, edgeLabel: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='24' mb='12'>
@@ -24,11 +28,7 @@ const ParameterEdgeLabel = () => {
         min={1}
         required={true}
         value={edgeLabel}
-        onChange={(e) => {
-          setEdgeLabel(e.target.value);
-          newUrlParameters.edgeLabel = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
       />
       <Spacer />
       <Center>

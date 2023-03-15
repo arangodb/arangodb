@@ -6,7 +6,11 @@ const ParameterEdgeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColor, setEdgeColor] = useState(urlParameters.edgeColor);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setEdgeColor(event.target.value);
+    const newUrlParameters = {...urlParameters, edgeColor: event.target.value.replace("#", "")};
+    setUrlParameters(newUrlParameters);
+  }
   let calculatedEdgeColor = edgeColor;
   if (!edgeColor.startsWith('#')) {
     calculatedEdgeColor = '#' + edgeColor;
@@ -21,11 +25,7 @@ const ParameterEdgeColor = () => {
         template={'graphviewer'}
         width={'60px'}
         height={'30px'}
-        onChange={(e) => {
-          setEdgeColor(e.target.value);
-          newUrlParameters.edgeColor = e.target.value.replace("#", "");
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
       disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
     </div>

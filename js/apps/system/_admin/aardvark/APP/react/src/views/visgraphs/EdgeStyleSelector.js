@@ -6,8 +6,6 @@ const EdgeStyleSelector = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [type, setType] = useState(urlParameters.edgeType);
 
-  const newUrlParameters = { ...urlParameters };
-
   const styles = [
     {
       type: 'solid'
@@ -21,11 +19,10 @@ const EdgeStyleSelector = () => {
   ];
 
   const handleChange = (event) => {
-    const type = event.target.value;
-    setType(type);
-    newUrlParameters.edgeType = type;
+    setType(event.target.value);
+    const newUrlParameters = {...urlParameters, edgeType: event.target.value};
     setUrlParameters(newUrlParameters);
-  };
+  }
 
   return (
     <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>

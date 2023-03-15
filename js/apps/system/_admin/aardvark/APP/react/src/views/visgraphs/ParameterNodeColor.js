@@ -6,7 +6,12 @@ const ParameterNodeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColor, setNodeColor] = useState(urlParameters.nodeColor);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeColor(event.target.value);
+    const newUrlParameters = {...urlParameters, nodeColor: event.target.value.replace("#", "")};
+    setUrlParameters(newUrlParameters);
+  }
+
   let calculatedNodeColor = nodeColor;
   if (!nodeColor.startsWith('#')) {
     calculatedNodeColor = '#' + nodeColor;
@@ -21,11 +26,7 @@ const ParameterNodeColor = () => {
         template={'graphviewer'}
         width={'60px'}
         height={'30px'}
-        onChange={(e) => {
-          setNodeColor(e.target.value);
-          newUrlParameters.nodeColor = e.target.value.replace("#", "");
-          setUrlParameters(newUrlParameters);
-      }}
+        onChange={handleChange}
       disabled={urlParameters.nodeColorByCollection}>
       </Textinput>
     </div>

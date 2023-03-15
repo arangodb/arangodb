@@ -11,7 +11,11 @@ const ParameterEdgeLabelByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeLabelByCollection, setEdgeLabelByCollection] = useState(urlParameters.edgeLabelByCollection);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setEdgeLabelByCollection(event.target.checked);
+    const newUrlParameters = {...urlParameters, edgeLabelByCollection: event.target.checked};
+    setUrlParameters(newUrlParameters);
+  }
   
   return (
     <Flex direction='row' mt='12'>
@@ -21,12 +25,7 @@ const ParameterEdgeLabelByCollection = () => {
       <Checkbox
         inline
         checked={edgeLabelByCollection}
-        onChange={() => {
-          const newEdgeLabelByCollection = !edgeLabelByCollection;
-          setEdgeLabelByCollection(newEdgeLabelByCollection);
-          newUrlParameters.edgeLabelByCollection = newEdgeLabelByCollection;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
       <Center>

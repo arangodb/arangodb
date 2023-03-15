@@ -12,7 +12,11 @@ const ParameterNodeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeLabel(event.target.value);
+    const newUrlParameters = {...urlParameters, nodeLabel: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
   
   return (
     <Flex direction='row' mt='24' mb='12'>
@@ -24,11 +28,7 @@ const ParameterNodeLabel = () => {
         min={1}
         required={true}
         value={nodeLabel}
-        onChange={(e) => {
-          setNodeLabel(e.target.value);
-          newUrlParameters.nodeLabel = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
       />
       <Spacer />
       <Center>

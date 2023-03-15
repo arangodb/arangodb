@@ -11,7 +11,11 @@ const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabelByCollection, setNodeLabelByCollection] = useState(urlParameters.nodeLabelByCollection);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeLabelByCollection(event.target.checked);
+    const newUrlParameters = {...urlParameters, nodeLabelByCollection: event.target.checked};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -21,12 +25,7 @@ const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
       <Checkbox
         inline
         checked={nodeLabelByCollection}
-        onChange={() => {
-          const newNodeLabelByCollection = !nodeLabelByCollection;
-          setNodeLabelByCollection(newNodeLabelByCollection);
-          newUrlParameters.nodeLabelByCollection = newNodeLabelByCollection;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
       <Center>

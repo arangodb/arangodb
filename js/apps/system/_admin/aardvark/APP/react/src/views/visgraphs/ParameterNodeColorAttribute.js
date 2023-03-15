@@ -13,7 +13,11 @@ const ParameterNodeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColorAttribute, setNodeColorAttribute] = useState(urlParameters.nodeColorAttribute);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeColorAttribute(event.target.value);
+    const newUrlParameters = {...urlParameters, nodeColorAttribute: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='24' mb='12'>
@@ -25,11 +29,7 @@ const ParameterNodeColorAttribute = () => {
         min={1}
         required={true}
         value={nodeColorAttribute}
-        onChange={(e) => {
-          setNodeColorAttribute(e.target.value);
-          newUrlParameters.nodeColorAttribute = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         disabled={urlParameters.nodeColorByCollection}
       />
       <Spacer />

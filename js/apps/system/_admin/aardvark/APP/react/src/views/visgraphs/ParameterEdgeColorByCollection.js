@@ -11,7 +11,11 @@ const ParameterEdgeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorByCollection, setEdgeColorByCollection] = useState(urlParameters.edgeColorByCollection);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setEdgeColorByCollection(event.target.checked);
+    const newUrlParameters = {...urlParameters, edgeColorByCollection: event.target.checked};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -21,12 +25,7 @@ const ParameterEdgeColorByCollection = () => {
       <Checkbox
         inline
         checked={edgeColorByCollection}
-        onChange={() => {
-          const newEdgeColorByCollection = !edgeColorByCollection;
-          setEdgeColorByCollection(newEdgeColorByCollection);
-          newUrlParameters.edgeColorByCollection = newEdgeColorByCollection;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
       <Center>

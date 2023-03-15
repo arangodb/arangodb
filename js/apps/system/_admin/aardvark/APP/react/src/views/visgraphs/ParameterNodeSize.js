@@ -12,7 +12,11 @@ const ParameterNodeSize = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeSize, setNodeSize] = useState(urlParameters.nodeSize);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeSize(event.target.value);
+    const newUrlParameters = {...urlParameters, nodeSize: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='24' mb='12'>
@@ -24,11 +28,7 @@ const ParameterNodeSize = () => {
         min={1}
         required={true}
         value={nodeSize}
-        onChange={(e) => {
-          setNodeSize(e.target.value);
-          newUrlParameters.nodeSize = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         disabled={urlParameters.nodeSizeByEdges}
       />
       <Spacer />

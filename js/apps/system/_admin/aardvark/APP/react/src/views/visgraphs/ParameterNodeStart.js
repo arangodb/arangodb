@@ -12,7 +12,11 @@ const ParameterNodeStart = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeStart(event.target.value);
+    const newUrlParameters = {...urlParameters, nodeStart: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -24,11 +28,7 @@ const ParameterNodeStart = () => {
         min={1}
         required={true}
         value={urlParameters.nodeStart}
-        onChange={(e) => {
-          setNodeStart(e.target.value);
-          newUrlParameters.nodeStart = e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
       />
       <Spacer />
       <Center>

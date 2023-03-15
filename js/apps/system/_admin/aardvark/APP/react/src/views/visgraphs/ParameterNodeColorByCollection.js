@@ -11,7 +11,11 @@ const ParameterNodeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColorByCollection, setNodeColorByCollection] = useState(urlParameters.nodeColorByCollection);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setNodeColorByCollection(event.target.checked);
+    const newUrlParameters = {...urlParameters, nodeColorByCollection: event.target.checked};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -21,12 +25,7 @@ const ParameterNodeColorByCollection = () => {
       <Checkbox
         inline
         checked={nodeColorByCollection}
-        onChange={() => {
-          const newNodeColorByCollection = !nodeColorByCollection;
-          setNodeColorByCollection(newNodeColorByCollection);
-          newUrlParameters.nodeColorByCollection = newNodeColorByCollection;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
        <Center>

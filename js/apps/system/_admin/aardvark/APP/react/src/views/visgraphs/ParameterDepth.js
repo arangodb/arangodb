@@ -12,7 +12,11 @@ const ParameterDepth = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [depth, setDepth] = useState(urlParameters.depth);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setDepth(event.target.value);
+    const newUrlParameters = {...urlParameters, depth: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row'>
@@ -24,11 +28,7 @@ const ParameterDepth = () => {
         min={1}
         required={true}
         value={depth}
-        onChange={(e) => {
-          setDepth(+e.target.value);
-          newUrlParameters.depth = +e.target.value;
-          setUrlParameters(newUrlParameters);
-        }}
+        onChange={handleChange}
       />
       <Spacer />
       <Center>

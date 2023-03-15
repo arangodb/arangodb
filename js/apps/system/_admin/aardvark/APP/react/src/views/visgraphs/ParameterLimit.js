@@ -12,7 +12,11 @@ const ParameterLimit = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [limit, setLimit] = useState(urlParameters.limit);
 
-  const newUrlParameters = { ...urlParameters };
+  const handleChange = (event) => {
+    setLimit(event.target.value);
+    const newUrlParameters = {...urlParameters, limit: event.target.value};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
       <Flex direction='row' mt='24' mb='12'>
@@ -24,11 +28,7 @@ const ParameterLimit = () => {
           min={1}
           required={true}
           value={limit}
-          onChange={(e) => {
-            setLimit(+e.target.value);
-            newUrlParameters.limit = +e.target.value;
-            setUrlParameters(newUrlParameters);
-          }}
+          onChange={handleChange}
         />
         <Spacer />
         <Center>
