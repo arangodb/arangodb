@@ -50,16 +50,31 @@ struct ReadWrite : public SimpleAlgorithm<V, E, V> {
   [[nodiscard]] MessageFormat<V>* messageFormat() const override {
     return new NumberMessageFormat<V>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<NumberMessageFormat<V>>();
+  }
 
   [[nodiscard]] MessageCombiner<V>* messageCombiner() const override {
     return new SumCombiner<V>();
+  }
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override {
+    return std::make_unique<SumCombiner<V>>();
   }
 
   VertexComputation<V, E, V>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

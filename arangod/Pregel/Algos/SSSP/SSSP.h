@@ -55,9 +55,17 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat<int64_t>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<IntegerMessageFormat<int64_t>>();
+  }
 
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
+  }
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override {
+    return std::make_unique<MinCombiner<int64_t>>();
   }
 
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
@@ -67,6 +75,16 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
 
   uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
                             MessageStats const& stats) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
