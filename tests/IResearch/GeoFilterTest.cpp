@@ -112,7 +112,8 @@ struct custom_sort : public irs::ScorerFactory {
       const custom_sort& sort_;
     };
 
-    prepared(const custom_sort& sort) : sort_(sort) {}
+    prepared(const custom_sort& sort)
+        : ScorerBase(irs::type<prepared>::get()), sort_(sort) {}
 
     virtual void collect(irs::byte_type* stats, irs::FieldCollector const* field,
                          irs::TermCollector const* term) const override {
@@ -166,10 +167,6 @@ struct custom_sort : public irs::ScorerFactory {
       }
 
       return std::make_unique<custom_sort::prepared::term_collector>(sort_);
-    }
-
-    bool equals(Scorer const& other) const noexcept final {
-      return other.type() == type();
     }
 
    private:

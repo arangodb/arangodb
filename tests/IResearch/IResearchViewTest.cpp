@@ -108,6 +108,9 @@ struct DocIdScorer : public irs::ScorerFactory {
   }
 
   struct Prepared : public irs::ScorerBase<void> {
+
+    Prepared()
+        : ScorerBase(irs::type<Prepared>::get()) {}
     virtual void collect(irs::byte_type*,
                          irs::FieldCollector const*,
                          irs::TermCollector const*) const override {
@@ -137,10 +140,6 @@ struct DocIdScorer : public irs::ScorerFactory {
             *res = static_cast<irs::score_t>(state->_doc->value);
           },
           doc);
-    }
-
-    bool equals(Scorer const& other) const noexcept final {
-      return other.type() == type();
     }
   };
 

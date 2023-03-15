@@ -270,7 +270,7 @@ struct BoostScorer : public irs::ScorerFactory {
 
   struct Prepared : public irs::ScorerBase<void> {
    public:
-    Prepared() = default;
+    Prepared() : ScorerBase(irs::type<Prepared>::get()) {}
 
     virtual void collect(irs::byte_type* stats, irs::FieldCollector const*,
                          irs::TermCollector const*) const override {
@@ -309,12 +309,6 @@ struct BoostScorer : public irs::ScorerFactory {
           boost);
     }
 
-    bool equals(irs::Scorer const& other) const noexcept final {
-      if (other.type() != type()) {
-        return false;
-      }
-      return true;
-    }
   };
 
   static irs::ScorerFactory::ptr make(std::string_view) {
@@ -337,7 +331,7 @@ struct CustomScorer : public irs::ScorerFactory {
 
   struct Prepared : public irs::ScorerBase<void> {
    public:
-    Prepared(float_t i) : i(i) {}
+    Prepared(float_t i) : ScorerBase(irs::type<Prepared>::get()), i(i) {}
 
     virtual void collect(irs::byte_type*,
                          irs::FieldCollector const*,
@@ -379,11 +373,11 @@ struct CustomScorer : public irs::ScorerFactory {
     }
 
     bool equals(irs::Scorer const& other) const noexcept final {
-      if (other.type() != type()) {
+      if (!Scorer::equals(other)) {
         return false;
       }
-      auto p = static_cast<Prepared const*>(&other);
-      return p->i == i;
+      auto const& p = down_cast<Prepared>(other);
+      return p.i == i;
     }
 
     float_t i;
