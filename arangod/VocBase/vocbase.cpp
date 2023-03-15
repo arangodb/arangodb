@@ -824,6 +824,17 @@ arangodb::Result TRI_vocbase_t::dropCollectionWorker(
   std::string const colName(collection.name());
   std::string const& dbName = _info.getName();
 
+  // intentionally set the deleted flag of the collection already
+  // here, without holding the lock. this is thread-safe, because
+  // setDeleted() only modifies an atomic boolean value.
+  // we want to switch the flag here already so that any other
+  // actions can observe the deletion and abort prematurely.
+  // these other actions may have acquired the collection's status
+  // lock in read mode, and if we ourselves try to acquire the
+  // collection's status lock in write mode, we would just block
+  // here.
+  collection.setDeleted();
+
   arangodb::Result res;
 
   auto guard = scopeGuard([&res, &colName, &dbName]() noexcept {

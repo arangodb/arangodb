@@ -73,9 +73,13 @@ enum class State {
 };
 
 struct HITSKleinbergWorkerContext : public WorkerContext {
-  HITSKleinbergWorkerContext(size_t maxGSS, size_t numIterations,
-                             double threshold)
-      : numIterations(numIterations), threshold(threshold){};
+  HITSKleinbergWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators, size_t maxGSS,
+      size_t numIterations, double threshold)
+      : WorkerContext(std::move(readAggregators), std::move(writeAggregators)),
+        numIterations(numIterations),
+        threshold(threshold){};
 
   double authDivisor = 0;
   double hubDivisor = 0;
@@ -294,7 +298,7 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       VertexType& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexType const* value) const override {
@@ -304,13 +308,28 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   }
 };
 
-GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
-  return new HITSKleinbergGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<VertexType, int8_t> const>
+HITSKleinberg::inputFormat() const {
+  return std::make_shared<HITSKleinbergGraphFormat>(_resultField);
 }
 
-WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
+[[nodiscard]] auto HITSKleinberg::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
   double const threshold = getThreshold(userParams);
-  return new HITSKleinbergWorkerContext(maxGSS, numIterations, threshold);
+  return new HITSKleinbergWorkerContext(std::move(readAggregators),
+                                        std::move(writeAggregators), maxGSS,
+                                        numIterations, threshold);
+}
+[[nodiscard]] auto HITSKleinberg::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  double const threshold = getThreshold(userParams);
+  return std::make_unique<HITSKleinbergWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), maxGSS,
+      numIterations, threshold);
 }
 
 struct HITSKleinbergMasterContext : public MasterContext {

@@ -73,13 +73,16 @@ template<typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-             ExecutionNumber executionNumber, GraphFormat<V, E>* graphFormat);
+             ExecutionNumber executionNumber,
+             std::shared_ptr<GraphFormat<V, E> const> graphFormat);
 
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphStoreStatus status() const { return _observables.observe(); }
 
-  GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
+  std::shared_ptr<GraphFormat<V, E> const> graphFormat() {
+    return _graphFormat;
+  }
 
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(std::shared_ptr<WorkerConfig const> config,
@@ -112,7 +115,7 @@ class GraphStore final {
   DatabaseGuard _vocbaseGuard;
   ResourceMonitor _resourceMonitor;
   ExecutionNumber const _executionNumber;
-  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
+  std::shared_ptr<GraphFormat<V, E> const> _graphFormat;
   std::shared_ptr<WorkerConfig const> _config = nullptr;
 
   std::atomic<uint64_t> _vertexIdRangeStart;

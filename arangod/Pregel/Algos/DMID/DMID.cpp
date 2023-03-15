@@ -604,11 +604,11 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice document,
                       DMIDValue& /*value*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,
-                    float& targetPtr) override {
+                    float& targetPtr) const override {
     targetPtr = 1.0f;
   }
 
@@ -658,8 +658,29 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   }
 };
 
-GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_resultField, _maxCommunities);
+std::shared_ptr<GraphFormat<DMIDValue, float> const> DMID::inputFormat() const {
+  return std::make_shared<DMIDGraphFormat>(_resultField, _maxCommunities);
+}
+
+struct DMIDWorkerContext : public WorkerContext {
+  DMIDWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto DMID::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new DMIDWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto DMID::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<DMIDWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
 }
 
 struct DMIDMasterContext : public MasterContext {
@@ -824,4 +845,8 @@ IAggregator* DMID::aggregator(std::string const& name) const {
 
 MessageFormat<DMIDMessage>* DMID::messageFormat() const {
   return new DMIDMessageFormat();
+}
+[[nodiscard]] auto DMID::messageFormatUnique() const
+    -> std::unique_ptr<message_format> {
+  return std::make_unique<DMIDMessageFormat>();
 }

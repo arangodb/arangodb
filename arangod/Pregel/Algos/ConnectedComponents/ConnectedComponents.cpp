@@ -28,6 +28,7 @@
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/WorkerContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -63,7 +64,8 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+                      uint64_t& targetPtr,
+                      uint64_t& vertexIdRange) const override {
     targetPtr = vertexIdRange++;
   }
 };
@@ -88,14 +90,37 @@ ConnectedComponents::createComputation(
   return new MyComputation();
 }
 
-GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<uint64_t, uint8_t> const>
+ConnectedComponents::inputFormat() const {
+  return std::make_shared<MyGraphFormat>(_resultField);
 }
 
 VertexCompensation<uint64_t, uint8_t, uint64_t>*
 ConnectedComponents::createCompensation(
     std::shared_ptr<WorkerConfig const> config) const {
   return new MyCompensation();
+}
+
+struct ConnectedComponentsWorkerContext : public WorkerContext {
+  ConnectedComponentsWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto ConnectedComponents::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ConnectedComponentsWorkerContext(std::move(readAggregators),
+                                              std::move(writeAggregators));
+}
+[[nodiscard]] auto ConnectedComponents::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ConnectedComponentsWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
 }
 
 struct ConnectedComponentsMasterContext : public MasterContext {

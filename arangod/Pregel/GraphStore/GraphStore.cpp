@@ -80,9 +80,10 @@ using namespace arangodb::pregel;
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
 template<typename V, typename E>
-GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-                             ExecutionNumber executionNumber,
-                             GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(
+    PregelFeature& feature, TRI_vocbase_t& vocbase,
+    ExecutionNumber executionNumber,
+    std::shared_ptr<GraphFormat<V, E> const> graphFormat)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _resourceMonitor(GlobalResourceMonitor::instance()),

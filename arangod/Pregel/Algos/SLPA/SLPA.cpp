@@ -40,6 +40,10 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct SLPAWorkerContext : public WorkerContext {
+  SLPAWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
   uint32_t mod = 1;
   void preGlobalSuperstep(uint64_t gss) override {
     // lets switch the order randomly, but ensure equal listenting time
@@ -150,7 +154,8 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      SLPAValue& value, uint64_t& vertexIdRange) override {
+                      SLPAValue& value,
+                      uint64_t& vertexIdRange) const override {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
@@ -198,12 +203,25 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   }
 };
 
-GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
+std::shared_ptr<GraphFormat<SLPAValue, int8_t> const> SLPA::inputFormat()
+    const {
+  return std::make_shared<SLPAGraphFormat>(_resultField, _threshold,
+                                           _maxCommunities);
 }
 
-WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
-  return new SLPAWorkerContext();
+[[nodiscard]] auto SLPA::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new SLPAWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto SLPA::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<SLPAWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
 }
 
 struct SLPAMasterContext : public MasterContext {

@@ -37,7 +37,10 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
-  PRWorkerContext() {}
+  PRWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                  std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
 
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
@@ -61,11 +64,13 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
       : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 };
 
-GraphFormat<float, float>* PageRank::inputFormat() const {
+std::shared_ptr<GraphFormat<float, float> const> PageRank::inputFormat() const {
   if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_sourceField, _resultField, -1.0);
+    return std::make_shared<SeededPRGraphFormat>(_sourceField, _resultField,
+                                                 -1.0f);
   } else {
-    return new VertexGraphFormat<float, float>(_resultField, -1.0);
+    return std::make_shared<VertexGraphFormat<float, float>>(_resultField,
+                                                             -1.0f);
   }
 }
 
@@ -104,8 +109,19 @@ VertexComputation<float, float, float>* PageRank::createComputation(
   return new PRComputation();
 }
 
-WorkerContext* PageRank::workerContext(VPackSlice userParams) const {
-  return new PRWorkerContext();
+[[nodiscard]] auto PageRank::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new PRWorkerContext(std::move(readAggregators),
+                             std::move(writeAggregators));
+}
+[[nodiscard]] auto PageRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<PRWorkerContext>(std::move(readAggregators),
+                                           std::move(writeAggregators));
 }
 
 struct PRMasterContext : public MasterContext {
