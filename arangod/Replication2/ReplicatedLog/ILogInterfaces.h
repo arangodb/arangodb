@@ -91,10 +91,9 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
 
-  // TODO Move copyInMemoryLog() to ILogLeader (and thus remove it from
-  //      ILogFollower)
+  // Passing no bounds means everything.
   [[nodiscard]] virtual auto getCommittedLogIterator(
-      std::optional<LogRange> bounds) const
+      std::optional<LogRange> bounds = std::nullopt) const
       -> std::unique_ptr<LogRangeIterator> = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
   [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;

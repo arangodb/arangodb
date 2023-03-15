@@ -451,7 +451,7 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.poll(logId, logIdx, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -479,7 +479,7 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.tail(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -507,7 +507,7 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.head(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -536,7 +536,7 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
   stop = stopFound ? stop : start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut = methods.slice(logId, start, stop)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -601,10 +601,10 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
   }
   LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
 
-  return waitForFuture(
-      methods.getLogEntryByIndex(logId, logIdx)
-          .thenValue([this](std::optional<PersistingLogEntry>&& entry) {
-            if (entry) {
+  auto fut =
+      methods.slice(logId, logIdx, logIdx + 1)
+          .thenValue([this](std::unique_ptr<LogIterator>&& iter) {
+            if (auto entry = iter->next(); entry) {
               VPackBuilder result;
               entry->toVelocyPack(result);
               generateOk(rest::ResponseCode::OK, result.slice());
@@ -612,5 +612,7 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
               generateError(rest::ResponseCode::NOT_FOUND,
                             TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
             }
-          }));
+          });
+
+  return waitForFuture(std::move(fut));
 }
