@@ -54,13 +54,31 @@ struct ConnectedComponents
   MessageFormat<uint64_t>* messageFormat() const override {
     return new IntegerMessageFormat<uint64_t>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<IntegerMessageFormat<uint64_t>>();
+  }
   MessageCombiner<uint64_t>* messageCombiner() const override {
     return new MinCombiner<uint64_t>();
+  }
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override {
+    return std::make_unique<MinCombiner<uint64_t>>();
   }
   VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(
       std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
