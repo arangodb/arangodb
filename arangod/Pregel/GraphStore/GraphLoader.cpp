@@ -128,8 +128,6 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
 
       try {
-        ADB_PROD_ASSERT(false)
-            << "this is wrong as it overwrites already loaded vertices";
         loadVertices(vertexShard, edges);
       } catch (basics::Exception const& ex) {
         LOG_PREGEL("8682a", WARN)

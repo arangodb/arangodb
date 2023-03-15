@@ -26,6 +26,8 @@
 #include <functional>
 #include <memory>
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Pregel/GraphStore/GraphStorerBase.h"
 #include "Pregel/GraphStore/Quiver.h"
 #include "Cluster/ClusterTypes.h"
@@ -34,15 +36,27 @@ namespace arangodb::pregel {
 
 class WorkerConfig;
 
+template<class V, class E>
+struct GraphFormat;
+
 template<typename V, typename E>
 struct GraphStorer : GraphStorerBase<V, E> {
   explicit GraphStorer(std::shared_ptr<WorkerConfig> config,
+                       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
+                       std::vector<ShardID> globalShards,
                        std::function<void()> const& statusUpdateCallback)
-      : config(config), statusUpdateCallback(statusUpdateCallback) {}
+      : graphFormat(graphFormat),
+        globalShards(globalShards),
+        resourceMonitor(GlobalResourceMonitor::instance()),
+        config(config),
+        statusUpdateCallback(statusUpdateCallback) {}
 
   auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
 
-  std::shared_ptr<WorkerConfig> config;
+  std::shared_ptr<GraphFormat<V, E> const> graphFormat;
+  std::vector<ShardID> globalShards;
+  ResourceMonitor resourceMonitor;
+  std::shared_ptr<WorkerConfig const> config;
   std::function<void()> const& statusUpdateCallback;
 };
 

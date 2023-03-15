@@ -45,7 +45,8 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::function<void()> const& statusUpdateCallback)
-      : graphFormat(graphFormat),
+      : result(std::make_shared<Quiver<V, E>>()),
+        graphFormat(graphFormat),
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         statusUpdateCallback(statusUpdateCallback) {}

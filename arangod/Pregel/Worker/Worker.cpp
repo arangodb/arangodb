@@ -39,6 +39,7 @@
 #include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/GraphStore/GraphLoader.h"
 #include "Pregel/GraphStore/GraphStorer.h"
+#include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/IncomingCache.h"
@@ -519,10 +520,10 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
-    auto storer = GraphStorer<V, E>(_config, _makeStatusCallback());
-    // as of here we don't have a quiver anymore!
-    storer.store(std::move(_quiver));
-    _quiver = nullptr;
+    auto storer =
+        GraphStorer<V, E>(_config, _algorithm->inputFormat(),
+                          _config->globalShardIDs(), _makeStatusCallback());
+    storer.store(_quiver);
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
     cleanup();
   } else {
@@ -533,54 +534,17 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
-  ADB_PROD_ASSERT(false) << "Returning AQL results not implemented yet.";
-#if 0
-  MUTEX_LOCKER(guard, _commandMutex);
+  auto storer = GraphVPackBuilderStorer<V, E>(
+      withId, _config, _algorithm->inputFormat(), _config->globalShardIDs(),
+      _makeStatusCallback());
 
-  std::string tmp;
-
-  VPackBuilder results;
-  results.openArray(/*unindexed*/ true);
-  for (auto& vertex : _quiver) {
-    TRI_ASSERT(vertex.shard().value < _config->globalShardIDs().size());
-    ShardID const& shardId = _config->globalShardID(vertex.shard());
-
-    results.openObject(/*unindexed*/ true);
-
-    if (withId) {
-      std::string const& cname = _config->shardIDToCollectionName(shardId);
-      if (!cname.empty()) {
-        tmp.clear();
-        tmp.append(cname);
-        tmp.push_back('/');
-        tmp.append(vertex.key().data(), vertex.key().size());
-        results.add(StaticStrings::IdString, VPackValue(tmp));
-      }
-    }
-
-    results.add(StaticStrings::KeyString,
-                VPackValuePair(vertex.key().data(), vertex.key().size(),
-                               VPackValueType::String));
-
-    V const& data = vertex.data();
-    if (auto res =
-            _graphStore->graphFormat()->buildVertexDocument(results, &data);
-        !res) {
-      LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Failed to build vertex document");
-    }
-    results.close();
-  }
-  results.close();
-  return PregelResults{results};
-#endif
-  return PregelResults{};
+  storer.store(_quiver);
+  return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackBuilder const& message) {
+                                     VPackBuilder const& message) const {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -611,7 +575,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_observeStatus() -> Status const {
+auto Worker<V, E, M>::_observeStatus() const -> Status const {
   auto currentGss = _currentGssObservables.observe();
   auto fullGssStatus = _allGssStatus.copy();
 
@@ -625,7 +589,7 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
+auto Worker<V, E, M>::_makeStatusCallback() const -> std::function<void()> {
   return [self = shared_from_this(), this] {
     auto update = StatusUpdated{.executionNumber = _config->_executionNumber,
                                 .sender = ServerState::instance()->getId(),

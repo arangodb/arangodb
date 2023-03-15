@@ -24,6 +24,7 @@
 #include "GraphStorer.h"
 #include <cstdint>
 
+#include "Pregel/GraphFormat.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDValue.h"
 #include "Pregel/Algos/EffectiveCloseness/ECValue.h"
@@ -34,10 +35,131 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
+#include "Pregel/Worker/WorkerConfig.h"
+
+#include "Logger/LogMacros.h"
+
+#include "Scheduler/SchedulerFeature.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/vocbase.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+      << "[job " << config->executionNumber() << "] "
+
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {}
+auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
+  // transaction on one shard
+  OperationOptions options;
+  options.silent = true;
+  options.waitForSync = false;
+
+  std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
+
+  ShardID shard;
+  PregelShard currentShard = InvalidPregelShard;
+  Result res;
+
+  VPackBuilder builder;
+  uint64_t numDocs = 0;
+
+  auto commitTransaction = [&]() {
+    if (trx) {
+      builder.close();
+
+      OperationResult opRes = trx->update(shard, builder.slice(), options);
+      if (!opRes.countErrorCodes.empty()) {
+        auto code = ErrorCode{opRes.countErrorCodes.begin()->first};
+        if (opRes.countErrorCodes.size() > 1) {
+          // more than a single error code. let's just fail this
+          THROW_ARANGO_EXCEPTION(code);
+        }
+        // got only a single error code. now let's use it, whatever it is.
+        opRes.result.reset(code);
+      }
+
+      if (opRes.fail() && opRes.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+          opRes.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
+        THROW_ARANGO_EXCEPTION(opRes.result);
+      }
+      if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        LOG_PREGEL("4e632", WARN)
+            << "conflict while storing " << builder.toJson();
+      }
+
+      res = trx->finish(res);
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      if (config->vocbase()->server().isStopping()) {
+        LOG_PREGEL("73ec2", WARN) << "Storing data was canceled prematurely";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+
+      numDocs = 0;
+    }
+
+    builder.clear();
+    builder.openArray(true);
+  };
+
+  // loop over vertices
+  // This loop will fill a buffer of vertices until we run into a new
+  // collection
+  // or there are no more vertices for to store (or the buffer is full)
+  for (auto& vertex : *quiver) {
+    if (vertex.shard() != currentShard || numDocs >= 1000) {
+      commitTransaction();
+
+      currentShard = vertex.shard();
+      shard = globalShards[currentShard.value];
+
+      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+      trx = std::make_unique<SingleCollectionTransaction>(
+          ctx, shard, AccessMode::Type::WRITE);
+      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+
+      res = trx->begin();
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+
+    std::string_view const key = vertex.key();
+
+    builder.openObject(true);
+    builder.add(StaticStrings::KeyString,
+                VPackValuePair(key.data(), key.size(), VPackValueType::String));
+    V const& data = vertex.data();
+    if (auto result = graphFormat->buildVertexDocument(builder, &data);
+        !result) {
+      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
+    }
+    builder.close();
+    ++numDocs;
+    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
+    }
+  }
+
+  /*
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     statusUpdateCallback);
+  */
+
+  // commit the remainders in our buffer
+  // will throw if it fails
+  commitTransaction();
+}
 
 }  // namespace arangodb::pregel
 

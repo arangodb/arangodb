@@ -134,9 +134,10 @@ class Worker : public IWorker {
   void _startProcessing();
   bool _processVertices();
   void _finishedProcessing();
-  void _callConductor(std::string const& path, VPackBuilder const& message);
-  [[nodiscard]] auto _observeStatus() -> Status const;
-  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
+  void _callConductor(std::string const& path,
+                      VPackBuilder const& message) const;
+  [[nodiscard]] auto _observeStatus() const -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() const -> std::function<void()>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
