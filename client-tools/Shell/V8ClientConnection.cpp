@@ -50,7 +50,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Ssl/SslInterface.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -63,10 +62,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-
-#include <iostream>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -2054,7 +2049,7 @@ static void ClientConnection_setDatabaseName(
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
   v8connection->setDatabaseName(dbName);
-  client->setDatabaseName(dbName);  // SET
+  client->setDatabaseName(dbName);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
