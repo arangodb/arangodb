@@ -20,7 +20,6 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
@@ -40,13 +39,9 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
-
-struct MockDatabaseGuard : IDatabaseGuard {
-  MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
-};
 
 struct MockTransactionManager : transaction::IManager {
   MOCK_METHOD(Result, abortManagedTrx,
@@ -154,14 +149,17 @@ struct MockDocumentStateHandlersFactory
                   replicated_state::document::IDocumentStateSnapshotHandler>,
               createSnapshotHandler,
               (TRI_vocbase_t&, GlobalLogIdentifier const&), (override));
-  MOCK_METHOD(std::unique_ptr<
-                  replicated_state::document::IDocumentStateTransactionHandler>,
-              createTransactionHandler,
-              (TRI_vocbase_t & vocbase, GlobalLogIdentifier), (override));
+  MOCK_METHOD(
+      std::unique_ptr<
+          replicated_state::document::IDocumentStateTransactionHandler>,
+      createTransactionHandler,
+      (TRI_vocbase_t & vocbase, GlobalLogIdentifier,
+       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>),
+      (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
       createTransaction,
-      (replicated_state::document::DocumentLogEntry const&, TRI_vocbase_t&),
+      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type),
       (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
@@ -171,7 +169,9 @@ struct MockDocumentStateHandlersFactory
       -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
   auto makeRealSnapshotHandler()
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
-  auto makeRealTransactionHandler(GlobalLogIdentifier const&)
+  auto makeRealTransactionHandler(
+      GlobalLogIdentifier const&,
+      std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
 
   std::shared_ptr<MockDatabaseSnapshotFactory> databaseSnapshotFactory;
@@ -179,9 +179,10 @@ struct MockDocumentStateHandlersFactory
 
 struct MockDocumentStateTransaction
     : replicated_state::document::IDocumentStateTransaction {
-  MOCK_METHOD(OperationResult, apply,
-              (replicated_state::document::DocumentLogEntry const&),
-              (override));
+  MOCK_METHOD(
+      OperationResult, apply,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
@@ -200,16 +201,20 @@ struct MockDocumentStateTransactionHandler
           real);
 
   MOCK_METHOD(Result, applyEntry,
-              (replicated_state::document::DocumentLogEntry doc), (override));
+              (replicated_state::document::ReplicatedOperation), (override));
   MOCK_METHOD(
-      std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
-      ensureTransaction,
-      (replicated_state::document::DocumentLogEntry const& doc), (override));
+      Result, applyEntry,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
-  MOCK_METHOD(void, abortTransactionsForShard, (ShardID const& tid),
-              (override));
+  MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
+              (ShardID const&), (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
+  MOCK_METHOD(
+      Result, validate,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
@@ -218,11 +223,13 @@ struct MockDocumentStateTransactionHandler
 
 struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
-  MOCK_METHOD(Result, createLocalShard,
-              (ShardID const&, std::string const&,
-               std::shared_ptr<velocypack::Builder> const&),
+  MOCK_METHOD(ResultT<bool>, ensureShard,
+              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
               (override));
-  MOCK_METHOD(Result, dropLocalShard, (ShardID const&, std::string const&),
+  MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
+  MOCK_METHOD(Result, dropAllShards, (), (override));
+  MOCK_METHOD(bool, isShardAvailable, (ShardID const&), (override));
+  MOCK_METHOD(replicated_state::document::ShardMap, getShardMap, (),
               (override));
 };
 
@@ -368,27 +375,4 @@ struct DocumentLogEntryIterator
   decltype(entries)::iterator iter;
 };
 
-struct MockCreateDatabaseInfo : CreateDatabaseInfo {
-  MockCreateDatabaseInfo(ArangodServer& server, ExecContext const& execContext,
-                         std::string const& name, std::uint64_t id)
-      : CreateDatabaseInfo(CreateDatabaseInfo::mockConstruct, server,
-                           execContext, name, id) {}
-
-  virtual ~MockCreateDatabaseInfo() = default;
-};
-
-struct MockVocbase : TRI_vocbase_t {
-  static auto createDatabaseInfo(ArangodServer& server, std::string const& name,
-                                 std::uint64_t id) -> MockCreateDatabaseInfo {
-    return MockCreateDatabaseInfo(server, ExecContext::current(), name, id);
-  }
-
-  explicit MockVocbase(ArangodServer& server, std::string const& name,
-                       std::uint64_t id)
-      : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
-                      createDatabaseInfo(server, name, id)) {}
-
-  virtual ~MockVocbase() = default;
-};
-
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::tests

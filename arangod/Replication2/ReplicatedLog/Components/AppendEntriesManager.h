@@ -60,6 +60,8 @@ struct AppendEntriesManager
 
   auto getLastReceivedMessageId() const noexcept -> MessageId;
 
+  auto resign() && noexcept -> void override;
+
   struct GuardedData {
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
                 ICompactionManager& compaction, IFollowerCommitManager& commit);
@@ -67,7 +69,9 @@ struct AppendEntriesManager
                          FollowerTermInformation const&,
                          LoggerContext const& lctx)
         -> std::optional<AppendEntriesResult>;
+    auto resign() && noexcept -> void;
 
+    bool resigned = false;
     ExclusiveBool requestInFlight;
     AppendEntriesMessageIdAcceptor messageIdAcceptor;
 

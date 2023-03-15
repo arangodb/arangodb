@@ -28,10 +28,16 @@ const _ = require("lodash");
 
 const replicatedLogIsReady = function (database, logId, term, participants, leader) {
   return function () {
-    let {current} = LH.readReplicatedLogAgency(database, logId);
+    const {current, plan} = LH.readReplicatedLogAgency(database, logId);
+    if (plan === undefined) {
+      return Error("plan not yet defined");
+    }
     if (current === undefined) {
       return Error("current not yet defined");
     }
+    const electionTerm = !plan.currentTerm.hasOwnProperty('leader');
+    // If there's no leader, followers will stay in "Connecting".
+    const readyState = electionTerm ? 'Connecting' : 'ServiceOperational';
 
     for (const srv of participants) {
       if (!current.localStatus || !current.localStatus[srv]) {
@@ -41,9 +47,9 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
-      if (current.localStatus[srv].state !== "ServiceOperational") {
+      if (current.localStatus[srv].state !== readyState) {
         return Error(`Participant ${srv} state not yet ready, found  ${current.localStatus[srv].state}` +
-            `, expected = "ServiceOperational".`);
+            `, expected = "${readyState}".`);
       }
     }
 
@@ -83,7 +89,7 @@ const replicatedLogIsGone = function (database, logId) {
 
 const replicatedLogLeaderEstablished = function (database, logId, term, participants) {
   return function () {
-    let {current} = LH.readReplicatedLogAgency(database, logId);
+    let {plan, current} = LH.readReplicatedLogAgency(database, logId);
     if (current === undefined) {
       return Error("current not yet defined");
     }
@@ -96,6 +102,13 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
+    }
+
+    if (term === undefined) {
+      if (!plan.currentTerm) {
+        return Error(`No term in plan`);
+      }
+      term = plan.currentTerm.term;
     }
 
     if (!current.leader || current.leader.term < term) {
@@ -280,9 +293,8 @@ const replicatedLogReplicationCompleted = function (database, logId) {
     if (result instanceof Error) {
       return result;
     }
-    const status = LH.getLocalStatus(database, logId, result.leader);
+    const status = LH.getLocalStatus(result.leader, database, logId);
     const local = status.local;
-    print(status);
 
     for (const [pid, follower] of Object.entries(status.follower)) {
       if (follower.spearhead < local.spearhead || follower.commitIndex < local.commitIndex) {

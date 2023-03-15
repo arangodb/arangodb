@@ -4,5 +4,4 @@ target_sources(arango_replication2 PRIVATE
   ReplicatedStateMetrics.cpp
   ReplicatedStateToken.cpp
   StateCommon.cpp
-  StateStatus.cpp
   WaitForQueue.cpp)

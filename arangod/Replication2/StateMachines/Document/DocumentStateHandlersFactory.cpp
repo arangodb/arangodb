@@ -23,15 +23,12 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
-#include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
-#include "Cluster/AgencyCache.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -55,28 +52,27 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid), &vocbase, shared_from_this());
+      gid, &vocbase, shared_from_this(), std::move(shardHandler));
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
-    -> std::shared_ptr<IDocumentStateTransaction> {
+    TRI_vocbase_t& vocbase, TransactionId tid, ShardID const& shard,
+    AccessMode::Type accessType) -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, doc.tid,
-                                                               options);
+  auto state =
+      std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
+  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
-  auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId,
-      doc.operation == OperationType::kTruncate ? AccessMode::Type::EXCLUSIVE
-                                                : AccessMode::Type::WRITE);
+  auto methods =
+      std::make_unique<transaction::Methods>(std::move(ctx), shard, accessType);
   methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?

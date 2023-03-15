@@ -151,7 +151,7 @@ const coordinators = (function () {
  *         },
  *         currentTerm?: {
  *           term: number,
- *           leader: {
+ *           leader?: {
  *             serverId: string,
  *             rebootId: number
  *           }
@@ -212,6 +212,12 @@ const replicatedLogUpdateTargetParticipants = function (database, logId, partici
 
 const replicatedLogSetPlanTerm = function (database, logId, term) {
   serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
+};
+
+const triggerLeaderElection = function (database, logId) {
+  serverHelper.agency.increaseVersion(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`);
+  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`);
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
@@ -356,13 +362,6 @@ const checkRequestResult = function (requestResult, expectingError=false) {
   }
 
   return requestResult;
-};
-
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
 };
 
 const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
@@ -646,17 +645,30 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
 
-  const terms = Object.fromEntries(
-    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+  const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
+
+  stateMachineIds.forEach(increaseTerm);
+
+  const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
+
+  stateMachineIds.forEach(x => waitFor(leaderReady(x)));
+};
+
+const getLocalStatus = function (serverId, database, logId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(
+    `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
-
-  const increaseTerm = ([stateId, term]) => replicatedLogSetPlanTerm(dbn, stateId, term + 1);
-
-  Object.entries(terms).forEach(increaseTerm);
-
-  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term + 1, []);
-
-  Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
+  checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
 };
 
 exports.checkRequestResult = checkRequestResult;
@@ -706,3 +718,4 @@ exports.unsetLeader = unsetLeader;
 exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
 exports.getShardsToLogsMapping = getShardsToLogsMapping;
+exports.replaceParticipant = replaceParticipant;

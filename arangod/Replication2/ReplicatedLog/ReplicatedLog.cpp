@@ -39,6 +39,7 @@
 #include <utility>
 #include "Metrics/Gauge.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
@@ -52,8 +53,9 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    : _logContext(logContext),  // TODO is it possible to add myself to the
-                                // logger context? even if it is changed later?
+    :  // TODO is it possible to add myself to the
+       //      logger context? even if it is changed later?
+      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),

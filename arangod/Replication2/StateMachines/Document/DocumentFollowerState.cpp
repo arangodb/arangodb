@@ -23,9 +23,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
@@ -39,9 +41,7 @@ DocumentFollowerState::DocumentFollowerState(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
-      _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
-      _transactionHandler(handlersFactory->createTransactionHandler(
-          core->getVocbase(), core->getGid())),
+      _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
       _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
@@ -65,14 +65,12 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        auto count = ++data.currentSnapshotVersion;
-
-        // Drop all shards, as we're going to recreate them with the first
-        // transfer
-        if (auto dropAllRes = data.core->dropAllShards(); dropAllRes.fail()) {
+        auto const& shardHandler = data.core->getShardHandler();
+        if (auto dropAllRes = shardHandler->dropAllShards();
+            dropAllRes.fail()) {
           return dropAllRes;
         }
-        return count;
+        return ++data.currentSnapshotVersion;
       });
 
   if (snapshotVersion.fail()) {
@@ -89,7 +87,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  auto result = _guardedData.doUnderLock(
+  auto applyResult = _guardedData.doUnderLock(
       [self = shared_from_this(),
        ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
         if (data.didResign()) {
@@ -100,66 +98,23 @@ auto DocumentFollowerState::applyEntries(
           std::optional<LogIndex> releaseIndex;
 
           while (auto entry = ptr->next()) {
-            auto doc = entry->second;
-            if (doc.operation == OperationType::kCreateShard) {
-              auto const& collectionId = doc.collectionId;
-              auto res =
-                  data.core->ensureShard(doc.shardId, collectionId, doc.data);
-              if (res.fail()) {
-                LOG_CTX("75cda", FATAL, self->loggerContext)
-                    << "Failed to create shard " << doc.shardId
-                    << " of collection " << collectionId
-                    << " with error: " << res;
-                FATAL_ERROR_EXIT();
-              }
-              LOG_CTX("d82d5", TRACE, self->loggerContext)
-                  << "Created local shard " << doc.shardId << " of collection "
-                  << collectionId;
-            } else if (doc.operation == OperationType::kDropShard) {
-              auto const& collectionId = doc.collectionId;
-              self->_transactionHandler->abortTransactionsForShard(doc.shardId);
-              auto res = data.core->dropShard(doc.shardId, collectionId);
-              if (res.fail()) {
-                LOG_CTX("8c7a0", FATAL, self->loggerContext)
-                    << "Failed to drop shard " << doc.shardId
-                    << " of collection " << collectionId
-                    << " with error: " << res;
-                FATAL_ERROR_EXIT();
-              }
-              LOG_CTX("cdc44", TRACE, self->loggerContext)
-                  << "Dropped local shard " << doc.shardId << " of collection "
-                  << collectionId;
-            } else {
-              // Even though a shard was dropped before acquiring the snapshot,
-              // we could still see transactions referring to that shard.
-              if (!data.core->isShardAvailable(doc.shardId)) {
-                LOG_CTX("1970d", INFO, self->loggerContext)
-                    << "Will not apply transaction " << doc.tid << " for shard "
-                    << doc.shardId << " because it is not available";
-                continue;
-              }
+            auto [index, doc] = *entry;
 
-              auto res = self->_transactionHandler->applyEntry(doc);
-              if (res.fail()) {
-                LOG_CTX("1b08f", FATAL, self->loggerContext)
-                    << "Failed to apply entry " << entry->first
-                    << " to local shard " << doc.shardId
-                    << " with error: " << res;
-                FATAL_ERROR_EXIT();
-              }
+            auto currentReleaseIndex = std::visit(
+                [&data,
+                 index = index](auto&& op) -> ResultT<std::optional<LogIndex>> {
+                  return data.applyEntry(op, index);
+                },
+                doc.getInnerOperation());
 
-              if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-                self->_activeTransactions.clear();
-                releaseIndex =
-                    self->_activeTransactions.getReleaseIndex(entry->first);
-              } else if (doc.operation == OperationType::kCommit ||
-                         doc.operation == OperationType::kAbort) {
-                self->_activeTransactions.erase(doc.tid);
-                releaseIndex =
-                    self->_activeTransactions.getReleaseIndex(entry->first);
-              } else {
-                self->_activeTransactions.emplace(doc.tid, entry->first);
-              }
+            if (currentReleaseIndex.fail()) {
+              LOG_CTX("0aa2e", FATAL, self->loggerContext)
+                  << "failed to apply entry " << doc
+                  << " on follower: " << currentReleaseIndex.result();
+              FATAL_ERROR_EXIT();
+            }
+            if (currentReleaseIndex->has_value()) {
+              releaseIndex = std::move(currentReleaseIndex).get();
             }
           }
 
@@ -167,15 +122,15 @@ auto DocumentFollowerState::applyEntries(
         });
       });
 
-  if (result.fail()) {
-    return result.result();
+  if (applyResult.fail()) {
+    return applyResult.result();
   }
-  if (result->has_value()) {
+  if (applyResult->has_value()) {
     // The follower might have resigned, so we need to be careful when accessing
     // the stream.
     auto releaseRes = basics::catchVoidToResult([&] {
       auto const& stream = getStream();
-      stream->release(result->value());
+      stream->release(applyResult->value());
     });
     if (releaseRes.fail()) {
       LOG_CTX("10f07", ERR, loggerContext)
@@ -186,30 +141,20 @@ auto DocumentFollowerState::applyEntries(
   return {TRI_ERROR_NO_ERROR};
 }
 
-/**
- * @brief Using the underlying transaction handler to apply a local transaction,
- * for this follower only.
- */
-auto DocumentFollowerState::forceLocalTransaction(ShardID shardId,
-                                                  OperationType opType,
-                                                  velocypack::SharedSlice slice)
+auto DocumentFollowerState::populateLocalShard(
+    ShardID shardId, velocypack::SharedSlice slice,
+    std::shared_ptr<IDocumentStateTransactionHandler> const& transactionHandler)
     -> Result {
-  auto trxId = TransactionId::createFollower();
-  auto doc = DocumentLogEntry{shardId, opType, std::move(slice), trxId, {}};
-  if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(trxId);
+  auto tid = TransactionId::createFollower();
+  auto op = ReplicatedOperation::buildDocumentOperation(
+      TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
+      std::move(slice));
+  if (auto applyRes = transactionHandler->applyEntry(op); applyRes.fail()) {
+    transactionHandler->removeTransaction(tid);
     return applyRes;
   }
-  auto commit = DocumentLogEntry{
-      std::move(shardId), OperationType::kCommit, {}, trxId, {}};
-  return _transactionHandler->applyEntry(commit);
-}
-
-auto DocumentFollowerState::populateLocalShard(ShardID shardId,
-                                               velocypack::SharedSlice slice)
-    -> Result {
-  return forceLocalTransaction(std::move(shardId), OperationType::kInsert,
-                               std::move(slice));
+  auto commit = ReplicatedOperation::buildCommitOperation(tid);
+  return transactionHandler->applyEntry(commit);
 }
 
 auto DocumentFollowerState::handleSnapshotTransfer(
@@ -258,10 +203,11 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                 "Snapshot transfer cancelled because a new one was started!"};
           }
 
+          auto transactionHandler = data.core->getTransactionHandler();
           for (auto const& [shardId, properties] : shards) {
-            auto res =
-                data.core->ensureShard(shardId, properties.collectionId,
-                                       properties.properties->sharedSlice());
+            auto res = transactionHandler->applyEntry(
+                ReplicatedOperation::buildCreateShardOperation(
+                    shardId, properties.collection, properties.properties));
             if (res.fail()) {
               LOG_CTX("bd17c", ERR, self->loggerContext)
                   << "Failed to ensure shard " << shardId << " " << res;
@@ -274,7 +220,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         if (res.fail()) {
           LOG_CTX("d82d4", ERR, self->loggerContext) << res;
-          // TODO Handle resign
           if (res.isNot(
                   TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
             return leader->finishSnapshot(snapshotRes->snapshotId);
@@ -336,7 +281,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   TRI_ERROR_INTERNAL,
                   "Snapshot transfer cancelled because a new one was started!"};
             }
-            return self->populateLocalShard(*snapshotRes->shardId, docs);
+            return self->populateLocalShard(*snapshotRes->shardId, docs,
+                                            data.core->getTransactionHandler());
           });
           if (insertRes.fail()) {
             LOG_CTX("d8b8a", ERR, self->loggerContext)
@@ -361,6 +307,128 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         return leader->finishSnapshot(snapshotRes->snapshotId);
       });
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ModifiesUserTransaction auto const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  auto const& transactionHandler = core->getTransactionHandler();
+  if (auto validationRes = transactionHandler->validate(op);
+      validationRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    //  Even though a shard was dropped before acquiring the
+    //  snapshot, we could still see transactions referring to
+    //  that shard.
+    LOG_CTX("e1edb", INFO, core->loggerContext)
+        << "will not apply transaction " << op.tid << " on shard " << op.shard
+        << " because the shard is not available";
+    return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+  } else if (validationRes.fail()) {
+    return validationRes;
+  }
+
+  activeTransactions.markAsActive(op.tid, index);
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // We don't need to update the release index after such operations.
+  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::IntermediateCommit const& op, LogIndex)
+    -> ResultT<std::optional<LogIndex>> {
+  if (!activeTransactions.getTransactions().contains(op.tid)) {
+    LOG_CTX("b41dc", INFO, core->loggerContext)
+        << "will not apply intermediate commit for transaction " << op.tid
+        << " because it is not active";
+    return ResultT<std::optional<LogIndex>>{std::nullopt};
+  }
+  auto const& transactionHandler = core->getTransactionHandler();
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // We don't need to update the release index after an intermediate commit.
+  // However, we could release everything in this transaction up to this point
+  // and update the start LogIndex of this transaction to the current log index.
+  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    FinishesUserTransaction auto const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  if (!activeTransactions.getTransactions().contains(op.tid)) {
+    // Single commit/abort operations are possible.
+    LOG_CTX("cf7ea", INFO, core->loggerContext)
+        << "will not finish transaction " << op.tid
+        << " because it is not active";
+    return ResultT<std::optional<LogIndex>>{std::nullopt};
+  }
+
+  auto const& transactionHandler = core->getTransactionHandler();
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  activeTransactions.markAsInactive(op.tid);
+  // We can now potentially release past the finished transaction.
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::AbortAllOngoingTrx const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  auto const& transactionHandler = core->getTransactionHandler();
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  activeTransactions.clear();
+  // Since everything was aborted, we can release all of it.
+  return ResultT<std::optional<LogIndex>>::success(index);
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::DropShard const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  // We first have to abort all transactions for this shard.
+  auto const& transactionHandler = core->getTransactionHandler();
+  for (auto const& tid :
+       transactionHandler->getTransactionsForShard(op.shard)) {
+    auto abortRes = transactionHandler->applyEntry(
+        ReplicatedOperation::buildAbortOperation(tid));
+    if (abortRes.fail()) {
+      LOG_CTX("aa36c", INFO, core->loggerContext)
+          << "failed to abort transaction " << tid << " for shard " << op.shard
+          << " before dropping the shard: " << abortRes.errorMessage();
+      return abortRes;
+    }
+    activeTransactions.markAsInactive(tid);
+  }
+
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // Since some transactions were aborted, we could potentially increase the
+  // release index.
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::CreateShard const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  auto const& transactionHandler = core->getTransactionHandler();
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // Once the shard has been created, we can release the entry.
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

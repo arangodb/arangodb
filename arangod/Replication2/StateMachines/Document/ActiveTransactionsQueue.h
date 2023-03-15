@@ -40,10 +40,15 @@ class ActiveTransactionsQueue {
   enum Status { kActive, kInactive };
 
  public:
-  LogIndex getReleaseIndex(LogIndex current) const;
-  bool erase(TransactionId const& tid);
-  void emplace(TransactionId tid, LogIndex index);
-  std::size_t size() const noexcept;
+  void markAsActive(TransactionId tid, LogIndex index);
+  void markAsInactive(TransactionId tid);
+
+  // These are used when we have a log index but no transaction id.
+  void markAsActive(LogIndex index);
+  void markAsInactive(LogIndex index);
+
+  std::optional<LogIndex> getReleaseIndex() const;
+
   auto getTransactions() const
       -> std::unordered_map<TransactionId, LogIndex> const&;
   void clear();

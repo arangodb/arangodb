@@ -67,6 +67,7 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/IScheduler.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -149,10 +150,9 @@ auto replicated_log::LogLeader::instantiateFollowers(
 }
 
 namespace {
-auto delayedFuture(replicated_log::IScheduler* sched,
+auto delayedFuture(IScheduler* sched,
                    std::chrono::steady_clock::duration duration)
-    -> std::pair<replicated_log::IScheduler::WorkItemHandle,
-                 futures::Future<futures::Unit>> {
+    -> std::pair<IScheduler::WorkItemHandle, futures::Future<futures::Unit>> {
   if (sched) {
     auto p = futures::Promise<futures::Unit>();
     auto f = p.getFuture();
@@ -176,7 +176,7 @@ auto delayedFuture(replicated_log::IScheduler* sched,
 }  // namespace
 
 void replicated_log::LogLeader::handleResolvedPromiseSet(
-    replicated_log::IScheduler* sched, ResolvedPromiseSet resolvedPromises,
+    IScheduler* sched, ResolvedPromiseSet resolvedPromises,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   auto const commitTp = InMemoryLogEntry::clock::now();
 
@@ -526,12 +526,45 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   });
 }
 
+namespace {
+auto getLocalState(replicated_state::Status const& status)
+    -> replicated_log::LocalStateMachineStatus {
+  using namespace replicated_state;
+  using namespace replicated_log;
+  return std::visit(
+      overload{
+          [](Status::Leader const& status) {
+            return std::visit(
+                overload{
+                    [](Status::Leader::Resigned const&) {
+                      return LocalStateMachineStatus::kUnconfigured;
+                    },
+                    [](Status::Leader::InRecovery const&) {
+                      return LocalStateMachineStatus::kRecovery;
+                    },
+                    [](Status::Leader::Operational const&) {
+                      return LocalStateMachineStatus::kOperational;
+                    },
+                },
+                status.value);
+          },
+          [](Status::Follower const& status) {
+            return LocalStateMachineStatus::kUnconfigured;
+          },
+          [](Status::Unconfigured const& status) {
+            return LocalStateMachineStatus::kUnconfigured;
+          },
+      },
+      status.value);
+}
+}  // namespace
+
 auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   // TODO This is a bug and requires a fix. The unique ptr of the stateHandle
   //  should not be dereference without having the _guardedLeaderData lock.
   //  resign could be called in the meantime.
   auto& stateHandle = *_guardedLeaderData.getLockedGuard()->_stateHandle;
-  auto stateStatus = stateHandle.getQuickStatus();
+  auto const localState = getLocalState(stateHandle.getInternalStatus());
   auto guard = _guardedLeaderData.getLockedGuard();
   if (guard->_didResign) {
     throw ParticipantResignedException(
@@ -543,7 +576,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   }
   return QuickLogStatus{
       .role = ParticipantRole::kLeader,
-      .localState = stateStatus,
+      .localState = localState,
       .term = _currentTerm,
       .local = guard->getLocalStatistics(),
       .leadershipEstablished = guard->_leadershipEstablished,
@@ -574,6 +607,9 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
 auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
     std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
+  // TODO for now only waitForSync=true is supported.
+  waitForSync = true;  // by setting this to true, the waitForSync flag is set
+                       // for all log entries, independent of the log config.
   if (this->_didResign) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);

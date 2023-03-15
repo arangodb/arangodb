@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/DownCast.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -65,7 +64,6 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2646,18 +2644,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    try {
-      leaderState->replicateOperation(
-          body.sharedSlice(),
-          replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(), trxColl->collectionName(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return OperationResult(Result{e.code(), e.what()}, options);
-    } catch (std::exception const& e) {
-      return OperationResult(Result{TRI_ERROR_INTERNAL, e.what()}, options);
-    }
-    return OperationResult{Result{}, options};
+    auto operation =
+        replication2::replicated_state::document::ReplicatedOperation::
+            buildTruncateOperation(state()->id(), trxColl->collectionName());
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(operation),
+        replication2::replicated_state::document::ReplicationOptions{});
+    TRI_ASSERT(replicationFut.isReady());
+    auto replicationRes = replicationFut.get();
+    return OperationResult{replicationRes.result(), options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -3141,17 +3138,22 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    try {
-      leaderState->replicateOperation(
-          replicationData.sharedSlice(),
-          replication2::replicated_state::document::fromDocumentOperation(
-              operation),
-          state()->id(), rtc.collectionName(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return Result{e.code(), e.what()};
-    } catch (std::exception const& e) {
-      return Result{TRI_ERROR_INTERNAL, e.what()};
+    auto replicatedOp = replication2::replicated_state::document::
+        ReplicatedOperation::buildDocumentOperation(
+            operation, state()->id(), rtc.collectionName(),
+            replicationData.sharedSlice());
+    // Should finish immediately
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(replicatedOp),
+        replication2::replicated_state::document::ReplicationOptions{});
+
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    TRI_ASSERT(replicationFut.isReady());
+
+    auto replicationRes = replicationFut.get();
+    if (replicationRes.fail()) {
+      return replicationRes.result();
     }
     return performIntermediateCommitIfRequired(collection->id());
   }
@@ -3161,13 +3163,41 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+
+  // index cache refilling...
+  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+    // index cache refilling opt-out
+    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  } else {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    bool const refill =
+        engine.autoRefillIndexCachesOnFollowers() &&
+        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+          engine.autoRefillIndexCaches()));
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+      if (refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      if (!refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
     reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
-                      ? "true"
-                      : "false");
+                  refill ? "true" : "false");
   }
 
   std::string url = "/_api/document/";

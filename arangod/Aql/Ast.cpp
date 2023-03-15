@@ -21,9 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -60,6 +57,9 @@
 #include "V8Server/V8DealerFeature.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -2793,22 +2793,29 @@ bool Ast::getReferencedAttributesRecursive(
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
       if (node->numMembers() >= 5) {
-        if (node->getMember(2)->type != NODE_TYPE_NOP ||
-            node->getMember(4)->type != NODE_TYPE_NOP) {
-          // expansion has a filter or a projection set, e.g.
-          // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
-          // we currently cannot handle this.
-          state.couldExtractAttributePath = false;
-          state.seen.clear();
-          return false;
+        if (!expectedAttribute.empty()) {
+          // we are looking at a traversal output variable, e.g.
+          // p.vertices[*].a
+          // here we need to take special precautions that we normally
+          // don't need
+          if (node->getMember(2)->type != NODE_TYPE_NOP ||
+              node->getMember(4)->type != NODE_TYPE_NOP) {
+            // expansion has a filter or a projection set, e.g.
+            // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
+            // we currently cannot handle this.
+            state.couldExtractAttributePath = false;
+            state.seen.clear();
+            return false;
+          }
+
+          if (node->getIntValue(true) != 1) {
+            // incompatible flattening level: p.vertices[**]...
+            state.couldExtractAttributePath = false;
+            state.seen.clear();
+            return false;
+          }
         }
 
-        if (node->getIntValue(true) != 1) {
-          // incompatible flattening level: p.vertices[**]...
-          state.couldExtractAttributePath = false;
-          state.seen.clear();
-          return false;
-        }
         AstNode const* lhs = node->getMember(0);
         TRI_ASSERT(lhs->type == NODE_TYPE_ITERATOR);
         TRI_ASSERT(lhs->numMembers() == 2);
@@ -2846,8 +2853,11 @@ bool Ast::getReferencedAttributesRecursive(
         }
       }
       state.seen.clear();
-      // don't descend into the expansion itself (already handled it)
-      return false;
+      // if we are looking at a traversal output variable, we don't
+      // descend into the expansion itself (already handled it).
+      // however, we want and must descend into subnodes in case we were
+      // not called for a traversal output variable.
+      return expectedAttribute.empty();
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -2976,6 +2986,8 @@ AstNode* Ast::clone(AstNode const* node) {
 }
 
 AstNode* Ast::shallowCopyForModify(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
   AstNodeType const type = node->type;
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
@@ -2994,7 +3006,7 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
   // copy payload...
   copyPayload(node, copy);
 
-  // recursively add subnodes
+  // add subnodes, non-recursively
   size_t const n = node->numMembers();
   copy->members.reserve(n);
   for (size_t i = 0; i < n; ++i) {
@@ -4377,7 +4389,7 @@ void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
   _writeCollections.emplace_back(node, isExclusiveAccess);
 }
 
-bool Ast::functionsMayAccessDocuments() const {
+bool Ast::functionsMayAccessDocuments() const noexcept {
   return _functionsMayAccessDocuments;
 }
 

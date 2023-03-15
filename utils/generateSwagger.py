@@ -317,14 +317,14 @@ def LIT(txt, wordboundary=['<b>', '</b>']):
 ################################################################################
 ### @brief LIT
 ###
-### \ -> needs to become \\ so \n's in the text can be differciated.
+### \ -> needs to become \\ so \n's in the text can be differentiated.
 ################################################################################
 
 def BACKSLASH(txt):
     return txt.replace('\\', '\\\\\\')
 
 ################################################################################
-### @brief Typegraphy
+### @brief Typography
 ################################################################################
 
 def Typography(txt):

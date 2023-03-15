@@ -85,7 +85,8 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
-             properties().get(StaticStrings::DataSourceType).isNumber());
+             properties().get(StaticStrings::DataSourceType).isNumber())
+      << properties().toJson() << desc;
 
   uint32_t const type =
       properties().get(StaticStrings::DataSourceType).getNumber<uint32_t>();
@@ -275,10 +276,7 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
     if (leaderState != nullptr) {
       // It is necessary to block here to prevent creation of an additional
       // action while we are waiting for the shard to be created.
-      leaderState
-          ->createShard(
-              shard, collection,
-              velocypack::SharedSlice(_description.properties()->bufferRef()))
+      leaderState->createShard(shard, collection, _description.properties())
           .get();
     } else {
       // TODO prevent busy loop and wait for log to become ready.

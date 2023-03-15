@@ -101,15 +101,17 @@ SnapshotManager::SnapshotManager(
       termInfo(std::move(termInfo)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
-      guardedData(storage, stateHandle) {
+      guardedData(storage, stateHandle) {}
+
+void SnapshotManager::acquireSnapshotIfNecessary() {
   auto guard = guardedData.getLockedGuard();
-  if (this->termInfo->leader.has_value() and
-      guard->state == SnapshotState::MISSING) {
+  if (termInfo->leader.has_value() and guard->state == SnapshotState::MISSING) {
     auto version = ++guard->lastSnapshotVersion;
+    auto& stateHandle = guard->stateHandle;
     guard.unlock();
     LOG_CTX("5426a", INFO, loggerContext)
         << "detected missing snapshot - acquire new one";
-    stateHandle.acquireSnapshot(*this->termInfo->leader, version);
+    stateHandle.acquireSnapshot(*termInfo->leader, version);
   }
 }
 
@@ -157,6 +159,6 @@ auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
   std::abort();
 }
 
-auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
+auto SnapshotManager::checkSnapshotState() const noexcept -> SnapshotState {
   return guardedData.getLockedGuard()->state;
 }

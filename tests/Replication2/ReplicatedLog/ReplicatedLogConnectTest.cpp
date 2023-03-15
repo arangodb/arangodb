@@ -19,14 +19,17 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/ParticipantsFactoryMock.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -94,19 +97,6 @@ struct ParticipantsConfigBuilder {
 }  // namespace arangodb::replication2::test
 
 namespace {
-struct ParticipantsFactoryMock : IParticipantsFactory {
-  MOCK_METHOD(std::shared_ptr<ILogFollower>, constructFollower,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
-                   methods,
-               FollowerTermInfo info, ParticipantContext context),
-              (override));
-
-  MOCK_METHOD(std::shared_ptr<ILogLeader>, constructLeader,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
-                   methods,
-               LeaderTermInfo info, ParticipantContext context),
-              (override));
-};
 
 struct LogLeaderMock : replicated_log::ILogLeader {
   MOCK_METHOD(LogStatus, getStatus, (), (const, override));
@@ -160,10 +150,9 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
               (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
   MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex, std::uint64_t),
               (noexcept, override));
-  MOCK_METHOD(replicated_log::LocalStateMachineStatus, getQuickStatus, (),
+  MOCK_METHOD(replicated_state::Status, getInternalStatus, (),
               (const, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
-  MOCK_METHOD(void, dropEntries, (), (override));
 };
 }  // namespace
 
@@ -180,8 +169,8 @@ struct ReplicatedLogConnectTest : ::testing::Test {
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);
   agency::ServerInstanceReference const myself = {"SELF", RebootId{1}};
 
-  std::shared_ptr<ParticipantsFactoryMock> participantsFactoryMock =
-      std::make_shared<ParticipantsFactoryMock>();
+  std::shared_ptr<test::ParticipantsFactoryMock> participantsFactoryMock =
+      std::make_shared<test::ParticipantsFactoryMock>();
   std::shared_ptr<LogLeaderMock> leaderMock;
   std::shared_ptr<LogFollowerMock> followerMock;
   ReplicatedStateHandleMock* stateHandlePtr = new ReplicatedStateHandleMock();

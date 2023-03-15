@@ -85,11 +85,13 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -188,7 +190,7 @@ struct arangodb::VocBaseLogManager {
           });
       return {};
     } else {
-      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+      return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
     }
   }
 
@@ -400,10 +402,14 @@ struct arangodb::VocBaseLogManager {
           ServerState::instance()->getId(),
           ServerState::instance()->getRebootId());
 
-      struct MyScheduler : replicated_log::IScheduler {
-        auto delayedFuture(std::chrono::steady_clock::duration duration)
+      struct MyScheduler : IScheduler {
+        auto delayedFuture(std::chrono::steady_clock::duration duration,
+                           std::string_view name)
             -> futures::Future<futures::Unit> override {
-          return SchedulerFeature::SCHEDULER->delay("replication-2", duration);
+          if (name.data() == nullptr) {
+            name = "replication-2";
+          }
+          return SchedulerFeature::SCHEDULER->delay(name, duration);
         }
 
         auto queueDelayed(
@@ -444,7 +450,7 @@ struct arangodb::VocBaseLogManager {
       });
 
       auto& state = stateAndLog.state = feature.createReplicatedState(
-          type, vocbase.name(), id, log, logContext);
+          type, vocbase.name(), id, log, logContext, sched);
 
       auto const& stateParams = maybeMetadata->specification.parameters;
       auto&& stateHandle = state->createStateHandle(vocbase, stateParams);
@@ -1960,8 +1966,16 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
     _queries = std::make_unique<arangodb::aql::QueryList>(feature);
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
-  _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>();
+
+  if (_info.server().hasFeature<ReplicationFeature>()) {
+    auto& rf = _info.server().getFeature<ReplicationFeature>();
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
+  } else {
+    // during unit testing, there is no ReplicationFeature available
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(nullptr);
+  }
 
   // init collections
   _collections.reserve(32);
@@ -2249,7 +2263,8 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
       iter != guard->statesAndLogs.end()) {
     return iter->second.log;
   } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND);
+    throw basics::Exception::fmt(
+        ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 }
 

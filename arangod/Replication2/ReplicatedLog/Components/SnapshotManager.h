@@ -42,8 +42,12 @@ struct SnapshotManager : ISnapshotManager {
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ILeaderCommunicator> leaderComm,
       LoggerContext const& loggerContext);
+
   auto invalidateSnapshotState() -> Result override;
-  auto checkSnapshotState() noexcept -> SnapshotState override;
+  auto checkSnapshotState() const noexcept -> SnapshotState override;
+
+  // should be called once after construction
+  void acquireSnapshotIfNecessary();
 
   auto setSnapshotStateAvailable(MessageId msgId, std::uint64_t version)
       -> Result;

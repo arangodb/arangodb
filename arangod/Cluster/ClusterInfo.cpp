@@ -6140,10 +6140,13 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 
 std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     std::string_view shardID) {
-  if (auto result = getResponsibleServerReplication2(shardID);
-      result != nullptr) {
-    return result;
+  if (!shardID.empty()) {
+    if (auto result = getResponsibleServerReplication2(shardID);
+        result != nullptr) {
+      return result;
+    }
   }
+
   return getResponsibleServerReplication1(shardID);
 }
 
@@ -6212,19 +6215,68 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
   }
 
-  auto logId = LogicalCollection::shardIdToStateId(shardID);
   auto result = std::shared_ptr<std::vector<ServerID>>{nullptr};
 
   while (true) {
     {
+      ++tries;
+      if (tries >= 100 || _server.isStopping()) {
+        break;
+      } else if (tries > 1) {
+        LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
+            << "getResponsibleServerReplication2: shard = " << shardID
+            << "did not find log leader,"
+            << "waiting for half a second...";
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      }
+
       READ_LOCKER(readLocker, _planProt.lock);
-      // if we find a replicated log for this shard, then this is a
-      // replication 2.0 db, in which case we want to use the participant
-      // information from the log instead
+
+      // TODO we have to simplify this by using some adequate data structures
+      //  lookup the collection name, see CINFRA-700
+      auto colName = _shardToName.find(shardID);
+      if (colName == _shardToName.end()) {
+        continue;
+      }
+
+      // fetch the logical collection containing the shard
+      std::shared_ptr<LogicalCollection> logical{nullptr};
+      for (auto const& [dbID, col] : _plannedCollections) {
+        if (auto colWithHash = col->find(colName->second);
+            colWithHash != col->end()) {
+          logical = colWithHash->second.collection;
+          break;
+        }
+      }
+      if (logical == nullptr) {
+        continue;
+      }
+      if (logical->replicationVersion() == replication::Version::ONE) {
+        return nullptr;
+      }
+
+      // lookup the log id corresponding to the group id
+      auto groupId = logical->groupID();
+      auto id = logical->id();
+      if (!_collectionGroups.contains(groupId)) {
+        continue;
+      }
+      auto const& colGroup = _collectionGroups.at(groupId);
+      auto shards = _shards.find(CollectionID{std::to_string(id.id())});
+      if (shards == _shards.end()) {
+        continue;
+      }
+      auto shardIt =
+          std::find(shards->second->begin(), shards->second->end(), shardID);
+      if (shardIt == std::end(*shards->second)) {
+        continue;
+      }
+      auto shardIdx = std::distance(shards->second->begin(), shardIt);
+      auto logId = colGroup->shardSheaves.at(shardIdx).replicatedLog;
+
       auto it = _replicatedLogs.find(logId);
       if (it == _replicatedLogs.end()) {
-        // we are not in a replication2 database
-        break;
+        continue;
       }
 
       if (it->second->currentTerm.has_value() &&
@@ -6232,10 +6284,6 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
-
-        // TODO Sanity check, can be removed later
-        TRI_ASSERT(participants.size() < 1000000);
-
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!
@@ -6248,16 +6296,6 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         break;
       }
     }
-
-    if (++tries >= 100 || _server.isStopping()) {
-      break;
-    }
-
-    LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: " << logId
-        << " shard = " << shardID << "did not find leader,"
-        << "waiting for half a second...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   return result;
@@ -6366,42 +6404,74 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
   }
 
-  bool isReplicationTwo = false;
   while (true) {
     TRI_ASSERT(result.empty());
     {
       READ_LOCKER(readLocker, _planProt.lock);
 
       for (auto const& shardId : shardIds) {
-        auto logId = LogicalCollection::tryShardIdToStateId(shardId);
-        if (!logId.has_value()) {
-          // could not convert shardId to logId, but this implies that
-          // the shardId is not valid.
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                         "invalid shard " + shardId);
+        // TODO we have to simplify this by using some adequate data structures
+        //  lookup the collection name, see CINFRA-700
+        auto colName = _shardToName.find(shardId);
+        if (colName == _shardToName.end()) {
+          result.clear();
+          break;
         }
-        // if we find a replicated log for this shard, then this is a
-        // replication 2.0 db, in which case we want to use the leader
-        // information from the log instead
-        auto it = _replicatedLogs.find(*logId);
-        if (it != _replicatedLogs.end()) {
-          isReplicationTwo = true;
-          if (it->second->currentTerm.has_value() &&
-              it->second->currentTerm->leader.has_value()) {
-            result.emplace(shardId, it->second->currentTerm->leader->serverId);
-          } else {
-            // no leader found, will retry
-            ++tries;
-            result.clear();
+
+        // fetch the logical collection containing the shard
+        std::shared_ptr<LogicalCollection> logical{nullptr};
+        for (auto const& [dbID, col] : _plannedCollections) {
+          if (auto colWithHash = col->find(colName->second);
+              colWithHash != col->end()) {
+            logical = colWithHash->second.collection;
             break;
           }
-        } else if (isReplicationTwo) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              "no replicated log found for shard " + shardId);
-        } else {
+        }
+        if (logical == nullptr) {
+          result.clear();
+          break;
+        }
+
+        if (logical->replicationVersion() == replication::Version::ONE) {
           // this seems to be no replication 2.0 db -> skip the remaining shards
           return false;
+        }
+
+        // lookup the log id corresponding to the group id
+        auto groupId = logical->groupID();
+        auto id = logical->id();
+        if (!_collectionGroups.contains(groupId)) {
+          result.clear();
+          break;
+        }
+        auto const& colGroup = _collectionGroups.at(groupId);
+        auto shards = _shards.find(CollectionID{std::to_string(id.id())});
+        if (shards == _shards.end()) {
+          result.clear();
+          break;
+        }
+        auto shardIt =
+            std::find(shards->second->begin(), shards->second->end(), shardId);
+        if (shardIt == std::end(*shards->second)) {
+          result.clear();
+          break;
+        }
+        auto shardIdx = std::distance(shards->second->begin(), shardIt);
+        auto logId = colGroup->shardSheaves.at(shardIdx).replicatedLog;
+
+        auto it = _replicatedLogs.find(logId);
+        if (it == _replicatedLogs.end()) {
+          result.clear();
+          break;
+        }
+
+        if (it->second->currentTerm.has_value() &&
+            it->second->currentTerm->leader.has_value()) {
+          result.emplace(shardId, it->second->currentTerm->leader->serverId);
+        } else {
+          // no leader found, will retry
+          result.clear();
+          break;
         }
       }
     }
@@ -6410,13 +6480,13 @@ bool ClusterInfo::getResponsibleServersReplication2(
         << "getResponsibleServersReplication2: did not find leader,"
         << "waiting for half a second...";
 
-    if (tries >= 100 || !result.empty() || _server.isStopping()) {
+    if (++tries >= 100 || !result.empty() || _server.isStopping()) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  return true;
+  return !result.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

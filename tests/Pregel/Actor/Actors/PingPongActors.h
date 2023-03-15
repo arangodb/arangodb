@@ -34,7 +34,7 @@
 
 namespace arangodb::pregel::actor::test {
 
-namespace pong_actor {
+namespace pong_actor::message {
 
 struct Start {};
 template<typename Inspector>
@@ -62,7 +62,7 @@ auto inspect(Inspector& f, PongMessage& x) {
       arangodb::inspection::type<Ping>("ping"));
 }
 
-}  // namespace pong_actor
+}  // namespace pong_actor::message
 
 namespace ping_actor {
 
@@ -76,6 +76,8 @@ auto inspect(Inspector& f, PingState& x) {
   return f.object(x).fields(f.field("called", x.called),
                             f.field("message", x.message));
 }
+
+namespace message {
 
 struct Start {
   ActorPID pongActor;
@@ -103,16 +105,18 @@ auto inspect(Inspector& f, PingMessage& x) {
       arangodb::inspection::type<Pong>("pong"));
 }
 
+}  // namespace message
+
 template<typename Runtime>
 struct PingHandler : HandlerBase<Runtime, PingState> {
-  auto operator()(Start msg) -> std::unique_ptr<PingState> {
-    this->template dispatch<pong_actor::PongMessage>(
-        msg.pongActor, pong_actor::Ping{.text = "hello world"});
+  auto operator()(message::Start msg) -> std::unique_ptr<PingState> {
+    this->template dispatch<pong_actor::message::PongMessage>(
+        msg.pongActor, pong_actor::message::Ping{.text = "hello world"});
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(Pong msg) -> std::unique_ptr<PingState> {
+  auto operator()(message::Pong msg) -> std::unique_ptr<PingState> {
     this->state->called++;
     this->state->message = msg.text;
     return std::move(this->state);
@@ -128,7 +132,7 @@ struct Actor {
   using State = PingState;
   template<typename Runtime>
   using Handler = PingHandler<Runtime>;
-  using Message = PingMessage;
+  using Message = message::PingMessage;
   static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 
@@ -147,14 +151,14 @@ auto inspect(Inspector& f, PongState& x) {
 
 template<typename Runtime>
 struct PongHandler : HandlerBase<Runtime, PongState> {
-  auto operator()(Start msg) -> std::unique_ptr<PongState> {
+  auto operator()(message::Start msg) -> std::unique_ptr<PongState> {
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(Ping msg) -> std::unique_ptr<PongState> {
+  auto operator()(message::Ping msg) -> std::unique_ptr<PongState> {
     this->template dispatch<ping_actor::Actor::Message>(
-        this->sender, ping_actor::Pong{.text = msg.text});
+        this->sender, ping_actor::message::Pong{.text = msg.text});
     this->state->called++;
     return std::move(this->state);
   }
@@ -169,7 +173,7 @@ struct Actor {
   using State = PongState;
   template<typename Runtime>
   using Handler = PongHandler<Runtime>;
-  using Message = PongMessage;
+  using Message = message::PongMessage;
   static constexpr auto typeName() -> std::string_view { return "PongActor"; };
 };
 
@@ -178,13 +182,15 @@ struct Actor {
 }  // namespace arangodb::pregel::actor::test
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::pong_actor::PongMessage>
+struct fmt::formatter<
+    arangodb::pregel::actor::test::pong_actor::message::PongMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::actor::test::ping_actor::PingState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::ping_actor::PingMessage>
+struct fmt::formatter<
+    arangodb::pregel::actor::test::ping_actor::message::PingMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::actor::test::pong_actor::PongState>

@@ -28,12 +28,12 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -319,18 +319,17 @@ RegIdSet ShortestPathNode::_buildVariableInformation() const {
 // 2. or SingleServerProvider<SingleServerProviderStep>
 // 3. or ClusterProvider<ClusterProviderStep>
 
-template<typename ShortestPathRefactored, typename Provider,
-         typename ProviderOptions>
+template<typename ShortestPath, typename Provider, typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
     PathValidatorOptions validatorOptions,
-    typename ShortestPathExecutorInfos<
-        ShortestPathRefactored>::RegisterMapping&& outputRegisterMapping,
+    typename ShortestPathExecutorInfos<ShortestPath>::RegisterMapping&&
+        outputRegisterMapping,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
-  auto shortestPathFinder = std::make_unique<ShortestPathRefactored>(
+  auto shortestPathFinder = std::make_unique<ShortestPath>(
       Provider{opts->query(), std::move(forwardProviderOptions),
                opts->query().resourceMonitor()},
       Provider{opts->query(), std::move(backwardProviderOptions),
@@ -338,13 +337,13 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());
 
-  auto executorInfos = ShortestPathExecutorInfos<ShortestPathRefactored>(
+  auto executorInfos = ShortestPathExecutorInfos<ShortestPath>(
       engine.getQuery(), std::move(shortestPathFinder),
       std::move(outputRegisterMapping), std::move(sourceInput),
       std::move(targetInput));
 
   return std::make_unique<
-      ExecutionBlockImpl<ShortestPathExecutor<ShortestPathRefactored>>>(
+      ExecutionBlockImpl<ShortestPathExecutor<ShortestPath>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 };
 

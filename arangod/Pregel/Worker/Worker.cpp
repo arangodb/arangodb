@@ -34,7 +34,6 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Worker/GraphStore.h"
 #include "Pregel/Worker/Messages.h"
@@ -46,6 +45,17 @@
 #include "Pregel/VertexComputation.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
 
 #include <velocypack/Builder.h>
 
@@ -672,17 +682,17 @@ template class arangodb::pregel::Worker<float, uint8_t, float>;
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<WCCValue, uint64_t,
+template class arangodb::pregel::Worker<algos::WCCValue, uint64_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<SCCValue, int8_t,
+template class arangodb::pregel::Worker<algos::SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
+template class arangodb::pregel::Worker<algos::HITSValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
+template class arangodb::pregel::Worker<algos::HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
-                                        ColorPropagationMessageValue>;
+template class arangodb::pregel::Worker<algos::ECValue, int8_t, HLLCounter>;
+template class arangodb::pregel::Worker<algos::DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<algos::LPValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<algos::SLPAValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<algos::ColorPropagationValue, int8_t,
+                                        algos::ColorPropagationMessageValue>;
