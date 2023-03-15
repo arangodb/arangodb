@@ -834,7 +834,7 @@ class instance {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
-        if(this.options.extremeVerbosity || overideVerbosity) {
+        if (this.options.extremeVerbosity || overrideVerbosity) {
           print('tickeling ' + this.endpoint);
         }
         arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
