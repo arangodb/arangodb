@@ -280,7 +280,18 @@ function SynchronousReplicationSuite () {
     assertEqual(107, docs[1].Hallox);
 
     if (healing.place === 12) { healFailure(healing); }
-    if (failure.place === 13) { makeFailure(failure); }
+    if (failure.place === 13) {
+      makeFailure(failure);
+      // Note that it is not guaranteed that an AQL query runs without an
+      // error, directly after the leader of a collection which occurs in
+      // the query is stopped. It is entirely possible that the coordinator
+      // still picks the failed server, so we have to wait for the failover
+      // to happen. The easiest way to achieve this is to read a document,
+      // which can retry until the failover has happened:
+      if (!failure.follower) {
+        doc = c.document(id._key);
+      }
+    }
 
     // AQL:
     var q = db._query(`FOR x IN @@cn
