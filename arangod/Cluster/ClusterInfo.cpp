@@ -6462,6 +6462,11 @@ void ClusterInfo::setFailedServers(
   _failedServers = std::move(failedServers);
 }
 
+bool ClusterInfo::isFailedServer(ServerID const& id) const noexcept {
+  std::lock_guard lock{_failedServersMutex};
+  return _failedServers.contains(id);
+}
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ClusterInfo::setServers(
     containers::FlatHashMap<ServerID, std::string> servers) {
