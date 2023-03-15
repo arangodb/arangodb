@@ -73,11 +73,21 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				
 				const progressValue = Math.round(widthFactor * 100);
 			
-				document.getElementById("graphViewerProgressBar").style.width = width + "px";
-				document.getElementById("graphViewerLoadingText").innerText = progressValue + "%";
+				const graphViewerProgressBarElement = document.getElementById("graphViewerProgressBar");
+				if (graphViewerProgressBarElement) {
+					graphViewerProgressBarElement.style.width = width + "px";
+				}
 
-				document.getElementById("graphViewerLoadingBar").style.opacity = 100;
-				document.getElementById("graphViewerLoadingBar").style.display = "block";
+				const graphViewerLoadingTextElement = document.getElementById("graphViewerLoadingText");
+				if (graphViewerLoadingTextElement) {
+					graphViewerLoadingTextElement.innerText = progressValue + "%";
+				}
+
+				const graphViewerLoadingBarElement = document.getElementById("graphViewerLoadingBar");
+				if (graphViewerLoadingBarElement) {
+					graphViewerLoadingBarElement.style.opacity = 100;
+					graphViewerLoadingBarElement.style.display = "block";
+				}
 			}
 		});
 
@@ -86,10 +96,13 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		});
 
 		network.on("stabilized", function () {
-			document.getElementById("graphViewerLoadingBar").style.opacity = 0;
-			setTimeout(function () {
-				document.getElementById("graphViewerLoadingBar").style.display = "none";
-			}, 500);
+			const graphViewerLoadingBarElement = document.getElementById("graphViewerLoadingBar");
+			if (graphViewerLoadingBarElement) {
+				graphViewerLoadingBarElement.style.opacity = 0;
+				setTimeout(function () {
+					graphViewerLoadingBarElement.style.display = "none";
+				}, 500);
+			}
 		});
 
 		network.on("selectNode", (event, params) => {
@@ -112,7 +125,9 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		network.on("oncontext", (args) => {
 			args.event.preventDefault();
 			const canvasOffset = document.getElementById("visnetworkdiv");
-			setPosition({ left: `${args.pointer.DOM.x + canvasOffset.offsetLeft}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
+			if (canvasOffset) {
+				setPosition({ left: `${args.pointer.DOM.x + canvasOffset.offsetLeft}px`, top: `${args.pointer.DOM.y + canvasOffset.offsetTop}px` });
+			}
 			if (network.getNodeAt(args.pointer.DOM)) {
 				toggleContextMenu("node");
 				network.selectNodes([network.getNodeAt(args.pointer.DOM)]);
