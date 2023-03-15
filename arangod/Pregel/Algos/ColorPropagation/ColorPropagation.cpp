@@ -99,8 +99,21 @@ ColorPropagation::createComputation(
   return new ColorPropagationComputation();
 }
 
-WorkerContext* ColorPropagation::workerContext(VPackSlice userParams) const {
-  return new ColorPropagationWorkerContext(_maxGss, _numColors);
+[[nodiscard]] auto ColorPropagation::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ColorPropagationWorkerContext(std::move(readAggregators),
+                                           std::move(writeAggregators), _maxGss,
+                                           _numColors);
+}
+[[nodiscard]] auto ColorPropagation::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ColorPropagationWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), _maxGss,
+      _numColors);
 }
 
 struct ColorPropagationMasterContext : public MasterContext {
@@ -122,9 +135,13 @@ struct ColorPropagationMasterContext : public MasterContext {
       vertexCount, edgeCount, std::move(aggregators));
 }
 
-ColorPropagationWorkerContext::ColorPropagationWorkerContext(uint64_t maxGss,
-                                                             uint16_t numColors)
-    : numColors{numColors}, maxGss{maxGss} {}
+ColorPropagationWorkerContext::ColorPropagationWorkerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators, uint64_t maxGss,
+    uint16_t numColors)
+    : WorkerContext(std::move(readAggregators), std::move(writeAggregators)),
+      numColors{numColors},
+      maxGss{maxGss} {}
 
 CollectionIdType getEquivalenceClass(
     VPackSlice vertexDocument, std::string_view equivalenceClassFieldName) {
@@ -188,7 +205,7 @@ Result getInitialColors(ColorPropagationValue& senders,
 void ColorPropagationGraphFormat::copyVertexData(
     arangodb::velocypack::Options const&, std::string const& documentId,
     arangodb::velocypack::Slice document, ColorPropagationValue& senders,
-    uint64_t& vertexIdRange) {
+    uint64_t& vertexIdRange) const {
   senders.equivalenceClass =
       getEquivalenceClass(document, equivalenceClassFieldName);
 
@@ -211,9 +228,9 @@ bool ColorPropagationGraphFormat::buildVertexDocument(
   return true;
 }
 
-GraphFormat<ColorPropagationValue, int8_t>* ColorPropagation::inputFormat()
-    const {
-  return new ColorPropagationGraphFormat(
+std::shared_ptr<GraphFormat<ColorPropagationValue, int8_t> const>
+ColorPropagation::inputFormat() const {
+  return std::make_shared<ColorPropagationGraphFormat>(
       _inputColorsFieldName, _outputColorsFieldName, _equivalenceClassFieldName,
       _numColors);
 }

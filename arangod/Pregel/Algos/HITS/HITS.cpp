@@ -29,6 +29,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/WorkerContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -38,7 +39,10 @@ static std::string const kAuthNorm = "auth";
 static std::string const kHubNorm = "hub";
 
 struct HITSWorkerContext : public WorkerContext {
-  HITSWorkerContext() {}
+  HITSWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators), std::move(writeAggregators)) {
+  }
 
   double authNormRoot = 0;
   double hubNormRoot = 0;
@@ -114,7 +118,7 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       HITSValue& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            HITSValue const* value) const override {
@@ -124,12 +128,24 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
   }
 };
 
-GraphFormat<HITSValue, int8_t>* HITS::inputFormat() const {
-  return new HITSGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<HITSValue, int8_t> const> HITS::inputFormat()
+    const {
+  return std::make_shared<HITSGraphFormat>(_resultField);
 }
 
-WorkerContext* HITS::workerContext(VPackSlice userParams) const {
-  return new HITSWorkerContext();
+[[nodiscard]] auto HITS::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new HITSWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto HITS::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<HITSWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
 }
 
 struct HITSMasterContext : public MasterContext {
