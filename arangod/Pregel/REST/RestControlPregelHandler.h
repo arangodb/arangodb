@@ -47,6 +47,8 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   void getExecutionStatus();
   void cancelExecution();
 
+  void handlePregelHistoryResult(ResultT<OperationResult> opResult);
+
   pregel::PregelFeature& _pregel;
 };
 }  // namespace arangodb

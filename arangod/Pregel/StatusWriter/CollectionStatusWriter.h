@@ -58,6 +58,17 @@ struct CollectionStatusWriter : StatusWriterInterface {
     _logicalCollection = std::move(logicalCollection);
   };
 
+  CollectionStatusWriter(TRI_vocbase_t& vocbase) : _vocbaseGuard(vocbase) {
+    CollectionNameResolver resolver(_vocbaseGuard.database());
+    auto logicalCollection =
+        resolver.getCollection(StaticStrings::PregelCollection);
+    if (logicalCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                     StaticStrings::PregelCollection);
+    }
+    _logicalCollection = std::move(logicalCollection);
+  };
+
   enum class OperationType {
     CREATE_DOCUMENT,
     READ_DOCUMENT,
@@ -66,20 +77,30 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override {
+    TRI_ASSERT(_executionNumber.value != 0);
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::CREATE_DOCUMENT, opData);
   }
-  [[nodiscard]] auto readResult(VPackSlice data) -> OperationResult override {
+  [[nodiscard]] auto readResult() -> OperationResult override {
+    TRI_ASSERT(_executionNumber.value != 0);
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::READ_DOCUMENT, opData);
   }
+  [[nodiscard]] auto readAllResults() -> OperationResult override {
+    return createOperation(OperationType::READ_DOCUMENT, std::nullopt);
+  }
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override {
+    TRI_ASSERT(_executionNumber.value != 0);
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::UPDATE_DOCUMENT, opData);
   }
-  [[nodiscard]] auto deleteResult(VPackSlice data) -> OperationResult override {
+  [[nodiscard]] auto deleteResult() -> OperationResult override {
+    TRI_ASSERT(_executionNumber.value != 0);
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::DELETE_DOCUMENT, opData);
+  }
+  [[nodiscard]] auto deleteAllResults() -> OperationResult override {
+    return createOperation(OperationType::DELETE_DOCUMENT, std::nullopt);
   }
 
  public:
@@ -95,7 +116,8 @@ struct CollectionStatusWriter : StatusWriterInterface {
 
  private:
   [[nodiscard]] auto createOperation(OperationType operation,
-                                     OperationData data) -> OperationResult {
+                                     std::optional<OperationData> data)
+      -> OperationResult {
     // Helper method: finishes transaction & handle potential errors
     auto handleOperationResult =
         [](SingleCollectionTransaction& trx, OperationOptions& options,
@@ -131,34 +153,56 @@ struct CollectionStatusWriter : StatusWriterInterface {
     }
 
     // execute transaction
-    auto payload = inspection::serializeWithErrorT(data);
     switch (accessModeType) {
       case AccessMode::Type::WRITE: {
         if (operation == OperationType::UPDATE_DOCUMENT) {
+          if (!data.has_value()) {
+            return OperationResult(Result(TRI_ERROR_HTTP_BAD_PARAMETER),
+                                   options);
+          }
+          auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
               trx, options, transactionResult,
               trx.update(StaticStrings::PregelCollection, payload->slice(),
                          {}));
         } else if (operation == OperationType::CREATE_DOCUMENT) {
+          if (!data.has_value()) {
+            return OperationResult(Result(TRI_ERROR_HTTP_BAD_PARAMETER),
+                                   options);
+          }
+          auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
               trx, options, transactionResult,
               trx.insert(StaticStrings::PregelCollection, payload->slice(),
                          {}));
         } else {
-          TRI_ASSERT(operation == OperationType::DELETE_DOCUMENT);
-          return handleOperationResult(
-              trx, options, transactionResult,
-              trx.remove(StaticStrings::PregelCollection, payload->slice(),
-                         {}));
+          if (data.has_value()) {
+            auto payload = inspection::serializeWithErrorT(data.value());
+            TRI_ASSERT(operation == OperationType::DELETE_DOCUMENT);
+            return handleOperationResult(
+                trx, options, transactionResult,
+                trx.remove(StaticStrings::PregelCollection, payload->slice(),
+                           {}));
+          } else {
+            return trx.truncateAsync(StaticStrings::PregelCollection, options)
+                .get();
+          }
         }
       }
       case AccessMode::Type::READ: {
         // Note: documentAsync can throw.
-        return handleOperationResult(
-            trx, options, transactionResult,
-            trx.documentAsync(StaticStrings::PregelCollection, payload->slice(),
-                              {})
-                .get());
+        if (data.has_value()) {
+          auto payload = inspection::serializeWithErrorT(data);
+          return handleOperationResult(
+              trx, options, transactionResult,
+              trx.documentAsync(StaticStrings::PregelCollection,
+                                payload->slice(), {})
+                  .get());
+        } else {
+          size_t skip = 0;
+          size_t limit = 0;
+          return trx.all(StaticStrings::PregelCollection, skip, limit, options);
+        }
       }
       default: {
         TRI_ASSERT(false);

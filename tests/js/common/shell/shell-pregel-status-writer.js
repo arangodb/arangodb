@@ -26,15 +26,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const db = require("@arangodb").db;
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 const internal = require("internal");
 const isCluster = internal.isCluster();
+const isServer = require('@arangodb').isServer;
+// Only required on client
+const arango = isServer ? {} : arangodb.arango;
+
 const examples = require('@arangodb/graph-examples/example-graph.js');
 const graph_module = require("@arangodb/general-graph");
 
 const pregel = require("@arangodb/pregel");
 const pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 const pregelSystemCollectionName = '_pregel_queries';
+const pregelEndpoint = '/_api/control_pregel';
+const pregelHistoricEndpoint = `${pregelEndpoint}/history`;
 
 function pregelStatusWriterSuite() {
   'use strict';
@@ -54,6 +61,25 @@ function pregelStatusWriterSuite() {
 
     return [pid, stats];
   };
+
+  const verifyPersistedStatePIDRead = (pid, expectedState) => {
+    // 1.) verify using direct system access
+    const persistedState = db[pregelSystemCollectionName].document(pid);
+    assertTrue(persistedState);
+    assertEqual(persistedState.data.state, expectedState);
+
+    // 2.) verify using HTTP call
+    if (!isServer) {
+      // only execute this test in case we're calling from client (e.g. shell_client)
+      const cmd = `${pregelHistoricEndpoint}/${pid}`;
+      const response = arango.GET_RAW(cmd);
+      const apiPersistedState = response.parsedBody;
+      assertTrue(apiPersistedState);
+      assertEqual(apiPersistedState.data.state, expectedState);
+    }
+
+    // 3.) verify using Pregel JavaScript module
+  }
 
   const createSimpleGraph = () => {
     examples.loadGraph("social");
@@ -94,9 +120,7 @@ function pregelStatusWriterSuite() {
     testExecutionCreatesHistoricPregelEntry: function () {
       const result = executeExamplePregel();
       const pid = result[0];
-      const persistedState = db[pregelSystemCollectionName].document(pid);
-      assertTrue(persistedState);
-      assertEqual(persistedState.data.state, "done");
+      verifyPersistedStatePIDRead(pid, "done");
     },
 
     testSystemCollectionsIsAvailablePerEachDatabase: function () {

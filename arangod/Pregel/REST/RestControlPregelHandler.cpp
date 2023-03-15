@@ -152,26 +152,55 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  if (suffixes.size() != 1 || suffixes[0].empty()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-        "superfluous parameter, expecting /_api/control_pregel[/<id>]");
+  if (suffixes.size() == 1) {
+    if (suffixes[0].empty()) {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+          "superfluous parameter, expecting /_api/control_pregel[/<id>]");
+      return;
+    }
+    auto executionNumber = arangodb::pregel::ExecutionNumber{
+        arangodb::basics::StringUtils::uint64(suffixes[0])};
+    auto c = _pregel.conductor(executionNumber);
+
+    if (nullptr == c) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                    "Execution number is invalid");
+      return;
+    }
+
+    VPackBuilder builder;
+    c->toVelocyPack(builder);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  } else if (suffixes.size() == 2) {
+    if (suffixes[1].empty()) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                    "superfluous parameter, expecting "
+                    "/_api/control_pregel/history[/<id>]");
+      return;
+    }
+    auto executionNumber = arangodb::pregel::ExecutionNumber{
+        arangodb::basics::StringUtils::uint64(suffixes[1])};
+    return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+        _vocbase, _request->requestType(), executionNumber));
+  }
+
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                "expecting one of the resources /_api/control_pregel[/<id>] or "
+                "/_api/control_pregel/history[/<id>]");
+}
+
+void RestControlPregelHandler::handlePregelHistoryResult(
+    ResultT<OperationResult> opResult) {
+  if (opResult.fail()) {
+    generateError(rest::ResponseCode::BAD, opResult.errorNumber(),
+                  opResult.errorMessage());
     return;
   }
 
-  auto executionNumber = arangodb::pregel::ExecutionNumber{
-      arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
-
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
-    return;
-  }
-
-  VPackBuilder builder;
-  c->toVelocyPack(builder);
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  generateResult(rest::ResponseCode::OK, opResult.get().slice());
 }
 
 void RestControlPregelHandler::cancelExecution() {

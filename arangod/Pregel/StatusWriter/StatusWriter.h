@@ -40,11 +40,12 @@ struct StatusWriterInterface {
   // CRUD interface definition
   [[nodiscard]] virtual auto createResult(VPackSlice data)
       -> OperationResult = 0;
-  [[nodiscard]] virtual auto readResult(VPackSlice data) -> OperationResult = 0;
+  [[nodiscard]] virtual auto readResult() -> OperationResult = 0;
+  [[nodiscard]] virtual auto readAllResults() -> OperationResult = 0;
   [[nodiscard]] virtual auto updateResult(VPackSlice data)
       -> OperationResult = 0;
-  [[nodiscard]] virtual auto deleteResult(VPackSlice data)
-      -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteResult() -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteAllResults() -> OperationResult = 0;
 };
 
 }  // namespace arangodb::pregel::statuswriter
