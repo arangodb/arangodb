@@ -830,7 +830,7 @@ class instance {
     }
     return ret;
   }
-  checkArangoConnection(count, overideVerbosity=false) {
+  checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
