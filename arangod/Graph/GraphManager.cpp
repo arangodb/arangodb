@@ -608,23 +608,26 @@ Result GraphManager::ensureCollections(
   auto leadingCollectionResult =
       graph.getLeadingCollection(documentCollectionsToCreate, satellites,
                                  anyExistingCollection, getLeaderName);
-  // NOTE: I would have loved to use auto [leadingCollection, pickedExisting] = above
-  // but compiler does not make real variables out them so i could not use them in the following lambdas.
+  // NOTE: I would have loved to use auto [leadingCollection, pickedExisting] =
+  // above but compiler does not make real variables out them so i could not use
+  // them in the following lambdas.
   auto leadingCollection = leadingCollectionResult.first;
-  auto pickedExisting =  leadingCollectionResult.second;
+  auto pickedExisting = leadingCollectionResult.second;
 
   // Validate if the existing collections can be used within this graph type.
 
   // document collections
   for (auto const& col : existentDocumentCollections) {
-    Result res = graph.validateCollection(*col, leadingCollection, getLeaderName);
+    Result res =
+        graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
   }
   // edge collections
   for (auto const& col : existentEdgeCollections) {
-    Result res = graph.validateCollection(*col, leadingCollection, getLeaderName);
+    Result res =
+        graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
@@ -685,7 +688,8 @@ Result GraphManager::ensureCollections(
       // We can only end up here if we have an existing collection
       TRI_ASSERT(anyExistingCollection != nullptr);
       TRI_ASSERT(pickedExisting);
-      graph.updateInitial({anyExistingCollection}, leadingCollection, getLeaderName);
+      graph.updateInitial({anyExistingCollection}, leadingCollection,
+                          getLeaderName);
     }
     return {};
   }
@@ -707,7 +711,8 @@ Result GraphManager::ensureCollections(
       graph.requiresInitialUpdate()) {
     if (pickedExisting) {
       // Take initial from the selected existing one
-      graph.updateInitial({anyExistingCollection}, leadingCollection, getLeaderName);
+      graph.updateInitial({anyExistingCollection}, leadingCollection,
+                          getLeaderName);
     } else {
       // Take the initial from freshly created collections
       graph.updateInitial(finalResult.get(), leadingCollection, getLeaderName);

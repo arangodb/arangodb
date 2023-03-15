@@ -387,8 +387,8 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
                              options);
     }
     // TODO: Check if this is now actually duplicate.
-    // The ensureAllCollections above fouls handle the validation, or should not be
-    // called if invalid, as it has side-effects.
+    // The ensureAllCollections above fouls handle the validation, or should not
+    // be called if invalid, as it has side-effects.
     CollectionNameResolver resolver(_vocbase);
     auto getLeaderName = [&](LogicalCollection const& col) -> std::string {
       auto const& distLike = col.distributeShardsLike();
@@ -402,7 +402,8 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return col.distributeShardsLike();
     };
 
-    auto [leading, unused] = _graph.getLeadingCollection({}, {}, nullptr, getLeaderName);
+    auto [leading, unused] =
+        _graph.getLeadingCollection({}, {}, nullptr, getLeaderName);
     res = _graph.validateCollection(*(def.get()), leading, getLeaderName);
     if (res.fail()) {
       return OperationResult{std::move(res), options};

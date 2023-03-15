@@ -745,9 +745,9 @@ void Graph::graphForClient(VPackBuilder& builder) const {
   builder.close();  // graph object
 }
 
-Result Graph::validateCollection(LogicalCollection const&,
-                                 std::optional<std::string> const&,
-                                 std::function<std::string(LogicalCollection const&)> const&) const {
+Result Graph::validateCollection(
+    LogicalCollection const&, std::optional<std::string> const&,
+    std::function<std::string(LogicalCollection const&)> const&) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -830,8 +830,7 @@ auto Graph::addSatellites(VPackSlice const&) -> Result {
 }
 
 auto Graph::prepareCreateCollectionBodyEdge(
-    std::string_view name,
-    std::optional<std::string> const& leadingCollection,
+    std::string_view name, std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
@@ -846,8 +845,7 @@ auto Graph::prepareCreateCollectionBodyEdge(
 }
 
 auto Graph::prepareCreateCollectionBodyVertex(
-    std::string_view name,
-    std::optional<std::string> const& leadingCollection,
+    std::string_view name, std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
@@ -877,10 +875,11 @@ auto Graph::injectShardingToCollectionBody(
   return {};
 }
 
-auto Graph::getLeadingCollection(std::unordered_set<std::string> const&,
-                                 std::unordered_set<std::string> const&,
-                                 std::shared_ptr<LogicalCollection> const&,
-                                 std::function<std::string(LogicalCollection const&)> const& getLeader)
+auto Graph::getLeadingCollection(
+    std::unordered_set<std::string> const&,
+    std::unordered_set<std::string> const&,
+    std::shared_ptr<LogicalCollection> const&,
+    std::function<std::string(LogicalCollection const&)> const& getLeader)
     const noexcept -> std::pair<std::optional<std::string>, bool> {
   // Community Graphs have no leading collection
   return std::make_pair(std::nullopt, false);

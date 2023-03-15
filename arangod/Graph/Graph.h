@@ -255,7 +255,8 @@ class Graph {
   virtual Result validateCollection(
       LogicalCollection const& col,
       std::optional<std::string> const& leadingCollection,
-      std::function<std::string(LogicalCollection const&)> const& getLeader) const;
+      std::function<std::string(LogicalCollection const&)> const& getLeader)
+      const;
   virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
@@ -308,7 +309,6 @@ class Graph {
       std::unordered_set<std::string> const& satellites) const noexcept
       -> ResultT<CreateCollectionBody>;
 
-
   /**
    *
    * @param documentCollectionsToCreate
@@ -330,7 +330,8 @@ class Graph {
   virtual auto updateInitial(
       std::vector<std::shared_ptr<LogicalCollection>> const&,
       std::optional<std::string> const& leadingCollection,
-      std::function<std::string(LogicalCollection const&)> const& getLeader) -> void;
+      std::function<std::string(LogicalCollection const&)> const& getLeader)
+      -> void;
 
  protected:
   virtual auto injectShardingToCollectionBody(
