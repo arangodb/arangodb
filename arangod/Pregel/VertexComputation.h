@@ -27,8 +27,8 @@
 #include <cstddef>
 #include "Basics/Common.h"
 #include "Pregel/GraphStore/Graph.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/WorkerContext.h"

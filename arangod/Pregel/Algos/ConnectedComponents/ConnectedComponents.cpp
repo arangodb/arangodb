@@ -25,7 +25,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerContext.h"
