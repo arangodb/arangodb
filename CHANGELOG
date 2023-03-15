@@ -4,6 +4,9 @@ devel
 * Ran automated migrations on all .scss files to remove deprecated division
   operator usage.
 
+* Added support for sending gzip-compressed responses from the server.
+  Previously only deflated responses were supported.
+
 * Stabilized resilience tests. The assumption that an AQL query can run
   without error directly after a leader has been stopped, is wrong.
 
