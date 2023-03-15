@@ -209,8 +209,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto invalidMessage = message::ConductorStart{};
     auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -230,8 +229,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
         .server = "UnknownServerX", .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(unknownActorPid, message::WorkerCreated{});
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -252,7 +250,6 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
     auto errorMessage = arangodb::ResultT<message::WorkerCreated>(
         TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
