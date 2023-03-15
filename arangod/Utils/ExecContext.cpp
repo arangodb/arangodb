@@ -150,6 +150,8 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     } else if (coll == StaticStrings::QueuesCollection) {
       // _queues
       return auth::Level::RO;
+    } else if (coll == StaticStrings::PregelCollection) {
+      return auth::Level::RW;
     } else if (coll == StaticStrings::FrontendCollection) {
       // _frontend
       return auth::Level::RW;

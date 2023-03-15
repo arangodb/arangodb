@@ -34,6 +34,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/Aggregator.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/Worker/Messages.h"
@@ -88,11 +89,12 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   MUTEX_LOCKER(guard, _commandMutex);
 
-  _workerContext.reset(algo->workerContext(parameters.userParameters.slice()));
+  _workerContext.reset(
+      algo->workerContext(std::make_unique<AggregatorHandler>(algo),
+                          std::make_unique<AggregatorHandler>(algo),
+                          parameters.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
-  _workerAggregators = std::make_unique<AggregatorHandler>(algo);
   _graphStore = std::make_unique<GraphStore<V, E>>(
       _feature, vocbase, _config->executionNumber(), _algorithm->inputFormat());
 
@@ -227,8 +229,6 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
 
   // initialize worker context
   if (_workerContext && gss == 0 && _config->localSuperstep() == 0) {
-    _workerContext->_readAggregators = _conductorAggregators.get();
-    _workerContext->_writeAggregators = _workerAggregators.get();
     _workerContext->_vertexCount = data.vertexCount;
     _workerContext->_edgeCount = data.edgeCount;
     _workerContext->preApplication();
@@ -253,7 +253,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   VPackBuilder aggregators;
   {
     VPackObjectBuilder ob(&aggregators);
-    _workerAggregators->serializeValues(aggregators);
+    _workerContext->_writeAggregators->serializeValues(aggregators);
   }
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
@@ -295,8 +295,9 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
   }
   LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
-  _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data.aggregators.slice());
+  _workerContext->_writeAggregators->resetValues();
+  _workerContext->_readAggregators->setAggregatedValues(
+      data.aggregators.slice());
   // execute context
   if (_workerContext) {
     _workerContext->_vertexCount = data.vertexCount;
@@ -346,7 +347,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
   ctx->_graphStore = _graphStore.get();
-  ctx->_readAggregators = _conductorAggregators.get();
+  ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
 // internally called in a WORKER THREAD!!
@@ -418,7 +419,7 @@ bool Worker<V, E, M>::_processVertices() {
 
   {
     // merge the thread local stats and aggregators
-    _workerAggregators->aggregateValues(workerAggregator);
+    _workerContext->_writeAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);

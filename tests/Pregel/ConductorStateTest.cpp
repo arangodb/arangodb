@@ -21,9 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Actor/ActorPID.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/PregelOptions.h"
-#include "Pregel/Conductor/ExecutionStates/CreateWorkers.h"
+#include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
 
 #include "Basics/ResultT.h"
 
@@ -70,15 +72,48 @@ struct LookupInfoMock : conductor::CollectionLookup {
   std::vector<std::string> _servers;
 };
 
+struct AlgorithmFake : IAlgorithm {
+  ~AlgorithmFake() = default;
+  AlgorithmFake() = default;
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override {
+    return nullptr;
+  }
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override {
+    return nullptr;
+  }
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const -> WorkerContext* override {
+    return nullptr;
+  }
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override {
+    return nullptr;
+  }
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "fake";
+  };
+};
+
 TEST(ConductorStateTest,
      must_always_be_initialized_with_initial_execution_state) {
   auto fakeActorPID = actor::ActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> emptyServers{};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(emptyServers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(emptyServers), std::move(fakeActorPID));
   ASSERT_EQ(cState.executionState->name(), "initial");
 }
 
@@ -89,9 +124,9 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
   std::vector<std::vector<std::string>> amountOfServers = {
       {}, {"ServerA"}, {"ServerA", "ServerB"}};
   for (auto const& servers : amountOfServers) {
-    auto cState = ConductorState(ExecutionSpecifications(),
-                                 std::make_unique<LookupInfoMock>(servers),
-                                 std::move(fakeActorPID));
+    auto cState = ConductorState(
+        std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+        std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
     auto createWorkersState = CreateWorkers(cState);
     auto msgs = createWorkersState.messages();
     ASSERT_EQ(msgs.size(), servers.size());
@@ -107,9 +142,9 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -140,9 +175,9 @@ TEST(CreateWorkersStateTest,
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
   ASSERT_EQ(msgs.size(), servers.size());
@@ -176,9 +211,9 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -187,8 +222,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto invalidMessage = message::ConductorStart{};
     auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -197,9 +231,9 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -208,8 +242,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
         .server = "UnknownServerX", .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(unknownActorPid, message::WorkerCreated{});
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -218,9 +251,9 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
-  auto cState = ConductorState(ExecutionSpecifications(),
-                               std::make_unique<LookupInfoMock>(servers),
-                               std::move(fakeActorPID));
+  auto cState = ConductorState(
+      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
+      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -230,7 +263,6 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
     auto errorMessage = arangodb::ResultT<message::WorkerCreated>(
         TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }

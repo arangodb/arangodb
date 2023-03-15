@@ -99,13 +99,14 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
                       std::string const& documentId,
                       arangodb::velocypack::Slice /*document*/,
                       int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      uint64_t& /*vertexIdRange*/) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
 
-GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() const {
-  return new SSSPGraphFormat(_sourceDocumentId, _resultField);
+std::shared_ptr<GraphFormat<int64_t, int64_t> const>
+SSSPAlgorithm::inputFormat() const {
+  return std::make_shared<SSSPGraphFormat>(_sourceDocumentId, _resultField);
 }
 
 struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
@@ -123,6 +124,27 @@ VertexCompensation<int64_t, int64_t, int64_t>*
 SSSPAlgorithm::createCompensation(
     std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPCompensation();
+}
+
+struct SSSPWorkerContext : public WorkerContext {
+  SSSPWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto SSSPAlgorithm::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new SSSPWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto SSSPAlgorithm::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<SSSPWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
 }
 
 struct SSSPMasterContext : public MasterContext {

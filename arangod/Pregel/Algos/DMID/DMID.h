@@ -56,11 +56,24 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
     return "DMID";
   };
 
-  GraphFormat<DMIDValue, float>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<DMIDValue, float> const> inputFormat()
+      const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override;
 
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

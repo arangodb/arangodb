@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
+#include "Basics/StaticStrings.h"
 
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 
