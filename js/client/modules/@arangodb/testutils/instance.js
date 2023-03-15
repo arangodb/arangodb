@@ -840,7 +840,7 @@ class instance {
         arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
         return;
       } catch (e) {
-        if(this.options.extremeVerbosity || overideVerbosity) {
+        if (this.options.extremeVerbosity || overrideVerbosity) {
           print(`no... ${e.message}`);
         }
         sleep(0.5);
