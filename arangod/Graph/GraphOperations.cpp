@@ -395,8 +395,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       if (distLike.empty()) {
         return col.name();
       }
-      return resolver.getCollectionNameCluster(
-          DataSourceId{basics::StringUtils::uint64(distLike)});
+      if (ServerState::instance()->isRunningInCluster()) {
+        return resolver.getCollectionNameCluster(
+            DataSourceId{basics::StringUtils::uint64(distLike)});
+      }
+      return col.distributeShardsLike();
     };
 
     auto [leading, unused] = _graph.getLeadingCollection({}, {}, nullptr, getLeaderName);
