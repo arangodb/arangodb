@@ -84,7 +84,7 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options->addOption("--telemetrics.send-to-endpoint",
                      "Send telemetrics to endpoint",
                      new BooleanParameter(&_sendToEndpoint));
@@ -157,12 +157,16 @@ void ShellFeature::start() {
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
         startTelemetrics();
+#endif
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
         startTelemetrics();
+#endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -205,6 +209,13 @@ void ShellFeature::beginShutdown() {
   }
 }
 
+void ShellFeature::sendTelemetricsToEndpointTestRedirect(
+    VPackBuilder& builder) {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->sendTelemetricsToEndpointTestRedirect(builder);
+  }
+}
+
 void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
   if (_telemetricsHandler != nullptr) {
     _telemetricsHandler->getTelemetricsInfo(builder);
@@ -212,7 +223,10 @@ void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
 }
 
 void ShellFeature::startTelemetrics() {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler.reset(nullptr);
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _telemetricsHandler =
       std::make_unique<TelemetricsHandler>(server(), _sendToEndpoint);
 #else

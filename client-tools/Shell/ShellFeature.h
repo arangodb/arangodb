@@ -51,6 +51,7 @@ class ShellFeature final : public ArangoshFeature {
   void start() override;
   void beginShutdown() override;
   void getTelemetricsInfo(velocypack::Builder& builder);
+  void sendTelemetricsToEndpointTestRedirect(velocypack::Builder& builder);
 
   void setExitCode(int code) { *_result = code; }
 
@@ -82,7 +83,7 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _scriptParameters;
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
-  bool _sendToEndpoint{true};
+  bool _sendToEndpoint{false};
 };
 
 }  // namespace arangodb

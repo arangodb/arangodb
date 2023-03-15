@@ -68,11 +68,12 @@ RestStatus RestTelemetricsHandler::execute() {
   }
 
   VPackBuilder result;
-  bool isLocal = _request->parsedValue("local", false);
 
+  bool isLocal = _request->parsedValue("local", false);
   SupportInfoBuilder::buildInfoMessage(result, _request->databaseName(),
                                        _server, isLocal, true);
-
   generateResult(rest::ResponseCode::OK, result.slice());
+  _response->setHeader(StaticStrings::Location, _request->requestPath());
+
   return RestStatus::DONE;
 }

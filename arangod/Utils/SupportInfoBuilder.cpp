@@ -129,7 +129,8 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
       }
 
       for (auto const collIt : velocypack::ArrayIterator(dbIt.get("colls"))) {
-        size_t planId = collIt.get("plan_id").getUInt();
+        //  size_t planId = collIt.get("plan_id").getUInt();
+        size_t planId = collIt.get("plan_id").getNumber<decltype(planId)>();
 
         std::string_view collName = collIt.get("name").stringView();
         if (auto const visitedCollIt = visitedColls.find(planId);
@@ -147,12 +148,12 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
             visitedDatabases[dbName].numDocColls++;
           } else if (collType == "edge") {
             visitedDatabases[dbName].numGraphColls++;
-            if (collIt.get("smart_graph").getBoolean()) {
-              visitedDatabases[dbName].numSmartColls++;
-            }
-            if (collIt.get("disjoint").getBoolean()) {
-              visitedDatabases[dbName].numDisjointGraphs++;
-            }
+          }
+          if (collIt.get("smart_graph").getBoolean()) {
+            visitedDatabases[dbName].numSmartColls++;
+          }
+          if (collIt.get("disjoint").getBoolean()) {
+            visitedDatabases[dbName].numDisjointGraphs++;
           }
           visitedColls[planId].insert(collName);
         }
@@ -273,7 +274,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   } else {
     // cluster or active failover
     if (fanout) {
-      // cluster coordinator or active failover case, fan out to other servers!
       result.add("deployment", VPackValue(VPackValueType::Object));
       if (isTelemetricsReq) {
 #ifdef USE_ENTERPRISE
@@ -310,9 +310,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         result.add(hostInfo.slice());
       } else {
         result.add("servers", VPackValue(VPackValueType::Object));
-        //  result.openObject();
         result.add(serverId, hostInfo.slice());
-        //   result.close();
       }
 
       // now all other servers
@@ -379,9 +377,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
               if (isTelemetricsReq) {
                 result.add(slice.get("host"));
               } else {
-                //    result.openObject();
                 result.add(hostId, slice.get("host"));
-                //    result.close();
               }
               if (isTelemetricsReq) {
                 auto const databasesSlice = slice.get("databases");
@@ -714,8 +710,15 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 uint64_t cacheSize = 0;
                 uint64_t cacheUsage = 0;
                 if (cacheInUse) {
+                  memUsage = figures.getNumber<decltype(memUsage)>();
+                  /*
                   cacheSize = figures.get("cache_size").getUInt();
                   cacheUsage = figures.get("cache_usage").getUInt();
+                   */
+                  cacheSize = figures.get("cache_size")
+                                  .getNumber<decltype(cacheSize)>();
+                  cacheUsage = figures.get("cache_size")
+                                   .getNumber<decltype(cacheUsage)>();
                 }
                 result.add("cache_size", VPackValue(cacheSize));
                 result.add("cache_usage", VPackValue(cacheUsage));

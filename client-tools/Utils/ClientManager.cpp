@@ -122,8 +122,6 @@ Result ClientManager::getConnectedClient(
           << "Could not connect to endpoint '" << _client.endpoint()
           << "', database: '" << dbName << "', username: '"
           << _client.username() << "'";
-      LOG_TOPIC("b1ad6", ERR, _topic)
-          << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
     return {errorCode};
   }

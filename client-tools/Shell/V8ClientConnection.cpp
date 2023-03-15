@@ -1078,6 +1078,38 @@ static void ClientConnection_restartTelemetrics(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "sendTelemetricsToEndpointTestRedirect"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_sendTelemetricsToEndpointTestRedirect(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "sendTelemetricsToEndpointTestRedirect() must be invoked on an arango "
+        "connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  VPackBuilder builder;
+  shellFeature.sendTelemetricsToEndpointTestRedirect(builder);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "getTelemetricsInfo"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2725,6 +2757,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "restartTelemetrics",
       v8::FunctionTemplate::New(isolate, ClientConnection_restartTelemetrics));
+  connection_proto->Set(
+      isolate, "sendTelemetricsToEndpointTestRedirect",
+      v8::FunctionTemplate::New(
+          isolate, ClientConnection_sendTelemetricsToEndpointTestRedirect));
 #endif
 
   connection_proto->Set(isolate, "getEndpoint",

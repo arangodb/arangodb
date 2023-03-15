@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <cstdint>
 #include <string>
-
+#include <tuple>
 #include <v8.h>
 
 #include "Basics/ErrorCode.h"
@@ -34,6 +34,14 @@
 namespace arangodb {
 class Result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads data from a URL
+////////////////////////////////////////////////////////////////////////////////
+std::tuple<std::string, std::string, std::string> getEndpoint(
+    v8::Isolate* isolate, std::vector<std::string> const& endpoints,
+    std::string& url, std::string& lastEndpoint);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////

@@ -51,13 +51,14 @@ class TelemetricsHandler {
 
   void getTelemetricsInfo(VPackBuilder& builder);
 
+  void sendTelemetricsToEndpointTestRedirect(VPackBuilder& builder);
+
  private:
-  arangodb::Result checkHttpResponse(
+  Result checkHttpResponse(
       std::unique_ptr<httpclient::SimpleHttpResult> const& response,
       bool storeResult);
   void fetchTelemetricsFromServer();
   void sendTelemetricsToEndpoint();
-  void sendTelemetricsToEndpointCompressed();
   void arrangeTelemetrics();
 
   ArangoshServer& _server;

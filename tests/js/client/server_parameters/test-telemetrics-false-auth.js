@@ -62,6 +62,7 @@ function telemetricsOnShellTestsuite() {
 
     testTelemetricsShellRequestByUserNotEnabled: function () {
       try {
+        arango.startTelemetrics();
         const res = getTelemetricsResult();
         assertTrue(res.hasOwnProperty("errorNum"));
         assertTrue(res.hasOwnProperty("errorMessage"));
@@ -79,6 +80,7 @@ function telemetricsApiUsageTestsuite() {
   return {
 
     testTelemetricsApiRequestByUserNotEnabled: function () {
+      arango.startTelemetrics();
       const res = arango.GET("/_admin/telemetrics");
       assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertTrue(res.errorMessage.includes("telemetrics is disabled"));

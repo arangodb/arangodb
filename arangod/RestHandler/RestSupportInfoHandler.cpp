@@ -68,9 +68,9 @@ RestStatus RestSupportInfoHandler::execute() {
   }
 
   VPackBuilder result;
+  bool isLocal = _request->parsedValue("local", false);
   SupportInfoBuilder::buildInfoMessage(result, _request->databaseName(),
-                                       _server,
-                                       _request->parsedValue("local", false));
+                                       _server, isLocal, false);
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
