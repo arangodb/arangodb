@@ -46,7 +46,7 @@ function runSetup () {
   analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
   var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
   var i2 = c.ensureIndex({ type: "inverted", name: "i2", includeAllFields:true, analyzer: "calcAnalyzer", fields: [ "a", "b", "c" ] });
-  var i3 = c.ensureIndex({ type: "inverted", name: "i3", includeAllFields:true });
+  var i3 = c.ensureIndex({ type: "inverted", name: "i3", fields: ["_id"], includeAllFields:true });
 
   var meta1 = { indexes: [ { index: i1.name, collection: c.name() } ] };
   var meta2 = { indexes: [ { index: i2.name, collection: c.name() } ] };
@@ -110,6 +110,8 @@ function recoverySuite () {
           assertEqual("b", fieldB.name);
           let fieldC = fields.find(f => f.name === "c");
           assertEqual("c", fieldC.name);
+        } else if (indexName === "i3") {
+          assertEqual(1, fields.length);
         } else {
           assertEqual(0, fields.length);
         }
@@ -125,7 +127,7 @@ function recoverySuite () {
       let queries = [
         "FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
         "FOR doc IN UnitTestsRecoveryView2 SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
-        "FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
+        "FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') COLLECT WITH COUNT INTO length RETURN length",
         "FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 OPTIONS {waitForSync:true} COLLECT WITH COUNT INTO length RETURN length",
         "FOR doc IN UnitTestsRecoveryView5 SEARCH doc.c >= 0 || STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') COLLECT WITH COUNT INTO length RETURN length"
       ];

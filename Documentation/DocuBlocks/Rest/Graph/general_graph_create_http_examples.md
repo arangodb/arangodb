@@ -42,10 +42,10 @@ Every vertex in this SmartGraph has to have this attribute.
 Cannot be modified later.
 
 @RESTSTRUCT{satellites,post_api_gharial_create_opts,array,optional,string}
-An array of collection names that will be used to create SatelliteCollections
-for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
-must be a string and a valid collection name. The collection type cannot be
-modified later.
+An array of collection names that is used to create SatelliteCollections
+for a (Disjoint) SmartGraph using SatelliteCollections (Enterprise Edition only).
+Each array element must be a string and a valid collection name.
+The collection type cannot be modified later.
 
 @RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
 The number of shards that is used for every collection within this graph.
@@ -60,7 +60,7 @@ Can be set to `"satellite"` to create a SatelliteGraph, which will ignore
 @RESTSTRUCT{writeConcern,post_api_gharial_create_opts,integer,optional,}
 Write concern for new collections in the graph.
 It determines how many copies of each shard are required to be
-in sync on the different DB-Servers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less than these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_

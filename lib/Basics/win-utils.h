@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,3 +133,9 @@ bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length);
 
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
+
+namespace arangodb::basics {
+std::wstring toWString(std::string const& validUTF8String);
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
+std::string fromWString(std::wstring const& validUTF16String);
+}  // namespace arangodb::basics

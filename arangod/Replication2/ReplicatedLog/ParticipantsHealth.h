@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -70,6 +71,10 @@ struct ParticipantsHealth {
       }
     }
     return n;
+  }
+
+  auto update(ParticipantId const& p, RebootId id, bool live) {
+    _health.emplace(p, ParticipantHealth{id, live});
   }
 
   friend auto operator==(ParticipantsHealth const& s,

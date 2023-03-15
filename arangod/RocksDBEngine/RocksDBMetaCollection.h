@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,8 @@ class RevisionReplicationIterator;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 arangodb::velocypack::Slice const& info);
+                                 velocypack::Slice info);
   virtual ~RocksDBMetaCollection() = default;
-
-  std::string const& path() const override final;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override final;

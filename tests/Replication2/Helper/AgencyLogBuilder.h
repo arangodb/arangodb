@@ -23,11 +23,8 @@
 #pragma once
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 
 namespace RLA = arangodb::replication2::agency;
-namespace RSA = arangodb::replication2::replicated_state::agency;
 
 namespace arangodb::test {
 
@@ -134,6 +131,30 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setSnapshotTrue(replication2::ParticipantId const& id)
+      -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    current.localState[id].snapshotAvailable = true;
+    return *this;
+  }
+
+  auto allSnapshotsTrue() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.snapshotAvailable = true;
+    }
+    return *this;
+  }
+
+  auto allStatesReady() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.state =
+          replication2::replicated_log::LocalStateMachineStatus::kOperational;
+    }
+    return *this;
+  }
+
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();
@@ -148,6 +169,18 @@ struct AgencyLogBuilder {
       }
     }
     return _log.current.value();
+  }
+
+  auto setPlanConfigGeneration(std::size_t generation) {
+    auto& plan = makePlan();
+    plan.participantsConfig.generation = generation;
+  }
+
+  auto commitCurrentParticipantsConfig() {
+    auto& plan = makePlan();
+    auto& current = makeCurrent();
+    establishLeadership();
+    current.leader->committedParticipantsConfig = plan.participantsConfig;
   }
 
   auto get() const noexcept -> RLA::Log const& { return _log; }

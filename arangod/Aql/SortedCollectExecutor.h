@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +58,7 @@ class SortedCollectExecutorInfos {
       RegisterId collectRegister, RegisterId expressionRegister,
       Variable const* expressionVariable,
       std::vector<std::string> aggregateTypes,
-      std::vector<std::pair<std::string, RegisterId>>&& variables,
+      std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       velocypack::Options const*);
 
@@ -83,7 +83,7 @@ class SortedCollectExecutorInfos {
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
     return _expressionRegister;
-  };
+  }
   Variable const* getExpressionVariable() const { return _expressionVariable; }
 
   std::vector<std::pair<std::string, RegisterId>> const& getInputVariables()

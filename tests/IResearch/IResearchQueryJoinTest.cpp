@@ -22,11 +22,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-
-#include "Aql/OptimizerRule.h"
+#include <absl/strings/str_replace.h>
 
 #include <regex>
+
+#include "Aql/OptimizerRule.h"
+#include "IResearchQueryCommon.h"
 
 namespace arangodb::tests {
 namespace {
@@ -234,7 +235,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -257,7 +258,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -333,7 +334,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -360,7 +361,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -452,7 +453,7 @@ class QueryJoin : public QueryTest {
       EXPECT_TRUE(result.isArray());
 
       velocypack::ArrayIterator resultIt(result);
-      ASSERT_EQ(10000, resultIt.size());
+      ASSERT_EQ(10000U, resultIt.size());
 
       // Check documents
       for (; resultIt.valid(); resultIt.next()) {

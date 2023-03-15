@@ -144,8 +144,10 @@ class AllShortestPathsFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> AllShortestPathsFinder {
-    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    options.setStopAtFirstDepth(true);
+    arangodb::graph::PathType::Type pathType =
+        arangodb::graph::PathType::Type::AllShortestPaths;
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       pathType};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return AllShortestPathsFinder{
         MockGraphProvider(
@@ -283,7 +285,7 @@ TEST_P(AllShortestPathsFinderTest, no_path_exists) {
   }
   {
     aql::TraversalStats stats = finder.stealStats();
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
   }
 }
 
@@ -367,7 +369,7 @@ TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 11);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -407,7 +409,7 @@ TEST_P(AllShortestPathsFinderTest, hexagon_path) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 4);
+    EXPECT_EQ(stats.getScannedIndex(), 4U);
   }
 }
 
@@ -447,7 +449,7 @@ TEST_P(AllShortestPathsFinderTest, binary_tree) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 11);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -487,7 +489,7 @@ TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 7);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 }
 
@@ -579,7 +581,7 @@ TEST_P(AllShortestPathsFinderTest, grid_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 42);
+    EXPECT_EQ(stats.getScannedIndex(), 42U);
   }
 }
 
@@ -629,7 +631,7 @@ TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 6);
+    EXPECT_EQ(stats.getScannedIndex(), 6U);
   }
 }
 

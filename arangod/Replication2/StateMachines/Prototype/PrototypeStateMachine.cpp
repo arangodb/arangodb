@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +50,8 @@ auto PrototypeFactory::constructLeader(std::unique_ptr<PrototypeCore> core)
   return std::make_shared<PrototypeLeaderState>(std::move(core));
 }
 
-auto PrototypeFactory::constructCore(GlobalLogIdentifier const& gid)
+auto PrototypeFactory::constructCore(TRI_vocbase_t& vocbase,
+                                     GlobalLogIdentifier const& gid)
     -> std::unique_ptr<PrototypeCore> {
   LoggerContext const logContext =
       LoggerContext(Logger::REPLICATED_STATE).with<logContextKeyLogId>(gid.id);

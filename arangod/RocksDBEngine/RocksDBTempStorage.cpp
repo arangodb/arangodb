@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <rocksdb/cache.h>
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 #include <rocksdb/env.h>
@@ -192,9 +193,6 @@ Result RocksDBTempStorage::init() {
     options.compression_per_level[level] =
         (level >= 2 ? rocksdb::kLZ4Compression : rocksdb::kNoCompression);
   }
-
-  // try to avoid having a WAL as much as possible
-  options.manual_wal_flush = true;
 
   // speed up write performance at the expense of snapshot consistency.
   // this implies that we cannot use snapshots in this instance to get

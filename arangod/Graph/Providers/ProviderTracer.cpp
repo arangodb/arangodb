@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,6 +133,16 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(
     _stats["addEdgeToBuilder"].addTiming(TRI_microtime() - start);
   });
   return _impl.addEdgeToBuilder(edge, builder);
+}
+
+template<class ProviderImpl>
+EdgeDocumentToken ProviderTracer<ProviderImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getEdgeDocumentToken"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getEdgeDocumentToken(edge);
 }
 
 template<class ProviderImpl>

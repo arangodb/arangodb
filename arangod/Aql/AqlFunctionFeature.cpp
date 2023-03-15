@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -190,6 +190,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
   add({"SHA1", ".", flags, &functions::Sha1});
+  add({"SHA256", ".", flags, &functions::Sha256});
   add({"SHA512", ".", flags, &functions::Sha512});
   add({"CRC32", ".", flags, &functions::Crc32});
   add({"FNV64", ".", flags, &functions::Fnv64});
@@ -504,12 +505,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &functions::SchemaValidate});
-
-  // Call AIR. not usable in analyzers
-  add({"CALL_GREENSPUN", ".|+",
-       Function::makeFlags(FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::CallGreenspun});
 
   // special flags:
   // deterministic, not cacheable. only on coordinator. not in analyzers

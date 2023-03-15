@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,6 +95,9 @@ class Expression {
 
   /// @brief whether or not the expression will use V8
   bool willUseV8();
+
+  /// @brief whether or not the expression can be used inside a PRUNE statement
+  bool canBeUsedInPrune(bool isOneShard, std::string& errorReason);
 
   /// @brief clone the expression, needed to clone execution plans
   std::unique_ptr<Expression> clone(Ast* ast, bool deepCopy = false);

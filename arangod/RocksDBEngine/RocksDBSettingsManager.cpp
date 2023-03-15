@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -39,7 +40,6 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -160,12 +160,11 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     for (auto const& pair : mappings) {
       TRI_voc_tick_t dbid = pair.first;
       DataSourceId cid = pair.second;
-      TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
+      auto vocbase = dbfeature.useDatabase(dbid);
       if (!vocbase) {
         continue;
       }
       TRI_ASSERT(!vocbase->isDangling());
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       std::shared_ptr<LogicalCollection> coll;
       try {
@@ -176,14 +175,19 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       // Collections which are marked as isAStub are not allowed to have
       // physicalCollections. Therefore, we cannot continue serializing in that
       // case.
-      if (!coll || coll->isAStub()) {
+      if (!coll) {
         continue;
       }
       auto sg2 = arangodb::scopeGuard(
           [&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
+      if (coll->isAStub()) {
+        continue;
+      }
+
       LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
-          << "syncing metadata for collection '" << coll->name() << "'";
+          << "syncing metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr;
 
       // clear our scratch buffers for this round
       _scratch.clear();
@@ -206,9 +210,23 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
       if (res.fail()) {
         LOG_TOPIC("afa17", WARN, Logger::ENGINES)
-            << "could not sync metadata for collection '" << coll->name()
-            << "'";
+            << "could not sync metadata for collection '" << vocbase->name()
+            << "/" << coll->name() << "'";
         return res;
+      }
+
+      // always log in TRACE mode
+      LOG_TOPIC("1d419", TRACE, Logger::ENGINES)
+          << "synced metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr
+          << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
+
+      if (appliedSeq < minSeqNr) {
+        // in DEBUG mode only log _relevant_ information
+        LOG_TOPIC("31dc8", DEBUG, Logger::ENGINES)
+            << "synced metadata for collection '" << vocbase->name() << "/"
+            << coll->name() << "', maxSeqNr: " << maxSeqNr
+            << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
       }
 
       minSeqNr = std::min(minSeqNr, appliedSeq);

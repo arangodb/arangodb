@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,22 +24,12 @@
 #include "EnumeratePathsExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/KShortestPathsFinder.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
-#include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Transaction/Helpers.h"
 
@@ -61,31 +51,6 @@ static bool isValidId(VPackSlice id) {
   }
   TRI_ASSERT(id.isString());
   return id.stringView().find('/') != std::string_view::npos;
-}
-
-template<class FinderType>
-constexpr auto isNewStyleFinder() {
-  return std::is_same_v<
-             FinderType,
-             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                        SingleServerProviderStep>>> ||
-         std::is_same_v<
-             FinderType,
-             KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-         std::is_same_v<
-             FinderType,
-             TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-         std::is_same_v<FinderType,
-                        AllShortestPathsEnumerator<
-                            SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType,
-                        TracedAllShortestPathsEnumerator<
-                            SingleServerProvider<SingleServerProviderStep>>> ||
-         std::is_same_v<FinderType, AllShortestPathsEnumerator<ClusterProvider<
-                                        ClusterProviderStep>>> ||
-         std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
-                                        ClusterProvider<ClusterProviderStep>>>;
 }
 }  // namespace
 
@@ -168,17 +133,6 @@ template<class FinderType>
 auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
     -> EnumeratePathsExecutorInfos<FinderType>::InputVertex {
   return _target;
-}
-
-template<class FinderType>
-auto EnumeratePathsExecutorInfos<FinderType>::cache() const
-    -> graph::TraverserCache* {
-  if constexpr (isNewStyleFinder<FinderType>()) {
-    TRI_ASSERT(false);
-    return nullptr;
-  } else {
-    return _finder->options().cache();
-  }
 }
 
 template<class FinderType>
@@ -279,13 +233,9 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-        return _finder.startKShortestPathsTraversal(source, target);
-      } else {
-        _finder.reset(arangodb::velocypack::HashedStringRef(source),
-                      arangodb::velocypack::HashedStringRef(target));
-        return true;
-      }
+      _finder.reset(arangodb::velocypack::HashedStringRef(source),
+                    arangodb::velocypack::HashedStringRef(target));
+      return true;
     }
   }
   return false;
@@ -297,14 +247,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
 
-  bool nextPath;
-  if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-    nextPath = _finder.getNextPathAql(*tmp.builder());
-  } else {
-    nextPath = _finder.getNextPath(*tmp.builder());
-  }
-
-  if (nextPath) {
+  if (_finder.getNextPath(*tmp.builder())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
@@ -322,19 +265,14 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
       AqlValue const& in = row.getValue(vertex.reg);
       if (in.isObject()) {
         try {
-          std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and
           // check then here
-          if constexpr (isNewStyleFinder<FinderType>()) {
-            idString = _trx.extractIdString(in.slice());
-          } else {
-            idString = _finder.options().trx()->extractIdString(in.slice());
-          }
+          std::string idString = _trx.extractIdString(in.slice());
 
           builder.clear();
           builder.add(VPackValue(idString));
           id = builder.slice();
-          // Guranteed by extractIdValue
+          // Guaranteed by extractIdValue
           TRI_ASSERT(::isValidId(id));
         } catch (...) {
           // _id or _key not present... ignore this error and fall through
@@ -382,13 +320,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template<class FinderType>
 [[nodiscard]] auto EnumeratePathsExecutor<FinderType>::stats() -> Stats {
-  if constexpr (std::is_same_v<FinderType,
-                               arangodb::graph::KShortestPathsFinder>) {
-    // No Stats available on original variant
-    return TraversalStats{};
-  } else {
-    return _finder.stealStats();
-  }
+  return _finder.stealStats();
 }
 
 /* SingleServerProvider Section */
@@ -400,20 +332,20 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<SingleServer>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     KPathEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//    TracedKPathEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    WeightedKShortestPathsEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<SingleServer>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//    KPathEnumerator<SingleServer>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//    TracedKPathEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    WeightedKShortestPathsEnumerator<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
 /* ClusterProvider Section */
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
@@ -421,24 +353,19 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-//    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedWeightedKShortestPathsEnumerator<
+        ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-// template class ::arangodb::aql::EnumeratePathsExecutor<
-//     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-
-/* Fallback Section - Can be removed completely after refactor is done */
-
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    arangodb::graph::KShortestPathsFinder>;
+    WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedWeightedKShortestPathsEnumerator<
+        ClusterProvider<ClusterProviderStep>>>;

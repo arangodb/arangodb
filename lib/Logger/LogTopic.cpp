@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,9 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include "LogTopic.h"
 
@@ -140,8 +142,8 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
-LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::DEBUG);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);

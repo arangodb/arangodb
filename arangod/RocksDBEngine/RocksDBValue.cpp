@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,10 +42,6 @@ RocksDBValue RocksDBValue::Database(VPackSlice data) {
 
 RocksDBValue RocksDBValue::Collection(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
-}
-
-RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice data) {
-  return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
 RocksDBValue RocksDBValue::ReplicatedState(VPackSlice data) {
@@ -251,7 +247,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
 
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::ReplicatedLog:
+    case RocksDBEntryType::ReplicatedState:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {

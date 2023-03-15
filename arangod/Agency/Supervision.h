@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,9 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
+namespace replication2::replicated_log {
+struct ParticipantsHealth;
+}
 
 namespace consensus {
 
@@ -59,7 +62,8 @@ struct check_t {
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
 void enforceReplicationFunctional(Node const& snapshot, uint64_t& jobId,
-                                  std::shared_ptr<VPackBuilder> envelope);
+                                  std::shared_ptr<VPackBuilder> envelope,
+                                  uint64_t delayAddFollower = 0);
 
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
@@ -115,12 +119,15 @@ class Supervision : public arangodb::Thread {
    * @param  del       Agency transaction builder
    * @param  todelete  List of servers to be removed
    */
-  static void removeTransactionBuilder(
-      velocypack::Builder& del, std::vector<std::string> const& todelete);
+  static void buildRemoveTransaction(velocypack::Builder& del,
+                                     std::vector<std::string> const& todelete);
 
   static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
   static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
   static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
+  // should never be stored in the agency. only used internally to return an
+  // unclear health status
+  static constexpr std::string_view HEALTH_STATUS_UNCLEAR = "UNCLEAR";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 
@@ -129,7 +136,7 @@ class Supervision : public arangodb::Thread {
   }
 
   static std::string serverHealthFunctional(Node const& snapshot,
-                                            std::string const&);
+                                            std::string_view);
 
   static bool verifyServerRebootID(Node const& snapshot,
                                    std::string const& serverID,
@@ -164,6 +171,14 @@ class Supervision : public arangodb::Thread {
 
   void setGracePeriod(double d) noexcept { _gracePeriod = d; }
 
+  void setDelayAddFollower(uint64_t d) noexcept { _delayAddFollower = d; }
+
+  void setDelayFailedFollower(uint64_t d) noexcept { _delayFailedFollower = d; }
+
+  void setFailedLeaderAddsFollower(bool b) noexcept {
+    _failedLeaderAddsFollower = b;
+  }
+
   /// @brief notifies the supervision and triggers a new run
   void notify() noexcept;
 
@@ -192,6 +207,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
+  /// @brief Check undo-leader-change-actions
+  void checkUndoLeaderChangeActions();
+
   /// @brief Check for orphaned index creations, which have been successfully
   /// built
   void readyOrphanedIndexCreations();
@@ -209,14 +227,11 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedLogs();
 
-  /// @brief Check replicated logs
-  void checkReplicatedStates();
+  /// @brief Check collection groups
+  void checkCollectionGroups();
 
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
-
-  /// @brief Clean up replicated states
-  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
@@ -239,20 +254,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
-  /// @brief Move shard from one db server to other db server
-  bool moveShard(std::string const& from, std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool replicateShard(std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool removeShard(std::string const& from);
-
   /// @brief Check machines in agency
   std::vector<check_t> check(std::string const&);
-
-  // @brief Check shards in agency
-  std::vector<check_t> checkShards();
 
   /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
@@ -288,6 +291,9 @@ class Supervision : public arangodb::Thread {
 
   void updateDBServerMaintenance();
 
+  replication2::replicated_log::ParticipantsHealth collectParticipantsHealth()
+      const;
+
   void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
@@ -299,8 +305,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
 
-  Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
-  Agent* _agent; /**< @brief My agent */
+  mutable Mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
+  Agent* _agent;        /**< @brief My agent */
   Store _spearhead;
   mutable Node const* _snapshot;
   Node _transient;
@@ -311,6 +317,9 @@ class Supervision : public arangodb::Thread {
   double _frequency;
   double _gracePeriod;
   double _okThreshold;
+  uint64_t _delayAddFollower;
+  uint64_t _delayFailedFollower;
+  bool _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
@@ -321,7 +330,7 @@ class Supervision : public arangodb::Thread {
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
 
-  std::string serverHealth(std::string const&);
+  std::string serverHealth(std::string_view) const;
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 

@@ -4,8 +4,6 @@ target_link_libraries(arango_health arango)
 target_include_directories(arango_health PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-target_compile_options(arango_health PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_library(arango_storage_engine STATIC
   EngineSelectorFeature.cpp
@@ -24,8 +22,6 @@ target_link_libraries(arango_storage_engine
 target_include_directories(arango_storage_engine PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-target_compile_options(arango_storage_engine PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 # arango_storage_engine uses arango_rocksdb.
 # In turn, arango_storage_engine_common provides something for both.
@@ -39,5 +35,3 @@ target_link_libraries(arango_storage_engine_common
 target_include_directories(arango_storage_engine_common PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-target_compile_options(arango_storage_engine_common PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})

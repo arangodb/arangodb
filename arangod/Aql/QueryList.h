@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ struct QueryEntryCopy {
       std::string&& queryString,
       std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
       std::vector<std::string> dataSources, double started, double runTime,
-      QueryExecutionState::ValueType state, bool stream,
+      size_t peakMemoryUsage, QueryExecutionState::ValueType state, bool stream,
       std::optional<ErrorCode> resultCode);
 
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
@@ -65,6 +65,7 @@ struct QueryEntryCopy {
   std::vector<std::string> dataSources;
   double const started;
   double const runTime;
+  size_t peakMemoryUsage;
   QueryExecutionState::ValueType const state;
   std::optional<ErrorCode> resultCode;
   bool stream;
@@ -78,64 +79,63 @@ class QueryList {
   /// @brief destroy a query list
   ~QueryList() = default;
 
- public:
   /// @brief whether or not queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool enabled() const {
+  bool enabled() const noexcept {
     return _enabled.load(std::memory_order_relaxed);
   }
 
   /// @brief toggle query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void enabled(bool value) { _enabled.store(value); }
+  void enabled(bool value) noexcept { _enabled.store(value); }
 
   /// @brief whether or not slow queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackSlowQueries() const {
+  bool trackSlowQueries() const noexcept {
     return _trackSlowQueries.load(std::memory_order_relaxed);
   }
 
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value); }
+  void trackSlowQueries(bool value) noexcept { _trackSlowQueries.store(value); }
 
   /// @brief whether to track the full query string
-  inline bool trackQueryString() const {
+  bool trackQueryString() const noexcept {
     return _trackQueryString.load(std::memory_order_relaxed);
   }
 
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackQueryString(bool value) { _trackQueryString.store(value); }
+  void trackQueryString(bool value) noexcept { _trackQueryString.store(value); }
 
   /// @brief whether or not bind vars are tracked with queries
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackBindVars() const {
+  bool trackBindVars() const noexcept {
     return _trackBindVars.load(std::memory_order_relaxed);
   }
 
   /// @brief toggle query bind vars tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackBindVars(bool value) { _trackBindVars.store(value); }
+  void trackBindVars(bool value) noexcept { _trackBindVars.store(value); }
 
   /// @brief threshold for slow queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline double slowQueryThreshold() const {
+  double slowQueryThreshold() const noexcept {
     return _slowQueryThreshold.load(std::memory_order_relaxed);
   }
 
   /// @brief set the slow query threshold
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void slowQueryThreshold(double value) {
+  void slowQueryThreshold(double value) noexcept {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
       // only let useful values pass
       value = 0.0;
@@ -146,14 +146,14 @@ class QueryList {
   /// @brief threshold for slow streaming queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline double slowStreamingQueryThreshold() const {
+  double slowStreamingQueryThreshold() const noexcept {
     return _slowStreamingQueryThreshold.load(std::memory_order_relaxed);
   }
 
   /// @brief set the slow streaming query threshold
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void slowStreamingQueryThreshold(double value) {
+  void slowStreamingQueryThreshold(double value) noexcept {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
       // basic checks
       value = 0.0;
@@ -164,14 +164,14 @@ class QueryList {
   /// @brief return the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxSlowQueries() const {
+  size_t maxSlowQueries() const noexcept {
     return _maxSlowQueries.load(std::memory_order_relaxed);
   }
 
   /// @brief set the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void maxSlowQueries(size_t value) {
+  void maxSlowQueries(size_t value) noexcept {
     if (value > 16384) {
       // basic checks
       value = 16384;
@@ -182,21 +182,16 @@ class QueryList {
   /// @brief return the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxQueryStringLength() const {
+  size_t maxQueryStringLength() const noexcept {
     return _maxQueryStringLength.load(std::memory_order_relaxed);
   }
 
   /// @brief set the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
-  /// modifications of this variable are possible but are considered unharmful
-  inline void maxQueryStringLength(size_t value) {
+  /// modifications of this variable are possible.
+  void maxQueryStringLength(size_t value) noexcept {
     // basic checks
-    if (value < 64) {
-      value = 64;
-    } else if (value >= 8 * 1024 * 1024) {
-      value = 8 * 1024 * 1024;
-    }
-
+    value = std::clamp<size_t>(value, 64, 32 * 1024 * 1024);
     _maxQueryStringLength.store(value);
   }
 
@@ -225,17 +220,11 @@ class QueryList {
   size_t count();
 
  private:
-  std::string extractQueryString(Query const& query, size_t maxLength) const;
-
   void killQuery(Query& query, size_t maxLength, bool silent);
 
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;
 
-  /// @brief default max length of a query when returning it
-  static constexpr size_t defaultMaxQueryStringLength = 4096;
-
- private:
   /// @brief query registry, for keeping track of slow queries counter
   QueryRegistryFeature& _queryRegistryFeature;
 

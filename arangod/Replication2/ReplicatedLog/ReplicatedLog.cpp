@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,160 +24,322 @@
 #include "ReplicatedLog.h"
 
 #include "Logger/LogContextKeys.h"
-#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Metrics/Counter.h"
-#include "Cluster/FailureOracle.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
-#include <type_traits>
+#include <utility>
+#include "Metrics/Gauge.h"
+#include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
-}
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(
-    std::unique_ptr<LogCore> core,
-    std::shared_ptr<ReplicatedLogMetrics> const& metrics,
+    std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
+    std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    LoggerContext const& logContext)
-    : _logId(core->gid()),
-      _logContext(logContext.with<logContextKeyLogId>(core->logId())),
-      _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core),
-                                                                metrics)),
-      _metrics(metrics),
-      _options(std::move(options)) {}
+    std::shared_ptr<IParticipantsFactory> participantsFactory,
+    LoggerContext const& logContext, agency::ServerInstanceReference myself)
+    :  // TODO is it possible to add myself to the
+       //      logger context? even if it is changed later?
+      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())),
+      _metrics(std::move(metrics)),
+      _options(std::move(options)),
+      _participantsFactory(std::move(participantsFactory)),
+      _guarded(std::move(storage), std::move(myself)) {
+  _metrics->replicatedLogNumber->operator++();
+}
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
-  // If we have a participant, it must also hold a replicated log. The only way
-  // to remove the LogCore from the ReplicatedLog is via drop(), which also sets
-  // _participant to nullptr.
-  if (_participant != nullptr) {
-    // resign returns a LogCore and a DeferredAction, which can be destroyed
-    // immediately
-    std::ignore = std::move(*_participant).resign();
+  ADB_PROD_ASSERT(_guarded.getLockedGuard()->stateHandle == nullptr)
+      << "replicated log is destroyed before it was disconnected";
+  _metrics->replicatedLogNumber->operator--();
+}
+
+auto replicated_log::ReplicatedLog::connect(
+    std::unique_ptr<IReplicatedStateHandle> stateHandle)
+    -> ReplicatedLogConnection {
+  LOG_CTX("8f193", DEBUG, _logContext)
+      << "calling connect on replicated log with "
+      << typeid(stateHandle.get()).name();
+  auto guard = _guarded.getLockedGuard();
+  ADB_PROD_ASSERT(guard->stateHandle == nullptr);
+  guard->stateHandle = std::move(stateHandle);
+  tryBuildParticipant(guard.get());
+  return ReplicatedLogConnection(this);
+}
+
+auto replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn)
+    -> std::unique_ptr<IReplicatedStateHandle> {
+  LOG_CTX("66ada", DEBUG, _logContext) << "disconnecting replicated log";
+  ADB_PROD_ASSERT(conn._log.get() == this);
+  auto guard = _guarded.getLockedGuard();
+  conn._log.reset();
+  if (not guard->resigned) {
+    resetParticipant(guard.get());
   }
+  return std::move(guard->stateHandle);
 }
 
-auto replicated_log::ReplicatedLog::becomeLeader(
-    ParticipantId id, LogTerm newTerm,
-    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
-    -> std::shared_ptr<LogLeader> {
-  auto [leader, deferred] = std::invoke([&] {
-    std::unique_lock guard(_mutex);
-    if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm >= newTerm) {
-      LOG_CTX("b8bf7", INFO, _logContext)
-          << "tried to become leader with term " << newTerm
-          << ", but current term is " << *currentTerm;
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM);
-    }
+auto replicated_log::ReplicatedLog::updateConfig(
+    agency::LogPlanTermSpecification term, agency::ParticipantsConfig config,
+    agency::ServerInstanceReference myself) -> futures::Future<futures::Unit> {
+  auto guard = _guarded.getLockedGuard();
 
-    auto [logCore, deferred] = std::move(*_participant).resign();
-    LOG_CTX("23d7b", DEBUG, _logContext)
-        << "becoming leader in term " << newTerm;
-    auto leader = LogLeader::construct(
-        std::move(logCore), follower, participantsConfig, std::move(id),
-        newTerm, _logContext, _metrics, _options, std::move(failureOracle));
-    _participant = std::static_pointer_cast<ILogParticipant>(leader);
-    _metrics->replicatedLogLeaderTookOverNumber->count();
-    return std::make_pair(std::move(leader), std::move(deferred));
-  });
-
-  return leader;
-}
-
-auto replicated_log::ReplicatedLog::becomeFollower(
-    ParticipantId id, LogTerm term, std::optional<ParticipantId> leaderId)
-    -> std::shared_ptr<LogFollower> {
-  auto [follower, deferred] = std::invoke([&] {
-    std::unique_lock guard(_mutex);
-    if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm >= term) {
-      LOG_CTX("c97e9", INFO, _logContext)
-          << "tried to become follower with term " << term
-          << ", but current term is " << *currentTerm;
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
-    auto [logCore, deferred] = std::move(*_participant).resign();
-    LOG_CTX("1ed24", DEBUG, _logContext)
-        << "becoming follower in term " << term << " with leader "
-        << leaderId.value_or("<none>");
-
-    auto follower =
-        LogFollower::construct(_logContext, _metrics, _options, std::move(id),
-                               std::move(logCore), term, std::move(leaderId));
-    _participant = std::static_pointer_cast<ILogParticipant>(follower);
-    _metrics->replicatedLogStartedFollowingNumber->operator++();
-    return std::make_tuple(follower, std::move(deferred));
-  });
-  return follower;
-}
-
-auto replicated_log::ReplicatedLog::getParticipant() const
-    -> std::shared_ptr<ILogParticipant> {
-  std::unique_lock guard(_mutex);
-  if (_participant == nullptr) {
-    throw replicated_log::ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE, ADB_HERE);
+  if (guard->latest) {
+    TRI_ASSERT(not(guard->latest->term.term < term.term and
+                   guard->latest->config.generation > config.generation) and
+               not(guard->latest->term.term > term.term and
+                   guard->latest->config.generation < config.generation))
+        << "While we may see outdated updates here, it must not happen that we "
+           "see a new term with an old generation, or the other way round. "
+        << "log, current configuration: " << guard->latest->config
+        << ", new configuration: " << config
+        << ", current term: " << guard->latest->term << ", new term: " << term;
   }
 
-  return _participant;
-}
+  bool const termChanged =
+      not guard->latest or guard->latest->term.term < term.term;
+  bool const generationChanged =
+      not guard->latest or guard->latest->config.generation < config.generation;
+  ADB_PROD_ASSERT(myself.serverId == guard->_myself.serverId);
+  bool const rebootIdChanged = myself.rebootId != guard->_myself.rebootId;
 
-auto replicated_log::ReplicatedLog::getLeader() const
-    -> std::shared_ptr<LogLeader> {
-  auto log = getParticipant();
-  if (auto leader = std::dynamic_pointer_cast<
-          arangodb::replication2::replicated_log::LogLeader>(log);
-      leader != nullptr) {
-    return leader;
+  if (rebootIdChanged) {
+    LOG_CTX("fa471", INFO, _logContext)
+        << "detected a change in reboot id, restarting participant";
+    guard->_myself = myself;
+  }
+
+  if (termChanged or rebootIdChanged) {
+    resetParticipant(guard.get());
+  }
+
+  if (termChanged or generationChanged or rebootIdChanged) {
+    guard->latest.emplace(std::move(term), std::move(config));
+    return tryBuildParticipant(guard.get());
   } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+    // nothing changed, don't do anything
+    return {futures::Unit{}};
   }
 }
 
-auto replicated_log::ReplicatedLog::getFollower() const
-    -> std::shared_ptr<LogFollower> {
-  auto log = getParticipant();
-  if (auto follower =
-          std::dynamic_pointer_cast<replicated_log::LogFollower>(log);
-      follower != nullptr) {
-    return follower;
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
+    -> futures::Future<futures::Unit> {
+  if (not data.latest or not(data.stateHandle || data.participant)) {
+    LOG_CTX("79005", DEBUG, _logContext)
+        << "replicated log not ready, config missing";
+    return {futures::Unit{}};  // config or state not yet available
+  }
+
+  auto configShared =
+      std::make_shared<agency::ParticipantsConfig>(data.latest->config);
+
+  ParticipantContext context = {.loggerContext = _logContext,
+                                .stateHandle = std::move(data.stateHandle),
+                                .metrics = _metrics,
+                                .options = _options};
+
+  if (not data.participant) {
+    // rebuild participant
+    ADB_PROD_ASSERT(data.methods != nullptr);
+    auto const& term = data.latest->term;
+    if (term.leader == data._myself) {
+      LeaderTermInfo info = {.term = term.term,
+                             .myself = data._myself.serverId,
+                             .initialConfig = configShared};
+
+      LOG_CTX("79015", DEBUG, _logContext)
+          << "replicated log configured as leader in term " << term.term;
+      auto leader = std::shared_ptr<ILogLeader>();
+      try {
+        leader = _participantsFactory->constructLeader(
+            std::move(data.methods), info, std::move(context));
+        data.participant = leader;
+      } catch (std::exception const& ex) {
+        // We must not lose the core, even in case of exceptions.
+        ADB_PROD_ASSERT(data.participant == nullptr && data.methods != nullptr)
+            << _logContext << " "
+            << "After an exception was caught in " << ADB_HERE
+            << ", replicated log was left in an unexpected state. "
+            << (data.participant == nullptr ? ""
+                                            : "The participant was created, "
+                                              "though it shouldn't have been. ")
+            << (data.methods != nullptr
+                    ? ""
+                    : "The log core is gone, though it shouldn't be. ")
+            << "The exception was: " << ex.what();
+        throw;
+      }
+      _metrics->replicatedLogLeaderTookOverNumber->count();
+      ADB_PROD_ASSERT(data.participant != nullptr && data.methods == nullptr);
+      return leader->waitForLeadership().thenValue([](auto&&) {});
+    } else {
+      // follower
+      FollowerTermInfo info = {
+          .term = term.term, .myself = data._myself.serverId, .leader = {}};
+      if (term.leader) {
+        info.leader = term.leader->serverId;
+      }
+
+      LOG_CTX("7aed7", DEBUG, _logContext)
+          << "replicated log configured as follower in term " << term.term;
+      try {
+        data.participant = _participantsFactory->constructFollower(
+            std::move(data.methods), info, std::move(context));
+      } catch (std::exception const& ex) {
+        // We must not lose the core, even in case of exceptions.
+        ADB_PROD_ASSERT(data.participant == nullptr && data.methods != nullptr)
+            << _logContext << " "
+            << "After an exception was caught in " << ADB_HERE
+            << ", replicated log was left in an unexpected state. "
+            << (data.participant == nullptr
+                    ? ""
+                    : "The participant was created, though it shouldn't be. ")
+            << (data.methods != nullptr
+                    ? ""
+                    : "The log core is gone, though it shouldn't be. ")
+            << "The exception was: " << ex.what();
+        throw;
+      }
+      _metrics->replicatedLogStartedFollowingNumber->operator++();
+      ADB_PROD_ASSERT(data.participant != nullptr && data.methods == nullptr);
+    }
+  } else if (auto leader =
+                 std::dynamic_pointer_cast<ILogLeader>(data.participant);
+             leader) {
+    LOG_CTX("2c74c", DEBUG, _logContext)
+        << "replicated log participants reconfigured with generation "
+        << configShared->generation;
+    TRI_ASSERT(leader->getQuickStatus().activeParticipantsConfig->generation <
+               configShared->generation);
+    auto idx = leader->updateParticipantsConfig(configShared);
+    return leader->waitFor(idx).thenValue([](auto&&) {});
+  }
+
+  ADB_PROD_ASSERT(data.participant != nullptr && data.methods == nullptr);
+  return {futures::Unit{}};
+}
+
+void ReplicatedLog::resetParticipant(GuardedData& data) {
+  ADB_PROD_ASSERT((data.participant == nullptr) != (data.methods == nullptr));
+  if (data.participant) {
+    ADB_PROD_ASSERT(data.methods == nullptr);
+    LOG_CTX("9a54b", DEBUG, _logContext)
+        << "reset participant of replicated log";
+    DeferredAction action;
+    std::tie(data.methods, data.stateHandle, action) =
+        std::move(*data.participant).resign2();
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+    ADB_PROD_ASSERT(data.methods != nullptr);
+    ADB_PROD_ASSERT(data.stateHandle != nullptr);
+#endif
+    data.participant.reset();
+  }
+  ADB_PROD_ASSERT(data.participant == nullptr && data.methods != nullptr)
+      << _logContext;
+}
+
+auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
+  auto guard = _guarded.getLockedGuard();
+  if (guard->participant == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
+  }
+  return guard->participant;
+}
+
+auto ReplicatedLog::resign() && -> std::unique_ptr<
+    replicated_state::IStorageEngineMethods> {
+  auto guard = _guarded.getLockedGuard();
+  LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
+  ADB_PROD_ASSERT(not guard->resigned)
+      << _logContext << " replicated log already resigned";
+  resetParticipant(guard.get());
+  guard->resigned = true;
+  ADB_PROD_ASSERT(guard->participant == nullptr && guard->methods != nullptr);
+  return std::move(guard->methods);
+}
+
+auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
+  auto guard = _guarded.getLockedGuard();
+  return guard->getQuickStatus();
+}
+auto ReplicatedLog::getStatus() const -> LogStatus {
+  if (auto guard = _guarded.getLockedGuard(); guard->participant) {
+    return guard->participant->getStatus();
+  }
+  return {};
+}
+
+[[nodiscard]] auto ReplicatedLog::getMaintenanceLogStatus() const
+    -> maintenance::LogStatus {
+  auto guard = _guarded.getLockedGuard();
+  return maintenance::LogStatus{guard->getQuickStatus(), guard->_myself};
+}
+
+auto ReplicatedLog::GuardedData::getQuickStatus() const -> QuickLogStatus {
+  if (participant) {
+    return participant->getQuickStatus();
+  }
+  return {};
+}
+
+void ReplicatedLogConnection::disconnect() {
+  if (_log) {
+    _log->disconnect(std::move(*this));
   }
 }
 
-auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
-  auto [core, deferred] = std::invoke([&] {
-    std::unique_lock guard(_mutex);
-    auto res = std::move(*_participant).resign();
-    _participant = nullptr;
-    return res;
-  });
-  // cppcheck-suppress returnStdMoveLocal
-  return std::move(core);
+ReplicatedLogConnection::~ReplicatedLogConnection() { disconnect(); }
+ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
+    : _log(log) {}
+
+auto DefaultParticipantsFactory::constructFollower(
+    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    FollowerTermInfo info, ParticipantContext context)
+    -> std::shared_ptr<ILogFollower> {
+  std::shared_ptr<ILeaderCommunicator> leaderComm;
+  if (info.leader) {
+    leaderComm = followerFactory->constructLeaderCommunicator(*info.leader);
+  }
+
+  // TODO remove wrapper
+  auto info2 = std::make_shared<FollowerTermInformation>(
+      FollowerTermInformation{{info.term}, info.leader});
+
+  return std::make_shared<refactor::LogFollowerImpl>(
+      info.myself, std::move(methods), std::move(context.stateHandle), info2,
+      std::move(context.options), std::move(context.metrics), leaderComm);
 }
 
-auto replicated_log::ReplicatedLog::getId() const noexcept -> LogId {
-  return _logId.id;
+auto DefaultParticipantsFactory::constructLeader(
+
+    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    LeaderTermInfo info, ParticipantContext context)
+    -> std::shared_ptr<ILogLeader> {
+  return LogLeader::construct(
+      std::move(methods), std::move(info.initialConfig), std::move(info.myself),
+      info.term, context.loggerContext, std::move(context.metrics),
+      std::move(context.options), std::move(context.stateHandle),
+      followerFactory, scheduler);
 }
 
-auto replicated_log::ReplicatedLog::getGlobalLogId() const noexcept
-    -> GlobalLogIdentifier const& {
-  return _logId;
-}
+DefaultParticipantsFactory::DefaultParticipantsFactory(
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IScheduler> scheduler)
+    : followerFactory(std::move(followerFactory)),
+      scheduler(std::move(scheduler)) {}
+}  // namespace arangodb::replication2::replicated_log

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,10 +55,16 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostInsert(replication2::ReplicatedLogMethods const& methods,
                               replication2::LogId logId,
                               velocypack::Slice payload);
+  RestStatus handlePostPing(replication2::ReplicatedLogMethods const& methods,
+                            replication2::LogId logId,
+                            velocypack::Slice payload);
   RestStatus handlePostInsertMulti(
       replication2::ReplicatedLogMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
   RestStatus handlePostRelease(
+      replication2::ReplicatedLogMethods const& methods,
+      replication2::LogId logId);
+  RestStatus handlePostCompact(
       replication2::ReplicatedLogMethods const& methods,
       replication2::LogId logId);
 

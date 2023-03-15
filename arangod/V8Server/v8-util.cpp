@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -174,8 +174,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return true;
     }
     v8::String::Utf8Value str(isolate, revObj);
-    bool isOld;
-    RevisionId rid = RevisionId::fromString(*str, str.length(), isOld, false);
+    RevisionId rid =
+        RevisionId::fromString({*str, static_cast<size_t>(str.length())});
 
     if (rid.empty()) {
       return false;

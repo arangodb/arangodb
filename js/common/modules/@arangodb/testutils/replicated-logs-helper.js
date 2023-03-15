@@ -35,6 +35,8 @@ const helper = require('@arangodb/test-helper-common');
 const serverHelper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
+  const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
+  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length-1, count)];
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -49,7 +51,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
     if (count % 10 === 0) {
       console.log(result);
     }
-    wait(0.5); // 240 * .5s = 2 minutes
+    wait(getWaitTime(count));
   }
   if (onErrorCallback !== undefined) {
     onErrorCallback(result);
@@ -60,7 +62,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const readAgencyValueAt = function (key) {
   const response = serverHelper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
@@ -135,16 +137,28 @@ const coordinators = (function () {
  *       },
  *       plan: {
  *         id: number,
- *         participantsConfig: Object,
+ *         participantsConfig: {
+ *           participants: Object<string, {
+ *             forced: boolean,
+ *             allowedInQuorum: boolean,
+ *             allowedAsLeader: boolean
+ *           }>,
+ *           generation: number,
+ *           config: {
+ *             waitForSync: boolean,
+ *             effectiveWriteConcern: number
+ *           }
+ *         },
  *         currentTerm?: {
  *           term: number,
- *           leader: {
+ *           leader?: {
  *             serverId: string,
  *             rebootId: number
  *           }
  *         }
  *       },
  *       current: {
+ *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
  *         leader?: Object
@@ -198,6 +212,12 @@ const replicatedLogUpdateTargetParticipants = function (database, logId, partici
 
 const replicatedLogSetPlanTerm = function (database, logId, term) {
   serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
+};
+
+const triggerLeaderElection = function (database, logId) {
+  serverHelper.agency.increaseVersion(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`);
+  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`);
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
@@ -344,13 +364,6 @@ const checkRequestResult = function (requestResult, expectingError=false) {
   return requestResult;
 };
 
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
-};
-
 const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
@@ -387,6 +400,7 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
     id: logId,
     currentTerm: createTermSpecification(term, servers, leader),
     participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
+    properties: {implementation: {type: "black-hole", parameters: {}}}
   });
 
   // wait for all servers to have reported in current
@@ -407,6 +421,28 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
+};
+
+const createReplicatedLogWithState = function (database, targetConfig, stateType, replicationFactor) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(dbservers, replicationFactor);
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: stateType, parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
@@ -430,8 +466,12 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const stopServerWait = function (serverId) {
-    stopServer(serverId);
-    waitFor(lpreds.serverFailed(serverId));
+    stopServersWait([serverId]);
+  };
+
+  const stopServersWait = function (serverIds) {
+    serverIds.forEach(stopServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverFailed(serverId)));
   };
 
   const continueServer = function (serverId) {
@@ -443,14 +483,16 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 
   const continueServerWait = function (serverId) {
-    continueServer(serverId);
-    waitFor(lpreds.serverHealthy(serverId));
+    continueServersWait([serverId]);
+  };
+
+  const continueServersWait = function (serverIds) {
+    serverIds.forEach(continueServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverHealthy(serverId)));
   };
 
   const resumeAll = function () {
-    Object.keys(stoppedServers).forEach(function (key) {
-      continueServerWait(key);
-    });
+    continueServersWait(Object.keys(stoppedServers));
     stoppedServers = {};
   };
 
@@ -499,8 +541,10 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   return {
     stopServer,
     stopServerWait,
+    stopServersWait,
     continueServer,
     continueServerWait,
+    continueServersWait,
     resumeAll,
     setUpAll,
     tearDownAll,
@@ -551,14 +595,35 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpShardLog = function (shardId, limit=1000) {
-  let log = db._replicatedLog(shardIdToLogId(shardId));
+const dumpLogHead = function (logId, limit=1000) {
+  let log = db._replicatedLog(logId);
   return log.head(limit);
+};
+
+const getShardsToLogsMapping = function (dbName, colId) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`);
+  let mapping = {};
+  if (colPlan.hasOwnProperty("groupId")) {
+    const groupId = colPlan.groupId;
+    const shards = colPlan.shardsR2;
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const shardSheaves = colGroup.shardSheaves;
+    for (let idx = 0; idx < shards.length; ++idx) {
+      mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+    }
+  } else {
+    // Legacy code, supporting system collections
+    const shards = colPlan.shards;
+    for (const [shardId, _] of Object.entries(shards)) {
+      mapping[shardId] = shardIdToLogId(shardId);
+    }
+  }
+  return mapping;
 };
 
 const setLeader = (database, logId, newLeader) => {
   const url = getServerUrl(_.sample(coordinators));
-  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  const res = request.post(`${url}/_db/${database}/_api/log/${logId}/leader/${newLeader}`);
   checkRequestResult(res);
   const { json: { result } } = res;
   return result;
@@ -566,9 +631,43 @@ const setLeader = (database, logId, newLeader) => {
 
 const unsetLeader = (database, logId) => {
   const url = getServerUrl(_.sample(coordinators));
-  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
+  const res = request.delete(`${url}/_db/${database}/_api/log/${logId}/leader`);
   checkRequestResult(res);
   const { json: { result } } = res;
+  return result;
+};
+
+/**
+ * Causes underlying replicated logs to trigger leader recovery.
+ */
+const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const shards = col.shards();
+  const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
+  const stateMachineIds = shards.map(s => shardsToLogs[s]);
+
+  const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
+
+  stateMachineIds.forEach(increaseTerm);
+
+  const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
+
+  stateMachineIds.forEach(x => waitFor(leaderReady(x)));
+};
+
+const getLocalStatus = function (serverId, database, logId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(
+    `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+  );
+  checkRequestResult(res);
+  const {json: {result}} = res;
   return result;
 };
 
@@ -613,6 +712,10 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpShardLog = dumpShardLog;
+exports.dumpLogHead = dumpLogHead;
 exports.setLeader = setLeader;
 exports.unsetLeader = unsetLeader;
+exports.createReplicatedLogWithState = createReplicatedLogWithState;
+exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
+exports.getShardsToLogsMapping = getShardsToLogsMapping;
+exports.replaceParticipant = replaceParticipant;

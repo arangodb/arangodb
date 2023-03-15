@@ -33,6 +33,7 @@ const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 const useIndexForSort = "use-index-for-sort";
+const lateDocumentMaterialization = "late-document-materialization";
 const sleep = require('internal').sleep;
 const errors = require('internal').errors;
 
@@ -53,21 +54,25 @@ function optimizerRuleInvertedIndexTestSuite() {
                                 {name:'custom_field', analyzer:'text_en'}]});
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexSorted',
+                       storedValues: ['norm_field'],
                        fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'}],
-                        primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                                {name:'custom_field', analyzer:'text_en'},
+                                {name:'trackListField', trackListPositions:true}],
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
           data.push({count:i,
                      norm_field: 'fOx',
                      searchField:i,
+                     trackListField:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
                      geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
         } else {
           data.push({count:i,
+                     norm_field: 'sOx',
                      norm_field2: 'BOX',
                      data_field:'value' + i % 100,
                      custom_field: i,
@@ -75,16 +80,6 @@ function optimizerRuleInvertedIndexTestSuite() {
         }
       }
       col.insert(data);
-
-      let syncIndex = function(indexName) {
-        const syncQuery = aql`
-          FOR d IN ${col} OPTIONS {indexHint: ${indexName}, waitForSync:true, forceIndexHint:true}
-            FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c RETURN c`;
-        db._query(syncQuery);
-      };
-
-      syncIndex("InvertedIndexSorted");
-      syncIndex("InvertedIndexUnsorted");
     },
     tearDownAll: function () {
       col.drop();
@@ -112,7 +107,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedUnsorted: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER d.data_field == 'value1'
           RETURN d`;
       const res = AQL_EXPLAIN(query.query, query.bindVars);
@@ -124,7 +119,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedUnsortedPartial: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER d.data_field == 'value1' AND d.count == 1
           RETURN d`;
       const res = AQL_EXPLAIN(query.query, query.bindVars);
@@ -135,9 +130,9 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(1, executeRes.toArray().length);
     },
-    testIndexGeo: function () {
+    testIndexGeoIntersects: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER GEO_INTERSECTS(d.geo_field, {type: 'Point', coordinates: [37.615895, 55.7039]})
           COLLECT WITH COUNT INTO c
           RETURN c`;
@@ -148,9 +143,61 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(docs/10, executeRes.toArray()[0]);
     },
+    testIndexGeoDistance: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER GEO_DISTANCE(d.geo_field, GEO_POINT(37.615895, 55.7039)) > 0
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs - (docs/10), executeRes.toArray()[0]);
+    },
+    testIndexGeoContains: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER GEO_CONTAINS(GEO_POLYGON([[37, 55], [38, 55], [38, 56], [37, 56], [37, 55]]), d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoInRange: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0.000001, 1000000)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexExists: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER EXISTS(d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs, executeRes.toArray()[0]);
+    },
     testIndexHintedSorted: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", waitForSync: true}
           FILTER d.data_field == 'value1'
           SORT d.count DESC
           RETURN d`;
@@ -167,7 +214,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedSortedWrongOrder: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted",
+                                 forceIndexHint: true, waitForSync: true}
           FILTER d.data_field == 'value1'
           SORT d.count ASC
           RETURN d`;
@@ -184,7 +232,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedUnsortedWithSort: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER d.data_field == 'value1'
           SORT d.count DESC
           RETURN d`;
@@ -201,17 +249,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedRemove: function () {
       col.save({data_field:'remove_me'});
-      let syncWait = 100;
-      const syncQuery = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
-          FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
-      let count  = db._query(syncQuery).toArray()[0];
-      while (count < 1 && (--syncWait) > 0) {
-        sleep(1);
-        count  = db._query(syncQuery).toArray()[0];
-      }
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER d.data_field == 'remove_me'
            REMOVE d IN ${col}`;
       const res = AQL_EXPLAIN(query.query, query.bindVars);
@@ -222,8 +261,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       const checkQuery = aql`
         FOR d IN ${col} 
           FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
-      count  = db._query(checkQuery).toArray()[0];
-      assertEqual(0, count);
+      assertEqual(0, db._query(checkQuery).toArray()[0]);
     },
     testEmptyFields: function() {
       col.ensureIndex({type: 'inverted',
@@ -261,7 +299,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyIn: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY IN d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -274,7 +312,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAllIn: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ALL IN d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -287,7 +325,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonNoneIn: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] NONE IN d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -300,7 +338,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyNotIn: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY NOT IN d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -313,7 +351,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyGE: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY >= d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -327,7 +365,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyGT: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY > d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -341,7 +379,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyLE: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY <= d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -355,7 +393,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyLT: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY < d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -369,7 +407,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyEQ: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted",
+          forceIndexHint:true, waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY == d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -382,7 +421,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyNE: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [NOEVAL('value1'), 'value2'] ANY != d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -395,7 +434,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyNE_IndexAccess: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER [[NOEVAL('value1'), 'value2'], ['value1', 'value1']][NOEVAL(0)] ANY != d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -408,7 +447,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedArrayComparisonAnyNE_Fcall: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted",
+                                 forceIndexHint: true, waitForSync:true}
           FILTER NOEVAL([NOEVAL('value1'), 'value2']) ANY != d.data_field
           SORT d.count DESC
           RETURN d`;
@@ -422,7 +462,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     testIndexHintedArrayComparisonAnyNE_NonArray: function () {
       try {
         const query = aql`
-          FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
             FILTER TOKENS("Bar", "text_en")[0] ANY != d.data_field
             SORT d.count DESC
             RETURN d`;
@@ -436,7 +476,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testIndexHintedSearchFieldIgnored: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
           FILTER d.searchField == 1
           SORT d.count DESC
           RETURN d`;
@@ -446,7 +486,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     testDisjunctionOptimized: function () {
       const query = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted",
+                                 forceIndexHint: true, waitForSync:true}
           FILTER d.norm_field == 'fox' OR d.norm_field2 == 'box'
           RETURN d`;
       const res = AQL_EXPLAIN(query.query, query.bindVars);
@@ -455,6 +496,141 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs, executeRes.length);
+    },
+    testIndexHintedTrackListPositionsFieldIgnored: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", waitForSync:true}
+          FILTER d.trackListField == 1
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+    },
+    testNonDeterministicInFieldIgnored: function () {
+      const query = aql`
+        LET foo = NOOPT([1,2,3])
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", waitForSync:true}
+          FILTER d.invalid_field IN foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", waitForSync:true}
+          FILTER d.invalid_field IN foo 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayComparisonFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", waitForSync:true}
+          FILTER foo ANY IN d.invalid_field 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testUnknownFieldInSubLoopIgnored: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'rox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
+          FILTER d.invalid == foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testUnknownFieldInSubLoopPhraseIgnored: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'rox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
+          FILTER PHRASE(d.invalid, foo, 'text_en')
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      // intentionally do not run the query here as PHRASE is not yet
+      // supported as filter function
+    },
+    testKnownFieldInSubLoop: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'sox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted",
+                                 forceIndexHint: true, waitForSync:true}
+          FILTER d.norm_field == foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertEqual(docs, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testKnownFieldPhraseInSubLoop: function () {
+      const query = aql`
+        FOR foo IN ['fox', 'sox']
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", forceIndexHint: true,
+                                 waitForSync:true}
+          FILTER PHRASE(d.norm_field, foo, 'text_en')
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertEqual(docs, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testLateMaterialized: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", forceIndexHint: true,
+                                 waitForSync:true}
+          FILTER d.data_field IN ['value1', 'value2', 'value3', 'value4', 'value5',
+                                  'value6', 'value7', 'value8', 'value9', 'value10', 'value11']
+          SORT d.norm_field DESC
+          LIMIT 110
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(lateDocumentMaterialization));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(110, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].norm_field >= executeRes[i].norm_field);
+      }
+    },
+    testLateMaterializedSorted: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted", forceIndexHint: true, waitForSync:true}
+          FILTER d.data_field IN ['value1', 'value2', 'value3', 'value4', 'value5',
+                                  'value6', 'value7', 'value8', 'value9', 'value10', 'value11']
+          SORT d.count DESC
+          LIMIT 110
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(useIndexForSort));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(110, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      }
     },
   };
 }

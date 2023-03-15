@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,11 +61,12 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -76,6 +77,8 @@
 #include "VocBase/Methods/Collections.h"
 
 #include <tuple>
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -886,7 +889,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
 bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   auto* options =
       static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
-  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  arangodb::containers::FlatHashSet<arangodb::aql::AttributeNamePath>
+      attributes;
   bool modified = false;
   size_t maxProjections = options->getMaxProjections();
   auto pathOutVariable = traversal->pathOutVariable();
@@ -1004,7 +1008,7 @@ bool optimizeTraversalPathVariable(
 
   // path is used later, but lets check which of its sub-attributes
   // "vertices" or "edges" are in use (or the complete path)
-  std::unordered_set<AttributeNamePath> attributes;
+  containers::FlatHashSet<AttributeNamePath> attributes;
   VarSet vars;
 
   ExecutionNode* current = traversal->getFirstParent();
@@ -1161,7 +1165,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     }
 
     if (rhs->type == NODE_TYPE_ARRAY) {
-      if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
+      if (rhs->numMembers() < AstNode::kSortNumberThreshold ||
+          rhs->isSorted()) {
         // number of values is below threshold or array is already sorted
         continue;
       }
@@ -1220,7 +1225,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < AstNode::SortNumberThreshold) {
+          testNode->numMembers() < AstNode::kSortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -1256,7 +1261,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       // estimate items in subquery
       CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::kSortNumberThreshold) {
         continue;
       }
 
@@ -1753,7 +1758,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + attribute->getString() + name;
+      name = absl::StrCat(".", attribute->getStringView(), name);
       attribute = attribute->getMember(0);
     }
 
@@ -1845,7 +1850,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() ==
-                        nameAttribute->getString()) {
+                        nameAttribute->getStringView()) {
                   // don't remove a SmartJoin attribute access!
                   return;
                 } else {
@@ -2160,9 +2165,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
-        (!groupVariables.empty() && !collectNode->hasOutVariable() &&
-         collectNode->getOptions().canUseMethod(
-             CollectOptions::CollectMethod::HASH));
+        (!groupVariables.empty() && collectNode->getOptions().canUseMethod(
+                                        CollectOptions::CollectMethod::HASH));
 
     if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
       if (collectNode->getOptions().shouldUseMethod(
@@ -2398,189 +2402,178 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     return;
   }
 
-  bool modifiedNode = false;
   auto p = plan.get();
 
-  auto visitor = [p, &modifiedNode](AstNode* node) {
-    AstNode* original = node;
+  auto visitor = [p](AstNode* node) {
+    again:
+      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        auto const* accessed = node->getMemberUnchecked(0);
 
-  again:
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      auto const* accessed = node->getMemberUnchecked(0);
+        if (accessed->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          TRI_ASSERT(v != nullptr);
 
-      if (accessed->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(accessed->getData());
-        TRI_ASSERT(v != nullptr);
+          auto setter = p->getVarSetBy(v->id);
 
-        auto setter = p->getVarSetBy(v->id);
-
-        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-          return node;
-        }
-
-        accessed = ExecutionNode::castTo<CalculationNode*>(setter)
-                       ->expression()
-                       ->node();
-        if (accessed == nullptr) {
-          return node;
-        }
-      }
-
-      TRI_ASSERT(accessed != nullptr);
-
-      if (accessed->type == NODE_TYPE_OBJECT) {
-        std::string_view attributeName(node->getStringView());
-        bool isDynamic = false;
-        size_t const n = accessed->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          auto member = accessed->getMemberUnchecked(i);
-
-          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              member->getStringView() == attributeName) {
-            // found the attribute!
-            AstNode* next = member->getMember(0);
-            if (!next->isDeterministic()) {
-              // do not descend into non-deterministic nodes
-              return node;
-            }
-            // descend further
-            node = next;
-            // now try optimizing the simplified condition
-            // time for a goto...!
-            goto again;
-          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-            // dynamic attribute name
-            isDynamic = true;
-          }
-        }
-
-        // attribute not found
-        if (!isDynamic) {
-          modifiedNode = true;
-          return p->getAst()->createNodeValueNull();
-        }
-      }
-    } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      auto const* accessed = node->getMember(0);
-
-      if (accessed->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(accessed->getData());
-        TRI_ASSERT(v != nullptr);
-
-        auto setter = p->getVarSetBy(v->id);
-
-        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-          return node;
-        }
-
-        accessed = ExecutionNode::castTo<CalculationNode*>(setter)
-                       ->expression()
-                       ->node();
-        if (accessed == nullptr) {
-          return node;
-        }
-      }
-
-      auto indexValue = node->getMember(1);
-
-      if (!indexValue->isConstant() ||
-          !(indexValue->isStringValue() || indexValue->isNumericValue())) {
-        // cant handle this type of index statically
-        return node;
-      }
-
-      if (accessed->type == NODE_TYPE_OBJECT) {
-        std::string_view attributeName;
-        std::string indexString;
-
-        if (indexValue->isStringValue()) {
-          // string index, e.g. ['123']
-          attributeName = indexValue->getStringView();
-        } else {
-          // numeric index, e.g. [123]
-          TRI_ASSERT(indexValue->isNumericValue());
-          // convert the numeric index into a string
-          indexString = std::to_string(indexValue->getIntValue());
-          attributeName = std::string_view(indexString);
-        }
-
-        bool isDynamic = false;
-        size_t const n = accessed->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          auto member = accessed->getMemberUnchecked(i);
-
-          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              member->getStringView() == attributeName) {
-            // found the attribute!
-            AstNode* next = member->getMember(0);
-            if (!next->isDeterministic()) {
-              // do not descend into non-deterministic nodes
-              return node;
-            }
-            // descend further
-            node = next;
-            // now try optimizing the simplified condition
-            // time for a goto...!
-            goto again;
-          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-            // dynamic attribute name
-            isDynamic = true;
-          }
-        }
-
-        // attribute not found
-        if (!isDynamic) {
-          modifiedNode = true;
-          return p->getAst()->createNodeValueNull();
-        }
-      } else if (accessed->type == NODE_TYPE_ARRAY) {
-        int64_t position;
-        if (indexValue->isStringValue()) {
-          // string index, e.g. ['123'] -> convert to a numeric index
-          bool valid;
-          position = NumberUtils::atoi<int64_t>(
-              indexValue->getStringValue(),
-              indexValue->getStringValue() + indexValue->getStringLength(),
-              valid);
-          if (!valid) {
-            // invalid index
-            modifiedNode = true;
-            return p->getAst()->createNodeValueNull();
-          }
-        } else {
-          // numeric index, e.g. [123]
-          TRI_ASSERT(indexValue->isNumericValue());
-          position = indexValue->getIntValue();
-        }
-        int64_t const n = accessed->numMembers();
-        if (position < 0) {
-          // a negative position is allowed
-          position = n + position;
-        }
-        if (position >= 0 && position < n) {
-          AstNode* next = accessed->getMember(static_cast<size_t>(position));
-          if (!next->isDeterministic()) {
-            // do not descend into non-deterministic nodes
+          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
             return node;
           }
-          // descend further
-          node = next;
-          // now try optimizing the simplified condition
-          // time for a goto...!
-          goto again;
+
+          accessed = ExecutionNode::castTo<CalculationNode*>(setter)
+                         ->expression()
+                         ->node();
+          if (accessed == nullptr) {
+            return node;
+          }
         }
 
-        // index out of bounds
-        modifiedNode = true;
-        return p->getAst()->createNodeValueNull();
-      }
-    }
+        TRI_ASSERT(accessed != nullptr);
 
-    if (node != original) {
-      // we come out with a different, so we changed something...
-      modifiedNode = true;
-    }
-    return node;
+        if (accessed->type == NODE_TYPE_OBJECT) {
+          std::string_view attributeName(node->getStringView());
+          bool isDynamic = false;
+          size_t const n = accessed->numMembers();
+          for (size_t i = 0; i < n; ++i) {
+            auto member = accessed->getMemberUnchecked(i);
+
+            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+                member->getStringView() == attributeName) {
+              // found the attribute!
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
+              // now try optimizing the simplified condition
+              // time for a goto...!
+              goto again;
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+              // dynamic attribute name
+              isDynamic = true;
+            }
+          }
+
+          // attribute not found
+          if (!isDynamic) {
+            return p->getAst()->createNodeValueNull();
+          }
+        }
+      } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+        auto const* accessed = node->getMember(0);
+
+        if (accessed->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          TRI_ASSERT(v != nullptr);
+
+          auto setter = p->getVarSetBy(v->id);
+
+          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+            return node;
+          }
+
+          accessed = ExecutionNode::castTo<CalculationNode*>(setter)
+                         ->expression()
+                         ->node();
+          if (accessed == nullptr) {
+            return node;
+          }
+        }
+
+        auto indexValue = node->getMember(1);
+
+        if (!indexValue->isConstant() ||
+            !(indexValue->isStringValue() || indexValue->isNumericValue())) {
+          // cant handle this type of index statically
+          return node;
+        }
+
+        if (accessed->type == NODE_TYPE_OBJECT) {
+          std::string_view attributeName;
+          std::string indexString;
+
+          if (indexValue->isStringValue()) {
+            // string index, e.g. ['123']
+            attributeName = indexValue->getStringView();
+          } else {
+            // numeric index, e.g. [123]
+            TRI_ASSERT(indexValue->isNumericValue());
+            // convert the numeric index into a string
+            indexString = std::to_string(indexValue->getIntValue());
+            attributeName = std::string_view(indexString);
+          }
+
+          bool isDynamic = false;
+          size_t const n = accessed->numMembers();
+          for (size_t i = 0; i < n; ++i) {
+            auto member = accessed->getMemberUnchecked(i);
+
+            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+                member->getStringView() == attributeName) {
+              // found the attribute!
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
+              // now try optimizing the simplified condition
+              // time for a goto...!
+              goto again;
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+              // dynamic attribute name
+              isDynamic = true;
+            }
+          }
+
+          // attribute not found
+          if (!isDynamic) {
+            return p->getAst()->createNodeValueNull();
+          }
+        } else if (accessed->type == NODE_TYPE_ARRAY) {
+          int64_t position;
+          if (indexValue->isStringValue()) {
+            // string index, e.g. ['123'] -> convert to a numeric index
+            bool valid;
+            position = NumberUtils::atoi<int64_t>(
+                indexValue->getStringValue(),
+                indexValue->getStringValue() + indexValue->getStringLength(),
+                valid);
+            if (!valid) {
+              // invalid index
+              return p->getAst()->createNodeValueNull();
+            }
+          } else {
+            // numeric index, e.g. [123]
+            TRI_ASSERT(indexValue->isNumericValue());
+            position = indexValue->getIntValue();
+          }
+          int64_t const n = accessed->numMembers();
+          if (position < 0) {
+            // a negative position is allowed
+            position = n + position;
+          }
+          if (position >= 0 && position < n) {
+            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+            if (!next->isDeterministic()) {
+              // do not descend into non-deterministic nodes
+              return node;
+            }
+            // descend further
+            node = next;
+            // now try optimizing the simplified condition
+            // time for a goto...!
+            goto again;
+          }
+
+          // index out of bounds
+          return p->getAst()->createNodeValueNull();
+        }
+      }
+
+      return node;
   };
 
   bool modified = false;
@@ -2598,14 +2591,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
-      // reset for every round. can be modified by the visitor function!
-      modifiedNode = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
-      }
-      // cppcheck-suppress knownConditionTrueFalse
-      if (modifiedNode) {
         nn->expression()->invalidateAfterReplacements();
         modified = true;
       }
@@ -4556,19 +4544,23 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           auto p = previous;
           while (p != nullptr) {
             switch (p->getType()) {
-              case ExecutionNode::REMOTE:
+              case ExecutionNode::REMOTE: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
                 auto col = getCollection(p);
-                if (col->numberOfShards() > 1) {
+                if (col->numberOfShards() > 1 ||
+                    (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;
                 }
-              } break;
-              case ExecutionNode::TRAVERSAL:
+                break;
+              }
+              case ExecutionNode::TRAVERSAL: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
                 auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
                 auto collections = viewNode.collections();
@@ -4579,7 +4571,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                   hasFoundMultipleShards =
                       collections.front().first.get().numberOfShards() > 1;
                 }
-              } break;
+                break;
+              }
               default:
                 break;
             }
@@ -6017,7 +6010,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value
   // is better
   bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) {
-    int cmp = CompareAstNodes(bestValue, value, true);
+    int cmp = compareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);
@@ -6331,6 +6324,84 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+/// @brief optimizes away unused K_PATHS things
+void arangodb::aql::optimizePathsRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::ENUMERATE_PATHS, true);
+
+  if (nodes.empty()) {
+    // no traversals present
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
+  for (auto const& n : nodes) {
+    EnumeratePathsNode* ksp = ExecutionNode::castTo<EnumeratePathsNode*>(n);
+    if (!ksp->usesPathOutVariable()) {
+      continue;
+    }
+
+    Variable const* variable = &(ksp->pathOutVariable());
+
+    containers::FlatHashSet<AttributeNamePath> attributes;
+    VarSet vars;
+    bool canOptimize = true;
+
+    ExecutionNode* current = ksp->getFirstParent();
+    while (current != nullptr && canOptimize) {
+      switch (current->getType()) {
+        case EN::CALCULATION: {
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            // path variable used here
+            Expression* exp =
+                ExecutionNode::castTo<CalculationNode*>(current)->expression();
+            AstNode const* node = exp->node();
+            if (!Ast::getReferencedAttributesRecursive(
+                    node, variable, /*expectedAttributes*/ "", attributes)) {
+              // full path variable is used, or accessed in a way that we don't
+              // understand, e.g. "p" or "p[0]" or "p[*]..."
+              canOptimize = false;
+            }
+          }
+          break;
+        }
+        default: {
+          // if the path is used by any other node type, we don't know what to
+          // do and will not optimize parts of it away
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            canOptimize = false;
+          }
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    }
+
+    if (canOptimize) {
+      bool produceVertices =
+          attributes.contains(StaticStrings::GraphQueryVertices);
+
+      if (!produceVertices) {
+        auto* options = ksp->options();
+        options->setProduceVertices(false);
+        modified = true;
+      }
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 // remove filter nodes already covered by a traversal
 void arangodb::aql::removeFiltersCoveredByTraversal(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -6385,37 +6456,56 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
         auto traversalCondition = traversalNode->condition();
 
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
-          /*auto const& indexesUsed = traversalNode->get
-          //indexNode->getIndexes();
-
-          if (indexesUsed.size() == 1) {*/
-          // single index. this is something that we can handle
-          Variable const* outVariable = traversalNode->pathOutVariable();
           VarSet varsUsedByCondition;
           Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
-          if (outVariable != nullptr && varsUsedByCondition.find(outVariable) !=
-                                            varsUsedByCondition.end()) {
+
+          auto remover = [&](Variable const* outVariable,
+                             bool isPathCondition) -> bool {
+            if (outVariable == nullptr) {
+              return false;
+            }
+            if (varsUsedByCondition.find(outVariable) ==
+                varsUsedByCondition.end()) {
+              return false;
+            }
+
             auto newNode = condition.removeTraversalCondition(
-                plan.get(), outVariable, traversalCondition->root());
+                plan.get(), outVariable, traversalCondition->root(),
+                isPathCondition);
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
               toUnlink.emplace(node);
               // note: we must leave the calculation node intact, in case it
               // is still used by other nodes in the plan
-              modified = true;
-              handled = true;
+              return true;
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              auto* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
+              return true;
+            }
+
+            return false;
+          };
+
+          std::array<std::pair<Variable const*, bool>, 3> vars = {
+              std::make_pair(traversalNode->pathOutVariable(),
+                             /*isPathCondition*/ true),
+              std::make_pair(traversalNode->vertexOutVariable(),
+                             /*isPathCondition*/ false),
+              std::make_pair(traversalNode->edgeOutVariable(),
+                             /*isPathCondition*/ false)};
+
+          for (auto [v, isPathCondition] : vars) {
+            if (remover(v, isPathCondition)) {
               modified = true;
               handled = true;
+              break;
             }
           }
         }
@@ -6920,7 +7010,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return static_cast<Variable const*>(lhs->getData())->id ==
            static_cast<Variable const*>(rhs->getData())->id;
   }
-  // CompareAstNodes does not handle non const attribute access
+  // compareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
       res2;
   bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
@@ -6928,7 +7018,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   if (acc1 || acc2) {
     return acc1 && acc2 && res1 == res2;  // same variable same path
   }
-  return aql::CompareAstNodes(lhs, rhs, false) == 0;
+  return aql::compareAstNodes(lhs, rhs, false) == 0;
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
@@ -7362,6 +7452,30 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
+    bool mustRespectIdxHint = false;
+    auto enumerateColNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto const& colNodeHints = enumerateColNode->hint();
+    if (colNodeHints.isForced() &&
+        colNodeHints.type() == IndexHint::HintType::Simple) {
+      auto indexes = enumerateColNode->collection()->indexes();
+      auto& idxNames = colNodeHints.hint();
+      for (auto const& idxName : idxNames) {
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == idxName) {
+            auto idxType = idx->type();
+            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+              mustRespectIdxHint = true;
+            } else {
+              info.index = idx;
+            }
+            break;
+          }
+        }
+      }
+    }
 
     while (current) {
       if (current->getType() == EN::FILTER) {
@@ -7403,7 +7517,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      if (applyGeoOptimization(plan.get(), limit, info)) {
+      if (!mustRespectIdxHint &&
+          applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
     }

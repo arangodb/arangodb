@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,11 +32,12 @@ class VPackFeature;
 
 using namespace application_features;
 
-using ArangoVPackFeatures =
+using ArangoVPackFeaturesList =
     TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, FileSystemFeature, RandomFeature,
-             ShellColorsFeature, ShutdownFeature, VPackFeature>;
-
+             ConfigFeature, LoggerFeature, OptionsCheckFeature,
+             FileSystemFeature, RandomFeature, ShellColorsFeature,
+             ShutdownFeature, VPackFeature>;
+struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
 using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
 using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
 

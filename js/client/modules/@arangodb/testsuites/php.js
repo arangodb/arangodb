@@ -87,10 +87,6 @@ function phpDriver (options) {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
       }
-      let enterprise = 'false';
-      if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
-        enterprise = 'true';
-      }
       let m = this.instanceManager.url.split(host_re);
       process.env['ARANGO_ROOT_PASSWORD'] = '';
       process.env['ARANGO_USE_AUTHENTICATION'] = false;
@@ -165,7 +161,7 @@ function phpDriver (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['phpkeepalive'] = true;
   Object.assign(allTestPaths, testPaths);
   testFns['php_driver'] = phpDriver;

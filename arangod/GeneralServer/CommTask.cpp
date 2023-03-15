@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,6 +49,9 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/FoxxFeature.h"
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,12 +59,14 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-std::string const AdminAardvark("/_admin/aardvark/");
-std::string const ApiUser("/_api/user/");
-std::string const Open("/_open/");
+constexpr std::string_view pathPrefixApi("/_api/");
+constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixAdmin("/_admin/");
+constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
+constexpr std::string_view pathPrefixOpen("/_open/");
 
-TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
-                                         GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -75,7 +80,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
 
 /// Set the appropriate requestContext
 bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
+  auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -84,7 +89,9 @@ bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
+  std::unique_ptr<VocbaseContext> guard(
+      VocbaseContext::create(req, *vocbase.release()));
   if (!guard) {
     return false;
   }
@@ -254,9 +261,10 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
-      // the following paths are allowed on followers
+      // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
+          !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
@@ -311,7 +319,8 @@ CommTask::Flow CommTask::prepareExecution(
       if (lvl == auth::Level::NONE) {
         sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                           req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_FORBIDDEN);
+                          TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request");
         return Flow::Abort;
       }
     }
@@ -331,6 +340,20 @@ CommTask::Flow CommTask::prepareExecution(
                       TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
+  }
+
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    auto& ff = _server.server().getFeature<FoxxFeature>();
+    if (!ff.foxxEnabled() &&
+        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+          path.starts_with(::pathPrefixApi) ||
+          path.starts_with(::pathPrefixOpen))) {
+      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_FORBIDDEN,
+                        "access to Foxx apps is turned off on this instance");
+      return Flow::Abort;
+    }
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
@@ -362,7 +385,7 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
-      !ServerState::instance()->isDBServer()) {
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -388,6 +411,18 @@ void CommTask::finishExecution(GeneralResponse& res,
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
                             StaticStrings::NoSniff);
+
+    // CSP Headers for security.
+    res.setHeaderNCIfNotSet(StaticStrings::ContentSecurityPolicy,
+                            "frame-ancestors 'self'; form-action 'self';");
+    res.setHeaderNCIfNotSet(
+        StaticStrings::CacheControl,
+        "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+        "max-age=0, s-maxage=0");
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, "no-cache");
+    res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
+                            "max-age=31536000 ; includeSubDomains");
   }
 
   // add "x-arango-queue-time-seconds" header
@@ -532,6 +567,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard guard{_statisticsMutex};
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
@@ -805,8 +845,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || path.starts_with(Open) ||
-          path.starts_with(AdminAardvark) ||
+      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -817,12 +857,13 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(ApiUser + username + '/')) {
+                 path.starts_with(std::string{::pathPrefixApiUser} + username +
+                                  '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
         result = Flow::Continue;
       }
     }
@@ -968,7 +1009,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
-                                      // invalidate the member
+  // invalidate the member
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {

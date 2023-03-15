@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,6 +98,14 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief maximum tick until which we need to run WAL tailing for. 0 means
   /// "no restriction"
   uint64_t _tailingUpperBoundTick;
+
+  /// @brief initial number of documents on leader
+  uint64_t _initialDocCountOnLeader;
+  /// @brief initial number of documents on follower
+  uint64_t _initialDocCountOnFollower;
+  /// @brief number of documents on follower at end of (successful)
+  /// synchronization
+  uint64_t _docCountAtEnd;
 
   /// @brief end time (timestamp in seconds)
   std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;

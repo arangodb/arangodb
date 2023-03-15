@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,12 @@ class ExportFeature;
 class TempFeature;
 class EncryptionFeature;
 
-using ArangoExportFeatures = ArangoClientFeatures<
+using ArangoExportFeaturesList = ArangoClientFeaturesList<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
     BasicFeaturePhaseClient, TempFeature, ExportFeature>;
-
+struct ArangoExportFeatures : ArangoExportFeaturesList {};
 using ArangoExportServer = ApplicationServerT<ArangoExportFeatures>;
 using ArangoExportFeature = ApplicationFeatureT<ArangoExportServer>;
 

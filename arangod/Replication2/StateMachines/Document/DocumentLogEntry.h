@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,59 +24,33 @@
 #pragma once
 
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 #include "Replication2/Streams/StreamSpecification.h"
-#include "VocBase/Identifiers/TransactionId.h"
 #include "Inspection/Status.h"
-
-#include <velocypack/SharedSlice.h>
-
-#include <string>
-#include <string_view>
 
 namespace arangodb::replication2::replicated_state {
 namespace document {
 
-enum class OperationType {
-  kInsert,
-  kUpdate,
-  kReplace,
-  kRemove,
-  kTruncate,
-  kCommit,
-  kAbort,
-  kAbortAllOngoingTrx
-};
-
-auto to_string(OperationType) noexcept -> std::string_view;
-auto fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
-    -> OperationType;
-
-struct OperationStringTransformer {
-  using SerializedType = std::string;
-  auto toSerialized(OperationType source, std::string& target) const
-      -> inspection::Status;
-  auto fromSerialized(std::string const& source, OperationType& target) const
-      -> inspection::Status;
-};
-
+/*
+ * Used for transporting operations to the state machine. Does not contain any
+ * logic.
+ */
 struct DocumentLogEntry {
-  std::string shardId;
-  OperationType operation;
-  velocypack::SharedSlice data;
-  TransactionId tid;
+  ReplicatedOperation operation;
 
-  template<class Inspector>
-  inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
-    return f.object(p).fields(
-        f.field("shardId", p.shardId),
-        f.field("operation", p.operation)
-            .transformWith(OperationStringTransformer{}),
-        f.field("data", p.data).fallback(velocypack::SharedSlice{}),
-        f.field("tid", p.tid));
+  auto& getInnerOperation() noexcept { return operation.operation; }
+  [[nodiscard]] auto const& getInnerOperation() const noexcept {
+    return operation.operation;
+  }
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, DocumentLogEntry& x) {
+    return f.object(x).fields(f.field("operation", x.operation));
   }
 };
 
-auto operator<<(std::ostream& os, DocumentLogEntry entry) -> std::ostream&;
+auto operator<<(std::ostream&, DocumentLogEntry const&) -> std::ostream&;
 }  // namespace document
 
 template<>

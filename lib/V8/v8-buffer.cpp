@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,7 +272,7 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     return ContainsNonAsciiSlow(src, len);
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned unaligned = reinterpret_cast<uintptr_t>(src) & align_mask;
 
@@ -287,13 +287,8 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     len -= n;
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = 0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = 0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
 
@@ -334,7 +329,7 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     return;
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned src_unalign = reinterpret_cast<uintptr_t>(src) & align_mask;
   const unsigned dst_unalign = reinterpret_cast<uintptr_t>(dst) & align_mask;
@@ -352,13 +347,8 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     }
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = ~0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = ~0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
   word* dstw = reinterpret_cast<word*>(dst);

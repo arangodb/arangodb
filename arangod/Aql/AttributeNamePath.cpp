@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/fasthash.h"
 
 #include <algorithm>
+#include <iostream>
 
 namespace arangodb {
 namespace aql {
@@ -136,6 +137,15 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
     ++numEqual;
   }
   return numEqual;
+}
+
+std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
+  stream << "[";
+  for (auto const& it : path.path) {
+    stream << ' ' << it;
+  }
+  stream << " ]";
+  return stream;
 }
 
 }  // namespace aql

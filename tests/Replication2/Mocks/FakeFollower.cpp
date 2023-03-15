@@ -27,7 +27,6 @@
 #include "Basics/voc-errors.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 
@@ -41,23 +40,8 @@ auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
   return {};  // return ok
 }
 
-auto FakeFollower::getLeader() const noexcept
-    -> std::optional<ParticipantId> const& {
-  return leaderId;
-}
-
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
-}
-
-auto FakeFollower::getCommitIndex() const noexcept -> LogIndex {
-  return guarded.getLockedGuard()->commitIndex;
-}
-
-auto FakeFollower::resign() && -> std::tuple<
-    std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
-  resign();
-  return std::make_tuple(nullptr, DeferredAction{});
 }
 
 FakeFollower::FakeFollower(ParticipantId id,
@@ -76,6 +60,8 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
       .leader = leaderId,
       .term = term,
       .lowestIndexToKeep = LogIndex{0},
+      .compactionStatus = {},
+      .snapshotAvailable = {},
   }};
 }
 
@@ -92,10 +78,6 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
       }},
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
-}
-
-auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
-  return waitForLeaderAckedQueue.waitFor({});
 }
 
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
@@ -131,10 +113,6 @@ auto FakeFollower::waitForIterator(LogIndex index)
       });
 }
 
-auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return waitForResignQueue.addWaitFor();
-}
-
 void FakeFollower::updateCommitIndex(LogIndex index) {
   guarded.getLockedGuard()->commitIndex = index;
   waitForQueue.resolve(index, replicated_log::WaitForResult{index, nullptr});
@@ -151,5 +129,11 @@ void FakeFollower::resign() & {
 }
 
 replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto FakeFollower::resign2() && -> std::tuple<
+    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

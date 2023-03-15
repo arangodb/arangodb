@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
       ReplicationApplierConfiguration const& configuration,
       TRI_voc_tick_t initialTick, bool useTick);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;
   }
 
@@ -104,7 +104,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   }
 
   /// @brief whether or not we should skip a specific marker
-  bool skipMarker(arangodb::velocypack::Slice slice) override;
+  bool skipMarker(velocypack::Slice slice) override;
 
  private:
   /// @brief vocbase to use for this run

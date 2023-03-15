@@ -402,7 +402,10 @@ function createView() {
 function createSearch() {
   db._useDatabase("UnitTestsDumpSrc");
 
+  // create collections
   let collection = db._create("searchCollection");
+
+  // create indexes
   let index = collection.ensureIndex({
     type: "inverted",
     name: "searchIndex",
@@ -411,11 +414,107 @@ function createSearch() {
     includeAllFields: true,
     analyzer: "text_en"
   });
+
+  // create views
   let search = db._createView("searchSearch", "search-alias",
    { indexes: [ { collection: collection.name(), index: index.name } ] });
 
+  // insert data
   collection.save({value: -1, text: "the red foxx jumps over the pond"});
   collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+}
+
+function createInvertedIndex() {
+  db._useDatabase("UnitTestsDumpSrc");
+
+  let analyzers = require("@arangodb/analyzers");
+  let a = analyzers.save("AqlAnalyzerRound", "aql", { queryString: "RETURN ROUND(@param)" }, ["frequency", "norm", "position"]);
+  let b = analyzers.save("myDelimiterAnalyzer", "delimiter", { delimiter: " " }, ["frequency", "norm", "position"]);
+  let c = analyzers.save("AqlAnalyzerHash", "aql", { queryString: "return to_hex(to_string(@param))" }, []);
+  let d = analyzers.save("norm_lower", "norm", {locale: "de.utf-8", case: "lower"}, ["frequency", "norm", "position"]);
+
+  // create collections
+  let collection_documents_0 = db._create("collection_documents_0", {
+    replicationFactor: 2,
+    writeConcern: 1,
+    numberOfShards: 2});
+
+  // create indexes
+  let index = db.collection_documents_0.ensureIndex(
+    {
+        "type":"inverted",
+        "name":"collection_documents_0_all",
+        "fields": [
+            {
+                "analyzer": "AqlAnalyzerHash",
+                "name": "_key",
+                "features": [
+                    "norm"
+                ]
+            },
+            {
+                "name": "_rev",
+                "features": [
+                    "position", "frequency"
+                ]
+            },
+            {
+                "name": "Familie.Mutter",
+                "includeAllFields": true
+            },
+            {
+                "name": "Familie.Mutter.Name",
+                "includeAllFields": true
+            },
+            {
+                "name": "Familie.Vater.Name",
+                "includeAllFields": true,
+                "trackListPositions": true,
+                "analyzer": "AqlAnalyzerHash"
+            },
+            {
+                "name": "Familie.Ehefrau.Setzt[*].Titel",
+                "analyzer": "AqlAnalyzerHash"
+            },
+            {
+                "name": "Familie.Bruder.Name",
+                "analyzer": "norm_lower"
+            },
+            {
+                "name": "Familie.Bruder.Familienname",
+                "analyzer": "AqlAnalyzerHash"
+            },
+            {
+                "name": "Familie.Bruder.Setzt[*].istGut",
+                "analyzer": "AqlAnalyzerRound"
+
+            },
+            {
+                "name": "Setzt",
+            },
+            {
+              "name": "Haustiere",
+            }
+        ],
+        "includeAllFields": false,
+        "trackListPositions": false,
+        "features": [],
+        "analyzer": "myDelimiterAnalyzer"
+    }
+  );
+
+  // create views
+  let search = db._createView('v_collection_documents_0_all', 'search-alias', {
+    'indexes': [
+        {
+            'collection': 'collection_documents_0',
+            'index': 'collection_documents_0_all'
+        }
+    ]
+  });
+
+  collection_documents_0.save({value: -1, text: "the red foxx jumps over the pond"});
+  collection_documents_0.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 }
 
 function createReplicationFactors() {
@@ -1332,6 +1431,7 @@ exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
 exports.createSearch = createSearch;
+exports.createInvertedIndex = createInvertedIndex;
 exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -83,7 +85,7 @@ auto hasCurrentTermWithLeader(Log const& log) -> bool {
 
 // Leader has failed if it is marked as failed or its rebootId is
 // different from what is expected
-auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
   // TODO: write test first
@@ -113,14 +115,22 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
 //       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
   for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and flags.allowedAsLeader) {
-      acceptableLeaderSet.emplace_back(participant);
+    if (participant == currentLeader or not flags.allowedAsLeader) {
+      continue;
     }
+    // check has snapshot
+    auto iter = localStates.find(participant);
+    if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+      continue;
+    }
+    acceptableLeaderSet.emplace_back(participant);
   }
 
   return acceptableLeaderSet;
@@ -138,6 +148,8 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
     return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
   } else if (!maybeStatus or term != maybeStatus->term) {
     return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+  } else if (not maybeStatus->snapshotAvailable) {
+    return LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING;
   } else {
     return LogCurrentSupervisionElection::ErrorCode::OK;
   }
@@ -155,9 +167,9 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     auto const healthy = health.notIsFailed(participant);
 
     auto maybeStatus = std::invoke(
-        [&states](ParticipantId const& participant)
-            -> std::optional<LogCurrentLocalState> {
-          auto status = states.find(participant);
+        [&states](
+            ParticipantId const& p) -> std::optional<LogCurrentLocalState> {
+          auto status = states.find(p);
           if (status != states.end()) {
             return status->second;
           } else {
@@ -197,6 +209,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //  * allowedAsLeader
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
+//  * snapshot available
 //
 auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
@@ -270,7 +283,7 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     if (newLeaderRebootId.has_value()) {
       ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
       ctx.createAction<LeaderElectionAction>(
-          LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          ServerInstanceReference(newLeader, *newLeaderRebootId),
           effectiveWriteConcern,
           std::min(current.supervision->assumedWriteConcern,
                    effectiveWriteConcern),
@@ -298,7 +311,7 @@ auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
     return;
   }
   TRI_ASSERT(log.plan.has_value());
-  auto const plan = *log.plan;
+  auto const& plan = *log.plan;
 
   if (!log.current.has_value()) {
     return;
@@ -373,7 +386,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
         current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants);
+        current.leader->committedParticipantsConfig->participants,
+        log.current->localState);
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
@@ -387,7 +401,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(
-              LogPlanTermSpecification::Leader{participant, *rebootId});
+              ServerInstanceReference{participant, *rebootId});
+
           return;
         } else {
           // TODO: this should get the participant
@@ -424,7 +439,11 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   if (!log.plan.has_value()) {
     return;
   }
+  if (!log.current.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
+  TRI_ASSERT(log.current.has_value());
   auto const& plan = *log.plan;
 
   if (target.leader.has_value()) {
@@ -439,13 +458,23 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
     if (!health.notIsFailed(*target.leader)) {
       ctx.reportStatus<LogCurrentSupervision::TargetLeaderFailed>();
       return;
-    };
+    }
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
       TRI_ASSERT(plan.participantsConfig.participants.contains(*target.leader));
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
+
+      {
+        auto const& localStates = log.current->localState;
+        auto iter = localStates.find(*target.leader);
+        if (iter == localStates.end() or not iter->second.snapshotAvailable) {
+          ctx.reportStatus<
+              LogCurrentSupervision::TargetLeaderSnapshotMissing>();
+          return;
+        }
+      }
 
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;
@@ -469,7 +498,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       auto const& rebootId = health.getRebootId(*target.leader);
       if (rebootId.has_value()) {
         ctx.createAction<SwitchLeaderAction>(
-            LogPlanTermSpecification::Leader{*target.leader, *rebootId});
+            ServerInstanceReference{*target.leader, *rebootId});
       } else {
         ctx.reportStatus<LogCurrentSupervision::TargetLeaderInvalid>();
       }
@@ -505,8 +534,8 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
 auto pickLeader(std::optional<ParticipantId> targetLeader,
                 ParticipantsFlagsMap const& participants,
                 ParticipantsHealth const& health, uint64_t logId)
-    -> std::optional<LogPlanTermSpecification::Leader> {
-  auto leaderId = targetLeader;
+    -> std::optional<ServerInstanceReference> {
+  auto& leaderId = targetLeader;
 
   if (!leaderId) {
     leaderId = pickRandomParticipantToBeLeader(participants, health, logId);
@@ -515,7 +544,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   if (leaderId.has_value()) {
     auto const& rebootId = health.getRebootId(*leaderId);
     if (rebootId.has_value()) {
-      return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
+      return ServerInstanceReference{*leaderId, *rebootId};
     }
   };
 
@@ -539,7 +568,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
-                                           config, leader);
+                                           config, target.properties, leader);
     }
   }
 }
@@ -715,7 +744,7 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
   auto const& target = log.target;
-
+  // TODO add status report for each exit point
   if (!log.current.has_value()) {
     return;
   }
@@ -726,12 +755,29 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
     return;
   }
 
-  if (log.plan->participantsConfig.generation !=
+  ADB_PROD_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+  if (not plan.currentTerm or not plan.currentTerm->leader) {
+    return;
+  }
+
+  if (plan.participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
     return;
   }
 
-  if (!current.leader->leadershipEstablished) {
+  if (current.leader->term != plan.currentTerm->term and
+      not current.leader->leadershipEstablished) {
+    return;
+  }
+
+  auto allStatesReady = std::all_of(
+      log.current->localState.begin(), log.current->localState.end(),
+      [](auto const& pair) -> bool {
+        return pair.second.state ==
+               replicated_log::LocalStateMachineStatus::kOperational;
+      });
+  if (!allStatesReady) {
     return;
   }
 
@@ -817,163 +863,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // Check whether we have converged, and if so, report and set version
   // to target version
   checkConverged(ctx, log);
-}
-
-auto executeCheckReplicatedLog(DatabaseID const& dbName,
-                               std::string const& logIdString, Log log,
-                               ParticipantsHealth const& health,
-                               arangodb::agency::envelope envelope) noexcept
-    -> arangodb::agency::envelope {
-  SupervisionContext sctx;
-  auto const now = std::chrono::system_clock::now();
-  auto const logId = log.target.id;
-  auto const hasStatusReport = log.current && log.current->supervision &&
-                               log.current->supervision->statusReport;
-
-  // check if error reporting is enabled
-  if (log.current && log.current->supervision &&
-      log.current->supervision->lastTimeModified.has_value()) {
-    auto const lastMod = *log.current->supervision->lastTimeModified;
-    if ((now - lastMod) > std::chrono::seconds{15}) {
-      sctx.enableErrorReporting();
-    }
-  }
-
-  auto maxActionsTraceLength = std::invoke([&log]() {
-    if (log.target.supervision.has_value()) {
-      return log.target.supervision->maxActionsTraceLength;
-    } else {
-      return static_cast<size_t>(0);
-    }
-  });
-
-  checkReplicatedLog(sctx, log, health);
-
-  bool const hasNoExecutableAction =
-      std::holds_alternative<EmptyAction>(sctx.getAction()) ||
-      std::holds_alternative<NoActionPossibleAction>(sctx.getAction());
-  // now check if there is status update
-  if (hasNoExecutableAction) {
-    // there is only a status update
-    if (sctx.isErrorReportingEnabled()) {
-      // now compare the new status with the old status
-      if (log.current && log.current->supervision) {
-        if (log.current->supervision->statusReport == sctx.getReport()) {
-          // report did not change, do not create a transaction
-          return envelope;
-        }
-      }
-    }
-  }
-
-  auto actionCtx = arangodb::replication2::replicated_log::executeAction(
-      std::move(log), sctx.getAction());
-
-  if (sctx.isErrorReportingEnabled()) {
-    if (sctx.getReport().empty()) {
-      if (hasStatusReport) {
-        actionCtx.modify<LogCurrentSupervision>(
-            [&](auto& supervision) { supervision.statusReport.reset(); });
-      }
-    } else {
-      actionCtx.modify<LogCurrentSupervision>([&](auto& supervision) {
-        supervision.statusReport = std::move(sctx.getReport());
-      });
-    }
-  } else if (std::holds_alternative<ConvergedToTargetAction>(
-                 sctx.getAction())) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.statusReport.reset(); });
-  }
-
-  // update last time modified
-  if (!hasNoExecutableAction) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.lastTimeModified = now; });
-  }
-
-  if (!actionCtx.hasModification()) {
-    return envelope;
-  }
-
-  return buildAgencyTransaction(dbName, logId, sctx, actionCtx,
-                                maxActionsTraceLength, std::move(envelope));
-}
-
-auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
-                            SupervisionContext& sctx, ActionContext& actx,
-                            size_t maxActionsTraceLength,
-                            arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(logId)->str();
-
-  auto currentSupervisionPath = paths::current()
-                                    ->replicatedLogs()
-                                    ->database(dbName)
-                                    ->log(logId)
-                                    ->supervision()
-                                    ->str();
-
-  // If we want to keep a trace of actions, then only record actions
-  // that actually modify the data structure. This excludes the EmptyAction
-  // and the NoActionPossibleAction.
-  if (sctx.hasModifyingAction() && maxActionsTraceLength > 0) {
-    envelope = envelope.write()
-                   .push_queue_emplace(
-                       arangodb::cluster::paths::aliases::current()
-                           ->replicatedLogs()
-                           ->database(dbName)
-                           ->log(logId)
-                           ->actions()
-                           ->str(),
-                       // TODO: struct + inspect + transformWith
-                       [&](velocypack::Builder& b) {
-                         VPackObjectBuilder ob(&b);
-                         b.add("time", VPackValue(timepointToString(
-                                           std::chrono::system_clock::now())));
-                         b.add(VPackValue("desc"));
-                         std::visit([&b](auto&& arg) { serialize(b, arg); },
-                                    sctx.getAction());
-                       },
-                       maxActionsTraceLength)
-                   .precs()
-                   .isNotEmpty(paths::target()
-                                   ->replicatedLogs()
-                                   ->database(dbName)
-                                   ->log(logId)
-                                   ->str())
-                   .end();
-  }
-
-  return envelope.write()
-      .cond(actx.hasModificationFor<LogPlanSpecification>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .inc(paths::plan()->version()->str())
-                  .emplace_object(planPath, [&](VPackBuilder& builder) {
-                    velocypack::serialize(
-                        builder, actx.getValue<LogPlanSpecification>());
-                  });
-            })
-      .cond(actx.hasModificationFor<LogCurrentSupervision>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(currentSupervisionPath,
-                                  [&](VPackBuilder& builder) {
-                                    velocypack::serialize(
-                                        builder,
-                                        actx.getValue<LogCurrentSupervision>());
-                                  })
-                  .inc(paths::current()->version()->str());
-            })
-      .precs()
-      .isNotEmpty(paths::target()
-                      ->replicatedLogs()
-                      ->database(dbName)
-                      ->log(logId)
-                      ->str())
-      .end();
 }
 
 }  // namespace arangodb::replication2::replicated_log

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+struct OperationOptions;
+
 namespace transaction {
 class Methods;
 }
@@ -71,7 +73,11 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   // removes a document
   RestStatus removeDocument();
 
- private:
+  void handleFillIndexCachesValue(OperationOptions& options);
+
+  void addTransactionHints(std::string const& collectionName, bool isMultiple,
+                           bool isOverwritingInsert);
+
   std::unique_ptr<transaction::Methods> _activeTrx;
 };
 }  // namespace arangodb

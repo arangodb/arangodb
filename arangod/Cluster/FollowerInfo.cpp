@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -422,7 +422,10 @@ void FollowerInfo::takeOverLeadership(
           << ", theLeader: " << _theLeader << ", theLeaderTouched; "
           << std::boolalpha << _theLeaderTouched;
 
-      TRI_ASSERT(false);
+      if (_docColl->vocbase().replicationVersion() ==
+          replication::Version::ONE) {
+        TRI_ASSERT(false) << "this should not happen with replication 1";
+      }
     } else {
       // We are a valid failover follower
 

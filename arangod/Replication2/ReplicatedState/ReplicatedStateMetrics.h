@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,6 +77,8 @@ struct ReplicatedStateMetrics {
       replicatedStateNumberAcquireSnapshotErrors;
   std::shared_ptr<metrics::Counter> const
       replicatedStateNumberApplyEntriesErrors;
+
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedStateApplyDebt;
 };
 
 }  // namespace arangodb::replication2::replicated_state

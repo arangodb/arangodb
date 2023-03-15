@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -239,4 +239,10 @@ void ResourceUsageScope::decrease(std::uint64_t value) noexcept {
     _resourceMonitor.decreaseMemoryUsage(value);
     _value -= value;
   }
+}
+
+std::uint64_t ResourceUsageScope::trackedAndSteal() noexcept {
+  std::uint64_t value = _value;
+  _value = 0;
+  return value;
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -269,7 +269,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] QueryContext const& getQuery() const;
 
-  [[nodiscard]] Executor& executor();
+  [[nodiscard]] auto executor() noexcept -> Executor&;
+
+  [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
 
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems,
@@ -441,7 +443,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /**
    * @brief Fetcher used by the Executor.
    */
-  Fetcher _rowFetcher;
+  std::optional<Fetcher> _rowFetcher;
 
   /**
    * @brief This is the working party of this implementation
@@ -450,7 +452,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   ExecutorInfos _executorInfos;
 
-  Executor _executor;
+  std::optional<Executor> _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 

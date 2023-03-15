@@ -35,6 +35,7 @@ const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const servers = getCoordinatorEndpoints();
 

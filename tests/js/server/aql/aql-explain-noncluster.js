@@ -49,7 +49,7 @@ function explainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNodes : function () {
-      const query = "FOR i IN " + cn + " FILTER i.value > 1 LET a = i.value / 2 SORT a DESC COLLECT x = a INTO g RETURN x";
+      const query = "FOR i IN " + cn + " FILTER i.value > 1 LET a = i.value / 2 SORT a DESC COLLECT x = a INTO g OPTIONS { method: 'sorted' } RETURN x";
      
       let actual = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-all" ] } });
       let nodes = actual.plan.nodes, node;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,9 @@
 namespace arangodb::cluster {
 struct IFailureOracle;
 }
-
+namespace arangodb::replication2::replicated_log {
+struct TermIndexMapping;
+}
 namespace arangodb::replication2::algorithms {
 
 struct ParticipantRecord {
@@ -57,17 +59,15 @@ enum class ConflictReason {
 
 auto to_string(ConflictReason r) noexcept -> std::string_view;
 
-auto detectConflict(replicated_log::InMemoryLog const& log,
+auto detectConflict(replicated_log::TermIndexMapping const& log,
                     TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
 
 struct LogActionContext {
   virtual ~LogActionContext() = default;
-  virtual auto dropReplicatedLog(LogId) -> Result = 0;
-  virtual auto ensureReplicatedLog(LogId)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> = 0;
-  virtual auto buildAbstractFollowerImpl(LogId, ParticipantId)
-      -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
+  virtual auto dropReplicatedState(LogId) -> Result = 0;
+  virtual auto ensureReplicatedState(LogId id, std::string_view type,
+                                     VPackSlice parameter) -> Result = 0;
 };
 
 auto updateReplicatedLog(
@@ -79,12 +79,12 @@ auto updateReplicatedLog(
 struct ParticipantState {
   TermIndexPair lastAckedEntry;
   ParticipantId id;
-  bool failed = false;
+  bool snapshotAvailable = false;
   ParticipantFlags flags{};
 
   [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
-  [[nodiscard]] auto isFailed() const noexcept -> bool;
+  [[nodiscard]] auto isSnapshotAvailable() const noexcept -> bool;
 
   [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;

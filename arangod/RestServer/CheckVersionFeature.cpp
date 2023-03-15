@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,8 +68,7 @@ void CheckVersionFeature::collectOptions(
   options->addOldOption("check-version", "database.check-version");
 
   options->addOption(
-      "--database.check-version",
-      "checks the versions of the database and exit",
+      "--database.check-version", "Check the version of the database and exit.",
       new BooleanParameter(&_checkVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));

@@ -1,7 +1,7 @@
 @startDocuBlock put_api_view_properties_searchalias
 @brief Changes the properties of a `search-alias` View
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#searchalias, Changes properties of a Search Alias View, modifyViewSearchAlias}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#searchalias, Changes properties of a search-alias View, modifyViewSearchAlias}
 
 @RESTURLPARAMETERS
 
@@ -15,7 +15,8 @@ A list of inverted indexes for the View.
 The name of a collection.
 
 @RESTSTRUCT{index,put_api_view_searchalias_indexes,string,required,}
-The name of an inverted index of the `collection`.
+The name of an inverted index of the `collection`, or the index ID without
+the `<collection>/` prefix.
 
 @RESTDESCRIPTION
 Replaces the list of indexes of a `search-alias` View.

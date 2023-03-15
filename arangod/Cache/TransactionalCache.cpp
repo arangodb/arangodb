@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,6 @@ Finding TransactionalCache<Hasher>::find(void const* key,
       recordStat(Stat::findMiss);
       result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
-    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
   }
   return result;
 }

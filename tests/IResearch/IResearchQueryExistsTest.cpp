@@ -1311,7 +1311,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with bound params
@@ -1324,7 +1324,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with bound view name
@@ -1340,7 +1340,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with invalid bound view name
@@ -1365,7 +1365,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (boolean)
@@ -1377,7 +1377,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (boolean) via []
@@ -1389,7 +1389,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (numeric)
@@ -1488,7 +1488,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (null) via []
@@ -1500,7 +1500,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1512,7 +1512,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1524,7 +1524,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (string)
@@ -1536,7 +1536,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string)
@@ -1548,7 +1548,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string)
@@ -1560,7 +1560,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string) via []
@@ -1572,7 +1572,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1584,7 +1584,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1596,7 +1596,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1608,7 +1608,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1620,7 +1620,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1632,7 +1632,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (array)
@@ -1644,7 +1644,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (array) via []
@@ -1656,7 +1656,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (object)
@@ -1668,7 +1668,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (object) via []
@@ -1680,7 +1680,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
   }
 };

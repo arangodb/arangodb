@@ -67,8 +67,11 @@ const termSignal = 15;
 
 const instanceRole = inst.instanceRole;
 
+let instanceCount = 1;
+
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
+    this.instanceCount = instanceCount++;
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
@@ -97,6 +100,7 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.expectAsserts = false;
   }
 
   destructor(cleanup) {
@@ -276,6 +280,9 @@ class instanceManager {
     }
   }
 
+  nonfatalAssertSearch() {
+    this.expectAsserts = true;
+  }
   launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
@@ -366,7 +373,7 @@ class instanceManager {
   }
   launchTcpDump(name) {
     if (this.options.sniff === undefined || this.options.sniff === false) {
-      return;
+      return true;
     }
     this.options.cleanup = false;
     let device = 'lo';
@@ -407,7 +414,20 @@ class instanceManager {
       prog = 'sudo';
     }
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
-    this.tcpdump = executeExternal(prog, args);
+    try {
+      this.tcpdump = executeExternal(prog, args);
+      sleep(5);
+      let exitStatus = statusExternal(this.tcpdump.pid, false);
+      if (exitStatus.status !== "RUNNING") {
+        crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${JSON.stringify(exitStatus)} '${prog}' ${JSON.stringify(args)}`;
+        this.tcpdump = null;
+        return false;
+      }
+    } catch (x) {
+      crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${x.message} ${prog} ${JSON.stringify(args)}`;
+      return false;
+    }
+    return true;
   }
   stopTcpDump() {
     if (this.tcpdump !== null) {
@@ -511,20 +531,48 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
+    const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
+    if (fs.isFile(zipfn)) {
+      fs.remove(zipfn);
+    };
+    if (fs.exists(dumpdir)) {
+      fs.list(dumpdir).forEach(file => {
+        const fn = fs.join(dumpdir, file);
+        if (fs.isFile(fn)) {
+          fs.remove(fn);
+        }
+      });
+    } else {
+      fs.makeDirectory(dumpdir);
+    }
     this.arangods.forEach((arangod) => {
       if (arangod.isAgent()) {
         if (!arangod.checkArangoAlive()) {
           print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
-          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig');
+          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState');
+          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan');
+          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
         }
       }
     });
+    let zipfiles = [];
+    fs.list(dumpdir).forEach(file => {
+      const fn = fs.join(dumpdir, file);
+      if (fs.isFile(fn)) {
+        zipfiles.push(file);
+      }
+    });
+    print(`${CYAN}${Date()} Zipping ${zipfn}${RESET}`);
+    fs.zipFile(zipfn, dumpdir, zipfiles);
+    zipfiles.forEach(file => {
+      fs.remove(fs.join(dumpdir, file));
+    });
+    fs.removeDirectory(dumpdir);
   }
 
   checkUptime () {
@@ -722,6 +770,12 @@ class instanceManager {
     }
   }
 
+  detectShouldBeRunning() {
+    let ret = true;
+    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
+    return ret;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -762,8 +816,12 @@ class instanceManager {
   _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
     this.arangods.forEach((arangod) => {
-      arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-      arangod.serverCrashedLocal = true;
+      if (arangod.pid !== null) {
+        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
+        arangod.serverCrashedLocal = true;
+      } else {
+        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
+      }
     });
     this.arangods.forEach((arangod) => {
       if (arangod.checkArangoAlive()) {
@@ -780,6 +838,14 @@ class instanceManager {
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
+    let allAlive = true;
+    this.arangods.forEach(arangod => {
+      if (arangod.pid === null) {
+        allAlive = false;
+      }});
+    if (!allAlive) {
+      return this._forceTerminate("not all instances are alive!");
+    }
     if (this.options.activefailover) {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
@@ -969,7 +1035,7 @@ class instanceManager {
       });
     }
     this.arangods.forEach(arangod => {
-      arangod.readAssertLogLines();
+      arangod.readAssertLogLines(this.expectAsserts);
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1022,7 +1088,7 @@ class instanceManager {
       headers: {'content-type': 'application/json' }
     };
     let count = 60;
-    while (count > 0) {
+    while ((count > 0) && (this.agencyConfig.agencyInstances[0].pid !== null)) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
       if (!reply.error && reply.code === 200) {
@@ -1044,6 +1110,10 @@ class instanceManager {
     this.leader = null;
     while (this.leader === null) {
       this.urls.forEach(url => {
+        this.arangods.forEach(arangod => {
+          if ((arangod.url === url && arangod.pid === null)) {
+            throw new Error("detectCurrentleader: instance we attempt to query not alive");
+          }});
         opts['method'] = 'GET';
         let reply = download(url + '/_api/cluster/endpoints', '', opts);
         if (reply.code === 200) {
@@ -1238,9 +1308,17 @@ class instanceManager {
   findEndpoint() {
     let endpoint = this.endpoint;
     if (this.options.vst) {
-      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      }
     } else if (this.options.http2) {
-      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      }
     }
     print("using endpoint ", endpoint);
     return endpoint;

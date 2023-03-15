@@ -53,7 +53,7 @@ class ComputedValuesTest : public ::testing::Test {
     auto& vocbase = server->getSystemDatabase();
     auto c = vocbase.lookupCollection("test");
     if (c != nullptr) {
-      vocbase.dropCollection(c->id(), false, 3.0);
+      vocbase.dropCollection(c->id(), false);
     }
   }
 

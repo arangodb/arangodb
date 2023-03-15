@@ -31,11 +31,11 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
@@ -90,6 +90,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
@@ -360,7 +361,7 @@ void MockServer::stopFeatures() {
 TRI_vocbase_t& MockServer::getSystemDatabase() const {
   TRI_ASSERT(_server.hasFeature<DatabaseFeature>());
   auto& database = _server.getFeature<DatabaseFeature>();
-  auto system = database.useDatabase(StaticStrings::SystemDatabase);
+  auto system = database.lookupDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(system != nullptr);
   return *system;
 }
@@ -772,7 +773,6 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid",     "globallyUniqueId", "count",
       "planId",        "version", "objectId"};
-  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = dummy.toVelocyPackIgnore(
       ignoreKeys, LogicalDataSource::Serialization::List);
   injectCollectionToAgency(dbName, velocy, dummy.planId(),

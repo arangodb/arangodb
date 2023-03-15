@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,9 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBSingleOperationTrxMethods(RocksDBTransactionState*,
-                                            rocksdb::TransactionDB* db);
+  explicit RocksDBSingleOperationTrxMethods(
+      RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
+      rocksdb::TransactionDB* db);
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
 

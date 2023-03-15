@@ -126,11 +126,16 @@
 
       searchInput = $('#userManagementSearchInput');
       searchString = arangoHelper.escapeHtml($('#userManagementSearchInput').val());
+
       reducedCollection = this.collection.filter(
         function (u) {
-          return u.get('user').indexOf(searchString) !== -1;
+          if (typeof u.attributes.extra.name !== 'undefined') {
+            return (u.attributes.extra.name.toLowerCase().indexOf(searchString.toLowerCase()) !== -1) || (u.attributes.user.toLowerCase().indexOf(searchString.toLowerCase()) !== -1);
+          }
+          return false;
         }
       );
+
       $(this.el).html(this.template.render({
         collection: reducedCollection,
         searchString: searchString

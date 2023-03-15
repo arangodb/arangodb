@@ -124,7 +124,14 @@ function gtestRunner (testname, options) {
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
-      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+
+      let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
+      if (filter.length > 0) {
+        if (filter.length > 1) {
+          throw "Found more than one gtest_filter argument";
+        }
+        argv.push('--' + filter[0]);
+      } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
@@ -151,7 +158,7 @@ function gtestRunner (testname, options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
   const tests = [ 'arangodbtests_zkd' ];
@@ -162,9 +169,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['gtest'] = x => gtestRunner('arangodbtests', x);
 
   opts['skipGtest'] = false;
-
-  defaultFns.push('gtest');
-
   testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

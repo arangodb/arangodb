@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,8 +47,12 @@
 #pragma warning(pop)
 #endif
 
+namespace arangodb::replication2::replicated_state {
+struct IStorageEngineMethods;
+}
+
 namespace arangodb::replication2::replicated_log {
-struct LogCore;
+struct TermIndexMapping;
 class ReplicatedLogIterator;
 
 /**
@@ -109,18 +113,21 @@ struct InMemoryLog {
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
-  [[nodiscard]] auto append(LoggerContext const& logContext,
-                            log_type entries) const -> InMemoryLog;
-  [[nodiscard]] auto append(LoggerContext const& logContext,
-                            log_type_persisted const& entries) const
+  [[nodiscard]] auto append(InMemoryLog const& entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(log_type entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(log_type_persisted const& entries) const
       -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const
       -> std::unique_ptr<PersistedLogIterator>;
+  [[nodiscard]] auto getRangeIteratorFrom(LogIndex fromIdx) const
+      -> std::unique_ptr<LogRangeIterator>;
   [[nodiscard]] auto getInternalIteratorRange(LogIndex fromIdx,
                                               LogIndex toIdx) const
+      -> std::unique_ptr<PersistedLogIterator>;
+  [[nodiscard]] auto getPersistedLogIterator() const
       -> std::unique_ptr<PersistedLogIterator>;
   [[nodiscard]] auto getMemtryIteratorFrom(LogIndex fromIdx) const
       -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
@@ -133,14 +140,18 @@ struct InMemoryLog {
 
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const
       -> InMemoryLog;
+  [[nodiscard]] auto removeBack(LogIndex start) const -> InMemoryLog;
+  [[nodiscard]] auto removeFront(LogIndex stop) const -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
+  [[nodiscard]] auto computeTermIndexMap() const -> TermIndexMapping;
 
   // helpful for debugging
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
+  [[nodiscard]] static auto loadFromMethods(
+      replicated_state::IStorageEngineMethods&) -> InMemoryLog;
 
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);

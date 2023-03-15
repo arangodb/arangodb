@@ -38,6 +38,7 @@
 #include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
+#include "Workloads/WriteWriteConflict.h"
 #include "velocypack/Collection.h"
 #include "velocypack/Parser.h"
 
@@ -86,7 +87,11 @@ auto Runner::runBenchmark() -> Report {
 
   std::cout << "Running benchmark...\n";
   auto workload = std::visit(
-      overload{[](workloads::GetByPrimaryKey::Options& opts)
+      overload{[](workloads::WriteWriteConflict::Options& opts)
+                   -> std::shared_ptr<Workload> {
+                 return std::make_shared<workloads::WriteWriteConflict>(opts);
+               },
+               [](workloads::GetByPrimaryKey::Options& opts)
                    -> std::shared_ptr<Workload> {
                  return std::make_shared<workloads::GetByPrimaryKey>(opts);
                },

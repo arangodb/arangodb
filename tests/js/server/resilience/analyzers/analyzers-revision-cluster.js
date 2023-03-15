@@ -360,7 +360,13 @@ function analyzersRevisionTestSuite () {
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
         global.ArangoAgency.write([[operations, preconditions]]);
         global.ArangoAgency.increaseVersion("Plan/Version");
-        db._create("TriggerPlanReload");
+        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        // Avoid incorrect parsing here:
+        assertTrue(Number.isInteger(requiredVersion));
+        assertTrue(requiredVersion > 0);
+        // Wait until the coordinator has seen the Plan update
+        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        // Continue with the test.
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
       } finally {
@@ -386,7 +392,13 @@ function analyzersRevisionTestSuite () {
         operations['/arango/Plan/Analyzers'] = {'op': 'delete'};
         global.ArangoAgency.write([[operations, preconditions]]);
         global.ArangoAgency.increaseVersion("Plan/Version");
-        db._create("TriggerPlanReload");
+        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        // Avoid incorrect parsing here:
+        assertTrue(Number.isInteger(requiredVersion));
+        assertTrue(requiredVersion > 0);
+        // Wait until the coordinator has seen the Plan update
+        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        // Continue with the test.
         internal.debugClearFailAt();
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
@@ -422,7 +434,13 @@ function analyzersRevisionTestSuite () {
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
         global.ArangoAgency.write([[operations, preconditions]]);
         global.ArangoAgency.increaseVersion("Plan/Version");
-        db._create("TriggerPlanReload");
+        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        // Avoid incorrect parsing here:
+        assertTrue(Number.isInteger(requiredVersion));
+        assertTrue(requiredVersion > 0);
+        // Wait until the coordinator has seen the Plan update
+        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        // Continue with the test.
         db._query("RETURN TOKENS('Test', '::SystemTestAnalyzer') "); // check system revision is still read
         internal.debugClearFailAt();
       } finally {

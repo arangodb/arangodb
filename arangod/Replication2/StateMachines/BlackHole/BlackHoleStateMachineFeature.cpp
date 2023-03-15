@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,14 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::black_hole;
 
-void BlackHoleStateMachineFeature::start() {
-  auto& feature = server().getFeature<ReplicatedStateAppFeature>();
-  feature.registerStateType<BlackHoleState>("black-hole");
-}
-
 BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
     : ArangodFeature{server, *this} {
   startsAfter<ReplicatedStateAppFeature>();
   onlyEnabledWith<ReplicatedStateAppFeature>();
   setOptional(true);
+}
+
+void BlackHoleStateMachineFeature::prepare() {
+  auto& feature = server().getFeature<ReplicatedStateAppFeature>();
+  feature.registerStateType<BlackHoleState>("black-hole");
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,6 +141,11 @@ auto Result::reset(Result const& other) -> Result& { return *this = other; }
 
 auto Result::reset(Result&& other) noexcept -> Result& {
   return *this = std::move(other);
+}
+auto Result::error() && noexcept -> result::Error {
+  auto error = std::move(*_error);
+  _error.reset();
+  return error;
 }
 
 auto Result::errorMessage() const& noexcept -> std::string_view {

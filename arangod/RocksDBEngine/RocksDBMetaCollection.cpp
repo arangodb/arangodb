@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -69,8 +70,8 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             VPackSlice const& info)
-    : PhysicalCollection(collection, info),
+                                             velocypack::Slice info)
+    : PhysicalCollection(collection),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -86,10 +87,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       .engine<RocksDBEngine>()
       .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
-}
-
-std::string const& RocksDBMetaCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -1211,7 +1208,7 @@ void RocksDBMetaCollection::bufferUpdates(
   }
 
   LOG_TOPIC("bafcf", TRACE, Logger::ENGINES)
-      << "buffering " << inserts.size() << "inserts and " << removals.size()
+      << "buffering " << inserts.size() << " inserts and " << removals.size()
       << " removals "
       << "for collection " << _logicalCollection.name();
 

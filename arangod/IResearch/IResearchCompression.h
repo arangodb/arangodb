@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,9 +29,10 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(
+std::string_view columnCompressionToString(
     irs::type_info::type_id type) noexcept;
-irs::type_info::type_id columnCompressionFromString(irs::string_ref c) noexcept;
+irs::type_info::type_id columnCompressionFromString(
+    std::string_view c) noexcept;
 irs::type_info::type_id getDefaultCompression() noexcept;
 }  // namespace iresearch
 }  // namespace arangodb

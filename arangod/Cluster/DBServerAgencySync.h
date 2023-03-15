@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,8 @@
 namespace arangodb {
 
 namespace replication2 {
-namespace replicated_log {
-struct QuickLogStatus;
+namespace maintenance {
+struct LogStatus;
 }
 namespace replicated_state {
 struct StateStatus;
@@ -72,14 +72,9 @@ class DBServerAgencySync {
   void work();
 
   using LocalLogsMap = std::unordered_map<
-      std::string, std::unordered_map<
-                       arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>>;
-  using LocalStatesMap = std::unordered_map<
       std::string,
       std::unordered_map<arangodb::replication2::LogId,
-                         std::optional<arangodb::replication2::
-                                           replicated_state::StateStatus>>>;
+                         arangodb::replication2::maintenance::LogStatus>>;
 
   /**
    * @brief Get copy of current local state
@@ -89,7 +84,7 @@ class DBServerAgencySync {
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs, LocalStatesMap& replStates);
+      LocalLogsMap& replLogs);
 
  private:
   DBServerAgencySyncResult execute();

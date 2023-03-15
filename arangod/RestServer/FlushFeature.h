@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,7 @@ class FlushFeature final : public ArangodFeature {
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      const std::shared_ptr<FlushSubscription>& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// returns number of active flush subscriptions removed, the number of stale

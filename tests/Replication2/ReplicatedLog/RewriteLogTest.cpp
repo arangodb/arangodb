@@ -22,7 +22,7 @@
 
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -110,7 +110,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
     // AppendEntries with new lci
-    EXPECT_EQ(number_of_runs, 3);
+    EXPECT_EQ(number_of_runs, 3U);
   }
 
   {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -412,6 +412,6 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
     velocypack::Dumper dumper(&sink, &tmpOpts);
     dumper.dump(current);
 
-    headResponse(static_cast<size_t>(sink.length));
+    headResponse(static_cast<size_t>(sink.length()));
   }
 }

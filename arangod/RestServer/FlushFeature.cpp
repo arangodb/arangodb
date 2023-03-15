@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,9 +50,9 @@ FlushFeature::FlushFeature(Server& server)
 FlushFeature::~FlushFeature() = default;
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption("--server.flush-interval",
-                             "interval (in microseconds) for flushing data",
-                             true);
+  options->addObsoleteOption(
+      "--server.flush-interval",
+      "The interval (in microseconds) for flushing data.", true);
 }
 
 void FlushFeature::registerFlushSubscription(

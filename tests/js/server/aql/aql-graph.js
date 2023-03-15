@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertNotEqual, assertFalse, assertTrue, assertNotNull, AQL_EXPLAIN, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -28,31 +28,27 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var internal = require("internal");
-var errors = internal.errors;
-var helper = require("@arangodb/aql-helper");
-var cluster = require("@arangodb/cluster");
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
+const errors = internal.errors;
+const helper = require("@arangodb/aql-helper");
+const cluster = require("@arangodb/cluster");
 const gm = require("@arangodb/general-graph");
-var getQueryResults = helper.getQueryResults;
-var getRawQueryResults = helper.getRawQueryResults;
-var assertQueryError = helper.assertQueryError;
+const getQueryResults = helper.getQueryResults;
+const getRawQueryResults = helper.getRawQueryResults;
+const assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for graph features
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryEdgesTestSuite() {
-  var vertex = null;
-  var edge = null;
-  var vn = "UnitTestsAhuacatlVertex";
+  const vn = "UnitTestsAhuacatlVertex";
+  let vertex = null;
+  let edge = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       db._drop(vn);
@@ -83,10 +79,6 @@ function ahuacatlQueryEdgesTestSuite() {
       makeEdge("v7", "v3");
       makeEdge("v6", "v3");
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex");
@@ -1461,7 +1453,12 @@ function ahuacatlQueryShortestPathTestSuite() {
       // this item is not connected to any other
       vertexCollection.save({_key: "J", name: "J"});
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      let query;
+      if (cluster.isCluster()) {
+        query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      } else {
+        query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      }
       var actual = getQueryResults(query);
 
       assertEqual([], actual);
@@ -1524,93 +1521,6 @@ function ahuacatlQueryShortestPathTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for ShortestPath with intentional failures
 ////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlQueryShortestpathErrorsSuite() {
-  var vn = "UnitTestsTraversalVertices";
-  var en = "UnitTestsTraversalEdges";
-  var vertexCollection;
-  var edgeCollection;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll: function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-
-      vertexCollection = db._create(vn, {numberOfShards: 4});
-      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
-
-      ["A", "B", "C", "D", "E"].forEach(function (item) {
-        vertexCollection.save({_key: item, name: item});
-      });
-
-      [["A", "B"], ["B", "C"], ["A", "D"], ["D", "E"], ["E", "C"], ["C", "A"]].forEach(function (item) {
-        var l = item[0];
-        var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r});
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll: function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks error handling in SHORTEST_PATH
-////////////////////////////////////////////////////////////////////////////////
-
-    testShortestPathOOM: function () {
-      var s = vn + "/A";
-      var m = vn + "/B";
-      var t = vn + "/C";
-
-      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
-
-      var actual = getQueryResults(query);
-      // Positive Check
-      assertEqual(actual, [s, m, t]);
-
-      internal.debugSetFailAt("TraversalOOMInitialize");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(query);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-      internal.debugClearFailAt();
-
-      // Redo the positive check. Make sure the former fail is gone
-      actual = getQueryResults(query);
-      assertEqual(actual, [s, m, t]);
-
-      internal.debugSetFailAt("TraversalOOMPath");
-      // Negative Check
-      try {
-        actual = getQueryResults(query);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-    }
-
-  };
-}
-
 function kPathsTestSuite() {
   const gn = "UnitTestGraph";
   const vn = "UnitTestV";
@@ -1668,7 +1578,123 @@ function kPathsTestSuite() {
 
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
-    }
+    },
+    
+    testkPathsWithVertices1: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+    },
+    
+    testkPathsWithVertices2: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+    },
+    
+    testkPathsNoVertices: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+    },
   };
 }
 
@@ -1912,9 +1938,6 @@ jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
-if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
-  jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
-}
 jsunity.run(kPathsTestSuite);
 jsunity.run(allShortestPathsTestSuite);
 jsunity.run(ShortestPathErrorTestSuite);

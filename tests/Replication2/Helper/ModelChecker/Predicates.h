@@ -44,6 +44,30 @@ static inline auto isLeaderHealth() {
   });
 }
 
+static inline auto leaderHasSnapshot() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan &&
+        state.replicatedLog->plan->currentTerm) {
+      auto const& term = *state.replicatedLog->plan->currentTerm;
+      if (term.leader) {
+        std::optional<replication2::agency::LogCurrent> const& current =
+            global.state.replicatedLog->current;
+        if (current) {
+          if (auto iter = current->localState.find(term.leader->serverId);
+              iter != current->localState.end()) {
+            // snapshot should be present
+            return iter->second.snapshotAvailable;
+          }
+        }
+        return false;
+      }
+    }
+    // no leader present - ok
+    return true;
+  });
+}
+
 static inline auto isParticipantPlanned(
     replication2::ParticipantId participant) {
   return MC_BOOL_PRED(global, {
@@ -94,57 +118,6 @@ static inline auto serverIsLeader(std::string_view id) {
       }
     }
     return false;
-  });
-}
-
-static inline auto nonExcludedServerHasSnapshot() {
-  return MC_BOOL_PRED2([](auto const& global) {
-    auto const& agency = global.state;
-    if (!agency.replicatedLog || !agency.replicatedState) {
-      return true;
-    }
-    auto const& log = *agency.replicatedLog;
-    auto const& state = *agency.replicatedState;
-    if (!log.plan) {
-      return true;
-    }
-
-    for (auto const& [pid, flags] : log.plan->participantsConfig.participants) {
-      if (flags.allowedAsLeader || flags.allowedInQuorum) {
-        // check is the snapshot is available
-        if (!state.plan) {
-          return false;
-        }
-
-        auto planIter = state.plan->participants.find(pid);
-        if (planIter == state.plan->participants.end()) {
-          return false;
-        }
-
-        auto wantedGeneration = planIter->second.generation;
-        if (wantedGeneration ==
-            replication2::replicated_state::StateGeneration{1}) {
-          continue;
-        }
-
-        if (!state.current) {
-          return false;
-        }
-
-        if (auto iter = state.current->participants.find(pid);
-            iter == state.current->participants.end()) {
-          return false;
-        } else if (iter->second.generation != wantedGeneration ||
-                   iter->second.snapshot.status !=
-                       replication2::replicated_state::SnapshotStatus::
-                           kCompleted) {
-          std::cout << wantedGeneration << " " << iter->second.generation;
-          return false;
-        }
-      }
-    }
-
-    return true;
   });
 }
 

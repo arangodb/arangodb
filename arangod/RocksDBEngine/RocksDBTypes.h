@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +56,6 @@ enum class RocksDBEntryType : char {
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
   RevisionTreeValue = '*',
-  ReplicatedLog = 'l',
   ReplicatedState = 's',
   ZkdIndexValue = 'z',
   UniqueZkdIndexValue = 'Z',

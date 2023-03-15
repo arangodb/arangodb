@@ -28,35 +28,21 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 
 function RenameSuite () {
   'use strict';
-  var cn1 = "UnitTestsRename1";
-  var cn2 = "UnitTestsRename2";
+  const cn1 = "UnitTestsRename1";
+  const cn2 = "UnitTestsRename2";
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
       db._drop(cn2);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn2);
@@ -68,17 +54,24 @@ function RenameSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAqlAfterRename : function () {
-      var c = db._create(cn1);
-      for (var i = 0; i < 10000; ++i) {
-        db.UnitTestsRename1.save({ value: i });
-      }
+      let c = db._create(cn1);
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 1000) {
+          db.UnitTestsRename1.insert(docs);
+          docs = [];
+        }
+      } 
       c.rename(cn2);
+
+      // recreate collection with old name
       db._create(cn1);
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         db.UnitTestsRename1.save({ value: i });
       }
 
-      var result = db._query("FOR i IN " + cn1 + " LIMIT 99, 2 RETURN i").toArray();
+      let result = db._query("FOR i IN " + cn1 + " LIMIT 99, 2 RETURN i").toArray();
       assertEqual(1, result.length);
       assertMatch(/^UnitTestsRename1\//, result[0]._id);
     }
@@ -87,11 +80,6 @@ function RenameSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(RenameSuite);
 
 return jsunity.done();
-

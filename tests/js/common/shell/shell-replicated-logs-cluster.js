@@ -30,6 +30,33 @@ const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const database = "replication2_test_db";
 
+const getLeaderStatus = function (log) {
+  let status = log.status();
+  const leaderId = status.leaderId;
+  if (leaderId === undefined) {
+    console.error(`leader not available for replicated log ${log.id()}`);
+    console.error(JSON.stringify(status));
+    return null;
+  }
+  if (status.participants === undefined || status.participants[leaderId] === undefined) {
+    console.error(`participants status not available for replicated log ${log.id()}`);
+    console.error(JSON.stringify(status));
+    return null;
+  }
+  const leaderResponse = status.participants[leaderId].response;
+  if (leaderResponse === undefined || leaderResponse.role !== "leader") {
+    console.error(`leader not available for replicated log ${log.id()}`);
+    console.error(JSON.stringify(status));
+    return null;
+  }
+  if (!leaderResponse.leadershipEstablished) {
+    console.error(`leadership not yet established`);
+    console.error(JSON.stringify(status));
+    return null;
+  }
+  return status.participants[leaderId].response;
+};
+
 const {setUpAll, tearDownAll} = (function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -95,33 +122,6 @@ function ReplicatedLogsWriteSuite() {
 
   let log = null;
 
-  const getLeaderStatus = function () {
-    let status = log.status();
-    const leaderId = status.leaderId;
-    if (leaderId === undefined) {
-      console.error(`leader not available for replicated log ${log.id()}`);
-      console.error(JSON.stringify(status));
-      return null;
-    }
-    if (status.participants === undefined || status.participants[leaderId] === undefined) {
-      console.error(`participants status not available for replicated log ${log.id()}`);
-      console.error(JSON.stringify(status));
-      return null;
-    }
-    const leaderResponse = status.participants[leaderId].response;
-    if (leaderResponse === undefined || leaderResponse.role !== "leader") {
-      console.error(`leader not available for replicated log ${log.id()}`);
-      console.error(JSON.stringify(status));
-      return null;
-    }
-    if (!leaderResponse.leadershipEstablished) {
-      console.error(`leadership not yet established`);
-      console.error(JSON.stringify(status));
-      return null;
-    }
-    return status.participants[leaderId].response;
-  };
-
   return {
     setUpAll, tearDownAll,
     setUp: function () {
@@ -132,7 +132,7 @@ function ReplicatedLogsWriteSuite() {
     },
 
     testStatus: function () {
-      let leaderStatus = getLeaderStatus();
+      let leaderStatus = getLeaderStatus(log);
       assertEqual(leaderStatus.local.commitIndex, 1, `log ${log.id()}, leader status: ${JSON.stringify(leaderStatus)}`);
       let globalStatus = log.globalStatus();
       assertEqual(globalStatus.specification.source, "RemoteAgency",
@@ -159,8 +159,18 @@ function ReplicatedLogsWriteSuite() {
         assertTrue(next > index);
         index = next;
       }
-      let leaderStatus = getLeaderStatus();
+      let leaderStatus = getLeaderStatus(log);
       assertTrue(leaderStatus.local.commitIndex >= index);
+    },
+
+    testPing: function () {
+      let result = log.ping("foo bar");
+      assertTrue('quorum' in result.result &&
+          'commitIndex' in result.result);
+      const tail = log.tail();
+      assertEqual(tail[1].meta.type, "Ping");
+      assertEqual(tail[1].meta.message, "foo bar");
+      assertTrue(tail[1].meta.time !== undefined);
     },
 
     testMultiInsert: function () {
@@ -177,7 +187,7 @@ function ReplicatedLogsWriteSuite() {
             indexes[1] < indexes[2]);
         index = indexes[indexes.length - 1];
       }
-      let leaderStatus = getLeaderStatus();
+      let leaderStatus = getLeaderStatus(log);
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
@@ -247,14 +257,14 @@ function ReplicatedLogsWriteSuite() {
       for (let i = 0; i < 2000; i++) {
         log.insert({foo: i});
       }
-      let s1 = getLeaderStatus();
+      let s1 = getLeaderStatus(log);
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
-      let s2 = getLeaderStatus();
+      let s2 = getLeaderStatus(log);
       assertEqual(s2.local.firstIndex, 1501);
     },
 
-    testPoll: function () {
+   testPoll: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let next = log.insert({foo: i}).index;
@@ -274,7 +284,45 @@ function ReplicatedLogsWriteSuite() {
   };
 }
 
+function ReplicatedLogsCompactSuite() {
+  'use strict';
+
+  const config = {
+    writeConcern: 3,
+    softWriteConcern: 3,
+    waitForSync: true
+  };
+
+  let log = null;
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: function () {
+      log = db._createReplicatedLog({config});
+    },
+    tearDown: function () {
+      db._replicatedLog(log.id()).drop();
+    },
+
+    testCompact: function () {
+      // It is important the writeConcern is set to maximum, otherwise this test might fail.
+      for (let i = 0; i < 100; i++) {
+        log.insert({foo: i});
+      }
+      const s1 = getLeaderStatus(log);
+      assertEqual(s1.local.firstIndex, 1, JSON.stringify(s1));
+      log.release(100);
+      const s2 = getLeaderStatus(log);
+      assertEqual(s2.local.firstIndex, 1, JSON.stringify(s2));
+      log.compact();
+      const s3 = getLeaderStatus(log);
+      assertEqual(s3.local.firstIndex, 101, JSON.stringify(s3));
+    }
+  };
+}
+
 jsunity.run(ReplicatedLogsCreateSuite);
 jsunity.run(ReplicatedLogsWriteSuite);
+jsunity.run(ReplicatedLogsCompactSuite);
 
 return jsunity.done();

@@ -21,6 +21,12 @@ collection, e.g. `idx_832910498`.
 @RESTBODYPARAM{fields,array,required,string}
 An array of attribute paths.
 
+The `.` character denotes sub-attributes in attribute paths. Attributes with
+literal `.` in their name cannot be indexed. Attributes with the name `_id`
+cannot be indexed either, neither as a top-level attribute nor as a sub-attribute.
+
+You can expand one array attribute with `[*]`.
+
 @RESTBODYPARAM{storedValues,array,optional,string}
 The optional `storedValues` attribute can contain an array of paths to additional 
 attributes to store in the index. These additional attributes cannot be used for

@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_view_properties_searchalias
 @brief Partially changes properties of a `search-alias` View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a Search Alias View, modifyViewPartialSearchAlias}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a search-alias View, modifyViewPartialSearchAlias}
 
 @RESTURLPARAMETERS
 
@@ -15,7 +15,8 @@ A list of inverted indexes to add to or remove from the View.
 The name of a collection.
 
 @RESTSTRUCT{index,patch_api_view_searchalias_indexes,string,required,}
-The name of an inverted index of the `collection`.
+The name of an inverted index of the `collection`, or the index ID without
+the `<collection>/` prefix.
 
 @RESTSTRUCT{operation,patch_api_view_searchalias_indexes,string,optional,}
 Whether to add or remove the index to the stored `indexes` property of the View.

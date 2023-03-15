@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <iosfwd>
 #include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
@@ -42,6 +43,8 @@ using ParticipantsFlagsMap =
 
 struct LogPlanConfig {
   std::size_t effectiveWriteConcern = 1;
+  // TODO: Move this to the term config, we won't allow changing this
+  // intra-term.
   bool waitForSync = false;
 
   LogPlanConfig() noexcept = default;
@@ -62,11 +65,14 @@ struct ParticipantsConfig {
   ParticipantsFlagsMap participants;
   LogPlanConfig config{};
 
-  // to be defaulted soon
   friend auto operator==(ParticipantsConfig const& left,
                          ParticipantsConfig const& right) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, ParticipantsConfig const&)
+      -> std::ostream&;
 };
+
+auto operator<<(std::ostream& os, ParticipantsConfig const&) -> std::ostream&;
 
 template<class Inspector>
 auto inspect(Inspector& f, ParticipantsConfig& x) {
@@ -75,34 +81,76 @@ auto inspect(Inspector& f, ParticipantsConfig& x) {
                             f.field("participants", x.participants));
 }
 
+struct ImplementationSpec {
+  std::string type;
+  std::optional<velocypack::SharedSlice> parameters;
+
+  friend auto operator==(ImplementationSpec const& s,
+                         ImplementationSpec const& s2) noexcept -> bool;
+};
+
+auto operator==(ImplementationSpec const& s,
+                ImplementationSpec const& s2) noexcept -> bool;
+
+template<class Inspector>
+auto inspect(Inspector& f, ImplementationSpec& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::IndexType, x.type),
+      f.field(StaticStrings::DataSourceParameters, x.parameters));
+}
+
+struct Properties {
+  ImplementationSpec implementation;
+
+  friend auto operator==(Properties const& s, Properties const& s2) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Properties& x) {
+  return f.object(x).fields(f.field("implementation", x.implementation));
+}
+
+struct ServerInstanceReference {
+  ParticipantId serverId;
+  RebootId rebootId;
+
+  ServerInstanceReference(ParticipantId participant, RebootId rebootId)
+      : serverId{std::move(participant)}, rebootId{rebootId} {}
+  ServerInstanceReference() : rebootId{RebootId{0}} {};
+  friend auto operator==(ServerInstanceReference const&,
+                         ServerInstanceReference const&) noexcept
+      -> bool = default;
+};
+
+auto operator<<(std::ostream&, ServerInstanceReference const&) noexcept
+    -> std::ostream&;
+
 struct LogPlanTermSpecification {
   LogTerm term;
-  struct Leader {
-    ParticipantId serverId;
-    RebootId rebootId;
-
-    Leader(ParticipantId participant, RebootId rebootId)
-        : serverId{std::move(participant)}, rebootId{rebootId} {}
-    Leader() : rebootId{RebootId{0}} {};
-    friend auto operator==(Leader const&, Leader const&) noexcept
-        -> bool = default;
-  };
-  std::optional<Leader> leader;
+  std::optional<ServerInstanceReference> leader;
 
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, std::optional<Leader>);
+  LogPlanTermSpecification(LogTerm term,
+                           std::optional<ServerInstanceReference>);
 
   friend auto operator==(LogPlanTermSpecification const&,
                          LogPlanTermSpecification const&) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, LogPlanTermSpecification const&)
+      -> std::ostream&;
 };
+
+auto operator<<(std::ostream& os, LogPlanTermSpecification const&)
+    -> std::ostream&;
 
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
 
   ParticipantsConfig participantsConfig;
+  Properties properties;
 
   std::optional<std::string> owner;
 
@@ -115,14 +163,20 @@ struct LogPlanSpecification {
   friend auto operator==(LogPlanSpecification const&,
                          LogPlanSpecification const&) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, LogPlanSpecification const&)
+      -> std::ostream&;
 };
+
+auto operator<<(std::ostream& os, LogPlanSpecification const&) -> std::ostream&;
 
 struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
+  bool snapshotAvailable{false};
+  replicated_log::LocalStateMachineStatus state;
 
   LogCurrentLocalState() = default;
-  LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
+  LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
                          LogCurrentLocalState const& s2) noexcept
       -> bool = default;
@@ -135,7 +189,8 @@ struct LogCurrentSupervisionElection {
     OK = 0,
     SERVER_NOT_GOOD = 1,
     TERM_NOT_CONFIRMED = 2,
-    SERVER_EXCLUDED = 3
+    SERVER_EXCLUDED = 3,
+    SNAPSHOT_MISSING = 4,
   };
 
   LogTerm term;
@@ -177,6 +232,12 @@ struct LogCurrentSupervision {
     static constexpr std::string_view code = "TargetLeaderExcluded";
     friend auto operator==(TargetLeaderExcluded const& s,
                            TargetLeaderExcluded const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderSnapshotMissing {
+    static constexpr std::string_view code = "TargetLeaderSnapshotMissing";
+    friend auto operator==(TargetLeaderSnapshotMissing const& s,
+                           TargetLeaderSnapshotMissing const& s2) noexcept
         -> bool = default;
   };
   struct TargetLeaderFailed {
@@ -244,11 +305,11 @@ struct LogCurrentSupervision {
 
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
-                   TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, LeaderElectionImpossible,
-                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
-                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
-                   CurrentNotAvailable>;
+                   TargetLeaderSnapshotMissing, TargetLeaderFailed,
+                   TargetNotEnoughParticipants, WaitingForConfigCommitted,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 
@@ -329,6 +390,7 @@ struct LogTarget {
   LogId id;
   ParticipantsFlagsMap participants;
   LogTargetConfig config;
+  Properties properties;
 
   std::optional<ParticipantId> leader;
   std::optional<uint64_t> version;
@@ -344,7 +406,7 @@ struct LogTarget {
 
   LogTarget() = default;
 
-  LogTarget(LogId id, ParticipantsFlagsMap const& participants,
+  LogTarget(LogId id, ParticipantsFlagsMap participants,
             LogTargetConfig const& config);
 
   friend auto operator==(LogTarget const&, LogTarget const&) noexcept

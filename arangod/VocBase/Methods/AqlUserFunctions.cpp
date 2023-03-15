@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
 #include <v8.h>
@@ -71,8 +72,8 @@ void reloadAqlUserFunctions(ArangodServer& server) {
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {
-    std::string const def("reloadAql");
-    server.getFeature<V8DealerFeature>().addGlobalContextMethod(def);
+    server.getFeature<V8DealerFeature>().addGlobalContextMethod(
+        GlobalContextMethods::MethodType::kReloadAql);
   }
 }
 

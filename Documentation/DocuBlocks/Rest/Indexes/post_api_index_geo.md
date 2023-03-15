@@ -10,7 +10,7 @@
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
-must be equal to *"geo"*.
+must be equal to `"geo"`.
 
 @RESTBODYPARAM{name,string,optional,string}
 An easy-to-remember name for the index to look it up or refer to it in index hints.
@@ -21,33 +21,33 @@ collection, e.g. `idx_832910498`.
 @RESTBODYPARAM{fields,array,required,string}
 An array with one or two attribute paths.
 
-If it is an array with one attribute path *location*, then a geo-spatial
-index on all documents is created using *location* as path to the
+If it is an array with one attribute path `location`, then a geo-spatial
+index on all documents is created using `location` as path to the
 coordinates. The value of the attribute must be an array with at least two
 double values. The array must contain the latitude (first value) and the
 longitude (second value). All documents, which do not have the attribute
 path or with value that are not suitable, are ignored.
 
-If it is an array with two attribute paths *latitude* and *longitude*,
-then a geo-spatial index on all documents is created using *latitude*
-and *longitude* as paths the latitude and the longitude. The value of
-the attribute *latitude* and of the attribute *longitude* must a
-double. All documents, which do not have the attribute paths or which
-values are not suitable, are ignored.
+If it is an array with two attribute paths `latitude` and `longitude`,
+then a geo-spatial index on all documents is created using `latitude`
+and `longitude` as paths the latitude and the longitude. The values of
+the `latitude` and `longitude` attributes must each be a number (double).
+All documents which do not have the attribute paths or which have
+values that are not suitable are ignored.
 
 @RESTBODYPARAM{geoJson,boolean,optional,}
-If a geo-spatial index on a *location* is constructed
-and *geoJson* is *true*, then the order within the array is longitude
+If a geo-spatial index on a `location` is constructed
+and `geoJson` is `true`, then the order within the array is longitude
 followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
-The optional attribute **inBackground** can be set to *true* to create the index
+The optional attribute **inBackground** can be set to `true` to create the index
 in the background, which will not write-lock the underlying collection for
-as long as if the index is built in the foreground. The default value is *false*.
+as long as if the index is built in the foreground. The default value is `false`.
 
 @RESTDESCRIPTION
-Creates a geo-spatial index in the collection *collection-name*, if
+Creates a geo-spatial index in the collection `collection`, if
 it does not already exist. Expects an object containing the index details.
 
 Geo indexes are always sparse, meaning that documents that do not contain
@@ -64,7 +64,7 @@ If the index does not already exist and could be created, then a *HTTP 201*
 is returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

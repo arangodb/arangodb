@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,14 +32,14 @@
 #include <string>
 #include <vector>
 
-#include <openssl/evp.h>
-
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
+namespace arangodb {
+class EncryptionFeature;
+}
 #endif
 
 struct stat;
@@ -454,5 +454,5 @@ struct TRI_SHA256Functor {
 
   std::string finalize();
 
-  EVP_MD_CTX* _context;
+  void* _context;
 };  // struct TRI_SHA256Functor

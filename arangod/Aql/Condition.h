@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,22 +47,13 @@ struct Variable;
 // note to maintainers:
 //
 enum class ConditionOptimization {
-  None,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
-         // and deduplicating IN nodes )
-  NoNegation,  // no conversions to negation normal form. Implies NoDNF and no
-               // optimization.
-  NoDNF,       // no conversions to DNF are made and no condition optimization
-  Auto,        // all existing condition optimizations are applied
+  kNone,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
+          // and deduplicating IN nodes )
+  kNoNegation,  // no conversions to negation normal form. Implies NoDNF and no
+                // optimization.
+  kNoDNF,       // no conversions to DNF are made and no condition optimization
+  kAuto,        // all existing condition optimizations are applied
 
-};
-
-enum ConditionPartCompareResult {
-  IMPOSSIBLE = 0,
-  SELF_CONTAINED_IN_OTHER = 1,
-  OTHER_CONTAINED_IN_SELF = 2,
-  DISJOINT = 3,
-  CONVERT_EQUAL = 4,
-  UNKNOWN = 5
 };
 
 /// @brief side on which an attribute occurs in a condition
@@ -74,45 +65,38 @@ struct ConditionPart {
   ConditionPart(Variable const*, std::string const&, AstNode const*,
                 AttributeSideType, void*);
 
-  ConditionPart(Variable const*,
-                std::vector<arangodb::basics::AttributeName> const&,
+  ConditionPart(Variable const*, std::vector<basics::AttributeName> const&,
                 AstNode const*, AttributeSideType, void*);
 
   ~ConditionPart();
 
-  int whichCompareOperation() const;
+  int whichCompareOperation() const noexcept;
 
   /// @brief returns the lower bound
   AstNode const* lowerBound() const;
 
   /// @brief returns if the lower bound is inclusive
-  bool isLowerInclusive() const;
+  bool isLowerInclusive() const noexcept;
 
   /// @brief returns the upper bound
   AstNode const* upperBound() const;
 
   /// @brief returns if the upper bound is inclusive
-  bool isUpperInclusive() const;
+  bool isUpperInclusive() const noexcept;
 
   /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const&, bool) const;
+  bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
 
   Variable const* variable;
   std::string attributeName;
   AstNodeType operatorType;
+  bool isExpanded;
   AstNode const* operatorNode;
   AstNode const* valueNode;
   void* data;
-  bool isExpanded;
 };
 
 class Condition {
- private:
-  typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
-  typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
-  typedef std::unordered_map<Variable const*, AttributeUsageType>
-      VariableUsageType;
-
  public:
   Condition(Condition const&) = delete;
   Condition& operator=(Condition const&) = delete;
@@ -124,30 +108,31 @@ class Condition {
   /// @brief destroy the condition
   ~Condition();
 
- public:
   /// @brief: note: index may be a nullptr
-  static void collectOverlappingMembers(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode,
-      ::arangodb::containers::HashSet<size_t>& toRemove, Index const* index,
-      bool isFromTraverser);
+  static void collectOverlappingMembers(ExecutionPlan const* plan,
+                                        Variable const* variable,
+                                        AstNode const* andNode,
+                                        AstNode const* otherAndNode,
+                                        containers::HashSet<size_t>& toRemove,
+                                        Index const* index,
+                                        bool isFromTraverser);
 
   /// @brief return the condition root
-  AstNode* root() const;
+  AstNode* root() const noexcept;
 
   /// @brief whether or not the condition is empty
-  bool isEmpty() const;
+  bool isEmpty() const noexcept;
 
   /// @brief whether or not the condition results will be sorted (this is only
   /// relevant if the condition consists of multiple ORs)
-  bool isSorted() const;
+  bool isSorted() const noexcept;
 
   /// @brief export the condition as VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(velocypack::Builder&, bool verbose) const;
 
   /// @brief create a condition from VPack
-  static std::unique_ptr<Condition> fromVPack(
-      ExecutionPlan*, arangodb::velocypack::Slice const&);
+  static std::unique_ptr<Condition> fromVPack(ExecutionPlan*,
+                                              velocypack::Slice slice);
 
   /// @brief clone the condition
   std::unique_ptr<Condition> clone() const;
@@ -163,7 +148,7 @@ class Condition {
   /// @param conditionOptimization  allowed condition optimizations
   void normalize(ExecutionPlan*, bool multivalued = false,
                  ConditionOptimization conditionOptimization =
-                     ConditionOptimization::Auto);
+                     ConditionOptimization::kAuto);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -178,7 +163,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
-                                    AstNode*);
+                                    AstNode*, bool isPathCondition);
 
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&);
@@ -193,14 +178,31 @@ class Condition {
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)
-  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
+  std::vector<std::vector<basics::AttributeName>> getConstAttributes(
       Variable const*, bool includeNull) const;
 
   /// @brief get the attributes for a sub-condition that are not-null
-  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
-  getNonNullAttributes(Variable const*) const;
+  containers::HashSet<std::vector<basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
+  typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
+  typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
+  typedef std::unordered_map<Variable const*, AttributeUsageType>
+      VariableUsageType;
+
+  /// @brief internally transform the condition, by executing the preorder
+  /// traversal on the condition, the postorder traversal, and fixing the root
+  /// node at the end.
+  AstNode* transformCondition(AstNode* root,
+                              ConditionOptimization conditionOptimization);
+
+  /// @brief internal worker function for removeIndexCondition and
+  /// removeTraversalCondition
+  AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
+                           AstNode const* condition, Index const* index,
+                           bool isFromTraverser);
+
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
@@ -215,24 +217,30 @@ class Condition {
   /// subtree
   void deduplicateComparisonsRecursive(AstNode* p);
 
+  /// @brief convert node into format
+  /// OR -> AND -> NOOPT([node])
+  /// this is very simple and cheap, however, it will lead to the condition
+  /// being unusable by indexes.
+  AstNode* createSimpleCondition(AstNode* node) const;
+
   /// @brief registers an attribute access for a particular (collection)
   /// variable
   void storeAttributeAccess(
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
-          varAccess,
-      VariableUsageType&, AstNode const*, size_t, AttributeSideType);
+      std::pair<Variable const*, std::vector<basics::AttributeName>>& varAccess,
+      VariableUsageType& variableUsage, AstNode const*, size_t position,
+      AttributeSideType side);
 
 /// @brief validate the condition's AST
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void validateAst(AstNode const*, int);
+  void validateAst(AstNode const* node, int level);
 #endif
 
   /// @brief checks if the current condition covers the other
   static bool canRemove(ExecutionPlan const*, ConditionPart const&,
                         AstNode const*, bool isFromTraverser);
 
-  /// @brief deduplicate IN condition values
-  /// this may modify the node in place
+  /// @brief deduplicate IN condition values (and sort them).
+  /// will return either the unmodified original node or a copy.
   AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
@@ -245,12 +253,12 @@ class Condition {
   /// form
   AstNode* transformNodePreorder(AstNode*,
                                  ConditionOptimization conditionOptimization =
-                                     ConditionOptimization::Auto);
+                                     ConditionOptimization::kAuto);
 
   /// @brief converts from negation normal to disjunctive normal form
   AstNode* transformNodePostorder(AstNode*,
                                   ConditionOptimization conditionOptimization =
-                                      ConditionOptimization::Auto);
+                                      ConditionOptimization::kAuto);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
@@ -258,7 +266,6 @@ class Condition {
   /// remove all NOP nodes.
   AstNode* fixRoot(AstNode*, int);
 
- private:
   /// @brief the AST, used for memory management
   Ast* _ast;
 

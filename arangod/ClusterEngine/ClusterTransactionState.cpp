@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +42,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -109,11 +110,26 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
-      auto shardIds = c.collection()->shardIds();
-      for (auto const& pair : *shardIds) {
-        std::vector<arangodb::ShardID> const& servers = pair.second;
-        if (!servers.empty()) {
-          leaders.emplace(servers[0]);
+      if (c.collection()->isSmartEdgeCollection()) {
+        CollectionNameResolver resolver{_vocbase};
+        for (auto const& real : c.collection()->realNames()) {
+          auto realCol = resolver.getCollection(real);
+          TRI_ASSERT(realCol != nullptr);
+          auto shardIds = realCol->shardIds();
+          for (auto const& pair : *shardIds) {
+            std::vector<arangodb::ShardID> const& servers = pair.second;
+            if (!servers.empty()) {
+              leaders.emplace(servers[0]);
+            }
+          }
+        }
+      } else {
+        auto shardIds = c.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          std::vector<arangodb::ShardID> const& servers = pair.second;
+          if (!servers.empty()) {
+            leaders.emplace(servers[0]);
+          }
         }
       }
       return true;  // continue
@@ -138,6 +154,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  TRI_ASSERT(_beforeCommitCallbacks.empty());
+  TRI_ASSERT(_afterCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -171,8 +189,14 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }

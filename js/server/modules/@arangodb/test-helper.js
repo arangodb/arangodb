@@ -31,25 +31,31 @@
 const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const {
+  runWithRetry,
   getServerById,
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.runWithRetry = runWithRetry;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
@@ -193,6 +199,22 @@ exports.getDBServers = function() {
   // Note that the client implementation has more information, not all of which
   // we have available.
   return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
+
+exports.triggerMetrics = function () {
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=write_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=trigger_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  require("internal").sleep(2);
 };
 
 exports.uniqid = global.ArangoClusterInfo.uniqid;

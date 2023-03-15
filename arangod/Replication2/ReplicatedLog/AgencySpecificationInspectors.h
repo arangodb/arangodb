@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,7 @@ auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};
 }  // namespace static_strings
 
 template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
+auto inspect(Inspector& f, ServerInstanceReference& x) {
   return f.object(x).fields(f.field(StaticStrings::ServerId, x.serverId),
                             f.field(StaticStrings::RebootId, x.rebootId));
 }
@@ -80,13 +80,16 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
       f.field(static_strings::Owner, x.owner),
+      f.field("properties", x.properties),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Spearhead, x.spearhead));
+                            f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("state", x.state),
+                            f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 template<typename Enum>
@@ -143,6 +146,12 @@ auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderInvalid& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderExcluded& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::TargetLeaderSnapshotMissing& x) {
   return f.object(x).fields();
 }
 
@@ -210,6 +219,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetLeaderInvalid::code),
           insp::type<LogCurrentSupervision::TargetLeaderExcluded>(
               LogCurrentSupervision::TargetLeaderExcluded::code),
+          insp::type<LogCurrentSupervision::TargetLeaderSnapshotMissing>(
+              LogCurrentSupervision::TargetLeaderSnapshotMissing::code),
           insp::type<LogCurrentSupervision::TargetLeaderFailed>(
               LogCurrentSupervision::TargetLeaderFailed::code),
           insp::type<LogCurrentSupervision::TargetNotEnoughParticipants>(
@@ -288,6 +299,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(ParticipantsFlagsMap{}),
+      f.field(StaticStrings::Properties, x.properties),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),

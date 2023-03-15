@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/Graphs.h"
@@ -134,6 +133,8 @@ class GraphNode : public ExecutionNode {
 
   /// @brief checks if the vertex out variable is used
   bool isVertexOutVariableUsedLater() const;
+
+  void markUnusedConditionVariable(Variable const* var);
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -251,6 +252,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief vertex output variable
   Variable const* _edgeOutVariable;
+
+  /// @brief variables that got optimized out
+  VarIdSet _optimizedOutVariables;
 
   /// @brief our graph...
   graph::Graph const* _graphObj;

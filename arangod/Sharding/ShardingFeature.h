@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,6 +57,10 @@ class ShardingFeature : public ArangodFeature {
       VPackSlice const& properties) const;
 
  private:
+  /// @brief returns the name of the default sharding strategy for existing
+  /// collections without a sharding strategy assigned
+  std::string getDefaultShardingStrategy(ShardingInfo const* sharding) const;
+
   std::unordered_map<std::string, ShardingStrategy::FactoryFunction> _factories;
 };
 

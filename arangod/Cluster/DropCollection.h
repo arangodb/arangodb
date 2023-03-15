@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,9 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ClusterTypes.h"
 
+struct TRI_vocbase_t;
 namespace arangodb {
 namespace maintenance {
 
@@ -38,6 +40,9 @@ class DropCollection : public ActionBase, ShardDefinition {
 
   virtual bool first() override final;
   void setState(ActionState state) override final;
+
+ private:
+  bool dropReplication2Shard(ShardID const& shard, TRI_vocbase_t& vocbase);
 };
 
 }  // namespace maintenance

@@ -78,6 +78,7 @@ var _resilience = function(path) {
       localOptions.dbServers = 5;
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
+    testCases = tu.splitBuckets(options, testCases);
     let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
@@ -110,6 +111,7 @@ function clientResilience (options) {
   }
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
+  testCases = tu.splitBuckets(options, testCases);
   let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
@@ -139,7 +141,7 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
+  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -148,7 +150,7 @@ function activeFailover (options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
   testFns['resilience_move_view'] = resilienceMoveView;

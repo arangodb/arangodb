@@ -1,0 +1,13 @@
+name: arangodb_replication2_rocksdb_write_batch_size
+introducedIn: "3.10.0"
+help: |
+  Histogram containing the sizes of write batches issued.
+unit: byte
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Histogram containing the sizes of write batches issued. Workers collect input from multiple replicated logs into
+  a single write batch. This measures the size of the write batch. This allows to estimate the write rate.

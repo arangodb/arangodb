@@ -230,7 +230,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("RocksDBCollection::modifyFail2Always");
+      internal.debugSetFailAt("RocksDBCollection::modifyFail3Always");
 
       try {
         c.update("testi", { value: 2 });
@@ -254,7 +254,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("RocksDBCollection::modifyFail3Always");
+      internal.debugSetFailAt("RocksDBCollection::modifyFail2Always");
 
       try {
         c.update("testi", { value: 2 });

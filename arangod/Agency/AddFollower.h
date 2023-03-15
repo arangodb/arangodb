@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,7 @@ struct AddFollower : public Job {
   AddFollower(Node const& snapshot, AgentInterface* agent,
               std::string const& jobId, std::string const& creator,
               std::string const& database, std::string const& collection,
-              std::string const& shard);
+              std::string const& shard, std::string const& notBefore = "");
 
   AddFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
               std::string const& jobId);
@@ -50,6 +50,8 @@ struct AddFollower : public Job {
   std::string _database;
   std::string _collection;
   std::string _shard;
+  std::string _timeCreated;
+  std::string _notBefore;
 };
 
 }  // namespace consensus

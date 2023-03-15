@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,6 +66,8 @@ class RandomGenerator {
   RandomGenerator& operator=(RandomGenerator const&) = delete;
 
  public:
+  // as not really used, types from 2 to 5 are deprecated and will be further
+  // removed, only Mersenne will stay
   enum class RandomType {
     MERSENNE = 1,
     RANDOM = 2,

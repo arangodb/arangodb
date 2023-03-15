@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,10 @@
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
+
+// TODO: enable this once we upgrade to a newer version of RocksDB and
+// remove the ifdefs
+#undef ARANGODB_ROCKSDB8
 
 namespace arangodb {
 namespace options {
@@ -84,7 +88,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
-  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -105,6 +108,22 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+#ifdef ARANGODB_ROCKSDB8
+  // only used for HyperClockCache
+  uint64_t _blockCacheEstimatedEntryCharge;
+#endif
+  uint64_t _minBlobSize;
+  uint64_t _blobFileSize;
+#ifdef ARANGODB_ROCKSDB8
+  uint32_t _blobFileStartingLevel;
+#endif
+  bool _enableBlobFiles;
+#ifdef ARANGODB_ROCKSDB8
+  bool _enableBlobCache;
+#endif
+  double _blobGarbageCollectionAgeCutoff;
+  double _blobGarbageCollectionForceThreshold;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -113,13 +132,21 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
+  std::string _compressionType;
+  std::string _blobCompressionType;
+  std::string _blockCacheType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
+  bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
+#ifdef ARANGODB_ROCKSDB8
+  bool _prepopulateBlobCache;
+#endif
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
+  bool _reserveFileMetadataMemory;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -138,8 +165,8 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
-
   bool _minWriteBufferNumberToMergeTouched;
 
   /// per column family write buffer limits

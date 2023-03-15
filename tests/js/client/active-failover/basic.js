@@ -427,14 +427,17 @@ function installFoxx(mountpoint, which, mode) {
 // the active failover functionality. It is designed as a quicker
 // variant of the node resilience tests (for active failover).
 function ActiveFailoverSuite() {
-  let servers = getClusterEndpoints();
-  assertTrue(servers.length >= 4, "This test expects four single instances");
-  let firstLeader = servers[0];
+  let servers;
+  let firstLeader;
   let suspended = [];
-  let currentLead = leaderInAgency();
+  let currentLead;
 
   return {
     setUpAll: function () {
+      servers = getClusterEndpoints();
+      assertTrue(servers.length >= 4, "This test expects four single instances " + JSON.stringify(servers));
+      firstLeader = servers[0];
+      currentLead = leaderInAgency();
       db._create(cname);
     },
 

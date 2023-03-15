@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::TimeString("_time");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
@@ -65,6 +64,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
     "overwriteCollectionPrefix");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
+std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
@@ -234,6 +234,11 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::ContentSecurityPolicy(
+    "content-security-policy");
+std::string const StaticStrings::Pragma("pragma");
+std::string const StaticStrings::Expires("expires");
+std::string const StaticStrings::HSTS("strict-transport-security");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -261,6 +266,7 @@ std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
+std::string const StaticStrings::GroupId("groupId");
 std::string const StaticStrings::KeyOptions("keyOptions");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
@@ -350,6 +356,7 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeight("weight");
 std::string const StaticStrings::GraphQueryWeights("weights");
 std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");
@@ -374,6 +381,7 @@ std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
 std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
+std::string const StaticStrings::RevisionTreeResumeHLC("resumeHLC");
 std::string const StaticStrings::RevisionTreeVersion("version");
 std::string const StaticStrings::FollowingTermId("followingTermId");
 
@@ -455,11 +463,6 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
-
-std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
-std::string_view const StaticStrings::ApiLogExternal("/_api/log");
-std::string_view const StaticStrings::ApiReplicatedStateExternal(
-    "/_api/replicated-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

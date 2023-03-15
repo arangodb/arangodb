@@ -268,9 +268,23 @@ let failurePointsCheck = {
   }
 };
 
+function isBucketized(testBuckets) {
+  if (testBuckets === undefined || testBuckets === null) {
+    return false;
+  }
+  let n = testBuckets.split('/');
+  let r = parseInt(n[0]);
+  let s = parseInt(n[1]);
+  if (r === 1 && s === 0) {
+    // we only have a single bucket - this is equivalent to not using bucketizing at all
+    return false;
+  }
+  return true;
+}
+
 class testRunner {
   constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
-    if (options.testBuckets && !didSplitBuckets) {
+    if (isBucketized(options.testBuckets) && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
     this.addArgs = undefined;
@@ -416,6 +430,10 @@ class testRunner {
     throw new Error("must overload the runOneTest function!");
   }
 
+  filter(te, filtered) {
+    return tu.filterTestcaseByOptions(te, this.options, filtered);
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
@@ -491,7 +509,7 @@ class testRunner {
       let te = this.testList[i];
       let filtered = {};
 
-      if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
+      if (this.filter(te, filtered)) {
         let first = true;
         let loopCount = 0;
         count += 1;
@@ -499,7 +517,7 @@ class testRunner {
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
-            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            print(RED + Date() + ' server pretest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
             moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
@@ -558,7 +576,7 @@ class testRunner {
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
                 moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;

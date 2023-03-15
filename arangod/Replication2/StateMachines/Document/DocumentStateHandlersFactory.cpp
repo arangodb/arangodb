@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,29 +23,20 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
-#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
-
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
-    ArangodServer& server, ClusterFeature& clusterFeature,
-    MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
-    : _server(server),
-      _clusterFeature(clusterFeature),
-      _maintenanceFeature(maintenaceFeature),
-      _databaseFeature(databaseFeature) {}
-
-auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
-    -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return std::make_shared<DocumentStateAgencyHandler>(std::move(gid), _server,
-                                                      _clusterFeature);
-}
+    network::ConnectionPool* connectionPool,
+    MaintenanceFeature& maintenanceFeature)
+    : _connectionPool(connectionPool),
+      _maintenanceFeature(maintenanceFeature) {}
 
 auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
@@ -52,32 +44,36 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
                                                      _maintenanceFeature);
 }
 
+auto DocumentStateHandlersFactory::createSnapshotHandler(
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
+    -> std::unique_ptr<IDocumentStateSnapshotHandler> {
+  return std::make_unique<DocumentStateSnapshotHandler>(
+      std::make_unique<DatabaseSnapshotFactory>(vocbase));
+}
+
 auto DocumentStateHandlersFactory::createTransactionHandler(
-    GlobalLogIdentifier gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid),
-      std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
-      shared_from_this());
+      gid, &vocbase, shared_from_this(), std::move(shardHandler));
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
-    -> std::shared_ptr<IDocumentStateTransaction> {
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
-
+    TRI_vocbase_t& vocbase, TransactionId tid, ShardID const& shard,
+    AccessMode::Type accessType) -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(
-      dbGuard.database(), doc.tid, options);
+  auto state =
+      std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
+  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
-  auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId, AccessMode::Type::WRITE);
+  auto methods =
+      std::make_unique<transaction::Methods>(std::move(ctx), shard, accessType);
+  methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -88,6 +84,12 @@ auto DocumentStateHandlersFactory::createTransaction(
   }
 
   return std::make_shared<DocumentStateTransaction>(std::move(methods));
+}
+
+auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
+    -> std::shared_ptr<IDocumentStateNetworkHandler> {
+  return std::make_shared<DocumentStateNetworkHandler>(std::move(gid),
+                                                       _connectionPool);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

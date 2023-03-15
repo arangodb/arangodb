@@ -221,6 +221,7 @@ const replicatedLogRegressionSuite = function () {
         config: {writeConcern, waitForSync: false},
         participants: helper.getParticipantsObjectForServers(servers),
         supervision: {maxActionsTraceLength: 20},
+        properties: {implementation: {type: "black-hole", parameters: {}}},
       });
 
       waitFor(function () {
@@ -242,6 +243,7 @@ const replicatedLogRegressionSuite = function () {
         target.config.writeConcern = 2;
       });
       waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+      replicatedLogDeleteTarget(database, logId);
     },
 
     testWriteConcernBiggerThanReplicationFactor: function () {
@@ -260,6 +262,7 @@ const replicatedLogRegressionSuite = function () {
         participants: helper.getParticipantsObjectForServers(servers),
         supervision: {maxActionsTraceLength: 20},
         version: 1,
+        properties: {implementation: {type: "black-hole", parameters: {}}},
       });
       waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
@@ -277,9 +280,8 @@ const replicatedLogRegressionSuite = function () {
       });
 
       waitFor(preds.replicatedLogTargetVersion(database, logId, lastVersion));
+      replicatedLogDeleteTarget(database, logId);
     },
-
-
   };
 };
 

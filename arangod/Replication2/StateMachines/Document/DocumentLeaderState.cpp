@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,12 @@
 
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Basics/application-exit.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
@@ -39,115 +40,436 @@ DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
-    : loggerContext(
+    : gid(core->gid),
+      loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      shardId(core->getShardId()),
-      gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
+      _snapshotHandler(
+          _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
-  auto transactions = getActiveTransactions();
-  for (auto trx : transactions) {
+  auto core = _guardedData.doUnderLock([&](auto& data) {
+    ADB_PROD_ASSERT(!data.didResign())
+        << "resigning leader " << gid
+        << " is not possible because it is already resigned";
+    return std::move(data.core);
+  });
+
+  auto snapshotsGuard = _snapshotHandler.getLockedGuard();
+  if (auto& snapshotHandler = snapshotsGuard.get(); snapshotHandler) {
+    snapshotHandler->clear();
+    // The snapshot handler holds a reference to the underlying vocbase. It must
+    // not be accessed after resign, so the database can be dropped safely.
+    snapshotHandler.reset();
+  } else {
+    TRI_ASSERT(false) << "Double-resign in document leader state " << gid;
+  }
+
+  // We are taking a copy of active transactions to avoid a deadlock in doAbort.
+  // doAbort is called within abortManagedTrx below, and requires it's own lock
+  // on the guarded data.
+  auto activeTransactions = _activeTransactions.copy().getTransactions();
+  for (auto const& trx : activeTransactions) {
     try {
-      _transactionManager.abortManagedTrx(trx, gid.database);
+      _transactionManager.abortManagedTrx(trx.first, gid.database);
     } catch (...) {
       LOG_CTX("7341f", WARN, loggerContext)
-          << "failed to abort active transaction " << gid << " during resign";
+          << "failed to abort active transaction " << trx.first
+          << " during resign";
     }
   }
 
-  return _guardedData.doUnderLock([](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-    }
-    return std::move(data.core);
-  });
+  return core;
 }
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  return _guardedData.doUnderLock(
-      [self = shared_from_this(),
-       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
-        if (data.didResign()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+  return _guardedData.doUnderLock([self = shared_from_this(),
+                                   ptr = std::move(ptr)](
+                                      auto& data) -> futures::Future<Result> {
+    if (data.didResign()) {
+      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+    }
+
+    auto transactionHandler = data.core->getTransactionHandler();
+    ADB_PROD_ASSERT(transactionHandler != nullptr);
+
+    std::unordered_set<TransactionId> activeTransactions;
+    while (auto entry = ptr->next()) {
+      auto doc = entry->second;
+
+      auto res = std::visit(
+          overload{
+              [&](ModifiesUserTransaction auto& op) -> Result {
+                if (auto res =
+                        transactionHandler->validate(doc.getInnerOperation());
+                    res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  // The shard might've been dropped before doing recovery.
+                  LOG_CTX("e76f8", INFO, self->loggerContext)
+                      << "will not apply transaction " << op.tid
+                      << " for shard " << op.shard
+                      << " because it is not available";
+                  return {};
+                } else if (res.fail()) {
+                  return res;
+                }
+                activeTransactions.insert(op.tid);
+                return transactionHandler->applyEntry(op);
+              },
+              [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
+                // There are two cases where we can end up here:
+                // 1. After recovery, we did not get the beginning of the
+                // transaction.
+                // 2. We ignored all other operations for this transaction
+                // because the shard was dropped.
+                if (activeTransactions.erase(op.tid) == 0) {
+                  return Result{};
+                }
+                return transactionHandler->applyEntry(op);
+              },
+              [&](ReplicatedOperation::DropShard& op) -> Result {
+                // Abort all transactions for this shard.
+                for (auto const& tid :
+                     transactionHandler->getTransactionsForShard(op.shard)) {
+                  activeTransactions.erase(tid);
+                  auto abortRes = transactionHandler->applyEntry(
+                      ReplicatedOperation::buildAbortOperation(tid));
+                  if (abortRes.fail()) {
+                    LOG_CTX("3eb75", INFO, self->loggerContext)
+                        << "failed to abort transaction " << tid
+                        << " for shard " << op.shard
+                        << " during recovery: " << abortRes;
+                    return abortRes;
+                  }
+                }
+                return transactionHandler->applyEntry(op);
+              },
+              [&](auto&& op) { return transactionHandler->applyEntry(op); }},
+          doc.getInnerOperation());
+
+      if (res.fail()) {
+        LOG_CTX("cbc5b", FATAL, self->loggerContext)
+            << "failed to apply entry " << doc << " during recovery: " << res;
+        FATAL_ERROR_EXIT();
+      }
+    }
+
+    auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
+    auto abortAllResFut =
+        self->replicateOperation(abortAll, ReplicationOptions{});
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    TRI_ASSERT(abortAllResFut.isReady());
+    auto abortAllRes = abortAllResFut.get();
+    if (abortAllRes.fail()) {
+      LOG_CTX("b4217", FATAL, self->loggerContext)
+          << "failed to replicate AbortAllOngoingTrx operation during "
+             "recovery: "
+          << abortAllRes.result();
+      FATAL_ERROR_EXIT();
+    }
+
+    for (auto& [tid, trx] : transactionHandler->getUnfinishedTransactions()) {
+      try {
+        // the log entries contain follower ids, which is fine since during
+        // recovery we apply the entries like a follower, but we have to
+        // register tombstones in the trx managers for the leader trx id.
+        self->_transactionManager.abortManagedTrx(tid.asLeaderTransactionId(),
+                                                  self->gid.database);
+      } catch (...) {
+        LOG_CTX("894f1", WARN, self->loggerContext)
+            << "failed to abort active transaction " << tid
+            << " during recovery";
+      }
+    }
+
+    auto abortAllResult = transactionHandler->applyEntry(abortAll);
+    TRI_ASSERT(abortAllResult.ok());
+
+    self->release(abortAllRes.get());
+
+    return {TRI_ERROR_NO_ERROR};
+  });
+}
+
+auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
+    -> bool {
+  return std::visit(
+      overload{
+          [&](FinishesUserTransactionOrIntermediate auto const& op) -> bool {
+            // An empty transaction is not active, therefore we can ignore it.
+            // We are not replication commit or abort operations for empty
+            // transactions.
+            return _activeTransactions.getLockedGuard()
+                ->getTransactions()
+                .contains(op.tid);
+          },
+          [&](auto&&) -> bool { return true; },
+      },
+      op.operation);
+}
+
+auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
+                                             ReplicationOptions opts)
+    -> futures::Future<ResultT<LogIndex>> {
+  auto const& stream = getStream();
+
+  // We have to use follower IDs when replicating transactions
+  auto entry = DocumentLogEntry{op};
+  std::visit(
+      [&](auto& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (UserTransaction<T>) {
+          arg.tid = arg.tid.asFollowerTransactionId();
         }
+      },
+      entry.getInnerOperation());
 
-        auto transactionHandler =
-            self->_handlersFactory->createTransactionHandler(self->gid);
-        while (auto entry = ptr->next()) {
-          auto doc = entry->second;
-          auto res = transactionHandler->applyEntry(doc);
-          if (res.fail()) {
-            return res;
-          }
+  // Insert and emplace must happen atomically. The idx is strictly increasing,
+  // which is required by markAsActive. Keeping the stream insertion and the
+  // markAsActive call under the same lock ensures that we never call
+  // markAsActive on a log index that is lower than the latest inserted one.
+  auto&& insertionRes = basics::catchToResultT([&] {
+    return _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+      auto idx = stream->insert(entry);
+
+      std::visit(overload{
+                     [&](UserTransaction auto& op) {
+                       activeTransactions.markAsActive(op.tid, idx);
+                     },
+                     [&](auto&&) { activeTransactions.markAsActive(idx); },
+                 },
+                 op.operation);
+
+      return idx;
+    });
+  });
+  if (insertionRes.fail()) {
+    LOG_CTX("ffe2f", ERR, loggerContext)
+        << "replicateOperation failed to insert into the stream: "
+        << insertionRes.result();
+    return insertionRes.result();
+  }
+  auto idx = insertionRes.get();
+
+  if (opts.waitForCommit) {
+    try {
+      return stream->waitFor(idx).thenValue([idx](auto&& result) {
+        return futures::Future<ResultT<LogIndex>>{idx};
+      });
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.what()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
+  }
+
+  return LogIndex{idx};
+}
+
+auto DocumentLeaderState::release(LogIndex index) -> Result {
+  auto const& stream = getStream();
+  return basics::catchToResult([&]() -> Result {
+    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+      activeTransactions.markAsInactive(index);
+      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+    });
+    return {TRI_ERROR_NO_ERROR};
+  });
+}
+
+auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
+  auto const& stream = getStream();
+  return basics::catchToResult([&]() -> Result {
+    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+      activeTransactions.markAsInactive(tid);
+      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+    });
+    return {TRI_ERROR_NO_ERROR};
+  });
+}
+
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
+    -> ResultT<SnapshotConfig> {
+  auto shardMap = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+    return data.core->getShardHandler()->getShardMap();
+  });
+
+  return executeSnapshotOperation<ResultT<SnapshotConfig>>(
+      [&](auto& handler) { return handler->create(shardMap); },
+      [](auto& snapshot) { return snapshot->config(); });
+}
+
+auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
+    -> ResultT<SnapshotBatch> {
+  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
+      [&](auto& handler) { return handler->find(params.id); },
+      [](auto& snapshot) { return snapshot->fetch(); });
+}
+
+auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
+    -> Result {
+  return executeSnapshotOperation<Result>(
+      [&](auto& handler) { return handler->find(params.id); },
+      [](auto& snapshot) { return snapshot->finish(); });
+}
+
+auto DocumentLeaderState::snapshotStatus(SnapshotId id)
+    -> ResultT<SnapshotStatus> {
+  return executeSnapshotOperation<ResultT<SnapshotStatus>>(
+      [&](auto& handler) { return handler->find(id); },
+      [](auto& snapshot) { return snapshot->status(); });
+}
+
+auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
+  return _snapshotHandler.doUnderLock(
+      [&](auto& handler) -> ResultT<AllSnapshotsStatus> {
+        if (handler) {
+          return handler->status();
         }
-
-        auto doc = DocumentLogEntry{std::string(self->shardId),
-                                    OperationType::kAbortAllOngoingTrx,
-                                    {},
-                                    TransactionId{0}};
-        auto stream = self->getStream();
-        stream->insert(doc);
-
-        for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
-          try {
-            // the log entries contain follower ids, which is fine since during
-            // recovery we apply the entries like a follower, but we have to
-            // register tombstones in the trx managers for the leader trx id.
-            self->_transactionManager.abortManagedTrx(
-                tid.asLeaderTransactionId(), self->gid.database);
-          } catch (...) {
-            LOG_CTX("894f1", WARN, self->loggerContext)
-                << "failed to abort active transaction " << self->gid
-                << " during recovery";
-          }
-        }
-
-        return {TRI_ERROR_NO_ERROR};
+        return Result{
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+            fmt::format(
+                "Could not get snapshot statuses of {}, state resigned.",
+                to_string(gid))};
       });
 }
 
-auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
-                                             OperationType operation,
-                                             TransactionId transactionId,
-                                             ReplicationOptions opts)
-    -> futures::Future<LogIndex> {
-  // we replicate operations using follower trx ids, but locally we track the
-  // actual trx ids
-  auto entry =
-      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
-                       transactionId.asFollowerTransactionId()};
+auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
+                                      std::shared_ptr<VPackBuilder> properties)
+    -> futures::Future<Result> {
+  auto op = ReplicatedOperation::buildCreateShardOperation(
+      std::move(shard), std::move(collectionId), std::move(properties));
 
-  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
-  if (operation == OperationType::kCommit ||
-      operation == OperationType::kAbort) {
-    if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
-      // we have not replicated anything for a transaction with this id, so
-      // there is no need to replicate the abort/commit operation
-      return LogIndex{};  // TODO - can we do this differently instead of
-                          // returning a dummy index/
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
-  } else {
-    _activeTransactions.getLockedGuard()->emplace(transactionId);
-  }
-  auto stream = getStream();
-  auto idx = stream->insert(entry);
 
-  if (opts.waitForCommit) {
-    return stream->waitFor(idx).thenValue(
-        [idx](auto&& result) { return futures::Future<LogIndex>{idx}; });
-  }
+    return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
+  });
 
-  return futures::Future<LogIndex>{idx};
+  return std::move(fut).thenValue(
+      [self = shared_from_this(), op = std::move(op)](auto&& result) mutable {
+        if (result.fail()) {
+          return result.result();
+        }
+        auto logIndex = result.get();
+
+        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          auto transactionHandler = data.core->getTransactionHandler();
+          auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
+          if (applyEntryRes.fail()) {
+            LOG_CTX("d11f0", FATAL, self->loggerContext)
+                << "CreateShard operation failed on the leader, after being "
+                   "replicated to followers: "
+                << applyEntryRes;
+            FATAL_ERROR_EXIT();
+          }
+
+          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+            LOG_CTX("ed8e5", ERR, self->loggerContext)
+                << "Failed to call release: " << releaseRes;
+          }
+          return {};
+        });
+      });
 }
 
-std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()
-    const {
-  return _activeTransactions.getLockedGuard().get();
+auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
+    -> futures::Future<Result> {
+  ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(
+      shard, std::move(collectionId));
+
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
+  });
+
+  return std::move(fut).thenValue([self = shared_from_this(),
+                                   shard = std::move(shard),
+                                   op = std::move(op)](auto&& result) mutable {
+    if (result.fail()) {
+      return result.result();
+    }
+    auto logIndex = result.get();
+
+    return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+
+      // TODO we clear snapshot here, to release the shard lock. This is
+      //   very invasive and aborts all snapshot transfers. Maybe there is
+      //   a better solution?
+      self->_snapshotHandler.getLockedGuard().get()->clear();
+
+      auto transactionHandler = data.core->getTransactionHandler();
+      self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
+        for (auto const& tid :
+             transactionHandler->getTransactionsForShard(shard)) {
+          activeTransactions.markAsInactive(tid);
+        }
+      });
+      auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
+      if (applyEntryRes.fail()) {
+        LOG_CTX("6865f", FATAL, self->loggerContext)
+            << "DropShard operation failed on the leader, after being "
+               "replicated to followers: "
+            << applyEntryRes;
+        FATAL_ERROR_EXIT();
+      }
+
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("6856b", ERR, self->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
+      return {};
+    });
+  });
+}
+
+template<class ResultType, class GetFunc, class ProcessFunc>
+auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
+                                                   ProcessFunc processSnapshot)
+    -> ResultType {
+  auto snapshotRes = _snapshotHandler.doUnderLock(
+      [&](auto& handler) -> ResultT<std::weak_ptr<Snapshot>> {
+        if (handler == nullptr) {
+          return Result{
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+              fmt::format(
+                  "Could not get snapshot status of {}, state resigned.", gid)};
+        }
+        return getSnapshot(handler);
+      });
+
+  if (snapshotRes.fail()) {
+    return snapshotRes.result();
+  }
+  if (auto snapshot = snapshotRes.get().lock()) {
+    return processSnapshot(snapshot);
+  }
+  return Result(
+      TRI_ERROR_INTERNAL,
+      fmt::format("Snapshot not available for {}! Most often this happens "
+                  "because the leader resigned in the meantime!",
+                  gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

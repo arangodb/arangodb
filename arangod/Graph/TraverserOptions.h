@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -202,10 +202,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto isSatelliteLeader() const -> bool;
 
-  void initializeIndexConditions(
-      aql::Ast* ast,
-      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-      aql::Variable const* indexVariable) override;
+  void initializeIndexConditions(aql::Ast* ast, aql::VarInfoMap const& varInfo,
+                                 aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;
 

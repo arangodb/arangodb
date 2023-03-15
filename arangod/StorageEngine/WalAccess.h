@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -187,7 +187,7 @@ struct WalAccessContext {
   velocypack::Builder _builder;
 
   /// @brief cache the vocbases
-  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
+  std::map<TRI_voc_tick_t, VocbasePtr> _vocbases;
 
   // @brief collection replication UUID cache
   std::map<DataSourceId, CollectionGuard> _collectionCache;

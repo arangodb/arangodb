@@ -79,7 +79,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
     'set pagination off\\n' +
     'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
+    'set logging enabled\\n' +
     'bt\\n' +
     'thread apply all bt\\n'+
     'bt full\\n' +
@@ -140,7 +140,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     'set pagination off\\n' +
     'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
+    'set logging enabled\\n' +
     'bt\\n' +
     'thread apply all bt\\n'+
     'bt full\\n' +
@@ -565,16 +565,21 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  if (!options.coreCheck && !options.setInterruptable) {
+    print("fatal exit of arangod! Bye!");
+    pu.killRemainingProcesses({status: false});
+    process.exit();
+  }
   GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
-  const generateCoreDump = (
+  const generateCoreDump = options.coreGen && ((
     stats.virtualSize  < 310000000 &&
     stats.residentSize < 140000000
-  ) || stats.virtualSize === 0;
+  ) || stats.virtualSize === 0);
   if (options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
@@ -599,11 +604,11 @@ function aggregateDebugger(instanceInfo, options) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
   }
-  print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
+  print(`waiting for debugger of ${instanceInfo.pid} to terminate: ${JSON.stringify(instanceInfo.debuggerInfo)}`);
   let tearDownTimeout = 180; // s
   while (tearDownTimeout > 0) {
     let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
-    print(ret);
+    print(`Debugger ${instanceInfo.debuggerInfo.pid.pid} Status => ${JSON.stringify(ret)}`);
     if (ret.status === "RUNNING") {
       sleep(1);
       tearDownTimeout -= 1;

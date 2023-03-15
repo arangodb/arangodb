@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -44,7 +45,6 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 let functionsDocumentation = {
-  'all': 'run all tests (marked with [x])',
   'find': 'searches all testcases, and eventually filters them by `--test`, ' +
     'will dump testcases associated to testsuites.',
   'auto': 'uses find; if the testsuite for the testcase is located, ' +
@@ -96,7 +96,7 @@ let optionsDocumentation = [
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
-  '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+  '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
   '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
   '             or pattern to filter for other suites',
@@ -128,6 +128,7 @@ let optionsDocumentation = [
   '                        or a coma separated list for multiple exceptions; ',
   '                        filtering by asterisk is possible',
   '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
+  '   - `coreGen`: whether debuggers should generate a coredump after getting stacktraces',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',
@@ -162,6 +163,9 @@ let optionsDocumentation = [
   ''
 ];
 
+const isCoverage = versionHas('coverage');
+const isSan = versionHas('asan') || versionHas('tsan');
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -176,6 +180,7 @@ const optionsDefaults = {
   'coordinators': 1,
   'coreCheck': false,
   'coreDirectory': '/var/tmp',
+  'coreGen': !isSan,
   'dbServers': 2,
   'duration': 10,
   'encryptionAtRest': false,
@@ -198,7 +203,7 @@ const optionsDefaults = {
   'rr': false,
   'exceptionFilter': null,
   'exceptionCount': 1,
-  'sanitizer': false,
+  'sanitizer': isSan,
   'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
@@ -214,10 +219,10 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': 15 * 60,
-  'isAsan': (
-      global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-      global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
+  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
+  'isSan': isSan,
+  'isCov': isCoverage,
+  'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,
@@ -269,15 +274,7 @@ function printUsage () {
         oneFunctionDocumentation = '';
       }
 
-      let checkAll;
-
-      if (allTests.indexOf(i) !== -1) {
-        checkAll = '[x]';
-      } else {
-        checkAll = '   ';
-      }
-
-      print('    ' + checkAll + ' ' + i + ' ' + oneFunctionDocumentation);
+      print(`     ${i} ${oneFunctionDocumentation}`);
     }
   }
 
@@ -430,7 +427,6 @@ function loadTestSuites () {
   for (let j = 0; j < testSuites.length; j++) {
     try {
       require('@arangodb/testsuites/' + testSuites[j]).setup(testFuncs,
-                                                             allTests,
                                                              optionsDefaults,
                                                              functionsDocumentation,
                                                              optionsDocumentation,
@@ -440,7 +436,7 @@ function loadTestSuites () {
       throw x;
     }
   }
-  testFuncs['all'] = allTests;
+  allTests = Object.keys(testFuncs);
   testFuncs['find'] = findTest;
   testFuncs['auto'] = autoTest;
 }

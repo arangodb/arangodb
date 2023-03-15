@@ -72,7 +72,7 @@ Deleting expired jobs:
   var response = logCurlRequest('GET', "/_admin/time");
   assert(response.code === 200);
   logJsonResponse(response);
-  now = JSON.parse(response.body).time;
+  now = response.parsedBody.time;
 
   url = '/_api/job/expired?stamp=' + now
   var response = logCurlRequest('DELETE', url, "");

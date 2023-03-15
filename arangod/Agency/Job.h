@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,6 @@ class Slice;
 }
 namespace replication2 {
 class LogId;
-namespace replicated_state::agency {
-struct Target;
-struct Plan;
-}  // namespace replicated_state::agency
 namespace agency {
 struct LogPlanSpecification;
 struct LogTarget;
@@ -70,8 +66,6 @@ extern std::string const cleanedPrefix;
 extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
-extern std::string const planRepLogPrefix;
-extern std::string const targetRepLogPrefix;
 extern std::string const targetRepStatePrefix;
 extern std::string const planRepStatePrefix;
 extern std::string const curColPrefix;
@@ -86,6 +80,7 @@ extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
 extern std::string const planAnalyzersPrefix;
+extern std::string const returnLeadershipPrefix;
 
 struct Job {
   struct shard_t {
@@ -166,14 +161,14 @@ struct Job {
                                           replication2::LogId stateId,
                                           std::string const& server);
 
-  static std::optional<replication2::replicated_state::agency::Target>
+  static std::optional<arangodb::replication2::agency::LogTarget>
   readStateTarget(Node const& snap, std::string const& db,
                   replication2::LogId stateId);
-  static std::optional<replication2::replicated_state::agency::Plan>
-  readStatePlan(Node const& snap, std::string const& db,
-                replication2::LogId stateId);
   static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
       Node const& snap, std::string const& db, replication2::LogId logId);
+  static std::optional<replication2::LogId> getReplicatedStateId(
+      Node const& snap, std::string const& db, std::string const& collection,
+      std::string const& shard);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
@@ -260,9 +255,6 @@ struct Job {
   static void addPreconditionServerReadLocked(velocypack::Builder& pre,
                                               std::string const& server,
                                               std::string const& jobId);
-  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
-                                                 std::string const& server,
-                                                 std::string const& jobId);
   static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
                                                std::string const& server,
                                                std::string const& jobId);

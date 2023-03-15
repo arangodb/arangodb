@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,9 +33,9 @@
 #include "Indexes/IndexIterator.h"
 
 namespace arangodb {
-
 class LocalDocumentId;
 class LogicalCollection;
+struct ResourceMonitor;
 
 namespace aql {
 struct Variable;
@@ -70,6 +70,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   };
 
   BaseOptions const* _opts;
+  ResourceMonitor& _monitor;
   transaction::Methods* _trx;
   aql::Variable const* _tmpVar;
   std::vector<std::vector<CursorInfo>> _cursors;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ enum class FilterOptimization : int { MAX = -1, NONE = 0 };
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     std::string_view name,
-                                    irs::string_ref startsWith);
+                                    std::string_view startsWith);
 
 }  // namespace iresearch
 }  // namespace arangodb

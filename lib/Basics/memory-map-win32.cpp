@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -196,9 +196,8 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   }
 
   LOG_TOPIC("048dd", DEBUG, Logger::MMAP)
-      << "memory-mapped range "
-      << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor "
-      << fileDescriptor;
+      << "memory-mapped " << numOfBytesToInitialize << " bytes at address "
+      << *result << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -230,9 +229,8 @@ ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
   }
 
   LOG_TOPIC("447d8", DEBUG, Logger::MMAP)
-      << "memory-unmapped range "
-      << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor "
-      << fileDescriptor;
+      << "memory-unmapped range of size " << numOfBytesToUnMap << " at address "
+      << memoryAddress << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state {
 /**
@@ -91,7 +93,7 @@ struct BlackHoleFactory {
       -> std::shared_ptr<BlackHoleFollowerState>;
   auto constructLeader(std::unique_ptr<BlackHoleCore> core)
       -> std::shared_ptr<BlackHoleLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&)
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
       -> std::unique_ptr<BlackHoleCore>;
 };
 

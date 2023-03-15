@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@
 #include <v8.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/EncodingUtils.h"
@@ -163,6 +163,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
     auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
+    if (_forceJson) {
+      req->header.acceptType(fu::ContentType::Json);
+    }
     req->header.database = _databaseName;
     req->timeout(std::chrono::seconds(30));
     retryCount -= 1;

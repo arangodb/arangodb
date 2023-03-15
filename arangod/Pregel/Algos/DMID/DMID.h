@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,8 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 namespace arangodb {
 namespace pregel {
@@ -35,10 +36,8 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   unsigned _maxCommunities = 1;
 
  public:
-  explicit DMID(application_features::ApplicationServer& server,
-                VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(server, "DMID",
-                                                       userParams) {
+  explicit DMID(VPackSlice userParams)
+      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {
     arangodb::velocypack::Slice val = userParams.get("maxCommunities");
     if (val.isInteger()) {
       _maxCommunities = (unsigned)std::min(

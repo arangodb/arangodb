@@ -722,7 +722,7 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
   auto cleanOutServer =
       CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
 
-  Mock<Job> spy(cleanOutServer);
+  Mock<CleanOutServer> spy(cleanOutServer);
   Fake(Method(spy, abort));
 
   Job& spyCleanOutServer = spy.get();
@@ -779,7 +779,7 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
   Node agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
-  Mock<Job> spy(cleanOutServer);
+  Mock<CleanOutServer> spy(cleanOutServer);
   Fake(Method(spy, abort));
 
   Job& spyCleanOutServer = spy.get();

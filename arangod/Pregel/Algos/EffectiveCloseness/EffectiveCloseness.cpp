@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounterFormat.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -91,9 +91,8 @@ EffectiveCloseness::createComputation(WorkerConfig const*) const {
 struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   const std::string _resultField;
 
-  explicit ECGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<ECValue, int8_t>(server), _resultField(result) {}
+  explicit ECGraphFormat(std::string const& result)
+      : GraphFormat<ECValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; }
 
@@ -125,5 +124,5 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 };
 
 GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
-  return new ECGraphFormat(_server, _resultField);
+  return new ECGraphFormat(_resultField);
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1834,9 +1834,8 @@ void TailingSyncer::fetchLeaderLog(
     } else {
       // success!
       LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION)
-          << "fetching leader log from tick " + StringUtils::itoa(fetchTick) +
-                 " took "
-          << time << " s";
+          << "fetching leader log from tick " << fetchTick << " took " << time
+          << " s";
       sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {

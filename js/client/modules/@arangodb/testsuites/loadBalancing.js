@@ -112,14 +112,12 @@ function loadBalancingAuthClient (options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['load_balancing'] = loadBalancingClient;
   testFns['load_balancing_auth'] = loadBalancingAuthClient;
 
   opts['skipLoadBalancing'] = false;
-
-  defaultFns.push('load_balancing');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

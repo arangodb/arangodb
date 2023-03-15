@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -191,7 +192,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
-
+  _options.forLateMaterialization = isLateMaterialized();
   prepareProjections();
 }
 
@@ -311,7 +312,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
 
     return utils::extractNonConstPartsOfIndexCondition(
         _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
-        idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
+        idx.get(), _condition->root(), _outVariable);
   }
   return {};
 }
@@ -554,6 +555,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
   }
+  _options.forLateMaterialization = true;
 }
 
 transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
@@ -587,7 +589,7 @@ void IndexNode::prepareProjections() {
     // if we have a covering index and a post-filter condition,
     // extract which projections we will need just to execute
     // the filter condition
-    std::unordered_set<AttributeNamePath> attributes;
+    containers::FlatHashSet<AttributeNamePath> attributes;
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),

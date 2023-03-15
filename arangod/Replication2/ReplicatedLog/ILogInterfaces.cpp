@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,6 @@
 
 #include "ILogInterfaces.h"
 
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
@@ -31,11 +30,6 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-
-auto replicated_log::ILogParticipant::getTerm() const noexcept
-    -> std::optional<LogTerm> {
-  return getQuickStatus().getCurrentTerm();
-}
 
 replicated_log::WaitForResult::WaitForResult(
     LogIndex index, std::shared_ptr<QuorumData const> quorum)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,8 +38,8 @@ class GreetingsFeaturePhase;
 class ClientFeature;
 class ConfigFeature;
 class FileSystemFeature;
-class ShellConsoleFeature;
 class LoggerFeature;
+class OptionsCheckFeature;
 class RandomFeature;
 class ShellColorsFeature;
 class ShutdownFeature;
@@ -51,12 +51,13 @@ class ArangoGlobalContext;
 using namespace application_features;
 
 template<typename... T>
-using ArangoClientFeatures = TypeList<
+using ArangoClientFeaturesList = TypeList<
     // Phases
     CommunicationFeaturePhase, GreetingsFeaturePhase,
     // Features
     VersionFeature,  // VersionFeature must go first
     HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
-    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
+    OptionsCheckFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
+    SslFeature, T...>;
 
 }  // namespace arangodb

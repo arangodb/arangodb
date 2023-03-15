@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,12 +151,9 @@ Agent::Agent(ArangodServer& server, config_t const& config)
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
                                    notifySupervision);
-
-  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedStates",
+  _spearhead.registerPrefixTrigger("/arango/Target/CollectionGroups",
                                    notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedStates",
-                                   notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedStates",
+  _spearhead.registerPrefixTrigger("/arango/Plan/CollectionGroups",
                                    notifySupervision);
 }
 
@@ -262,8 +259,8 @@ priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
   return priv_rpc_ret_t(doIVote, this->term());
 }
 
-/// Get copy of momentary configuration
-config_t const Agent::config() const { return _config; }
+/// Get reference to momentary configuration
+config_t const& Agent::config() const { return _config; }
 
 /// Adjust timeoutMult:
 void Agent::adjustTimeoutMult(int64_t timeoutMult) {
@@ -2512,6 +2509,31 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
         << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
     _supervision->setGracePeriod(d);
+  }
+  slice = data.get("delayAddFollower");
+  uint64_t u;
+  if (slice.isNumber()) {
+    u = slice.getNumber<uint64_t>();
+    LOG_TOPIC("12343", DEBUG, Logger::SUPERVISION)
+        << "Updating delayAddFollower to " << u;
+    _config.setSupervisionDelayAddFollower(u);
+    _supervision->setDelayAddFollower(u);
+  }
+  slice = data.get("delayFailedFollower");
+  if (slice.isNumber()) {
+    u = slice.getNumber<uint64_t>();
+    LOG_TOPIC("12344", DEBUG, Logger::SUPERVISION)
+        << "Updating delayFailedFollower to " << u;
+    _config.setSupervisionDelayFailedFollower(u);
+    _supervision->setDelayFailedFollower(u);
+  }
+  slice = data.get("failedLeaderAddsFollower");
+  if (slice.isBool()) {
+    bool b = slice.getBool();
+    LOG_TOPIC("12345", DEBUG, Logger::SUPERVISION)
+        << "Updating failedLeaderAddsFollower to " << b;
+    _config.setSupervisionFailedLeaderAddsFollower(b);
+    _supervision->setFailedLeaderAddsFollower(b);
   }
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,21 +23,29 @@
 
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateLeaderInterface;
+struct IDocumentStateNetworkHandler;
 struct IDocumentStateTransactionHandler;
+struct SnapshotConfig;
+struct SnapshotBatch;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
-  ~DocumentFollowerState();
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+  ~DocumentFollowerState() override;
+
+  LoggerContext const loggerContext;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
@@ -48,15 +56,46 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
+  static auto populateLocalShard(
+      ShardID shardId, velocypack::SharedSlice slice,
+      std::shared_ptr<IDocumentStateTransactionHandler> const&
+          transactionHandler) -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
+
+ private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+        : core(std::move(core)), currentSnapshotVersion{0} {};
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
+    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+
     std::unique_ptr<DocumentCore> core;
+    std::uint64_t currentSnapshotVersion;
+    ActiveTransactionsQueue activeTransactions;
   };
 
-  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
+  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
 

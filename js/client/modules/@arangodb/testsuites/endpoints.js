@@ -48,7 +48,7 @@ const platform = require('internal').platform;
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
+const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
@@ -66,7 +66,8 @@ class endpointRunner extends tu.runInArangoshRunner {
     fs.makeDirectory(this.dummyDir);
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
-                                      {}, {}, 'tcp', this.dummyDir, '',
+                                      {'log.level': 'startup=trace'},
+                                      {}, 'tcp', this.dummyDir, '',
                                       new inst.agencyConfig(this.options, null));
     this.endpoint = this.instance.args['server.endpoint'];
   }
@@ -82,7 +83,7 @@ class endpointRunner extends tu.runInArangoshRunner {
     this.instanceManager['arangods'] = [this.instance];
     this.instanceManager.rootDir = this.instance.rootDir;
     
-    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
+    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'etc', 'testing', 'server.pem');
 
     let endpoints = {
       ssl: {
@@ -277,7 +278,19 @@ class endpointRunner extends tu.runInArangoshRunner {
         return results;
       }
       sleep(2);
-      obj.instance.checkArangoConnection(20);
+      try {
+        obj.instance.checkArangoConnection(30);
+      } catch (ex) {
+        print(RED + Date() + ' Server did not become available on time' + RESET);
+        obj.instance.shutdownArangod(true);
+        results[endpointName + '-' + 'all'] = {
+          failed: 1,
+          status: false,
+          message: 'failed to start server! - Server did not become available in 22s: ' + ex
+        };
+        this.options.cleanup = false;
+        return results;
+      }
       internal.env.INSTANCEINFO = JSON.stringify(obj.instance.getStructure());
       const specFile = testPaths.endpoints[0];
       let filtered = {};
@@ -320,8 +333,10 @@ class endpointRunner extends tu.runInArangoshRunner {
       let message = "";
       try {
         obj.instance.shutDownOneInstance({nonAgenciesCount: 1}, false, 30);
-        obj.instance.waitForInstanceShutdown(10);
+        obj.instance.waitForInstanceShutdown(30);
       } catch (ex) {
+        print(`${RED}${Date()} Server did not shut down on time: ${ex.message}${RESET}`);
+        obj.instance.shutdownArangod(true);
         shutdown = false;
         message = ex.message;
       }
@@ -346,7 +361,7 @@ function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
   return new endpointRunner(options, "endpoints").run();
 }
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['endpoints'] = endpoints;
 
@@ -355,8 +370,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
   opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
-
-  defaultFns.push('endpoints');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

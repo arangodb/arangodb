@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,11 +42,13 @@
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 #include "V8/v8-globals.h"
 
@@ -104,10 +106,21 @@ IndexIterator::CoveringCallback getCallback(
     transaction::Methods::IndexHandle const& index,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndVars,
-          &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIteratorCoveringData& covering) {
-    if constexpr (checkUniqueness) {
+  auto impl = [&context, &index, &outNonMaterializedIndVars,
+               &outNonMaterializedIndRegs]<typename TokenType>(
+                  TokenType&& token, IndexIteratorCoveringData& covering) {
+    constexpr bool isLocalDocumentId =
+        std::is_same_v<LocalDocumentId, std::decay_t<TokenType>>;
+    // can't be a static_assert as this implementation is still possible
+    // just can't be used right now as for restriction in late materialization
+    // rule
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if constexpr (checkUniqueness && !isLocalDocumentId) {
+      TRI_ASSERT(false);
+    }
+#endif
+    if constexpr (checkUniqueness && isLocalDocumentId) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -133,11 +146,17 @@ IndexIterator::CoveringCallback getCallback(
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    // move a document id
-    AqlValue v(AqlValueHintUInt(token.id()));
-    AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
+    // move a document id
+    if constexpr (isLocalDocumentId) {
+      TRI_ASSERT(token.isSet());
+      AqlValue v(AqlValueHintUInt(token.id()));
+      AqlValueGuard guard{v, false};
+      output.moveValueInto(registerId, input, guard);
+    } else {
+      AqlValueGuard guard{token, true};
+      output.moveValueInto(registerId, input, guard);
+    }
 
     // hash/skiplist/persistent
     if (covering.isArray()) {
@@ -168,6 +187,7 @@ IndexIterator::CoveringCallback getCallback(
     output.advanceRow();
     return true;
   };
+  return impl;
 }
 
 }  // namespace
@@ -175,9 +195,8 @@ IndexIterator::CoveringCallback getCallback(
 IndexExecutorInfos::IndexExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     Collection const* collection, Variable const* outVariable,
-    bool produceResult, Expression* filter,
-    arangodb::aql::Projections projections,
-    arangodb::aql::Projections filterProjections,
+    bool produceResult, Expression* filter, aql::Projections projections,
+    aql::Projections filterProjections,
     std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
     NonConstExpressionContainer&& nonConstExpressions, bool count,
     ReadOwnWrites readOwnWrites, AstNode const* condition,
@@ -352,7 +371,7 @@ std::uint64_t IndexExecutor::CursorStats::getAndResetCacheMisses() noexcept {
 }
 
 IndexExecutor::CursorReader::CursorReader(
-    transaction::Methods& trx, IndexExecutorInfos const& infos,
+    transaction::Methods& trx, IndexExecutorInfos& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
     DocumentProducingFunctionContext& context, CursorStats& cursorStats,
     bool checkUniqueness)
@@ -361,8 +380,8 @@ IndexExecutor::CursorReader::CursorReader(
       _condition(condition),
       _index(index),
       _cursor(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions(),
-          infos.canReadOwnWrites(),
+          _infos.query().resourceMonitor(), index, condition,
+          infos.getOutVariable(), infos.getOptions(), infos.canReadOwnWrites(),
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _cursorStats(cursorStats),
@@ -587,8 +606,8 @@ void IndexExecutor::CursorReader::reset() {
     // We need to build a fresh search and cannot go the rearm shortcut
     _cursorStats.incrCursorsCreated();
     _cursor = _trx.indexScanForCondition(
-        _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
-        _infos.canReadOwnWrites(),
+        _infos.query().resourceMonitor(), _index, _condition,
+        _infos.getOutVariable(), _infos.getOptions(), _infos.canReadOwnWrites(),
         transaction::Methods::kNoMutableConditionIdx);
   }
 }

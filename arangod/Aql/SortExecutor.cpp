@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Aql/SortedRowsStorageBackendMemory.h"
 #include "Aql/SortedRowsStorageBackendStaged.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
 using namespace arangodb;
@@ -40,8 +41,7 @@ SortExecutorInfos::SortExecutorInfos(
     RegIdFlatSet const& registersToClear,
     std::vector<SortRegister> sortRegisters, std::size_t limit,
     AqlItemBlockManager& manager, TemporaryStorageFeature& tempStorage,
-    velocypack::Options const* options,
-    arangodb::ResourceMonitor& resourceMonitor,
+    velocypack::Options const* options, ResourceMonitor& resourceMonitor,
     size_t spillOverThresholdNumRows, size_t spillOverThresholdMemoryUsage,
     bool stable)
     : _numInRegs(nrInputRegisters),

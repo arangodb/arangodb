@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_state_number
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Number of replicated states.
 unit: number

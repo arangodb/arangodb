@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -193,7 +193,7 @@ void RocksDBKey::constructVPackIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId,
-                                                VPackSlice const& indexValues) {
+                                                VPackSlice indexValues) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::UniqueVPackIndexValue;
   size_t const byteSize = static_cast<size_t>(indexValues.byteSize());
@@ -326,23 +326,10 @@ void RocksDBKey::constructLogEntry(uint64_t objectId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
-                                        arangodb::replication2::LogId logId) {
-  TRI_ASSERT(databaseId != 0);
-  _type = RocksDBEntryType::ReplicatedLog;
-  size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
-  _buffer->clear();
-  _buffer->reserve(keyLength);
-  _buffer->push_back(static_cast<char>(_type));
-  uint64ToPersistent(*_buffer, databaseId);
-  uint64ToPersistent(*_buffer, logId.id());
-  TRI_ASSERT(_buffer->size() == keyLength);
-}
-
 void RocksDBKey::constructReplicatedState(
     TRI_voc_tick_t databaseId, arangodb::replication2::LogId stateId) {
   TRI_ASSERT(databaseId != 0);
-  _type = RocksDBEntryType::ReplicatedLog;
+  _type = RocksDBEntryType::ReplicatedState;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
@@ -468,7 +455,7 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View:
-    case RocksDBEntryType::ReplicatedLog:
+    case RocksDBEntryType::ReplicatedState:
     case RocksDBEntryType::ReplicationApplierConfig: {
       TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));

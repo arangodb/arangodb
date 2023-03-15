@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +23,25 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
+#include <atomic>
 #include <memory>
-#include <unordered_set>
 
 namespace arangodb::transaction {
 struct IManager;
 }
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateSnapshotHandler;
+
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState>,
       std::enable_shared_from_this<DocumentLeaderState> {
@@ -50,15 +56,35 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  auto replicateOperation(velocypack::SharedSlice payload,
-                          OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+  auto needsReplication(ReplicatedOperation const& op) -> bool;
 
-  std::unordered_set<TransactionId> getActiveTransactions() const;
+  auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
+      -> futures::Future<ResultT<LogIndex>>;
 
-  LoggerContext const loggerContext;
-  std::string_view const shardId;
+  auto release(LogIndex index) -> Result;
+  auto release(TransactionId tid, LogIndex index) -> Result;
+
+  auto createShard(ShardID shard, CollectionID collectionId,
+                   std::shared_ptr<VPackBuilder> properties)
+      -> futures::Future<Result>;
+  auto dropShard(ShardID shard, CollectionID collectionId)
+      -> futures::Future<Result>;
+  auto modifyShard(ShardID shard) -> futures::Future<Result>;
+
+  std::size_t getActiveTransactionsCount() const noexcept {
+    return _activeTransactions.getLockedGuard()->getTransactions().size();
+  }
+
+  auto snapshotStart(SnapshotParams::Start const& params)
+      -> ResultT<SnapshotConfig>;
+  auto snapshotNext(SnapshotParams::Next const& params)
+      -> ResultT<SnapshotBatch>;
+  auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
+  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
+  auto allSnapshotsStatus() -> ResultT<AllSnapshotsStatus>;
+
   GlobalLogIdentifier const gid;
+  LoggerContext const loggerContext;
 
  private:
   struct GuardedData {
@@ -69,9 +95,16 @@ struct DocumentLeaderState
     std::unique_ptr<DocumentCore> core;
   };
 
+  template<class ResultType, class GetFunc, class ProcessFunc>
+  auto executeSnapshotOperation(GetFunc getSnapshot,
+                                ProcessFunc processSnapshot) -> ResultType;
+
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
+  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
+          basics::UnshackledMutex>
+      _snapshotHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
+  Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
 };
 }  // namespace arangodb::replication2::replicated_state::document

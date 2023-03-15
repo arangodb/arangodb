@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -317,6 +317,8 @@ AqlValue Md5(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
 AqlValue Sha1(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
+AqlValue Sha256(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
 AqlValue Sha512(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
 AqlValue Crc32(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -534,9 +536,6 @@ AqlValue SchemaGet(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue SchemaValidate(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView);
-
-AqlValue CallGreenspun(arangodb::aql::ExpressionContext*, AstNode const&,
-                       VPackFunctionParametersView);
 
 AqlValue MakeDistributeInput(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView);

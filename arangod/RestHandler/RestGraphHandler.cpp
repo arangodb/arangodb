@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1093,8 +1093,7 @@ std::optional<RevisionId> RestGraphHandler::handleRevision() const {
     bool found = false;
     std::string const& revString = _request->value("rev", found);
     if (found) {
-      revision =
-          RevisionId::fromString(revString.data(), revString.size(), false);
+      revision = RevisionId::fromString(revString);
     }
   }
   return revision.isSet() ? std::optional{revision} : std::nullopt;

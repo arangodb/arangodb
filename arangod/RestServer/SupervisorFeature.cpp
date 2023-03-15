@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -114,10 +114,18 @@ SupervisorFeature::SupervisorFeature(Server& server)
 
 void SupervisorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--supervisor", "background the server, starts a supervisor",
-      new BooleanParameter(&_supervisor),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--supervisor",
+          "Start the server in supervisor mode. Requires --pid-file to be set.",
+          new BooleanParameter(&_supervisor),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(Runs an arangod process as supervisor with another
+arangod process as child, which acts as the server. In the event that the server
+unexpectedly terminates due to an internal error, the supervisor automatically
+restarts the server. Enabling this option implies that the server runs as a
+daemon.)");
 }
 
 void SupervisorFeature::validateOptions(

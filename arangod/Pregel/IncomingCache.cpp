@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IncomingCache.h"
-#include "Pregel/CommonFormats.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
+
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -38,24 +42,20 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)
     : _containedMessageCount(0), _format(format) {}
 
 template<typename M>
-void InCache<M>::parseMessages(VPackSlice const& incomingData) {
+void InCache<M>::parseMessages(PregelMessage const& message) {
   // every packet contains one shard
-  VPackSlice shardSlice = incomingData.get(Utils::shardIdKey);
-  VPackSlice messages = incomingData.get(Utils::messagesKey);
-
-  // temporary variables
   VPackValueLength i = 0;
   std::string_view key;
-  PregelShard shard = (PregelShard)shardSlice.getUInt();
-  std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
+  std::lock_guard<std::mutex> guard(this->_bucketLocker[message.shard]);
 
-  for (VPackSlice current : VPackArrayIterator(messages)) {
+  for (VPackSlice current : VPackArrayIterator(message.messages.slice())) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       key = current.stringView();
     } else {
@@ -65,14 +65,14 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
         for (VPackSlice val : VPackArrayIterator(current)) {
           M newValue;
           _format->unwrapValue(val, newValue);
-          _set(shard, key, newValue);
+          _set(message.shard, key, newValue);
           c++;
         }
         this->_containedMessageCount += c;
       } else {
         M newValue;
         _format->unwrapValue(current, newValue);
-        _set(shard, key, newValue);
+        _set(message.shard, key, newValue);
         this->_containedMessageCount++;
       }
     }
@@ -375,7 +375,6 @@ template class arangodb::pregel::InCache<HLLCounter>;
 template class arangodb::pregel::ArrayInCache<HLLCounter>;
 template class arangodb::pregel::CombiningInCache<HLLCounter>;
 
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::InCache<MessageData>;
-template class arangodb::pregel::ArrayInCache<MessageData>;
-template class arangodb::pregel::CombiningInCache<MessageData>;
+template class arangodb::pregel::InCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::ArrayInCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::CombiningInCache<ColorPropagationMessageValue>;

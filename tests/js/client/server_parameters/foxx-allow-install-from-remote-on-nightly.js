@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, arango */
+/* global getOptions, assertEqual, assertTrue, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -88,7 +88,15 @@ function testSuite() {
         }
       });
     },
-    
+
+    testInstallEmptyBody: function() {
+      let res = arango.POST("/_admin/foxx/install", {}, {"content-type": "application/x-velocypack"});
+      assertTrue(res.error);
+      assertEqual(res.errorNum, 400);
+      assertEqual(res.errorMessage, "query parameter \"mount\" is required");
+    },
+
+
   };
 }
 

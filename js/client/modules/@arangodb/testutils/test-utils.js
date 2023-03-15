@@ -41,6 +41,7 @@ const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadl
 const userManager = require("@arangodb/users");
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -165,6 +166,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
+  
+  if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
+    whichFilter.filter = 'non-windows';
+    return false;
+  }
 
 // *.<ext>_DISABLED should be used instead
 //  if (testname.indexOf('-disabled') !== -1) {
@@ -187,10 +193,18 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && 
-    (global.ARANGODB_CLIENT_VERSION(true).asan === 'true') ||
-    (global.ARANGODB_CLIENT_VERSION(true).tsan === 'true')) {
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
+    whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
@@ -218,6 +232,10 @@ function splitBuckets (options, cases) {
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
   let s = parseInt(n[1]);
+
+  if (cases.length < r) {
+    throw `We only have ${m} test cases, cannot split them into ${r} buckets`;
+  }
 
   if (r < 1) {
     r = 1;
@@ -257,7 +275,7 @@ function doOnePathInner (path) {
 
 function scanTestPaths (paths, options) {
   // add Enterprise Edition tests
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+  if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));
@@ -325,7 +343,7 @@ class runOnArangodRunner extends testRunnerBase{
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isAsan) {
+      if (this.options.isSan) {
         httpOptions.timeout *= 2;
       }
       if (this.options.valgrind) {

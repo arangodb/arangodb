@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,7 @@ namespace replication2 {
 class LogId;
 namespace agency {
 struct LogPlanSpecification;
+struct LogTarget;
 }  // namespace agency
 namespace replicated_state::agency {
 struct Target;
@@ -369,6 +370,16 @@ class ClusterInfo final {
       std::string_view databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Generate Collection Stubs during Database buiding
+  /// These stubs are no real collection, use this API with care
+  /// and only if the database is in building state.
+  //////////////////////////////////////////////////////////////////////////////
+
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::shared_ptr<LogicalCollection>>
+  generateCollectionStubs(TRI_vocbase_t& database);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a view name (both cluster-wide).
@@ -435,6 +446,14 @@ class ClusterInfo final {
 
   cluster::RebootTracker& rebootTracker() noexcept;
   cluster::RebootTracker const& rebootTracker() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -692,6 +711,12 @@ class ClusterInfo final {
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication1(
+      std::string_view shardID);
+
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
+      std::string_view shardID);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
   /// shards (only the leaders).
@@ -703,6 +728,14 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
+
+  void getResponsibleServersReplication1(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
+
+  bool getResponsibleServersReplication2(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -831,6 +864,10 @@ class ClusterInfo final {
       -> ResultT<
           std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
+  auto getCollectionGroupById(replication2::agency::CollectionGroupId)
+      -> std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -861,6 +898,14 @@ class ClusterInfo final {
   }
 
   ArangodServer& server() const;
+
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
 
  private:
   /// @brief worker function for dropIndexCoordinator
@@ -904,12 +949,6 @@ class ClusterInfo final {
       uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
   //////////////////////////////////////////////////////////////////////////////
 
@@ -938,7 +977,7 @@ class ClusterInfo final {
                                       std::vector<std::string> const& serverIds,
                                       ClusterCollectionCreationInfo const& info,
                                       std::string const& databaseName)
-      -> replication2::replicated_state::agency::Target;
+      -> replication2::agency::LogTarget;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a future which can be used to wait for the successful
@@ -946,8 +985,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   auto waitForReplicatedStatesCreation(
       std::string const& databaseName,
-      std::vector<replication2::replicated_state::agency::Target> const&
-          replicatedStates) -> futures::Future<Result>;
+      std::vector<replication2::agency::LogTarget> const& replicatedStates)
+      -> futures::Future<Result>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes replicated states corresponding to shards
@@ -1138,7 +1177,10 @@ class ClusterInfo final {
 
   using CollectionGroupMap = containers::FlatHashMap<
       replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
+      std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>>;
+  // note: protected by _planProt
+  CollectionGroupMap _collectionGroups;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

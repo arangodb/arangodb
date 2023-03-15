@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +24,9 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
 #include "Basics/debugging.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 #include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -31,8 +34,39 @@ DocumentStateTransaction::DocumentStateTransaction(
     std::unique_ptr<transaction::Methods> methods)
     : _methods(std::move(methods)) {}
 
-auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
-    -> OperationResult {
+auto DocumentStateTransaction::apply(
+    ReplicatedOperation::OperationType const& op) -> OperationResult {
+  auto opts = buildDefaultOptions();
+  return std::visit(
+      overload{
+          [&](ModifiesUserTransaction auto const& operation) {
+            return applyOp(operation, opts);
+          },
+          [&](auto&&) {
+            TRI_ASSERT(false) << op;
+            return OperationResult{
+                Result{TRI_ERROR_TRANSACTION_INTERNAL,
+                       fmt::format("Operation {} cannot be applied",
+                                   ReplicatedOperation::fromOperationType(op))},
+                opts};
+          },
+      },
+      op);
+}
+
+auto DocumentStateTransaction::intermediateCommit() -> Result {
+  return _methods->triggerIntermediateCommit();
+}
+
+auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
+
+auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
+
+auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
+  return nullptr != _methods->state()->collection(sid, AccessMode::Type::NONE);
+}
+
+auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {
   // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
   opOptions.silent = true;
@@ -42,31 +76,26 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
   opOptions.validate = false;
   opOptions.waitForSync = false;
   opOptions.indexOperationMode = IndexOperationMode::internal;
-
-  switch (entry.operation) {
-    case OperationType::kInsert:
-    case OperationType::kUpdate:
-    case OperationType::kReplace:
-      opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kRemove:
-      return _methods->remove(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kTruncate:
-      // TODO Think about correctness and efficiency.
-      return _methods->truncate(entry.shardId, opOptions);
-    default:
-      TRI_ASSERT(false);
-      return OperationResult{
-          Result{TRI_ERROR_TRANSACTION_INTERNAL,
-                 fmt::format(
-                     "Transaction of type {} with ID {} could not be applied",
-                     to_string(entry.operation), entry.tid.id())},
-          opOptions};
-  }
+  return opOptions;
 }
 
-auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
+auto DocumentStateTransaction::applyOp(InsertsDocuments auto const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  return _methods->insert(op.shard, op.payload.slice(), opts);
+}
+auto DocumentStateTransaction::applyOp(ReplicatedOperation::Remove const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  return _methods->remove(op.shard, op.payload.slice(), opts);
+}
 
-auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
+auto DocumentStateTransaction::applyOp(ReplicatedOperation::Truncate const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  // TODO Think about correctness and efficiency.
+  return _methods->truncate(op.shard, opts);
+}
 
 }  // namespace arangodb::replication2::replicated_state::document

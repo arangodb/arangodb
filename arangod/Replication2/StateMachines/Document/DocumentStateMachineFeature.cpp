@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Network/NetworkFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,19 +41,16 @@ using namespace arangodb::replication2::replicated_state::document;
 void DocumentStateMachineFeature::prepare() {
   bool const enabled = ServerState::instance()->isDBServer();
   setEnabled(enabled);
-}
 
-void DocumentStateMachineFeature::start() {
   ArangodServer& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
-  auto& clusterFeature = s.getFeature<ClusterFeature>();
+  auto& networkFeature = s.getFeature<NetworkFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
-  auto& databaseFeature = s.getFeature<DatabaseFeature>();
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
-      std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature, maintenanceFeature, databaseFeature),
+      std::make_shared<DocumentStateHandlersFactory>(networkFeature.pool(),
+                                                     maintenanceFeature),
       *transaction::ManagerFeature::manager());
 }
 
@@ -60,6 +58,7 @@ DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<ClusterFeature>();
+  startsAfter<NetworkFeature>();
   startsAfter<MaintenanceFeature>();
   startsAfter<ReplicatedStateAppFeature>();
   onlyEnabledWith<ClusterFeature>();
