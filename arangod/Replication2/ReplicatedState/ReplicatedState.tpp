@@ -390,6 +390,10 @@ void LeaderStateManager<S>::recoverEntries() {
 
 template<typename S>
 auto LeaderStateManager<S>::GuardedData::recoverEntries() {
+  // TODO replace the following two lines with
+  //      auto logIter = _stream->methods()->getCommittedLogIterator();
+  //      after implementing getCommittedLogIterator() on the leader to get rid
+  //      of getLogSnapshot()
   auto logSnapshot = _stream->methods()->getLogSnapshot();
   auto logIter = logSnapshot.getRangeIteratorFrom(LogIndex{0});
   auto deserializedIter =
