@@ -40,10 +40,14 @@ void ActiveTransactionsQueue::markAsActive(TransactionId tid, LogIndex index) {
 }
 
 void ActiveTransactionsQueue::markAsActive(LogIndex index) {
-  auto stream = std::stringstream{};
-  arangodb::operator<<(stream, _logIndices);
-  ADB_PROD_ASSERT(_logIndices.empty() || index > _logIndices.back().first)
-      << "Trying to add index " << index << " after " << stream.str();
+  if (!(_logIndices.empty() || index > _logIndices.back().first)) {
+    // Workaround: in some settings, gcc doesn't seem to find the appropriate
+    // operator<< via ADL.
+    auto stream = std::stringstream{};
+    arangodb::operator<<(stream, _logIndices);
+    ADB_PROD_CRASH() << "Trying to add index " << index << " after "
+                     << stream.str();
+  }
   _logIndices.emplace_back(index, Status::kActive);
 }
 
