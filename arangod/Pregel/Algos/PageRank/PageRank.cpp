@@ -37,7 +37,10 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
-  PRWorkerContext() {}
+  PRWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                  std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
 
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
@@ -106,8 +109,19 @@ VertexComputation<float, float, float>* PageRank::createComputation(
   return new PRComputation();
 }
 
-WorkerContext* PageRank::workerContext(VPackSlice userParams) const {
-  return new PRWorkerContext();
+[[nodiscard]] auto PageRank::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new PRWorkerContext(std::move(readAggregators),
+                             std::move(writeAggregators));
+}
+[[nodiscard]] auto PageRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<PRWorkerContext>(std::move(readAggregators),
+                                           std::move(writeAggregators));
 }
 
 struct PRMasterContext : public MasterContext {

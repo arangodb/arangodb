@@ -50,10 +50,24 @@ struct EffectiveCloseness
   std::shared_ptr<GraphFormat<ECValue, int8_t> const> inputFormat()
       const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override;
 
   VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
       std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
