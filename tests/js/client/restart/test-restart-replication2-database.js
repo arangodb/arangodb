@@ -139,6 +139,8 @@ function testSuite () {
       disableMaintenanceMode();
 
       compareAllDocuments(col, expectedKeys);
+      // Insert another document to check if the collection is writable (it should)
+      col.insert({_key: "another-document"});
     },
   };
 }
