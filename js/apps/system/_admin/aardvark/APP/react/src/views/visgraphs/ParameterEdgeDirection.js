@@ -11,9 +11,9 @@ const ParameterEdgeDirection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeDirection, setEdgeDirection] = useState(urlParameters.edgeDirection);
 
-  const getNewUrlParams = (urlParams, newEdgeDirection) => {
-    setEdgeDirection(newEdgeDirection);
-    const newUrlParameters = {...urlParameters, edgeDirection: newEdgeDirection};
+  const handleChange = (event) => {
+    setEdgeDirection(event.target.checked);
+    const newUrlParameters = {...urlParameters, edgeDirection: event.target.checked};
     setUrlParameters(newUrlParameters);
   }
 
@@ -25,9 +25,7 @@ const ParameterEdgeDirection = () => {
       <Checkbox
         inline
         checked={edgeDirection}
-        onChange={(event) => {
-          getNewUrlParams(urlParameters, event.target.checked);
-        }}
+        onChange={handleChange}
         template={'graphviewer'}
       />
       <Center>
