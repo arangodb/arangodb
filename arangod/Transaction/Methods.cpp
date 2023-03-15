@@ -2270,7 +2270,7 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
           // We cannot fulfill minimum replication Factor. Reject write.
           auto& clusterFeature =
               vocbase().server().getFeature<ClusterFeature>();
-          if (clusterFeature._statusCodeFailedWriteConcern == 403) {
+          if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
             return {TRI_ERROR_ARANGO_READ_ONLY};
           }
           return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
