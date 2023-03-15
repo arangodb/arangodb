@@ -11,7 +11,11 @@ const ParameterEdgeDirection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeDirection, setEdgeDirection] = useState(urlParameters.edgeDirection);
 
-  const newUrlParameters = { ...urlParameters };
+  const getNewUrlParams = (urlParams, newEdgeDirection) => {
+    setEdgeDirection(newEdgeDirection);
+    const newUrlParameters = {...urlParameters, edgeDirection: newEdgeDirection};
+    setUrlParameters(newUrlParameters);
+  }
 
   return (
     <Flex direction='row' mt='12'>
@@ -21,11 +25,8 @@ const ParameterEdgeDirection = () => {
       <Checkbox
         inline
         checked={edgeDirection}
-        onChange={() => {
-          const newEdgeDirection = !edgeDirection;
-          setEdgeDirection(newEdgeDirection);
-          newUrlParameters.edgeDirection = newEdgeDirection;
-          setUrlParameters(newUrlParameters);
+        onChange={(event) => {
+          getNewUrlParams(urlParameters, event.target.checked);
         }}
         template={'graphviewer'}
       />
