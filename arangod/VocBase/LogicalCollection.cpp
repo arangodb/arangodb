@@ -231,6 +231,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   if (replicationVersion() == replication::Version::TWO &&
       info.hasKey("groupId")) {
     _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
   }
 }
 
@@ -798,6 +802,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   if (replicationVersion() == replication::Version::TWO &&
       _groupId.has_value()) {
     build.add("groupId", VPackValue(_groupId.value()));
+    if (_replicatedStateId) {
+      build.add("replicatedStateId", VPackValue(*_replicatedStateId));
+    }
   }
   // We leave the object open
   return {};
