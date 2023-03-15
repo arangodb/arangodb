@@ -1299,9 +1299,10 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     // TODO get more information if available (e.g. is the leader resigned or in
     //      recovery?)
     throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available as leader, accessed "
-                     "from {}/{}.",
-                     *_replicatedStateId, vocbase().name(), name());
+                     "Shard {}/{}/{} is not available as leader, associated "
+                     "replicated log is {}",
+                     vocbase().name(), planId().id(), name(),
+                     *_replicatedStateId);
   }
 
   return leader;
