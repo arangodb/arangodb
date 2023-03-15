@@ -99,8 +99,21 @@ ColorPropagation::createComputation(
   return new ColorPropagationComputation();
 }
 
-WorkerContext* ColorPropagation::workerContext(VPackSlice userParams) const {
-  return new ColorPropagationWorkerContext(_maxGss, _numColors);
+[[nodiscard]] auto ColorPropagation::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ColorPropagationWorkerContext(std::move(readAggregators),
+                                           std::move(writeAggregators), _maxGss,
+                                           _numColors);
+}
+[[nodiscard]] auto ColorPropagation::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ColorPropagationWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), _maxGss,
+      _numColors);
 }
 
 struct ColorPropagationMasterContext : public MasterContext {
@@ -122,9 +135,13 @@ struct ColorPropagationMasterContext : public MasterContext {
       vertexCount, edgeCount, std::move(aggregators));
 }
 
-ColorPropagationWorkerContext::ColorPropagationWorkerContext(uint64_t maxGss,
-                                                             uint16_t numColors)
-    : numColors{numColors}, maxGss{maxGss} {}
+ColorPropagationWorkerContext::ColorPropagationWorkerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators, uint64_t maxGss,
+    uint16_t numColors)
+    : WorkerContext(std::move(readAggregators), std::move(writeAggregators)),
+      numColors{numColors},
+      maxGss{maxGss} {}
 
 CollectionIdType getEquivalenceClass(
     VPackSlice vertexDocument, std::string_view equivalenceClassFieldName) {
