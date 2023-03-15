@@ -100,11 +100,11 @@ void ShellFeature::validateOptions(
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
-    client.disable();  // SET
+    client.disable();
   }
 
   if (!_jslint.empty()) {
-    client.disable();  // SET
+    client.disable();
   }
 
   size_t n = 0;
