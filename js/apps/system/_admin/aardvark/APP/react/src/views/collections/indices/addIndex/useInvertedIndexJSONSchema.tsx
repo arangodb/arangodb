@@ -1,5 +1,5 @@
 import { JSONSchemaType } from "ajv";
-import { InvertedIndexRequestType } from "./useCreateInvertedIndex";
+import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 /**
  * 
   type: string;
@@ -12,7 +12,7 @@ import { InvertedIndexRequestType } from "./useCreateInvertedIndex";
   searchField: boolean;
   fields?: FieldType[] | null;
  */
-const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexRequestType> = {
+const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   $id: "https://arangodb.com/schemas/views/invertedIndex.json",
   type: "object",
   properties: {
@@ -64,7 +64,7 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexRequestType> = {
   additionalProperties: false
 };
 
-export const useInvertedIndexFormSchema = () => {
+export const useInvertedIndexJSONSchema = () => {
   // const [schema, setSchema] = useState(invertedIndexJSONSchema);
   // useEffect(() => {
   //   const newProperties = schema.properties

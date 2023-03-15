@@ -1,8 +1,10 @@
+import { Box } from "@chakra-ui/react";
 import Ajv from "ajv";
 import { useFormikContext } from "formik";
-import React from "react";
+import { ValidationError } from "jsoneditor-react";
+import React, { useState } from "react";
 import { ControlledJSONEditor } from "./ControlledJSONEditor";
-import { useInvertedIndexFormSchema } from "./useInvertedIndexFormSchema";
+import { useInvertedIndexJSONSchema } from "./useInvertedIndexJSONSchema";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -13,24 +15,57 @@ const ajv = new Ajv({
 
 export const InvertedIndexFormJSONEditor = () => {
   const { values, setValues } = useFormikContext();
-  const schema = useInvertedIndexFormSchema();
+  const { schema } = useInvertedIndexJSONSchema();
+  const [errors, setErrors] = useState<ValidationError[]>();
   return (
-    <ControlledJSONEditor
-      value={values}
-      mode={"code"}
-      ajv={ajv}
-      history
-      schema={schema}
-      onChange={json => {
-        console.log("on change!", { json }, setValues);
-        // setValues(json);
-      }}
-      htmlElementProps={{
-        style: {
-          height: "calc(100% - 40px)",
-          width: "100%"
-        }
-      }}
-    />
+    <Box height="70%">
+      <ControlledJSONEditor
+        value={values}
+        onValidationError={errors => {
+          setErrors(errors);
+        }}
+        mode={"code"}
+        ajv={ajv}
+        history
+        schema={schema}
+        onChange={json => {
+          if (JSON.stringify(json) !== JSON.stringify(values)) {
+            setValues(json);
+          }
+        }}
+        htmlElementProps={{
+          style: {
+            height: "calc(100% - 80px)",
+            width: "100%"
+          }
+        }}
+      />
+      <JSONErrors errors={errors} />
+    </Box>
+  );
+};
+
+const JSONErrors = ({ errors }: { errors?: ValidationError[] }) => {
+  if (!errors || errors.length === 0) {
+    return null;
+  }
+  return (
+    <Box
+      maxHeight={"40px"}
+      paddingX="2"
+      paddingY="1"
+      fontSize="sm"
+      color="red"
+      background="red.100"
+      overflow={"auto"}
+    >
+      {errors.map(error => {
+        return (
+          <Box>{`${error.keyword} error: ${
+            error.message
+          }. Schema: ${JSON.stringify(error.params)}`}</Box>
+        );
+      })}
+    </Box>
   );
 };

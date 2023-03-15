@@ -64,7 +64,7 @@ type AnalyzerFeatures = "frequency" | "position" | "offset" | "norm";
 //   nested: Omit<FieldType, "includeAllFields" | "trackListPositions">[];
 // };
 
-export type InvertedIndexRequestType = {
+export type InvertedIndexValuesType = {
   type: string;
   name?: string;
   inBackground: boolean;
@@ -73,7 +73,7 @@ export type InvertedIndexRequestType = {
   includeAllFields: boolean;
   trackListPositions: boolean;
   searchField: boolean;
-  fields?: string[] | null;
+  fields?: string[];
 };
 
 const initialValues = {
@@ -85,18 +85,33 @@ const initialValues = {
   includeAllFields: false,
   trackListPositions: false,
   searchField: false,
-  fields: null
+  fields: []
 };
 
+const analyzerFeaturesOptions = ["frequency", "position", "offset", "norm"].map(
+  value => {
+    return { value, label: value };
+  }
+);
 const invertedIndexFields = [
   {
     label: "Fields",
     name: "fields",
     isRequired: true,
-    type: "creatableSelect",
+    type: "custom",
     tooltip: "A comma-separated list of attribute paths."
   },
-  { label: "Analyzer", name: "analyzer", type: "custom" },
+  {
+    label: "Analyzer",
+    name: "analyzer",
+    type: "custom"
+  },
+  {
+    label: "Analyzer Features",
+    name: "features",
+    type: "multiSelect",
+    options: analyzerFeaturesOptions
+  },
   commonFieldsMap.name,
   commonFieldsMap.inBackground
 ];
@@ -110,9 +125,9 @@ const schema = Yup.object({
 
 export const useCreateInvertedIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<
-    InvertedIndexRequestType
+    InvertedIndexValuesType
   >();
-  const onCreate = async ({ values }: { values: InvertedIndexRequestType }) => {
+  const onCreate = async ({ values }: { values: InvertedIndexValuesType }) => {
     return onCreateIndex({
       ...values,
       fields:
