@@ -45,11 +45,7 @@ struct MethodsProvider : IReplicatedLogFollowerMethods {
     follower.compaction->updateReleaseIndex(index);
   }
 
-  auto getLogSnapshot() -> InMemoryLog override {
-    return follower.storage->getCommittedLog();
-  }
-
-  auto getLogIterator(LogRange range)
+  auto getCommittedLogIterator(std::optional<LogRange> range)
       -> std::unique_ptr<LogRangeIterator> override {
     return follower.storage->getCommittedLogIterator(range);
   }

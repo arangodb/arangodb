@@ -697,7 +697,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto getLogSnapshot() -> InMemoryLog override {
       return _log.copyInMemoryLog();
     }
-    auto getLogIterator(LogRange)
+    auto getCommittedLogIterator(std::optional<LogRange>)
         -> std::unique_ptr<LogRangeIterator> override {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }

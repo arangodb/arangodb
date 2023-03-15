@@ -572,8 +572,8 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     _applyEntriesIndexInFlight =
         std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = _stream->methods()->getLogIterator(
-        {_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1});
+    auto logIter = _stream->methods()->getCommittedLogIterator(
+        {{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1}});
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
