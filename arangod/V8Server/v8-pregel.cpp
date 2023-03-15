@@ -39,6 +39,8 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include "Utils/OperationResult.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
@@ -263,6 +265,49 @@ static void JS_PregelAQLResult(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
+  }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength == 0) {
+    // Read all pregel history entries
+    auto result = pregel.handleHistoryRequest(
+        vocbase, arangodb::rest::RequestType::GET, std::nullopt);
+    if (result.fail()) {
+      TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+
+    return;
+  }
+
+  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistory(<executionNum>]");
+  }
+
+  // Read single history entry
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      TRI_ObjectToUInt64(isolate, args[0], true)};
+
+  VPackBuilder builder;
+  auto result = pregel.handleHistoryRequest(
+      vocbase, arangodb::rest::RequestType::GET, executionNumber);
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
+  }
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8Pregel(v8::Isolate* isolate,
                       v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
@@ -277,4 +322,7 @@ void TRI_InitV8Pregel(v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_pregelAqlResult"),
                        JS_PregelAQLResult);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                       TRI_V8_ASCII_STRING(isolate, "_pregelHistory"),
+                       JS_PregelHistory);
 }

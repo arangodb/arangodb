@@ -131,6 +131,18 @@ exports.cancel = function (executionID) {
 exports.isBusy = function (executionID) {
   let status = internal.db._pregelStatus();
   return status.state === "loading" ||
-         status.state === "running" ||
-         status.state === "storing";
+    status.state === "running" ||
+    status.state === "storing";
+};
+
+/*
+ * Pregel History module section
+ */
+
+exports.history = function (executionID) {
+  let db = internal.db;
+  if (executionID === undefined) {
+    return db._pregelHistory();
+  }
+  return db._pregelHistory(executionID);
 };

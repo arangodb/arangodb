@@ -79,6 +79,9 @@ function pregelStatusWriterSuite() {
     }
 
     // 3.) verify using Pregel JavaScript module
+    const modulePersistedState = pregel.history(pid);
+    assertTrue(modulePersistedState);
+    assertEqual(modulePersistedState.data.state, expectedState);
   };
 
   const createSimpleGraph = () => {
