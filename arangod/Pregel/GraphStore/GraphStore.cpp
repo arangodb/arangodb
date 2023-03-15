@@ -39,7 +39,6 @@
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
@@ -63,12 +62,6 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
-
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
 
 #include <algorithm>
 #include <memory>

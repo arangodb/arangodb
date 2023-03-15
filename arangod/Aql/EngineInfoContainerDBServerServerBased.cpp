@@ -241,14 +241,6 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     return result;
   };
 
-  if (_query.vocbase()
-          .server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .isFailedServer(server)) {
-    return Result{TRI_ERROR_CLUSTER_CONNECTION_LOST};
-  }
-
   return network::sendRequestRetry(
              pool, "server:" + server, fuerte::RestVerb::Post,
              "/_api/aql/setup", std::move(buffer), options, std::move(headers))
