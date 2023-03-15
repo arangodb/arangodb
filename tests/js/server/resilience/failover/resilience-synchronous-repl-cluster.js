@@ -32,43 +32,6 @@ const internal = require('internal');
 
 const wait = require("internal").wait;
 const continueExternal = require("internal").continueExternal;
-const helper = require('@arangodb/test-helper');
-const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
-const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
-const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
-
-/**
- * TODO this function is here temporarily and is will be removed once we have a better solution.
- * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
- * This is needed because we're using the list of participants from two places.
- */
-const syncShardsWithLogs = function(dbn) {
-  const coordinator = replicatedLogsHelper.coordinators[0];
-  let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
-  let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
-  for (const [colId, colInfo] of Object.entries(collections)) {
-    for (const shardId of Object.keys(colInfo.shards)) {
-      const logId = shardId.slice(1);
-      if (logId in logs) {
-        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
-      }
-    }
-  }
-
-  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
-  helper.agency.increaseVersion(`Plan/Version`);
-
-  replicatedLogsHelper.waitFor(() => {
-    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
-    if (currentVersion > waitForCurrent) {
-      return true;
-    }
-    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
-  }, 30, (e) => {
-    // We ignore this and continue. Most probably current was increased before we could observe it.
-    print(e.message);
-  });
-};
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -85,7 +48,6 @@ function getDBServers() {
 
 function SynchronousReplicationSuite () {
   'use strict';
-
   const suite = internal.load(fs.join(internal.pathForTesting('server'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
 
   return {

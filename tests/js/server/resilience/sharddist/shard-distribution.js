@@ -373,12 +373,12 @@ function ShardDistributionTest({replVersion}) {
     }
   };
 }
-// Disabling replication1 tests for this branch
-//jsunity.run(function ShardDistributionTest_R1() {
-//  let derivedSuite = {};
-//  deriveTestSuite(ShardDistributionTest({replVersion: "1"}), derivedSuite, "_R1");
-//  return derivedSuite;
-//});
+
+jsunity.run(function ShardDistributionTest_R1() {
+  let derivedSuite = {};
+  deriveTestSuite(ShardDistributionTest({replVersion: "1"}), derivedSuite, "_R1");
+  return derivedSuite;
+});
 
 jsunity.run(function ShardDistributionTest_R2() {
   let derivedSuite = {};
