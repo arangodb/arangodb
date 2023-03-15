@@ -4,9 +4,15 @@ import React from "react";
 import { IndexFormField, IndexFormFieldProps } from "./IndexFormField";
 
 export const IndexFormFieldsList = ({
-  fields
+  fields,
+  renderField
 }: {
   fields: IndexFormFieldProps[];
+  renderField?: (props: {
+    field: IndexFormFieldProps;
+    index: number;
+    autoFocus: boolean;
+  }) => JSX.Element;
 }) => {
   return (
     <Box
@@ -14,10 +20,18 @@ export const IndexFormFieldsList = ({
       gridTemplateColumns={"200px 1fr 40px"}
       rowGap="5"
       columnGap="3"
-      maxWidth="500px"
+      maxWidth="564px"
+      padding="8"
     >
       {fields.map((field, index) => {
-        return <IndexFormField key={field.name} index={index} field={field} />;
+        return (
+          <IndexFormField
+            render={renderField}
+            key={field.name}
+            index={index}
+            field={field}
+          />
+        );
       })}
     </Box>
   );

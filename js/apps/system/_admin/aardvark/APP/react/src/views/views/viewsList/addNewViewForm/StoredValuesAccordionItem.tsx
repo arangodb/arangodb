@@ -12,9 +12,7 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
-import {
-  SelectControl
-} from "../../../../components/form/SelectControl";
+import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 
 export const StoredValuesAccordionItem = () => {
@@ -66,9 +64,9 @@ const StoredValuesFields = () => {
                       Fields
                     </FormLabel>
                     <CreatableMultiSelectControl
-                    selectProps={{
-                      noOptionsMessage: () => "Type to add a field"
-                    }}
+                      selectProps={{
+                        noOptionsMessage: () => "Start typing to add a field"
+                      }}
                       name={`storedValues.${index}.fields`}
                     />
                   </Box>

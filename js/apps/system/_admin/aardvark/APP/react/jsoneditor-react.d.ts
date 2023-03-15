@@ -3,9 +3,9 @@ declare module "jsoneditor-react" {
     jsonEditor: any;
   }
 
-  type Mode = "tree" | "view" | "form" | "code" | "text";
+type Mode = "tree" | "view" | "form" | "code" | "text";
 
-  interface JsonEditorProps {
+  export interface JsonEditorProps {
     value: any;
     /** Set the editor mode. Default 'tree' */
     mode?: Mode;
