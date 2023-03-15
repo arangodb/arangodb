@@ -191,7 +191,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 
   // finishing the query will call back into the registry to destroy the query,
   // so this must be done outside the lock
-  QueryInfo* queryInfoToFinish = nullptr;
+  futures::Promise<std::shared_ptr<ClusterQuery>> finishPromise;
+  std::shared_ptr<ClusterQuery> queryToFinish;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -220,7 +221,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
         // we were the last thread to close the engine, but the query has
         // already been marked as finished, so we are responsible to resolve the
         // future in order to actually finish the query
-        queryInfoToFinish = ei._queryInfo;
+        queryToFinish = ei._queryInfo->_query;
+        finishPromise = std::move(ei._queryInfo->_promise);
       }
       if (!ei._queryInfo->_query->killed() && ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
@@ -235,8 +237,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
     }
   }
 
-  if (queryInfoToFinish) {
-    queryInfoToFinish->_promise.setValue(queryInfoToFinish->_query);
+  if (queryToFinish) {
+    finishPromise.setValue(std::move(queryToFinish));
   }
 }
 
