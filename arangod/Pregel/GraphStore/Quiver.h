@@ -44,7 +44,6 @@ struct Quiver {
     vertices.emplace_back(std::move(v));
   }
   auto numberOfVertices() -> size_t { return vertices.size(); }
-  // TODO
   auto numberOfEdges() -> size_t { return edgeCounter; }
 
   auto begin() { return std::begin(vertices); }
