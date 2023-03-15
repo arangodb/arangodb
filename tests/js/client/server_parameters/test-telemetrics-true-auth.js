@@ -43,7 +43,6 @@ const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'a
 let arangodb = require('@arangodb');
 const users = require('@arangodb/users');
 const smartGraph = require("@arangodb/smart-graph");
-const {expect} = require("chai");
 const isCluster = require("internal").isCluster();
 const userName = "abc";
 const databaseName = "databaseTest";
