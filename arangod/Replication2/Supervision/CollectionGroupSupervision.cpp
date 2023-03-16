@@ -108,6 +108,9 @@ auto computeShardList(
         << shardSheaves[i].replicatedLog
         << ") of collection group does not exist.";
     auto const& log = logs.at(shardSheaves[i].replicatedLog);
+    ADB_PROD_ASSERT(log.plan.has_value())
+        << "Log plan entry " << shardSheaves[i].replicatedLog
+        << " does not have a value yet";
     for (auto const& [pid, flags] : log.plan->participantsConfig.participants) {
       servers.servers.push_back(pid);
     }
@@ -134,6 +137,7 @@ auto createCollectionPlanSpec(
     std::unordered_map<LogId, ag::Log> const& logs, UniqueIdProvider& uniqid)
     -> ag::CollectionPlanSpecification {
   std::vector<ShardID> shardList;
+  shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
                   target.attributes.immutableAttributes.numberOfShards, [&] {
                     return basics::StringUtils::concatT("s", uniqid.next());
@@ -200,8 +204,22 @@ auto createCollectionGroupTarget(
     ADB_PROD_ASSERT(group.targetCollections.contains(cid))
         << "collection " << cid << " is listed in collection group "
         << group.target.id << " but not in Target/Collections";
+    PlanShardToServerMapping mapping{};
+    for (size_t k = 0; k < shardList.size(); ++k) {
+      ResponsibleServerList serverids{};
+      auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
+      serverids.servers.emplace_back(log.leader.value());
+      for (auto const& p : log.participants) {
+        if (p.first != log.leader) {
+          serverids.servers.emplace_back(p.first);
+        }
+      }
+      ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
+      mapping.shards[shardList[k]] = std::move(serverids);
+    }
     collections[cid] = ag::CollectionPlanSpecification{
-        group.targetCollections.at(cid), std::move(shardList), {}};
+        group.targetCollections.at(cid), std::move(shardList),
+        std::move(mapping)};
     spec.collections[cid];
   }
 
