@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global print, assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
