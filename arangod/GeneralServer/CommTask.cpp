@@ -1025,7 +1025,7 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
     std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
-    if (encoding == "gzip") {
+    if (encoding == StaticStrings::EncodingGzip) {
       VPackBuffer<uint8_t> dst;
       if (arangodb::encoding::gzipUncompress(src, len, dst) !=
           TRI_ERROR_NO_ERROR) {
@@ -1033,7 +1033,7 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
       }
       req.setPayload(std::move(dst));
       return true;
-    } else if (encoding == "deflate") {
+    } else if (encoding == StaticStrings::EncodingDeflate) {
       VPackBuffer<uint8_t> dst;
       if (arangodb::encoding::gzipInflate(src, len, dst) !=
           TRI_ERROR_NO_ERROR) {
