@@ -421,14 +421,13 @@ shards operations that can be made when the **Rebalance Shards** button is
 clicked in the web interface. For backwards compatibility, the default value is
 `10`. A value of `0` disables the button.)");
 
-  std::unordered_set<uint32_t> statusCodesFailedWriteConcern = {403, 503};
   options
       ->addOption(
           "--cluster.failed-write-concern-status-code",
           "The HTTP status code to send if a shard has not enough in-sync "
           "replicas to fulfill the write concern.",
           new DiscreteValuesParameter<UInt32Parameter>(
-              &_statusCodeFailedWriteConcern, statusCodesFailedWriteConcern),
+              &_statusCodeFailedWriteConcern, {403, 503}),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer))
