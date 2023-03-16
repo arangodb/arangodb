@@ -87,7 +87,7 @@ class GeneralServerFeature final : public ArangodFeature {
 
   void countVstConnection() { _vstConnections.count(); }
 
-  bool isTelemetricsEnabled() { return _enableTelemetrics; }
+  bool isTelemetricsEnabled() const noexcept { return _enableTelemetrics; }
 
  private:
   // build HTTP server(s)
