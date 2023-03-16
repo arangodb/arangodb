@@ -37,7 +37,6 @@ struct SharedLock {
   virtual void unlock() noexcept = 0;
 };
 
-// TODO - perhaps use a custom LockGuard type
 struct SharedLockGuard {
   SharedLockGuard() = default;
 
