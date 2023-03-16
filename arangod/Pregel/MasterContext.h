@@ -39,7 +39,7 @@ class MasterContext {
   uint64_t _globalSuperstep = 0;
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
-  std::unique_ptr<AggregatorHandler> _aggregators = nullptr;
+  std::unique_ptr<AggregatorHandler> _aggregators;
 
   MasterContext(uint64_t vertexCount, uint64_t edgeCount,
                 std::unique_ptr<AggregatorHandler> aggregators)
@@ -101,8 +101,6 @@ class MasterContext {
   /// @brief called after supersteps
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; }
-
-  virtual void postApplication() {}
 
   virtual void serializeValues(VPackBuilder& b) {}
 

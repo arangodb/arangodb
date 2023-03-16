@@ -254,6 +254,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _autoFlushCheckInterval(60.0 * 60.0),
+      _autoFlushMinWalFiles(10),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -342,6 +344,30 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
   delete _db;
   _db = nullptr;
+}
+
+void RocksDBEngine::flushOpenFilesIfRequired() {
+  if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+  if (_autoFlushLastExecuted.time_since_epoch().count() == 0 ||
+      (now - _autoFlushLastExecuted) >=
+          std::chrono::duration<double>(_autoFlushCheckInterval)) {
+    LOG_TOPIC("9bf16", INFO, Logger::ENGINES)
+        << "auto flushing RocksDB wal and column families because number of "
+           "live WAL files is "
+        << _metricsLiveWalFiles.load();
+    Result res = flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ true);
+    if (res.fail()) {
+      LOG_TOPIC("e936c", WARN, Logger::ENGINES)
+          << "unable to flush RocksDB wal: " << res.errorMessage();
+    }
+    // set _autoFlushLastExecuted regardless of whether flushing has worked or
+    // not. we don't want to put too much stress onto the db
+    _autoFlushLastExecuted = now;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -691,6 +717,30 @@ there are followers attached that may want to read the archive. In case the
 option is set and a leader deletes files from the archive that followers want to
 read, this aborts the replication on the followers. Followers can restart the
 replication doing a resync, however.)");
+
+  options
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
+                  "The minimum number of live WAL files that triggers an "
+                  "auto-flush of WAL "
+                  "and column family data.",
+                  new UInt64Parameter(&_autoFlushMinWalFiles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-flush-check-interval",
+          "The interval (in seconds) in which auto-flushes of WAL and column "
+          "family data is executed.",
+          new DoubleParameter(&_autoFlushCheckInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -2784,6 +2834,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
 
+  LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
+      << "opening views and collections metadata in database '"
+      << vocbase->name() << "'";
+
   VPackBuilder builder;
   auto scanViews = [&](std::string_view type) {
     try {
@@ -2802,6 +2856,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           continue;
         }
         // we found a view that is still active
+        LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
+            << "processing view metadata in database '" << vocbase->name()
+            << "': " << it.toJson();
 
         TRI_ASSERT(!it.get("id").isNone());
 
@@ -2815,7 +2872,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in vocbase'") +
+              std::string("failed to instantiate view in database '") +
                   vocbase->name() + "' from definition: " + it.toString());
         }
 
@@ -2825,11 +2882,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: " << ex.what();
+          << "error while opening database '" << vocbase->name()
+          << "': " << ex.what();
       throw;
     } catch (...) {
       LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: unknown exception";
+          << "error while opening database '" << vocbase->name()
+          << "': unknown exception";
       throw;
     }
   };
@@ -2864,6 +2923,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
+      LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
+          << "processing collection metadata in database '" << vocbase->name()
+          << "': " << it.toJson();
+
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
@@ -2875,21 +2938,24 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
             << "error while "
-            << "loading metadata of collection '" << collection->name()
-            << "': " << r.errorMessage();
+            << "loading metadata of collection '" << vocbase->name() << "/"
+            << collection->name() << "': " << r.errorMessage();
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << collection->name() << "'";
+          << "added document collection '" << vocbase->name() << "/"
+          << collection->name() << "'";
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
+        << "error while opening database '" << vocbase->name()
+        << "': " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
+        << "error while opening database '" << vocbase->name()
+        << "': unknown exception";
     throw;
   }
 

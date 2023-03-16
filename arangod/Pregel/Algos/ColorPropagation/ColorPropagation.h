@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
@@ -117,19 +118,31 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
     return "colorpropagation";
   };
 
-  [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
-      const override;
+  [[nodiscard]] std::shared_ptr<
+      GraphFormat<ColorPropagationValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] ColorPropagationValueMessageFormat* messageFormat()
       const override {
     return new ColorPropagationValueMessageFormat();
+  }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<ColorPropagationValueMessageFormat>();
   }
 
   VertexComputation<ColorPropagationValue, int8_t,
                     ColorPropagationMessageValue>*
       createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
@@ -200,7 +213,10 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
 enum class State { SendInitialColors, PropagateColors };
 
 struct ColorPropagationWorkerContext : public WorkerContext {
-  ColorPropagationWorkerContext(uint64_t maxGss, uint16_t numColors);
+  ColorPropagationWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators, uint64_t maxGss,
+      uint16_t numColors);
   void postGlobalSuperstep(uint64_t gss) override;
 
   State state = State::SendInitialColors;
@@ -239,7 +255,7 @@ struct ColorPropagationGraphFormat
                       std::string const& documentId,
                       arangodb::velocypack::Slice document,
                       ColorPropagationValue& senders,
-                      uint64_t& vertexIdRange) override;
+                      uint64_t& vertexIdRange) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ColorPropagationValue const* ptr) const override;

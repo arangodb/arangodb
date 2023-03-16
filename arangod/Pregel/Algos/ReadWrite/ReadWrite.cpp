@@ -38,7 +38,10 @@ using namespace arangodb::pregel::algos;
 static std::string const simulatedAggregatorName = "simulatedAggregator";
 
 struct ReadWriteWorkerContext : public WorkerContext {
-  ReadWriteWorkerContext() = default;
+  ReadWriteWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                         std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
 };
 
 ReadWrite::ReadWrite(VPackSlice const& userParams)
@@ -54,7 +57,8 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId, VPackSlice document,
-                      V& targetPtr, uint64_t& /*vertexIdRange*/) override {
+                      V& targetPtr,
+                      uint64_t& /*vertexIdRange*/) const override {
     auto value = document.get(sourceFieldName);
     if (value.isNone()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -79,8 +83,8 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   }
 };
 
-GraphFormat<V, E>* ReadWrite::inputFormat() const {
-  return new ReadWriteGraphFormat(_sourceField, _resultField);
+std::shared_ptr<GraphFormat<V, E> const> ReadWrite::inputFormat() const {
+  return std::make_shared<ReadWriteGraphFormat>(_sourceField, _resultField);
 }
 
 struct ReadWriteComputation : public VertexComputation<V, E, V> {
@@ -101,8 +105,19 @@ VertexComputation<V, E, V>* ReadWrite::createComputation(
   return new ReadWriteComputation();
 }
 
-WorkerContext* ReadWrite::workerContext(VPackSlice userParams) const {
-  return new ReadWriteWorkerContext();
+[[nodiscard]] auto ReadWrite::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ReadWriteWorkerContext(std::move(readAggregators),
+                                    std::move(writeAggregators));
+}
+[[nodiscard]] auto ReadWrite::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ReadWriteWorkerContext>(std::move(readAggregators),
+                                                  std::move(writeAggregators));
 }
 
 struct ReadWriteMasterContext : public MasterContext {

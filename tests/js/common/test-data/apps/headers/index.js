@@ -35,6 +35,16 @@ router.all('/encode-object-deflate', function (req, res) {
   res.transformations('deflate');
   return res;
 });
+router.all('/encode-array-gzip', function (req, res) {
+  res.body = ['this is an array'];
+  res.transformations('gzip');
+  return res;
+});
+router.all('/encode-object-gzip', function (req, res) {
+  res.body = '{"this": "is an object"}';
+  res.transformations('gzip');
+  return res;
+});
 
 router.all('/header-automatic', function (req, res) {
   res.set('x-foobar', 'baz');

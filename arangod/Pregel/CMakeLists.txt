@@ -1,5 +1,15 @@
-add_library(arango_pregel STATIC
+add_library(arango_pregel_with_actors STATIC
   AggregatorHandler.cpp
+  Utils.cpp)
+target_include_directories(arango_pregel_with_actors
+  PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod)
+target_link_libraries(arango_pregel_with_actors
+  PRIVATE
+  arango_inspection
+  arango_actor)
+
+add_library(arango_pregel STATIC
   AlgoRegistry.cpp
   ExecutionNumber.cpp
   IncomingCache.cpp
@@ -7,15 +17,14 @@ add_library(arango_pregel STATIC
   OutgoingCache.cpp
   PregelFeature.cpp
   PregelMetrics.cpp
-  Utils.cpp)
-
+  ResolveShard.cpp)
 target_link_libraries(arango_pregel
   arango
   arango_agency
+  arango_pregel_with_actors
   boost_boost
   arango_actor
   boost_system)
-
 target_include_directories(arango_pregel PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
