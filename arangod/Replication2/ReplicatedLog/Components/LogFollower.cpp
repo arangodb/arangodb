@@ -36,10 +36,10 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::replicated_log::refactor;
 
-struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
+namespace arangodb::replication2::replicated_log {
+
+struct MethodsProvider : IReplicatedLogFollowerMethods {
   explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
   auto releaseIndex(LogIndex index) -> void override {
     follower.compaction->updateReleaseIndex(index);
@@ -259,7 +259,7 @@ auto LogFollowerImpl::getStatus() const -> LogStatus {
   return guarded.getLockedGuard()->getStatus();
 }
 
-auto LogFollowerImpl::resign2() && -> std::tuple<
+auto LogFollowerImpl::resign() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   return guarded.getLockedGuard()->resign();
@@ -318,3 +318,5 @@ LogFollowerImpl::LogFollowerImpl(
       guarded(std::move(methods), std::move(stateHandlePtr),
               std::move(termInfo), std::move(options), std::move(metrics),
               std::move(leaderComm)) {}
+
+}  // namespace arangodb::replication2::replicated_log
