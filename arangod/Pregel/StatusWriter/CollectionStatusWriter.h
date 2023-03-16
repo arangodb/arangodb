@@ -192,7 +192,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
       case AccessMode::Type::READ: {
         // Note: documentAsync can throw.
         if (data.has_value()) {
-          auto payload = inspection::serializeWithErrorT(data);
+          auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
               trx, options, transactionResult,
               trx.documentAsync(StaticStrings::PregelCollection,

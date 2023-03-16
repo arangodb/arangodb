@@ -117,6 +117,16 @@ const getExecutionHistory = (executionID) => {
   return requestResult;
 };
 
+const removeExecutionHistory = (executionID) => {
+  let URL = HISTORY_API;
+  if (executionID) {
+    URL += '/' + encodeURIComponent(executionID);
+  }
+  let requestResult = db._connection.DELETE(URL);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
 /*
  * Exports section
  */
@@ -126,4 +136,10 @@ exports.start = startExecution;
 exports.status = getExecutionStatus;
 exports.cancel = cancelExecution;
 exports.isBusy = isBusy;
+
+/*
+ * Exports pregel history section
+ */
+
 exports.history = getExecutionHistory;
+exports.removeHistory = removeExecutionHistory;

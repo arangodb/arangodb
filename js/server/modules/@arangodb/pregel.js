@@ -146,3 +146,11 @@ exports.history = function (executionID) {
   }
   return db._pregelHistory(executionID);
 };
+
+exports.removeHistory = function (executionID) {
+  let db = internal.db;
+  if (executionID === undefined) {
+    return db._pregelHistory();
+  }
+  return db._pregelHistory(executionID);
+};

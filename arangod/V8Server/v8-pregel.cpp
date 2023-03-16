@@ -269,6 +269,21 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  auto handlePregelHistoryV8Result =
+      [&](ResultT<OperationResult> const& result) -> void {
+    if (result.fail()) {
+      // check outer ResultT
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (result.get().fail()) {
+      // check inner OperationResult
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(),
+                                     result.get().errorMessage());
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+  };
+
   auto& vocbase = GetContextVocBase(isolate);
   if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
@@ -281,11 +296,7 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // Read all pregel history entries
     auto result = pregel.handleHistoryRequest(
         vocbase, arangodb::rest::RequestType::GET, std::nullopt);
-    if (result.fail()) {
-      TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
-    }
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
-
+    handlePregelHistoryV8Result(result);
     return;
   }
 
@@ -301,10 +312,61 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder builder;
   auto result = pregel.handleHistoryRequest(
       vocbase, arangodb::rest::RequestType::GET, executionNumber);
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
+  handlePregelHistoryV8Result(result);
+  return;
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PregelHistoryRemove(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto handlePregelHistoryV8Result =
+      [&](ResultT<OperationResult> const& result) -> void {
+    if (result.fail()) {
+      // check outer ResultT
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (result.get().fail()) {
+      // check inner OperationResult
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(),
+                                     result.get().errorMessage());
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+  };
+
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength == 0) {
+    // Read all pregel history entries
+    auto result = pregel.handleHistoryRequest(
+        vocbase, arangodb::rest::RequestType::DELETE_REQ, std::nullopt);
+    handlePregelHistoryV8Result(result);
+    return;
+  }
+
+  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistory(<executionNum>]");
+  }
+
+  // Read single history entry
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      TRI_ObjectToUInt64(isolate, args[0], true)};
+
+  VPackBuilder builder;
+  auto result = pregel.handleHistoryRequest(
+      vocbase, arangodb::rest::RequestType::DELETE_REQ, executionNumber);
+  handlePregelHistoryV8Result(result);
+  return;
   TRI_V8_TRY_CATCH_END
 }
 
@@ -325,4 +387,7 @@ void TRI_InitV8Pregel(v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_pregelHistory"),
                        JS_PregelHistory);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                       TRI_V8_ASCII_STRING(isolate, "_pregelHistoryRemove"),
+                       JS_PregelHistoryRemove);
 }

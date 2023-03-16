@@ -59,11 +59,11 @@ RestStatus RestControlPregelHandler::execute() {
       break;
     }
     case rest::RequestType::GET: {
-      getExecutionStatus();
+      handleGetRequest();
       break;
     }
     case rest::RequestType::DELETE_REQ: {
-      cancelExecution();
+      handleDeleteRequest();
       break;
     }
     default: {
@@ -145,7 +145,7 @@ void RestControlPregelHandler::startExecution() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestControlPregelHandler::getExecutionStatus() {
+void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
@@ -200,19 +200,46 @@ void RestControlPregelHandler::getExecutionStatus() {
 }
 
 void RestControlPregelHandler::handlePregelHistoryResult(
-    ResultT<OperationResult> opResult) {
-  if (opResult.fail()) {
-    generateError(rest::ResponseCode::BAD, opResult.errorNumber(),
-                  opResult.errorMessage());
+    ResultT<OperationResult> result) {
+  if (result.fail()) {
+    // check outer ResultT result
+    generateError(rest::ResponseCode::BAD, result.errorNumber(),
+                  result.errorMessage());
+    return;
+  }
+  if (result.get().fail()) {
+    // check inner OperationResult
+    std::string message = std::string{result.get().errorMessage()};
+    if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      // For reasons, not all OperationResults deliver the expected message.
+      // Therefore, we need set up the message properly and manually here.
+      message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+    }
+
+    ResponseCode code =
+        GeneralResponse::responseCode(result.get().errorNumber());
+    generateError(code, result.get().errorNumber(), message);
     return;
   }
 
-  generateResult(rest::ResponseCode::OK, opResult.get().slice());
+  TRI_ASSERT(result->hasSlice());
+  generateResult(rest::ResponseCode::OK, result.get().slice());
 }
 
-void RestControlPregelHandler::cancelExecution() {
+void RestControlPregelHandler::handleDeleteRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if ((suffixes.size() != 1) || suffixes[0].empty()) {
+  if (suffixes.size() >= 2) {
+    if (suffixes.at(0).empty() || suffixes.at(0) != "history") {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+          "bad parameter, expecting /_api/control_pregel/history[/<id>]");
+      return;
+    }
+    auto executionNumber = arangodb::pregel::ExecutionNumber{
+        arangodb::basics::StringUtils::uint64(suffixes[1])};
+    return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+        _vocbase, _request->requestType(), executionNumber));
+  } else if ((suffixes.size() != 1) || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "bad parameter, expecting /_api/control_pregel/<id>");
     return;

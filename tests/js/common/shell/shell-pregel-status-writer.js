@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, assertNotEqual, JSON, fail */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
+const errors = internal.errors;
 const isCluster = internal.isCluster();
 const isServer = require('@arangodb').isServer;
 // Only required on client
@@ -84,6 +85,36 @@ function pregelStatusWriterSuite() {
     assertEqual(modulePersistedState.data.state, expectedState);
   };
 
+  const verifyPersistedStatePIDNotAvailableRead = (pid) => {
+    // 1.) verify using direct system access
+    try {
+      db[pregelSystemCollectionName].document(pid);
+      fail();
+    } catch (error) {
+      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+    }
+
+    // 2.) verify using HTTP call
+    if (!isServer) {
+      // only execute this test in case we're calling from client (e.g. shell_client)
+      const cmd = `${pregelHistoricEndpoint}/${pid}`;
+      const response = arango.GET_RAW(cmd);
+      const parsedResponse = response.parsedBody;
+      print(parsedResponse);
+      assertTrue(parsedResponse.error);
+      assertEqual(parsedResponse.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      assertEqual(parsedResponse.errorMessage, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message);
+    }
+
+    // 3.) verify using Pregel JavaScript module
+    try {
+      pregel.history(pid);
+      fail();
+    } catch (error) {
+      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+    }
+  };
+
   const createSimpleGraph = () => {
     examples.loadGraph("social");
   };
@@ -126,6 +157,11 @@ function pregelStatusWriterSuite() {
       verifyPersistedStatePIDRead(pid, "done");
     },
 
+    testRequestValidButNonAvailableHistoricPregelEntry: function () {
+      const pid = "1337";
+      verifyPersistedStatePIDNotAvailableRead(pid);
+    },
+
     testSystemCollectionsIsAvailablePerEachDatabase: function () {
       const additionalDBName = "UnitTestsPregelDatabase2";
       const pregelDB = db._createDatabase(additionalDBName);
@@ -145,6 +181,33 @@ function pregelStatusWriterSuite() {
       // Switch back to system database context
       db._useDatabase('_system');
       db._dropDatabase(additionalDBName);
+    },
+
+    testRemoveHistoricPregelEntryHTTP: function () {
+      if (isServer) {
+        // This specific test can only be executed in shell_client environment.
+        return;
+      }
+      const result = executeExamplePregel();
+      const pid = result[0];
+      verifyPersistedStatePIDRead(pid, "done");
+
+      // only execute this test in case we're calling from client (e.g. shell_client)
+
+      const cmd = `${pregelHistoricEndpoint}/${pid}`;
+      const response = arango.DELETE_RAW(cmd);
+      const parsedResponse = response.parsedBody;
+      assertEqual(parsedResponse._id, `${pregelSystemCollectionName}/${pid}`);
+
+      // verify that this entry got deleted and not stored anymore
+      verifyPersistedStatePIDNotAvailableRead(pid);
+
+      // delete entry again, should reply that deletion is not possible as history entry not available anymore
+      const response2 = arango.DELETE_RAW(cmd);
+      const parsedResponse2 = response2.parsedBody;
+      assertTrue(parsedResponse2.error);
+      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, parsedResponse2.errorNum);
+      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message, parsedResponse2.errorMessage);
     }
   };
 }
