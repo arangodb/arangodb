@@ -141,7 +141,7 @@ if the write concern is `2` and the replication factor is `3`, then the
 write concern is not fulfilled if two replicas are not in-sync.
 
 Note that the HTTP status code is configurable via the
-`--cluster.failed-write-concern-error-code` startup option. It defaults to `403`
+`--cluster.failed-write-concern-status-code` startup option. It defaults to `403`
 but can be changed to `503` to signal client applications that it is a
 temporary error.
 
@@ -160,7 +160,7 @@ is `2` and the replication factor is `3`, then the write concern is not fulfille
 if two replicas are not in-sync.
 
 Note that the HTTP status code is configurable via the
-`--cluster.failed-write-concern-error-code` startup option. It defaults to `403`
+`--cluster.failed-write-concern-status-code` startup option. It defaults to `403`
 but can be changed to `503` to signal client applications that it is a
 temporary error.
 
