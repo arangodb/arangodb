@@ -22,7 +22,7 @@ export const MultiSelectControl = (props: InputControlProps) => {
   const { isSubmitting } = useFormikContext();
 
   const value = selectProps?.options?.filter(option => {
-    return field.value.includes((option as OptionType).value);
+    return field.value?.includes((option as OptionType).value);
   }) as PropsValue<OptionType>;
 
   return (

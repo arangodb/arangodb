@@ -15,7 +15,7 @@ export const SwitchControl = (props: InputControlProps) => {
     <FormikFormControl name={name} label={label} {...rest}>
       <Switch
         {...field}
-        isChecked={field.value}
+        isChecked={!!field.value}
         id={name}
         isDisabled={isSubmitting}
         {...switchProps}
