@@ -64,7 +64,7 @@ function pregelStatusWriterSuite() {
   };
 
   const isString = (pid) => {
-    return (typeof pid === 'string' || pid instanceof String)
+    return (typeof pid === 'string' || pid instanceof String);
   };
 
   const isBoolean = (pid) => {
@@ -204,17 +204,13 @@ function pregelStatusWriterSuite() {
 
     testRequestInvalidPidsHistoricPregelEntry: function () {
       const pidsToTestMapableToNumericValue = [0, 1, 1.337];
-      print(" ==== A ==== ");
       pidsToTestMapableToNumericValue.forEach(pid => {
-        print("Testing now pid: " + pid);
         verifyPersistedStatePIDNotAvailableRead(pid, false);
       });
 
-      print(" ==== B ==== ");
       const nonNumerics = [true, false, "aString"];
 
       nonNumerics.forEach(pid => {
-        print("Testing now pid: " + pid);
         verifyPersistedStatePIDNotAvailableRead(pid, false);
       });
     },
