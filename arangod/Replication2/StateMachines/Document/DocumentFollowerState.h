@@ -63,9 +63,9 @@ struct DocumentFollowerState
           transactionHandler) -> Result;
 
   struct SnapshotTransferResult {
-    Result res;
-    bool reportFailure;
-    std::optional<SnapshotId> snapshotId;
+    Result res{};
+    bool reportFailure{};
+    std::optional<SnapshotId> snapshotId{};
   };
 
   auto handleSnapshotTransfer(
