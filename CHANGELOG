@@ -1,4 +1,4 @@
-v3.10.5 (XXXX-XX-XX)
+v3.10.5 (2023-03-16)
 --------------------
 
 * Stabilized resilience tests. The assumption that an AQL query can run
