@@ -26,7 +26,7 @@
 
 if (getOptions === true) {
   return {
-    'cluster.failed-write-concern-error-code': '403'
+    'cluster.failed-write-concern-status-code': '403'
   };
 }
 let jsunity = require('jsunity');
