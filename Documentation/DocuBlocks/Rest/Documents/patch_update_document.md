@@ -146,7 +146,7 @@ of a document. The response body contains
 an error document in this case.
 
 @RESTRETURNCODE{403}
-with the error code `1429` is returned if the specified write concern for the
+with the error code `1004` is returned if the specified write concern for the
 collection cannot be fulfilled. This can happen if less than the number of
 specified replicas for a shard are currently in-sync with the leader. For example,
 if the write concern is `2` and the replication factor is `3`, then the
