@@ -431,7 +431,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     std::string_view body{reinterpret_cast<char const*>(payload.data()),
                           payload.size()};
     if (!body.empty()) {
-      this->logResponseBody("vst", response.contentType(), body);
+      this->logRequestBody("vst", response.contentType(), body,
+                           true /* isResponse */);
     }
   }
 

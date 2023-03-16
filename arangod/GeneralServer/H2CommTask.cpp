@@ -668,7 +668,8 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     auto& bodyBuf = tmp->body();
     std::string_view body{bodyBuf.data(), bodyBuf.size()};
     if (!body.empty()) {
-      this->logResponseBody("h2", res->contentType(), body);
+      this->logRequestBody("h2", res->contentType(), body,
+                           true /* isResponse */);
     }
   }
 

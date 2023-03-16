@@ -74,13 +74,10 @@ class GeneralCommTask : public CommTask {
       std::unordered_map<std::string, std::string> const& headers) const;
   void logRequestBody(std::string_view protocol,
                       arangodb::rest::ContentType contentType,
-                      std::string_view body) const;
+                      std::string_view body, bool isResponse = false) const;
   void logResponseHeaders(
       std::string_view protocol,
       std::unordered_map<std::string, std::string> const& headers) const;
-  void logResponseBody(std::string_view protocol,
-                       arangodb::rest::ContentType contentType,
-                       std::string_view body) const;
 
  private:
   std::atomic<bool> _stopped;

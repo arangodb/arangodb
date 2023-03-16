@@ -738,7 +738,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
     if (!_response->empty()) {
       std::string_view body(_response->data(), _response->size());
-      this->logResponseBody("http", response.contentType(), body);
+      this->logRequestBody("http", response.contentType(), body,
+                           true /* isResponse */);
     }
   }
 

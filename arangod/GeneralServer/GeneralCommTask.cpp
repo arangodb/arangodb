@@ -164,12 +164,12 @@ void GeneralCommTask<T>::logRequestHeaders(
 template<SocketType T>
 void GeneralCommTask<T>::logRequestBody(std::string_view protocol,
                                         arangodb::rest::ContentType contentType,
-                                        std::string_view body) const {
+                                        std::string_view body,
+                                        bool isResponse) const {
   std::string bodyForLogging;
   if (contentType == ContentType::JSON || contentType == ContentType::HTML ||
-      contentType == ContentType::TEXT) {
-    bodyForLogging = basics::StringUtils::escapeUnicode(
-        std::string_view(body.data(), body.size()));
+      contentType == ContentType::TEXT || contentType == ContentType::UNSET) {
+    bodyForLogging = basics::StringUtils::escapeUnicode(body);
   } else {
     try {
       velocypack::Slice s{reinterpret_cast<uint8_t const*>(body.data())};
@@ -186,8 +186,9 @@ void GeneralCommTask<T>::logRequestBody(std::string_view protocol,
     }
   }
 
-  LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
-      << "\"" << protocol << "-request-body\",\"" << (void*)this << "\",\""
+  LOG_TOPIC("8f554", TRACE, Logger::REQUESTS)
+      << "\"" << protocol << (isResponse ? "-response" : "-request")
+      << "-body\",\"" << (void*)this << "\",\""
       << rest::contentTypeToString(contentType) << "\",\"" << body.size()
       << "\",\"" << bodyForLogging << "\"";
 }
@@ -202,32 +203,3 @@ void GeneralCommTask<T>::logResponseHeaders(
       << headersForLogging << "\"";
 }
 
-template<SocketType T>
-void GeneralCommTask<T>::logResponseBody(
-    std::string_view protocol, arangodb::rest::ContentType contentType,
-    std::string_view body) const {
-  std::string bodyForLogging;
-  if (contentType == ContentType::JSON || contentType == ContentType::HTML ||
-      contentType == ContentType::TEXT) {
-    bodyForLogging = basics::StringUtils::escapeUnicode(body);
-  } else {
-    try {
-      velocypack::Slice s(reinterpret_cast<uint8_t const*>(body.data()));
-      if (!s.isNone()) {
-        // "none" can happen if the content-type is neither JSON nor vpack
-        bodyForLogging = basics::StringUtils::escapeUnicode(s.toJson());
-      }
-    } catch (...) {
-      // cannot stringify request body
-    }
-
-    if (bodyForLogging.empty()) {
-      bodyForLogging = "potential binary data";
-    }
-  }
-
-  LOG_TOPIC("8f554", TRACE, Logger::REQUESTS)
-      << "\"" << protocol << "-response-body\",\"" << (void*)this << "\",\""
-      << rest::contentTypeToString(contentType) << "\",\"" << body.size()
-      << "\",\"" << bodyForLogging << "\"";
-}
