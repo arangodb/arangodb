@@ -104,8 +104,6 @@ class Worker : public IWorker {
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
-  std::unique_ptr<AggregatorHandler> _conductorAggregators;
-  std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;

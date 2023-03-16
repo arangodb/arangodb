@@ -57,6 +57,7 @@ class VstResponse : public GeneralResponse {
 
   bool isCompressionAllowed() override { return false; }
   ErrorCode deflate() override;
+  ErrorCode gzip() override;
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;

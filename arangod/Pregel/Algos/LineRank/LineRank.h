@@ -90,12 +90,28 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<NumberMessageFormat<float>>();
+  }
 
   MessageCombiner<float>* messageCombiner() const override {
     return new SumCombiner<float>();
   }
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override {
+    return std::make_unique<SumCombiner<float>>();
+  }
 
-  WorkerContext* workerContext(velocypack::Slice params) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
 
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,

@@ -34,7 +34,6 @@
 #include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/TypedBuffer.h"
 
 #include <atomic>
 #include <cstdint>

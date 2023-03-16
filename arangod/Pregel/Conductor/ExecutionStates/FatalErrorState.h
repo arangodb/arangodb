@@ -18,35 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <unordered_map>
+#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/Worker/Messages.h"
+#include "State.h"
 
-#include "Basics/ErrorCode.h"
+namespace arangodb::pregel::conductor {
 
-namespace arangodb {
-namespace encoding {
+struct ConductorState;
 
-template<typename T>
-[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
-                                       size_t compressedLength,
-                                       T& uncompressed);
+struct FatalError : ExecutionState {
+  FatalError(ConductorState& conductor) : conductor{conductor} {
+    conductor.timing.total.finish();
+  }
+  ~FatalError() {}
+  auto name() const -> std::string override { return "fatal error"; };
+  auto message() -> worker::message::WorkerMessages override {
+    return worker::message::WorkerMessages{};
+  };
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  };
+  ConductorState& conductor;
+};
 
-template<typename T>
-[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed,
-                                    size_t compressedLength, T& uncompressed);
-
-template<typename T>
-[[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,
-                                     size_t uncompressedLength, T& compressed);
-
-template<typename T>
-[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
-                                    size_t uncompressedLength, T& compressed);
-
-}  // namespace encoding
-}  // namespace arangodb
+}  // namespace arangodb::pregel::conductor
