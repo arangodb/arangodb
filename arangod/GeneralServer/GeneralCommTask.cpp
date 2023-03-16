@@ -166,7 +166,8 @@ void GeneralCommTask<T>::logRequestBody(std::string_view protocol,
                                         bool isResponse) const {
   std::string bodyForLogging;
   if (contentType != ContentType::VPACK) {
-    bodyForLogging = basics::StringUtils::escapeUnicode(body);
+    std::string bodyString{body};
+    bodyForLogging = basics::StringUtils::escapeUnicode(bodyString);
   } else {
     try {
       velocypack::Slice s{reinterpret_cast<uint8_t const*>(body.data())};
