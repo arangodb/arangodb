@@ -6,11 +6,10 @@ devel
   exceptions for disjoint SmartGraphs where the traversal can run completely on
   the local DB-server. All other queries should now be able to parallelize the
   gather node. This can not only speed up queries quite significantly, but also
-  reduce the memory required by the coordinator for queries like
-  `FOR i IN @n INSERT {} INTO collection`. The serial gather node processes one
-  DB-server after the other, but since the new documents should be distributed
-  evenly over all shards, the coordinator has to buffer documents that need to
-  be sent to other servers.
+  overcomes issues with the previous serial processing within gather nodes,
+  which could lead to high memory usage on coordinators caused by buffering of
+  documents other shards, and timeouts on some DB-Servers because query parts
+  were idle for too long.
 
 * Auto-flush RocksDB WAL files and in-memory column family data if the number
   of live WAL files exceeds a certain threshold. This is to make sure that
