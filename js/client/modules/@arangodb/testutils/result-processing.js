@@ -331,7 +331,7 @@ function saveToJunitXML(options, results) {
       state.xml.elem('/testsuite');
       let fn;
       try {
-        let fn = fs.join(options.testOutputDirectory,
+        fn = fs.join(options.testOutputDirectory,
                          'UNITTEST_RESULT_' + state.xmlName + '.xml');
         if (fn.length > 250) {
           fn = fs.join(options.testOutputDirectory,
