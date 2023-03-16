@@ -543,42 +543,14 @@ void HttpCommTask<T>::doProcessRequest() {
 
     std::string_view body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
+
     if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       // Log HTTP headers:
-      std::string headersForLogging =
-          StringUtils::headersToString(_request->headers());
-      LOG_TOPIC("b9e77", TRACE, Logger::REQUESTS)
-          << "\"http-request-headers\",\"" << (void*)this << "\",\""
-          << headersForLogging << "\"";
+      this->logRequestHeaders("http", _request->headers());
 
       if (!body.empty()) {
-        std::string bodyForLogging;
-        if (_request->contentType() == ContentType::JSON ||
-            _request->contentType() == ContentType::HTML ||
-            _request->contentType() == ContentType::TEXT) {
-          bodyForLogging = StringUtils::escapeUnicode(
-              std::string_view(body.data(), body.size()));
-        } else {
-          try {
-            velocypack::Slice s = _request->payload(false);
-            if (!s.isNone()) {
-              // "none" can happen if the content-type is neither JSON nor vpack
-              bodyForLogging = StringUtils::escapeUnicode(s.toJson());
-            }
-          } catch (...) {
-            // cannot stringify request body
-          }
-
-          if (bodyForLogging.empty() && !body.empty()) {
-            bodyForLogging = "potential binary data";
-          }
-        }
-
-        LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
-            << "\"http-request-body\",\"" << (void*)this << "\",\""
-            << rest::contentTypeToString(_request->contentType()) << "\",\""
-            << _request->contentLength() << "\",\"" << bodyForLogging << "\"";
+        this->logRequestBody("http", _request->contentType(), body);
       }
     }
   }
@@ -762,40 +734,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {
     // Log HTTP headers:
-    std::string headersForLogging =
-        StringUtils::headersToString(response.headers());
-    LOG_TOPIC("8f553", TRACE, Logger::REQUESTS)
-        << "\"http-response-headers\",\"" << (void*)this << "\",\""
-        << headersForLogging << "\"";
+    this->logResponseHeaders("http", response.headers());
 
     if (!_response->empty()) {
-      std::string bodyForLogging;
-      if (response.contentType() == ContentType::JSON ||
-          response.contentType() == ContentType::HTML ||
-          response.contentType() == ContentType::TEXT) {
-        bodyForLogging = StringUtils::escapeUnicode(
-            std::string_view(_response->data(), _response->size()));
-      } else {
-        try {
-          velocypack::Slice s(
-              reinterpret_cast<uint8_t const*>(_response->data()));
-          if (!s.isNone()) {
-            // "none" can happen if the content-type is neither JSON nor vpack
-            bodyForLogging = StringUtils::escapeUnicode(s.toJson());
-          }
-        } catch (...) {
-          // cannot stringify request body
-        }
-
-        if (bodyForLogging.empty()) {
-          bodyForLogging = "potential binary data";
-        }
-      }
-
-      LOG_TOPIC("8f554", TRACE, Logger::REQUESTS)
-          << "\"http-response-body\",\"" << (void*)this << "\",\""
-          << rest::contentTypeToString(response.contentType()) << "\",\""
-          << bodyForLogging.size() << "\",\"" << bodyForLogging << "\"";
+      std::string_view body(_response->data(), _response->size());
+      this->logResponseBody("http", response.contentType(), body);
     }
   }
 
