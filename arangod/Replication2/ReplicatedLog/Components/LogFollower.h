@@ -115,6 +115,8 @@ struct LogFollowerImpl : ILogFollower {
 
   [[nodiscard]] auto getCommittedLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<LogRangeIterator> override;
+  [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<PersistedLogIterator> override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
 

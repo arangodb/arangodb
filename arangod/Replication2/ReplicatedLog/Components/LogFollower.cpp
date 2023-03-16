@@ -281,6 +281,16 @@ auto LogFollowerImpl::getCommittedLogIterator(
   }
 }
 
+auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<PersistedLogIterator> {
+  auto log = guarded.getLockedGuard()->storage->getCommittedLog();
+  if (bounds.has_value()) {
+    return log.getInternalIteratorRange(*bounds);
+  } else {
+    return log.getPersistedLogIterator();
+  }
+}
+
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
   guarded.getLockedGuard()->compaction->updateReleaseIndex(doneWithIdx);
   return {};

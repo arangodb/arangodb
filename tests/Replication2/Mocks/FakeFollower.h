@@ -64,6 +64,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void triggerLeaderAcked();
   auto getCommittedLogIterator(std::optional<LogRange> bounds) const
       -> std::unique_ptr<LogRangeIterator> override;
+  auto getInternalLogIterator(std::optional<LogRange> bounds) const
+      -> std::unique_ptr<PersistedLogIterator> override;
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {

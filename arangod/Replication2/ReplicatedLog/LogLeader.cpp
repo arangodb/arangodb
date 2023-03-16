@@ -1740,6 +1740,18 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
                          std::move(actionOuter));
 }
 
+auto replicated_log::LogLeader::getInternalLogIterator(
+    std::optional<LogRange> bounds) const
+    -> std::unique_ptr<PersistedLogIterator> {
+  auto log = copyInMemoryLog();
+  if (bounds) {
+    return log.getInternalIteratorRange(*bounds);
+  } else {
+    return log.getPersistedLogIterator();
+  }
+  return std::unique_ptr<PersistedLogIterator>();
+}
+
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
     -> Result {
   auto res = _guardedMethods.doUnderLock([&](auto& core) {

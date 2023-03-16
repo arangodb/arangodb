@@ -451,7 +451,7 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.poll(logId, logIdx, limit)
-                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -479,7 +479,7 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.tail(logId, limit)
-                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -507,7 +507,7 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.head(logId, limit)
-                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -536,7 +536,7 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
   stop = stopFound ? stop : start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut = methods.slice(logId, start, stop)
-                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -603,7 +603,7 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
 
   auto fut =
       methods.slice(logId, logIdx, logIdx + 1)
-          .thenValue([this](std::unique_ptr<LogIterator>&& iter) {
+          .thenValue([this](std::unique_ptr<PersistedLogIterator>&& iter) {
             if (auto entry = iter->next(); entry) {
               VPackBuilder result;
               entry->toVelocyPack(result);

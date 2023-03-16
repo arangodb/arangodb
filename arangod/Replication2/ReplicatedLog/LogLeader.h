@@ -150,6 +150,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
   [[nodiscard]] auto getCommittedLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<LogRangeIterator> override;
+  [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<PersistedLogIterator> override;
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
 
   // Returns true if the leader has established its leadership: at least one
