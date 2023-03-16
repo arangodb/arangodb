@@ -30,6 +30,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const gm = require("@arangodb/general-graph");
+const {db} = require("@arangodb");
 
 function TraversalOptimizeLastPathAccessTestSuite() {
     const makePath = (length, keyOffset = 0) => {
@@ -53,21 +55,45 @@ function TraversalOptimizeLastPathAccessTestSuite() {
         makePath(3, 10),
     ];
 
+    const graphName = "UnitTestGraph";
+    const vc = "UnitTestVertexCollection";
+    const ec = "UnitTestEdgeCollection";
+    const startVertex = "UnitTestVertexCollection/1";
+
     return {
         setUpAll: function () {
-
+            gm._create(graphName, [gm._relation(ec, vc, vc)], [], {numberOfShards: 3});
         },
 
         tearDownAll: function () {
-
+            gm._drop(graphName, true);
         },
 
         testShouldNotImpactNonTraversals: function () {
             const queriesToTest = [
-
+                `FOR p IN ${JSON.stringify(hardCodedPaths)} RETURN p.vertices[-1]`,
+                `FOR p IN ${JSON.stringify(hardCodedPaths)} RETURN p.edges[-1]`,
+                `FOR p IN ${vc} RETURN p.vertices[-1]`,
+                `FOR p IN ${vc} RETURN p.edges[-1]`,
             ];
+            for (const q of queriesToTest) {
+                const {nodes, rules} = AQL_EXPLAIN(q).plan;
+                require("internal").print(rules);
 
+            }
+        },
 
+        testShouldImpactTraversals: function () {
+            const queriesToTest = [
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.vertices[-1]`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.edges[-1]`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.vertices[-1]`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1]`
+            ];
+            for (const q of queriesToTest) {
+                const {nodes, rules} = AQL_EXPLAIN(q).plan;
+                require("internal").print(rules);
+            }
         }
     };
 }
