@@ -242,7 +242,7 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
         << "reset participant of replicated log";
     DeferredAction action;
     std::tie(data.methods, data.stateHandle, action) =
-        std::move(*data.participant).resign2();
+        std::move(*data.participant).resign();
 #ifndef ARANGODB_USE_GOOGLE_TESTS
     ADB_PROD_ASSERT(data.methods != nullptr);
     ADB_PROD_ASSERT(data.stateHandle != nullptr);
@@ -320,7 +320,7 @@ auto DefaultParticipantsFactory::constructFollower(
   auto info2 = std::make_shared<FollowerTermInformation>(
       FollowerTermInformation{{info.term}, info.leader});
 
-  return std::make_shared<refactor::LogFollowerImpl>(
+  return std::make_shared<LogFollowerImpl>(
       info.myself, std::move(methods), std::move(context.stateHandle), info2,
       std::move(context.options), std::move(context.metrics), leaderComm);
 }

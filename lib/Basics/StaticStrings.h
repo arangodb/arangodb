@@ -380,6 +380,10 @@ class StaticStrings {
   static std::string const LowestIndexToKeep;
   static std::string const Outcome;
   constexpr static std::string_view MessageId = "messageId";
+  constexpr static std::string_view LogIndex = "logIndex";
+  constexpr static std::string_view LogTerm = "logTerm";
+  constexpr static std::string_view Payload = "payload";
+  constexpr static std::string_view Meta = "meta";
 
   // Replication 2.0 API Strings
   constexpr static std::string_view ApiLogInternal = "/_api/log-internal";
