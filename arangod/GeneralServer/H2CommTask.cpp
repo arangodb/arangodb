@@ -583,7 +583,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
       this->logRequestHeaders("h2", req->headers());
 
       if (!body.empty()) {
-        this->logRequestBody("h", req->contentType(), body);
+        this->logRequestBody("h2", req->contentType(), body);
       }
     }
   }
