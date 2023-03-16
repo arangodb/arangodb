@@ -266,14 +266,17 @@ struct VPackLogIterator2 final : LogIterator {
     while (iter != std::default_sentinel) {
       auto slice = *iter++;
       auto indexSlice = slice.get(StaticStrings::LogIndex);
-      if (indexSlice.isNone()) {
+      auto payloadSlice = slice.get(StaticStrings::Payload);
+      if (indexSlice.isNone() || payloadSlice.isNone()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
-            absl::StrCat("log entry doesn't contain `logIndex` attribute: ",
-                         slice.toJson()));
+            fmt::format("log entry is missing at least one of `{}` or `{}` "
+                        "attributes: {}",
+                        StaticStrings::LogIndex, StaticStrings::Payload,
+                        slice.toJson()));
       }
       auto index = indexSlice.getNumber<std::uint64_t>();
-      return LogEntryView(LogIndex(index), slice);
+      return LogEntryView(LogIndex(index), payloadSlice);
     }
     return std::nullopt;
   }
