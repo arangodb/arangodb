@@ -34,6 +34,7 @@ const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const cu = require('@arangodb/testutils/crash-utils');
+const crypto = require('@arangodb/crypto');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
 const _ = require('lodash');
@@ -328,15 +329,17 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        let fn = fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        if (fn.length > 250) {
+          fn = fs.join(options.testOutputDirectory,
+                       'UNITTEST_RESULT_' +crypto.md5(state.xmlName) + '.xml');
+        }
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
