@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  enterprise-branch:
+    type: string
+    default: devel
+
 jobs:
   minimal-checkout:
     docker:
@@ -90,7 +95,7 @@ jobs:
           command: |
             if [ << parameters.enterprise >> = true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
-              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "devel" /root/project/enterprise
+              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "<< pipeline.parameters.enterprise-branch >>" /root/project/enterprise
             fi
       - run:
           name: Print SCCache Settings
