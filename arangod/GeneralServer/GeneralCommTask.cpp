@@ -167,8 +167,7 @@ void GeneralCommTask<T>::logRequestBody(std::string_view protocol,
                                         std::string_view body,
                                         bool isResponse) const {
   std::string bodyForLogging;
-  if (contentType == ContentType::JSON || contentType == ContentType::HTML ||
-      contentType == ContentType::TEXT || contentType == ContentType::UNSET) {
+  if (contentType != ContentType::VPACK) {
     bodyForLogging = basics::StringUtils::escapeUnicode(body);
   } else {
     try {
@@ -202,4 +201,3 @@ void GeneralCommTask<T>::logResponseHeaders(
       << "\"" << protocol << "-response-headers\",\"" << (void*)this << "\",\""
       << headersForLogging << "\"";
 }
-
