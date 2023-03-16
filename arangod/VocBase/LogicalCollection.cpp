@@ -54,6 +54,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"

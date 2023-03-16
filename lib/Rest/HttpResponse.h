@@ -100,6 +100,10 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. deflate is then run on the existing body
   ErrorCode deflate() override { return _body->deflate(); }
 
+  // the body must already be set. gzip compression is then run on the existing
+  // body
+  ErrorCode gzip() override { return _body->gzip(); }
+
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,
                           bool resolveExternals);

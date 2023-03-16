@@ -335,7 +335,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30807);
+      .setIntroducedIn(30807)
+      .setIntroducedIn(30902);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
