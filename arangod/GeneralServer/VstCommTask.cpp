@@ -329,6 +329,17 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << VstRequest::translateMethod(req->requestType()) << "\",\""
           << url(req.get()) << "\"";
 
+      if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+          Logger::logRequestParameters()) {
+        // Log HTTP headers:
+        this->logRequestHeaders("vst", req->headers());
+
+        std::string_view body = req->rawPayload();
+        if (!body.empty()) {
+          this->logRequestBody("vst", req->contentType(), body);
+        }
+      }
+
       // TODO use different token if authentication header is present
       CommTask::Flow cont = this->prepareExecution(_authToken, *req, mode);
       if (cont == CommTask::Flow::Continue) {
@@ -410,6 +421,19 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << static_cast<int>(response.responseCode()) << ","
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
+  }
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    this->logResponseHeaders("vst", response.headers());
+
+    auto& payload = response.payload();
+    std::string_view body{reinterpret_cast<char const*>(payload.data()),
+                          payload.size()};
+    if (!body.empty()) {
+      this->logRequestBody("vst", response.contentType(), body,
+                           true /* isResponse */);
+    }
   }
 
   // and give some request information
