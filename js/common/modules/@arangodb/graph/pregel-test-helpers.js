@@ -270,8 +270,6 @@ const makeSetUp = function (smart, smartAttribute, numberOfShards) {
         } else {
             db._create(vColl, {numberOfShards: numberOfShards, replicationFactor: 1});
             db._createEdgeCollection(eColl, {
-                numberOfShards: numberOfShards,
-                replicationFactor: 1,
                 shardKeys: ["vertex"],
                 distributeShardsLike: vColl
             });

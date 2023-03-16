@@ -122,30 +122,23 @@ int compressStream(z_stream& strm, T& compressed) noexcept {
   return ret;
 }
 
-}  // namespace
-
-namespace arangodb {
-
 template<typename T>
-ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
-                                   size_t compressedLength, T& uncompressed) {
+ErrorCode uncompressWrapper(
+    uint8_t const* compressed, size_t compressedLength, T& uncompressed,
+    std::function<ErrorCode(z_stream& strm)> const& initCb) {
   uncompressed.clear();
-
-  if (compressedLength == 0) {
-    // empty input
-    return TRI_ERROR_NO_ERROR;
-  }
 
   z_stream strm;
   memset(&strm, 0, sizeof(strm));
   strm.next_in = const_cast<Bytef*>(reinterpret_cast<Bytef const*>(compressed));
   strm.avail_in = static_cast<uInt>(compressedLength);
 
-  if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  ErrorCode res = initCb(strm);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
-  int ret = ::uncompressStream(strm, uncompressed);
+  int ret = uncompressStream(strm, uncompressed);
   inflateEnd(&strm);
 
   switch (ret) {
@@ -158,22 +151,62 @@ ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
   }
 }
 
+}  // namespace
+
+namespace arangodb {
+
+template<typename T>
+ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
+                                   size_t compressedLength, T& uncompressed) {
+  if (compressedLength == 0) {
+    // empty input
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return ::uncompressWrapper<T>(
+      compressed, compressedLength, uncompressed,
+      [](z_stream& strm) -> ErrorCode {
+        if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+        return TRI_ERROR_NO_ERROR;
+      });
+}
+
 template<typename T>
 ErrorCode encoding::gzipInflate(uint8_t const* compressed,
                                 size_t compressedLength, T& uncompressed) {
-  uncompressed.clear();
+  return ::uncompressWrapper<T>(compressed, compressedLength, uncompressed,
+                                [](z_stream& strm) -> ErrorCode {
+                                  if (inflateInit(&strm) != Z_OK) {
+                                    return TRI_ERROR_OUT_OF_MEMORY;
+                                  }
+                                  return TRI_ERROR_NO_ERROR;
+                                });
+}
+
+template<typename T>
+ErrorCode encoding::gzipCompress(uint8_t const* uncompressed,
+                                 size_t uncompressedLength, T& compressed) {
+  compressed.clear();
 
   z_stream strm;
   memset(&strm, 0, sizeof(strm));
-  strm.next_in = const_cast<Bytef*>(reinterpret_cast<Bytef const*>(compressed));
-  strm.avail_in = (uInt)compressedLength;
+  strm.next_in =
+      const_cast<Bytef*>(reinterpret_cast<Bytef const*>(uncompressed));
+  strm.avail_in = static_cast<uInt>(uncompressedLength);
 
-  if (inflateInit(&strm) != Z_OK) {
+  // from https://stackoverflow.com/a/57699371/3042070:
+  //   hard to believe they don't have a macro for gzip encoding, "Add 16" is
+  //   the best thing zlib can do: "Add 16 to windowBits to write a simple gzip
+  //   header and trailer around the compressed data instead of a zlib wrapper"
+  if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8,
+                   Z_DEFAULT_STRATEGY) != Z_OK) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int ret = ::uncompressStream(strm, uncompressed);
-  inflateEnd(&strm);
+  int ret = ::compressStream(strm, compressed);
+  deflateEnd(&strm);
 
   switch (ret) {
     case Z_STREAM_END:
@@ -231,6 +264,15 @@ template ErrorCode encoding::gzipInflate<arangodb::velocypack::Buffer<uint8_t>>(
 template ErrorCode encoding::gzipInflate<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::basics::StringBuffer& uncompressed);
+
+template ErrorCode
+encoding::gzipCompress<arangodb::velocypack::Buffer<uint8_t>>(
+    uint8_t const* uncompressed, size_t uncompressedLength,
+    arangodb::velocypack::Buffer<uint8_t>& compressed);
+
+template ErrorCode encoding::gzipCompress<arangodb::basics::StringBuffer>(
+    uint8_t const* uncompressed, size_t uncompressedLength,
+    arangodb::basics::StringBuffer& compressed);
 
 template ErrorCode encoding::gzipDeflate<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* uncompressed, size_t uncompressedLength,

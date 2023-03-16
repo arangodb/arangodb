@@ -201,27 +201,6 @@
             name: name
           };
           break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          deduplicate = self.checkboxToValue('#newHashDeduplicate');
-          estimates = self.checkboxToValue('#newHashEstimates');
-          cacheEnabled = self.checkboxToValue('#newHashCacheEnabled');
-          background = self.checkboxToValue('#newHashBackground');
-          name = $('#newHashName').val();
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse,
-            deduplicate: deduplicate,
-            estimates: estimates,
-            cacheEnabled: cacheEnabled,
-            inBackground: background,
-            name: name
-          };
-          break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
@@ -231,27 +210,6 @@
             type: 'fulltext',
             fields: self.stringToArray(fields),
             minLength: minLength,
-            inBackground: background,
-            name: name
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
-          estimates = self.checkboxToValue('#newSkiplistEstimates');
-          cacheEnabled = self.checkboxToValue('#newSkiplistCacheEnabled');
-          background = self.checkboxToValue('#newSkiplistBackground');
-          name = $('#newSkiplistName').val();
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse,
-            deduplicate: deduplicate,
-            estimates: estimates,
-            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };

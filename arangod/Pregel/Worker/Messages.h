@@ -55,14 +55,21 @@ auto inspect(Inspector& f, WorkerStart& x) {
   return f.object(x).fields();
 }
 
-struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker> {
-  using std::variant<WorkerStart, CreateNewWorker>::variant;
+struct LoadGraph {};
+template<typename Inspector>
+auto inspect(Inspector& f, LoadGraph& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker, LoadGraph> {
+  using std::variant<WorkerStart, CreateNewWorker, LoadGraph>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<WorkerStart>("Start"),
-      arangodb::inspection::type<CreateNewWorker>("CreateWorker"));
+      arangodb::inspection::type<CreateNewWorker>("CreateWorker"),
+      arangodb::inspection::type<LoadGraph>("LoadGraph"));
 }
 
 }  // namespace worker::message
@@ -169,5 +176,14 @@ template<>
 struct fmt::formatter<arangodb::pregel::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};
 template<>
+struct fmt::formatter<arangodb::pregel::worker::message::WorkerStart>
+    : arangodb::inspection::inspection_formatter {};
+template<>
 struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::LoadGraph>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::WorkerMessages>
     : arangodb::inspection::inspection_formatter {};

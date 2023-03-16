@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -35,13 +37,21 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Utils/CursorRepository.h"
 
+#include <atomic>
+
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng,
+DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
+              "Released tick for RocksDB WAL deletion (replication-induced)");
+
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval)
-    : Thread(eng.server(), "RocksDBThread"),
-      _engine(eng),
-      _interval(interval) {}
+    : Thread(engine.server(), "RocksDBThread"),
+      _engine(engine),
+      _interval(interval),
+      _metricsWalReleasedTickReplication(
+          engine.server().getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -152,7 +162,7 @@ void RocksDBBackgroundThread::run() {
         minTick = earliestSeqNeeded;
       }
 
-      uint64_t minTickForReplication = minTick;
+      uint64_t minTickForReplication = latestSeqNo;
       if (_engine.server().hasFeature<DatabaseFeature>()) {
         _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
             [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
@@ -175,11 +185,20 @@ void RocksDBBackgroundThread::run() {
 
         minTick = std::min(minTick, minTickForReplication);
       }
+      _metricsWalReleasedTickReplication.store(minTickForReplication,
+                                               std::memory_order_relaxed);
 
       LOG_TOPIC("cfe65", DEBUG, Logger::ENGINES)
           << "latest seq number: " << latestSeqNo
           << ", earliest seq needed: " << earliestSeqNeeded
           << ", min tick for replication: " << minTickForReplication;
+
+      try {
+        _engine.flushOpenFilesIfRequired();
+      } catch (...) {
+        // whatever happens here, we don't want it to block/skip any of
+        // the following operations
+      }
 
       bool canPrune =
           TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
