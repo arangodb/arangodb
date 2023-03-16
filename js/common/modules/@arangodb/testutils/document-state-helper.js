@@ -135,7 +135,7 @@ const getAssociatedShards = function (endpoint, db, stateId) {
   let res = request.get({
     url: `${endpoint}/_db/${db}/_api/document-state/${stateId}/shards`,
   });
-  lh.checkRequestResult(res, true);
+  lh.checkRequestResult(res, false);
   return res.json.result;
 };
 

@@ -30,6 +30,7 @@
 
 #include <shared_mutex>
 
+struct TRI_vocbase_t;
 namespace arangodb {
 class MaintenanceFeature;
 }
@@ -49,7 +50,8 @@ struct IDocumentStateShardHandler {
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
-  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
+  explicit DocumentStateShardHandler(TRI_vocbase_t& vocbase,
+                                     GlobalLogIdentifier gid,
                                      MaintenanceFeature& maintenanceFeature);
   auto ensureShard(ShardID shard, CollectionID collection,
                    std::shared_ptr<VPackBuilder> properties)

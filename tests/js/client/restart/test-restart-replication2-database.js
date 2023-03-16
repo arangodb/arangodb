@@ -23,11 +23,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertNotEqual, assertIdentical} = jsunity.jsUnity.assertions;
+const {assertEqual, assertNotEqual, assertIdentical, assertTrue} = jsunity.jsUnity.assertions;
 const {db, errors} = require('@arangodb');
 const console = require('console');
 const rh = require('@arangodb/testutils/restart-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const dh = require("@arangodb/testutils/document-state-helper");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep} = require('internal');
 const _ = require('lodash');
@@ -102,6 +103,8 @@ function testSuite () {
       disableMaintenanceMode();
 
       compareAllDocuments(col, expectedKeys);
+      // Insert another document to check if the collection is writable (it should)
+      col.insert({_key: "another-document"});
     },
 
     testRestartAllReplicationFactorOne: function () {
@@ -118,6 +121,8 @@ function testSuite () {
       disableMaintenanceMode();
 
       compareAllDocuments(col, expectedKeys);
+      // Insert another document to check if the collection is writable (it should)
+      col.insert({_key: "another-document"});
     },
 
     testRestartLeader: function () {
@@ -142,6 +147,32 @@ function testSuite () {
       // Insert another document to check if the collection is writable (it should)
       col.insert({_key: "another-document"});
     },
+
+    testRestartLeaderDistributeShardsLike: function() {
+      const col = db._createDocumentCollection(colName, {numberOfShards: 1, replicationFactor: 2});
+      const expectedKeys = _.range(100).map(i => `${i}`);
+      col.insert(expectedKeys.map(_key => ({_key})));
+
+      const [shardId] = col.shards();
+      const logId = lh.getShardsToLogsMapping(databaseName, col._id)[shardId];
+      const logStatus = db._replicatedLog(logId).status();
+      const leaderId = logStatus.leaderId;
+      const dbServers = getCtrlDBServers();
+      const leader = dbServers.find(server => server.id === leaderId);
+
+      // trigger a compaction to get rig of the create-collection entry
+      db._replicatedLog(logId).compact();
+
+      enableMaintenanceMode();
+      rh.shutdownServers([leader]);
+
+      rh.restartServers([leader]);
+      disableMaintenanceMode();
+
+      // query for shards on that server
+      const assocShards = dh.getAssociatedShards(lh.getServerUrl(leaderId), databaseName, logId);
+      assertEqual([shardId], assocShards);
+    }
   };
 }
 
