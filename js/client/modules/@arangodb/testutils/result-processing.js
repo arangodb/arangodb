@@ -34,7 +34,6 @@ const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const cu = require('@arangodb/testutils/crash-utils');
-const crypto = require('@arangodb/crypto');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
 const _ = require('lodash');
