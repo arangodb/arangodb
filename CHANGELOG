@@ -5,6 +5,12 @@ devel
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
   from `etc/relative` in test environment. 
 
+* Added support for sending gzip-compressed responses from the server.
+  Previously only deflated responses were supported.
+
+* Stabilized resilience tests. The assumption that an AQL query can run
+  without error directly after a leader has been stopped, is wrong.
+
 * Auto-flush RocksDB WAL files and in-memory column family data if the number
   of live WAL files exceeds a certain threshold. This is to make sure that
   WAL files are moved to the archive when there are a lot of live WAL files
