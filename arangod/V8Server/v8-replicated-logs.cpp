@@ -532,18 +532,22 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() > 2 || args.Length() < 1) {
+  if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
   }
 
   auto startIdx = LogIndex();
   auto stopIdx = LogIndex();
   {
-    auto arg0 = getAsMaybeUint64(isolate, *args[0]);
-    if (!arg0) {
-      TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
+    if (args.Length() > 0) {
+      auto arg0 = getAsMaybeUint64(isolate, *args[0]);
+      if (!arg0) {
+        TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
+      }
+      startIdx = LogIndex(arg0.get());
+    } else {
+      startIdx = LogIndex(0);
     }
-    startIdx = LogIndex(arg0.get());
     if (args.Length() > 1) {
       auto arg1 = getAsMaybeUint64(isolate, *args[1]);
       if (!arg1) {
