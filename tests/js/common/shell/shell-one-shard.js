@@ -448,7 +448,6 @@ function OneShardPropertiesSuite () {
           assertEqual(col3Properties.distributeShardsLike, col2.name());
           assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
         }
-      }
     },
 
     testSatelliteDB : function () {

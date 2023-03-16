@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include <cstdint>
 #include "Pregel/Algorithm.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
+
+struct SSSPType {
+  using Vertex = int64_t;
+  using Edge = int64_t;
+  using Message = int64_t;
+};
 
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
 /// should have
@@ -36,42 +43,57 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  explicit SSSPAlgorithm(VPackSlice userParams) : Algorithm("sssp") {
-    if (!userParams.isObject() || !userParams.hasKey("source")) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "You need to specify the source document id");
-    }
-    _sourceDocumentId = userParams.get("source").copyString();
+  explicit SSSPAlgorithm(VPackSlice userParams);
 
-    VPackSlice slice = userParams.get("resultField");
-    if (slice.isString()) {
-      _resultField = slice.copyString();
-    } else {
-      VPackSlice slice = userParams.get("_resultField");
-      if (slice.isString()) {
-        _resultField = slice.copyString();
-      }
-    }
-  }
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "sssp";
+  };
 
-  GraphFormat<int64_t, int64_t>* inputFormat() const override;
+  std::shared_ptr<GraphFormat<int64_t, int64_t> const> inputFormat()
+      const override;
 
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat<int64_t>();
+  }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<IntegerMessageFormat<int64_t>>();
   }
 
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
   }
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override {
+    return std::make_unique<MinCombiner<int64_t>>();
+  }
 
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
-  uint32_t messageBatchSize(WorkerConfig const& config,
+  uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
                             MessageStats const& stats) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace algos
 }  // namespace pregel
