@@ -100,7 +100,6 @@ function pregelStatusWriterSuite() {
       const cmd = `${pregelHistoricEndpoint}/${pid}`;
       const response = arango.GET_RAW(cmd);
       const parsedResponse = response.parsedBody;
-      print(parsedResponse);
       assertTrue(parsedResponse.error);
       assertEqual(parsedResponse.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
       assertEqual(parsedResponse.errorMessage, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message);
