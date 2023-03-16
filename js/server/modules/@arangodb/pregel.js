@@ -27,17 +27,17 @@ const internal = require('internal');
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new pregel execution
 // //////////////////////////////////////////////////////////////////////////////
-var startExecution = function(algo, data, params) {
+var startExecution = function (algo, data, params) {
   if (typeof algo !== 'string' || !data) {
     throw "Invalid parameters: _pregelStart(algorithm, graph, params)" +
-          "<graph> can be either {vertexCollections:['',..], edgeCollection: ''}" +
-          " or {graphName:'<graph>'} or graph name";
+    "<graph> can be either {vertexCollections:['',..], edgeCollection: ''}" +
+    " or {graphName:'<graph>'} or graph name";
     ;
   }
 
   params = params || {};
 
-  let db = internal.db;  
+  let db = internal.db;
   if (typeof data === 'object' && !data.graphName) {
     let vcs;
     if (data.vertexCollection && typeof data.vertexCollection === 'string') {
@@ -53,14 +53,14 @@ var startExecution = function(algo, data, params) {
     }
     if (!edges || !vcs) {
       throw "no vertex or edge collections specified";
-    } 
-    return db._pregelStart(algo, vcs, edges, params);    
+    }
+    return db._pregelStart(algo, vcs, edges, params);
   }
 
   let name;// name of graph
   if (typeof data === 'string') {
     name = data;
-  } else if (data.graphName &&  typeof data.graphName === 'string') {
+  } else if (data.graphName && typeof data.graphName === 'string') {
     name = data.graphName;
   }
 
@@ -100,7 +100,7 @@ var startExecution = function(algo, data, params) {
     if (edges.length > 0) {
       var edgeCollections = edges.map(e => e.name());
       return db._pregelStart(algo, vertexCollections,
-                             edgeCollections, params);        
+        edgeCollections, params);
     } else {
       throw "No edge collection specified";
     }
@@ -150,7 +150,7 @@ exports.history = function (executionID) {
 exports.removeHistory = function (executionID) {
   let db = internal.db;
   if (executionID === undefined) {
-    return db._pregelHistory();
+    return db._pregelHistoryRemove();
   }
-  return db._pregelHistory(executionID);
+  return db._pregelHistoryRemove(executionID);
 };

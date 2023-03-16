@@ -278,8 +278,14 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     if (result.get().fail()) {
       // check inner OperationResult
-      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(),
-                                     result.get().errorMessage());
+      std::string message = std::string{result.get().errorMessage()};
+      if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // For reasons, not all OperationResults deliver the expected message.
+        // Therefore, we need set up the message properly and manually here.
+        message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
     }
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
   };
@@ -331,8 +337,14 @@ static void JS_PregelHistoryRemove(
     }
     if (result.get().fail()) {
       // check inner OperationResult
-      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(),
-                                     result.get().errorMessage());
+      std::string message = std::string{result.get().errorMessage()};
+      if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // For reasons, not all OperationResults deliver the expected message.
+        // Therefore, we need set up the message properly and manually here.
+        message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
     }
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
   };

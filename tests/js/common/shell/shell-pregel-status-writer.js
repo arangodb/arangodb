@@ -197,25 +197,7 @@ function pregelStatusWriterSuite() {
       verifyPersistedStatePIDRead(pid, "done");
     },
 
-    testRequestValidPidsButNonAvailableHistoricPregelEntry: function () {
-      verifyPersistedStatePIDNotAvailableRead(1337, false);
-      verifyPersistedStatePIDNotAvailableRead("1337", true);
-    },
-
-    testRequestInvalidPidsHistoricPregelEntry: function () {
-      const pidsToTestMapableToNumericValue = [0, 1, 1.337];
-      pidsToTestMapableToNumericValue.forEach(pid => {
-        verifyPersistedStatePIDNotAvailableRead(pid, false);
-      });
-
-      const nonNumerics = [true, false, "aString"];
-
-      nonNumerics.forEach(pid => {
-        verifyPersistedStatePIDNotAvailableRead(pid, false);
-      });
-    },
-
-    testSystemCollectionsIsAvailablePerEachDatabase: function () {
+    testSystemCollectionsIsAvailableInEveryDatabase: function () {
       const additionalDBName = "UnitTestsPregelDatabase2";
       const pregelDB = db._createDatabase(additionalDBName);
       assertTrue(pregelDB);
@@ -234,6 +216,30 @@ function pregelStatusWriterSuite() {
       // Switch back to system database context
       db._useDatabase('_system');
       db._dropDatabase(additionalDBName);
+    },
+
+    testReadValidPidsButNonAvailableHistoricPregelEntry: function () {
+      verifyPersistedStatePIDNotAvailableRead(1337, false);
+      verifyPersistedStatePIDNotAvailableRead("1337", true);
+    },
+
+    testReadInvalidPidsHistoricPregelEntry: function () {
+      const pidsToTestMapableToNumericValue = [0, 1, 1.337];
+      pidsToTestMapableToNumericValue.forEach(pid => {
+        verifyPersistedStatePIDNotAvailableRead(pid, false);
+      });
+
+      const nonNumerics = [true, false, "aString"];
+
+      nonNumerics.forEach(pid => {
+        verifyPersistedStatePIDNotAvailableRead(pid, false);
+      });
+    },
+
+    testReadAllHistoricEntriesHTTP: function () {
+    },
+
+    testReadAllHistoricEntriesModule: function () {
     },
 
     testRemoveHistoricPregelEntryHTTP: function () {
@@ -261,6 +267,32 @@ function pregelStatusWriterSuite() {
       assertTrue(parsedResponse2.error);
       assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, parsedResponse2.errorNum);
       assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message, parsedResponse2.errorMessage);
+    },
+
+    testRemoveHistoricPregelEntryPregelModule: function () {
+      const result = executeExamplePregel();
+      const pid = result[0];
+      verifyPersistedStatePIDRead(pid, "done");
+
+      const response = pregel.removeHistory(pid);
+      assertEqual(response._key, `${pid}`);
+
+      // verify that this entry got deleted and not stored anymore
+      verifyPersistedStatePIDNotAvailableRead(pid, true);
+
+      // delete entry again, should reply that deletion is not possible as history entry not available anymore
+      try {
+        pregel.removeHistory(pid);
+      } catch (error) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message, error.errorMessage);
+      }
+    },
+
+    testRemoveCompleteHistoryHTTP: function () {
+    },
+
+    testRemoveCompleteHistoryModule: function () {
     }
   };
 }
