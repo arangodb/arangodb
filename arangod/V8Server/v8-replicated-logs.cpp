@@ -42,8 +42,6 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/Utilities.h"
 
-#include <absl/strings/str_cat.h>
-
 using namespace arangodb::replication2;
 
 v8::Handle<v8::Object> WrapReplicatedLog(v8::Isolate* isolate, LogId id) {
