@@ -56,6 +56,19 @@ auto DocumentFollowerState::resign() && noexcept
   });
 }
 
+auto DocumentFollowerState::getAssociatedShardList() const
+    -> std::vector<ShardID> {
+  auto shardMap =
+      _guardedData.getLockedGuard()->core->getShardHandler()->getShardMap();
+
+  std::vector<ShardID> shardIds;
+  shardIds.reserve(shardMap.size());
+  for (auto const& [id, props] : shardMap) {
+    shardIds.emplace_back(id);
+  }
+  return shardIds;
+}
+
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {

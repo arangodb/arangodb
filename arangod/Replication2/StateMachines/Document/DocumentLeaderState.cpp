@@ -342,6 +342,19 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
       });
 }
 
+auto DocumentLeaderState::getAssociatedShardList() const
+    -> std::vector<ShardID> {
+  auto shardMap =
+      _guardedData.getLockedGuard()->core->getShardHandler()->getShardMap();
+
+  std::vector<ShardID> shardIds;
+  shardIds.reserve(shardMap.size());
+  for (auto const& [id, props] : shardMap) {
+    shardIds.emplace_back(id);
+  }
+  return shardIds;
+}
+
 auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
                                       std::shared_ptr<VPackBuilder> properties)
     -> futures::Future<Result> {

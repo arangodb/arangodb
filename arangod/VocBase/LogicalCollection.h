@@ -245,7 +245,6 @@ class LogicalCollection : public LogicalDataSource {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
 
-  void setDocumentStateId(replication2::LogId id);
   auto getDocumentState()
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
@@ -391,6 +390,7 @@ class LogicalCollection : public LogicalDataSource {
 
   auto groupID() const noexcept
       -> arangodb::replication2::agency::CollectionGroupId;
+  auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);

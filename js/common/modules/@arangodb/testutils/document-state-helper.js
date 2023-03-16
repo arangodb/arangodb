@@ -131,6 +131,14 @@ const getBulkDocuments = function (endpoint, db, col, keys) {
   return res.json;
 };
 
+const getAssociatedShards = function (endpoint, db, stateId) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/document-state/${stateId}/shards`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json.result;
+};
+
 /**
  * Return a single array with all log entries merged together.
  */
@@ -231,3 +239,4 @@ exports.getOperationPayload = getOperationPayload;
 exports.getDocumentEntries = getDocumentEntries;
 exports.searchDocs = searchDocs;
 exports.getArrayElements = getArrayElements;
+exports.getAssociatedShards = getAssociatedShards;

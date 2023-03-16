@@ -71,9 +71,11 @@ struct DocumentLeaderState
       -> futures::Future<Result>;
   auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
-  std::size_t getActiveTransactionsCount() const noexcept {
+  auto getActiveTransactionsCount() const noexcept -> std::size_t {
     return _activeTransactions.getLockedGuard()->getTransactions().size();
   }
+
+  auto getAssociatedShardList() const -> std::vector<ShardID>;
 
   auto snapshotStart(SnapshotParams::Start const& params)
       -> ResultT<SnapshotConfig>;
