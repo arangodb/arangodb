@@ -32,27 +32,18 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-// TODO implement in GORDO-1548
 struct Loading : ExecutionState {
-  Loading(ConductorState& conductor) : conductor{conductor} {
-    conductor._timing.loading.start();
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
-  }
-  ~Loading() {
-    conductor._timing.loading.finish();
-    // TODO GORDO-1510
-    // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
-  }
+  Loading(ConductorState& conductor);
+  ~Loading();
   auto name() const -> std::string override { return "loading"; };
-  auto message() -> worker::message::WorkerMessages override {
-    return worker::message::WorkerMessages{};
-  };
+  auto message() -> worker::message::WorkerMessages override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
   ConductorState& conductor;
+  std::unordered_set<actor::ActorPID> respondedWorkers;
+  uint64_t totalVerticesCount = 0;
+  uint64_t totalEdgesCount = 0;
 };
 
 }  // namespace arangodb::pregel::conductor

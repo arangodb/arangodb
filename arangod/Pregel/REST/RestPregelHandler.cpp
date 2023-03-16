@@ -75,7 +75,7 @@ RestStatus RestPregelHandler::execute() {
       }
       if (msg.get().receiver.id == actor::ActorID{0}) {
         _pregel._actorRuntime->spawn<SpawnActor>(
-            _vocbase.name(), std::make_unique<SpawnState>(),
+            _vocbase.name(), std::make_unique<SpawnState>(_vocbase),
             velocypack::SharedSlice({}, msg.get().payload.slice()));
         generateResult(rest::ResponseCode::OK, VPackBuilder().slice());
         return RestStatus::DONE;

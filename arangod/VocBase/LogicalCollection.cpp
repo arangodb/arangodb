@@ -54,6 +54,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -231,6 +232,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   if (replicationVersion() == replication::Version::TWO &&
       info.hasKey("groupId")) {
     _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
   }
 }
 
@@ -798,6 +803,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   if (replicationVersion() == replication::Version::TWO &&
       _groupId.has_value()) {
     build.add("groupId", VPackValue(_groupId.value()));
+    if (_replicatedStateId) {
+      build.add("replicatedStateId", VPackValue(*_replicatedStateId));
+    }
   }
   // We leave the object open
   return {};
@@ -1299,9 +1307,10 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     // TODO get more information if available (e.g. is the leader resigned or in
     //      recovery?)
     throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available as leader, accessed "
-                     "from {}/{}.",
-                     *_replicatedStateId, vocbase().name(), name());
+                     "Shard {}/{}/{} is not available as leader, associated "
+                     "replicated log is {}",
+                     vocbase().name(), planId().id(), name(),
+                     *_replicatedStateId);
   }
 
   return leader;

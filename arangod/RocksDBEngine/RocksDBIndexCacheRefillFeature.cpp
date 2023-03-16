@@ -324,10 +324,16 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
               res = {TRI_ERROR_INTERNAL, ex.what()};
             }
             if (res.fail()) {
-              LOG_TOPIC("91c13", WARN, Logger::ENGINES)
-                  << "unable to warmup index '" << task.iid.id() << "' in "
-                  << task.database << "/" << task.collection << ": "
-                  << res.errorMessage();
+              // check error. it is somewhat expected that a collection or
+              // database is not found anymore in case someone has dropped it
+              if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                  !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+                // an unexpected error
+                LOG_TOPIC("91c13", WARN, Logger::ENGINES)
+                    << "unable to warmup index '" << task.iid.id() << "' in "
+                    << task.database << "/" << task.collection << ": "
+                    << res.errorMessage();
+              }
             } else {
               ++_totalFullIndexRefills;
             }

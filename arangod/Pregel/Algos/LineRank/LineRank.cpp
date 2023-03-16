@@ -40,9 +40,12 @@ static const float RESTART_PROB = 0.15f;
 static const float EPS = 0.0000001f;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("linerank", params) {}
+    : SimpleAlgorithm(params) {}
 
 struct LRMasterContext : MasterContext {
+  LRMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                  std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
   bool _stopNext = false;
   bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kDiff);
@@ -61,6 +64,10 @@ struct LRMasterContext : MasterContext {
 
 /// do not recalculate startAtNodeProb in every compute call
 struct LRWorkerContext : WorkerContext {
+  LRWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                  std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
   float startAtNodeProb = 0;
 
   void preApplication() override { startAtNodeProb = 1.0f / edgeCount(); };
@@ -106,16 +113,37 @@ struct LRComputation : public VertexComputation<float, float, float> {
 };
 
 VertexComputation<float, float, float>* LineRank::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new LRComputation();
 }
 
-WorkerContext* LineRank::workerContext(VPackSlice params) const {
-  return new LRWorkerContext();
+[[nodiscard]] auto LineRank::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new LRWorkerContext(std::move(readAggregators),
+                             std::move(writeAggregators));
+}
+[[nodiscard]] auto LineRank::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<LRWorkerContext>(std::move(readAggregators),
+                                           std::move(writeAggregators));
 }
 
-MasterContext* LineRank::masterContext(VPackSlice params) const {
-  return new LRMasterContext();
+[[nodiscard]] auto LineRank::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new LRMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto LineRank::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<LRMasterContext>(vertexCount, edgeCount,
+                                           std::move(aggregators));
 }
 
 IAggregator* LineRank::aggregator(std::string const& name) const {

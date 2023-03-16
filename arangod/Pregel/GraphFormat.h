@@ -29,7 +29,6 @@
 #include <type_traits>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterFeature.h"
 #include "Pregel/GraphStore/Graph.h"
 
 struct TRI_vocbase_t;
@@ -46,13 +45,13 @@ struct GraphFormat {
   virtual void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
                               std::string const& documentId,
                               arangodb::velocypack::Slice document,
-                              V& targetPtr, uint64_t& vertexIdRange) = 0;
+                              V& targetPtr, uint64_t& vertexIdRange) const = 0;
 
   // the default implementation is to do nothing. only few algorithms actually
   // override this with a more specific behavior
   virtual void copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
                             arangodb::velocypack::Slice edgeDocument,
-                            E& targetPtr) {}
+                            E& targetPtr) const {}
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    V const* targetPtr) const = 0;
@@ -80,7 +79,7 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
                       arangodb::velocypack::Slice document, V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      uint64_t& /*vertexIdRange*/) const override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<V>::value) {
       if (std::is_signed<V>::value) {
@@ -95,7 +94,7 @@ class NumberGraphFormat : public GraphFormat<V, E> {
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice document,
-                    E& targetPtr) override {
+                    E& targetPtr) const override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<E>::value) {
       if (std::is_signed<E>::value) {  // getNumber does range checks
@@ -133,13 +132,13 @@ class InitGraphFormat : public GraphFormat<V, E> {
                               std::string const& /*documentId*/,
                               arangodb::velocypack::Slice /*document*/,
                               V& targetPtr,
-                              uint64_t& /*vertexIdRange*/) override {
+                              uint64_t& /*vertexIdRange*/) const override {
     targetPtr = _vDefault;
   }
 
   virtual void copyEdgeData(arangodb::velocypack::Options const&,
                             arangodb::velocypack::Slice /*document*/,
-                            E& targetPtr) override {
+                            E& targetPtr) const override {
     targetPtr = _eDefault;
   }
 
@@ -166,7 +165,7 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/, V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      uint64_t& /*vertexIdRange*/) const override {
     targetPtr = _vDefault;
   }
 
