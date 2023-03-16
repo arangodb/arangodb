@@ -93,6 +93,7 @@ function TraversalOptimizeLastPathAccessTestSuite() {
             for (const q of queriesToTest) {
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
                 require("internal").print(rules);
+                require("internal").print(nodes);
             }
         }
     };
