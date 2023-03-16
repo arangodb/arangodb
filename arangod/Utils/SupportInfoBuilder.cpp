@@ -129,7 +129,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
       }
 
       for (auto const collIt : velocypack::ArrayIterator(dbIt.get("colls"))) {
-        //  size_t planId = collIt.get("plan_id").getUInt();
         size_t planId = collIt.get("plan_id").getNumber<decltype(planId)>();
 
         std::string_view collName = collIt.get("name").stringView();
@@ -137,11 +136,15 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
             visitedCollIt != visitedColls.end()) {
           if (visitedCollIt->second.find(collName) ==
               visitedCollIt->second.end()) {
-            collNumDocs[planId] += collIt.get("n_docs").getUInt();
+            auto amountDocs = collNumDocs[planId];
+            collNumDocs[planId] +=
+                collIt.get("n_docs").getNumber<decltype(amountDocs)>();
             visitedColls[planId].insert(collName);
           }
         } else {
-          collNumDocs[planId] += collIt.get("n_docs").getUInt();
+          auto amountDocs = collNumDocs[planId];
+          collNumDocs[planId] +=
+              collIt.get("n_docs").getNumber<decltype(amountDocs)>();
           visitedDatabases[dbName].builder.add(collIt);
           std::string_view collType = collIt.get("type").stringView();
           if (collType == "document") {
@@ -185,7 +188,8 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
             std::string_view key2 = collIt2.key.stringView();
             auto const value2 = collIt2.value;
             if (key2 == "n_docs") {
-              auto foundIt = collNumDocs.find(collIt.get("plan_id").getUInt());
+              auto foundIt =
+                  collNumDocs.find(collIt.get("plan_id").getNumber<size_t>());
               if (foundIt != collNumDocs.end()) {
                 result.add(key2, VPackValue(foundIt->second));
               }
@@ -673,7 +677,6 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
               result.add("disjoint", VPackValue(false));
             }
 
-            //  std::unordered_map<std::string, size_t> idxTypesToAmounts;
             containers::FlatHashMap<std::string, size_t> idxTypesToAmounts;
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
@@ -710,11 +713,6 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 uint64_t cacheSize = 0;
                 uint64_t cacheUsage = 0;
                 if (cacheInUse) {
-                  memUsage = figures.getNumber<decltype(memUsage)>();
-                  /*
-                  cacheSize = figures.get("cache_size").getUInt();
-                  cacheUsage = figures.get("cache_usage").getUInt();
-                   */
                   cacheSize = figures.get("cache_size")
                                   .getNumber<decltype(cacheSize)>();
                   cacheUsage = figures.get("cache_size")
