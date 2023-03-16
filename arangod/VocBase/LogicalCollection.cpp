@@ -236,7 +236,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _replicatedStateId =
           info.get("replicatedStateId").extract<replication2::LogId>();
     }
-    // We are either a cluster collection, or we need to have a replicatedStateID.
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
     TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
@@ -1296,13 +1297,15 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           fmt::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::vformat(formatString, fmt::make_format_args(args...)),
+            location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {
