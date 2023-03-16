@@ -533,7 +533,8 @@ class IResearchInvertedIndexIterator final
         _itr = segmentReader.mask(_filter->execute(
             irs::ExecutionContext{.segment = segmentReader,
                                   .scorers = irs::Scorers::kUnordered,
-                                  .ctx = &kEmptyAttributeProvider}));
+                                  .ctx = &kEmptyAttributeProvider,
+                                  .wand = {}}));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
