@@ -10,7 +10,7 @@ devel
   configured via the server startup option `--server.support-info-api`.
   The telemetrics API is used by the arangosh: every time the arangosh is 
   started, it will send a request to the connected server to gather telemetrics
-  from the `/_admin/server-info` endpoint. The telemetrics data are then 
+  from the `/_admin/telemetrics` endpoint. The telemetrics data are then 
   sent to an aggregation service that is run by ArangoDB.
 
 * Added support for sending gzip-compressed responses from the server.
