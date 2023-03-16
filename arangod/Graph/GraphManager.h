@@ -175,7 +175,6 @@ class GraphManager {
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
-
   Result ensureCollections(
       Graph& graph,
       std::unordered_set<std::string>& documentCollectionsToCreate,
