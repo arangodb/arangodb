@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { Network } from "vis-network";
 import { isEqual } from "lodash";
 import { ProgressBar } from "./ProgressBar";
+import { Box, Center, Progress } from '@chakra-ui/react';
 
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
@@ -11,6 +12,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const [contextMenuNodeID, setContextMenuNodeID] = useState();
 	const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
 	const [networkData, setNetworkData] = useState();
+	const [progressValue, setProgressValue] = useState(0);
 	
 	const [visGraphData, setVisGraphData] = useState(null);
 
@@ -65,29 +67,9 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 
 		network.on("stabilizationProgress", function (params) {
 			if(nodes.length > 1) {
-				const maxWidth = 496;
-				const minWidth = 20;
 				const widthFactor = params.iterations / params.total;
-				const width = Math.max(minWidth, maxWidth * widthFactor);
-
-				
-				const progressValue = Math.round(widthFactor * 100);
-			
-				const graphViewerProgressBarElement = document.getElementById("graphViewerProgressBar");
-				if (graphViewerProgressBarElement) {
-					graphViewerProgressBarElement.style.width = width + "px";
-				}
-
-				const graphViewerLoadingTextElement = document.getElementById("graphViewerLoadingText");
-				if (graphViewerLoadingTextElement) {
-					graphViewerLoadingTextElement.innerText = progressValue + "%";
-				}
-
-				const graphViewerLoadingBarElement = document.getElementById("graphViewerLoadingBar");
-				if (graphViewerLoadingBarElement) {
-					graphViewerLoadingBarElement.style.opacity = 100;
-					graphViewerLoadingBarElement.style.display = "block";
-				}
+				const calculatedProgressValue = Math.round(widthFactor * 100);
+				setProgressValue(calculatedProgressValue);
 			}
 		});
 
@@ -96,13 +78,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		});
 
 		network.on("stabilized", function () {
-			const graphViewerLoadingBarElement = document.getElementById("graphViewerLoadingBar");
-			if (graphViewerLoadingBarElement) {
-				graphViewerLoadingBarElement.style.opacity = 0;
-				setTimeout(function () {
-					graphViewerLoadingBarElement.style.display = "none";
-				}, 500);
-			}
+			setProgressValue(100);
 		});
 
 		network.on("selectNode", (event, params) => {
@@ -148,6 +124,14 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	}, [visJsRef, visGraphData, selectedNode, layoutOptions]);
 
 	return <>
+		{
+			progressValue < 100 &&
+			<Center>
+				<Box bg='white' w='100%' p={5} m={4}>
+					<Progress colorScheme='green' size='lg' hasStripe value={progressValue} />
+				</Box>
+			</Center>
+		}
 		{
 		contextMenu === "node" &&
 		<StyledContextComponent {...position}>
