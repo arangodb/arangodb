@@ -21,12 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cluster/ClusterFeature.h"
 #include "Pregel/Conductor/Messages.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Utils.h"
+#include "Pregel/ResolveShard.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -96,7 +97,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
   return ::emptyEdgeCollectionRestrictions;
 }
 
-VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
+VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -109,8 +110,8 @@ VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   ShardID responsibleShard;
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  Utils::resolveShard(ci, this, std::string(collPart), StaticStrings::KeyString,
-                      keyPart, responsibleShard);
+  ResolveShard::resolve(ci, this, std::string(collPart),
+                        StaticStrings::KeyString, keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
   return VertexID(source, std::string(keyPart));

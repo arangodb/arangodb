@@ -49,6 +49,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"

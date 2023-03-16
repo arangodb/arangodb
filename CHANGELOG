@@ -1,6 +1,65 @@
 devel
 -----
 
+* Added support for sending gzip-compressed responses from the server.
+  Previously only deflated responses were supported.
+
+* Stabilized resilience tests. The assumption that an AQL query can run
+  without error directly after a leader has been stopped, is wrong.
+
+* Auto-flush RocksDB WAL files and in-memory column family data if the number
+  of live WAL files exceeds a certain threshold. This is to make sure that
+  WAL files are moved to the archive when there are a lot of live WAL files
+  present (e.g. after a restart; in this case RocksDB does not count any
+  previously existing WAL files when calculating the size of WAL files and 
+  comparing it `max_total_wal_size`.
+  The feature can be configured via the following startup options:
+  - `--rocksdb.auto-flush-min-live-wal-files`: minimum number of live WAL
+    files that triggers an auto-flush. Defaults to `10`.
+  - `--rocksdb.auto-flush-check-interval`: interval (in seconds) in which
+    auto-flushes are executed. Defaults to `3600`.
+  Note that an auto-flush is only executed if the number of live WAL files 
+  exceeds the configured threshold and the last auto-flush is longer ago than
+  the configured auto-flush check interval. That way too frequent auto-flushes
+  can be avoided.
+
+* Updated arangosync to v2.16.0-preview-1.
+
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
+  - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
+    onwards WAL files will be kept (i.e. not deleted from the archive) because
+    of external flushing needs. Candidates for these are arangosearch links
+    and background index creation.
+  - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
+    which onwards WAL files will be kept because they may be needed by the
+    replication.
+  - `arangodb_flush_subscriptions`: number of currently active flush 
+    subscriptions.
+
+* Updated internal JavaScript dependencies:
+
+  - @xmldom/xmldom: 0.8.0 -> 0.8.6
+  - accepts: 1.3.7 -> 1.3.8
+  - ajv: 8.10.0 -> 8.12.0
+  - ansi_up: 5.0.1 -> 5.1.0
+  - content-disposition: 0.5.3 -> 0.5.4
+  - content-type: 1.0.4 -> 1.0.5
+  - error-stack-parser: 2.0.6 -> 2.1.4
+  - mime-types: 2.1.31 -> 2.1.35
+  - semver: 7.3.5 -> 7.3.8
+
+* FE-135: Add new Graph Viewer with vis.js and change the UI.
+
+* Updated arangosync to v2.15.0.
+
+* FE-19: Updated ArangoDB logo in web interface.
+
+* Make the hashed variant of AQL COLLECT support INTO clauses too.
+  Previously only the sorted variant of AQL COLLECT supported INTO clauses.
+
+* Upgraded OpenSSL to 3.0.8.
+
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
 * Allow usage of projections and covering indexes in more cases.

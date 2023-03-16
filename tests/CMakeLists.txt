@@ -203,7 +203,6 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/typedbuffer.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -244,7 +243,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
-  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
@@ -299,6 +297,7 @@ target_link_libraries(arangodbtests
   arango_tests_futures
   arango_tests_zkd
   arango_tests_pregel
+  arango_tests_pregel_graphstore
   arango_tests_actor
   arango_tests_inspection
   arango_inspection_test_helper

@@ -48,6 +48,7 @@ function PregelAuthSuite () {
     { username: 'bob', password: 'pass2' },
   ];
   const baseUrl = `/_api/control_pregel`;
+  const pregelSystemCollection = '_pregel_queries';
 
   function sendRequest(auth, method, endpoint, body, usePrimary) {
     let res;
@@ -150,6 +151,9 @@ function PregelAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
       assertTrue(result.body.state === "loading" || result.body.state === "running");
+      // check if we've updated the persisted document state properly
+      let persistedState = db[pregelSystemCollection].document(taskId);
+      assertTrue(persistedState.data.state === "loading" || persistedState.data.state === "running");
 
       require('internal').wait(5.0, false);
 
@@ -159,6 +163,10 @@ function PregelAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
+
+      // check if we've updated the persisted document state properly after deletion
+      persistedState = db[pregelSystemCollection].document(taskId);
+      assertTrue(persistedState.data.state === "canceled");
     },
 
     testPregelForwardingDifferentUser: function() {

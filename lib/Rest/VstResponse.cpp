@@ -163,6 +163,12 @@ ErrorCode VstResponse::deflate() {
   return TRI_ERROR_INTERNAL;
 }
 
+ErrorCode VstResponse::gzip() {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
   VPackArrayBuilder array(&builder, /*unindexed*/ true);

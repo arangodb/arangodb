@@ -88,7 +88,6 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -228,8 +227,7 @@ function randomTestSuite() {
         internal.sleep(0.2);
       } while (i-- >= 0);
       assertTrue(i > 0, "timeout in pregel execution");
-    },
-
+    }
   };
 }
 
