@@ -362,8 +362,9 @@ void RestCollectionHandler::handleCommandPost() {
                   planCollection.errorMessage());
     // Try to get a name for Auditlog, if it is available, otherwise report
     // empty string
-    auto collectionName = VelocyPackHelper::getStringView(
-        body, StaticStrings::DataSourceName, "");
+    auto collectionName = VelocyPackHelper::getStringValue(
+        body, StaticStrings::DataSourceName, StaticStrings::Empty);
+
     events::CreateCollection(_vocbase.name(), collectionName,
                              planCollection.errorNumber());
     return;

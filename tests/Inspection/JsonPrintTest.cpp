@@ -161,6 +161,30 @@ TEST_F(JsonPrintInspectorTest, store_map) {
   EXPECT_EQ(expected, stream.str());
 }
 
+TEST_F(JsonPrintInspectorTest, store_set) {
+  Set s{.set = {{1}, {2}, {3}}, .unordered = {4}};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({
+  "set": [
+    {
+      "i": 1
+    },
+    {
+      "i": 2
+    },
+    {
+      "i": 3
+    }
+  ],
+  "unordered": [
+    4
+  ]
+})";
+  EXPECT_EQ(expected, stream.str());
+}
+
 TEST_F(JsonPrintInspectorTest, store_tuples) {
   Tuple t{.tuple = {"foo", 42, 12.34},
           .pair = {987, "bar"},
@@ -577,6 +601,16 @@ TEST_F(JsonPrintInspectorCompactTest, store_map) {
   EXPECT_EQ(expected, stream.str());
 }
 
+TEST_F(JsonPrintInspectorCompactTest, store_set) {
+  Set s{.set = {{1}, {2}, {3}}, .unordered = {4}};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ "set": [ { "i": 1 }, { "i": 2 }, { "i": 3 } ], "unordered": [ 4 ] })";
+  EXPECT_EQ(expected, stream.str());
+}
+
 TEST_F(JsonPrintInspectorCompactTest, store_tuples) {
   Tuple t{.tuple = {"foo", 42, 12.34},
           .pair = {987, "bar"},
@@ -827,6 +861,15 @@ TEST_F(JsonPrintInspectorMinimalTest, store_map) {
 
   auto expected =
       R"({"map":{"1":{"i":1},"2":{"i":2},"3":{"i":3}},"unordered":{"4":4}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(JsonPrintInspectorMinimalTest, store_set) {
+  Set s{.set = {{1}, {2}, {3}}, .unordered = {4}};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({"set":[{"i":1},{"i":2},{"i":3}],"unordered":[4]})";
   EXPECT_EQ(expected, stream.str());
 }
 

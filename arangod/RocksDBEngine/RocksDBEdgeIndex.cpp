@@ -846,9 +846,19 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   size_t n = 0;
   for (it->Seek(lower); it->Valid(); it->Next()) {
     ++n;
-    if (n % 1024 == 0 && collection().vocbase().server().isStopping()) {
-      // periodically check for server shutdown
-      return;
+    if (n % 1024 == 0) {
+      if (collection().vocbase().server().isStopping()) {
+        // periodically check for server shutdown
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (collection().vocbase().isDropped()) {
+        // database was dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (collection().deleted()) {
+        // collection was dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
     }
 
     rocksdb::Slice key = it->key();

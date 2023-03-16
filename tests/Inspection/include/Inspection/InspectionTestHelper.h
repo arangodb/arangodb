@@ -27,6 +27,9 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <fmt/core.h>
 #include <fmt/ostream.h>
@@ -64,11 +67,13 @@ struct TypedInt {
   int value;
   int getValue() { return value; }
   bool operator==(TypedInt const& r) const { return value == r.value; };
+  bool operator<(TypedInt const& r) const { return value < r.value; };
 };
 
 struct Container {
   TypedInt i{.value = 0};
   bool operator==(Container const& r) const { return i == r.i; };
+  bool operator<(Container const& r) const { return i < r.i; };
 };
 
 template<class Inspector>
@@ -107,6 +112,17 @@ struct Map {
 template<class Inspector>
 auto inspect(Inspector& f, Map& x) {
   return f.object(x).fields(f.field("map", x.map),
+                            f.field("unordered", x.unordered));
+}
+
+struct Set {
+  std::set<Container> set;
+  std::unordered_set<int> unordered;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Set& x) {
+  return f.object(x).fields(f.field("set", x.set),
                             f.field("unordered", x.unordered));
 }
 
