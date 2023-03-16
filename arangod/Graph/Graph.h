@@ -320,10 +320,11 @@ class Graph {
    */
   virtual auto getLeadingCollection(
       std::unordered_set<std::string> const& documentCollectionsToCreate,
+      std::unordered_set<std::string> const& edgeCollectionsToCreate,
       std::unordered_set<std::string> const& satellites,
       std::shared_ptr<LogicalCollection> const& anyExistingCollection,
-      std::function<std::string(LogicalCollection const&)> const& getLeader)
-      const noexcept -> std::pair<std::optional<std::string>, bool>;
+      const std::function<std::string(const LogicalCollection&)>& getLeader)
+      const noexcept -> std::pair<std::optional<std::string>, bool> const;
 
   virtual auto requiresInitialUpdate() const noexcept -> bool;
 

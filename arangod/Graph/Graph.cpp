@@ -877,10 +877,11 @@ auto Graph::injectShardingToCollectionBody(
 
 auto Graph::getLeadingCollection(
     std::unordered_set<std::string> const&,
+    std::unordered_set<std::string> const& edgeCollectionsToCreate,
     std::unordered_set<std::string> const&,
     std::shared_ptr<LogicalCollection> const&,
-    std::function<std::string(LogicalCollection const&)> const& getLeader)
-    const noexcept -> std::pair<std::optional<std::string>, bool> {
+    const std::function<std::string(const LogicalCollection&)>& getLeader)
+    const noexcept -> std::pair<std::optional<std::string>, bool> const {
   // Community Graphs have no leading collection
   return std::make_pair(std::nullopt, false);
 }

@@ -402,8 +402,8 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return col.distributeShardsLike();
     };
 
-    auto [leading, unused] =
-        _graph.getLeadingCollection({}, {}, nullptr, getLeaderName);
+    auto [leading, unused] = _graph.getLeadingCollection(
+        {}, {}, {}, nullptr, getLeaderName);
     res = _graph.validateCollection(*(def.get()), leading, getLeaderName);
     if (res.fail()) {
       return OperationResult{std::move(res), options};

@@ -605,9 +605,9 @@ Result GraphManager::ensureCollections(
         return nullptr;
       });
   // This will only have effect in Enterprise Version
-  auto leadingCollectionResult =
-      graph.getLeadingCollection(documentCollectionsToCreate, satellites,
-                                 anyExistingCollection, getLeaderName);
+  auto leadingCollectionResult = graph.getLeadingCollection(
+      documentCollectionsToCreate, edgeCollectionsToCreate,
+      satellites, anyExistingCollection, getLeaderName);
   // NOTE: I would have loved to use auto [leadingCollection, pickedExisting] =
   // above but compiler does not make real variables out them so i could not use
   // them in the following lambdas.
