@@ -109,7 +109,7 @@ const isBusy = function (executionID) {
  */
 const getExecutionHistory = (executionID) => {
   let URL = HISTORY_API;
-  if (executionID) {
+  if (executionID !== undefined) {
     URL += '/' + encodeURIComponent(executionID);
   }
   let requestResult = db._connection.GET(URL);
@@ -119,7 +119,7 @@ const getExecutionHistory = (executionID) => {
 
 const removeExecutionHistory = (executionID) => {
   let URL = HISTORY_API;
-  if (executionID) {
+  if (executionID !== undefined) {
     URL += '/' + encodeURIComponent(executionID);
   }
   let requestResult = db._connection.DELETE(URL);

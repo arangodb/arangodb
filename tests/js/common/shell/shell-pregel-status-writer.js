@@ -63,6 +63,31 @@ function pregelStatusWriterSuite() {
     return [pid, stats];
   };
 
+  const isString = (pid) => {
+    return (typeof pid === 'string' || pid instanceof String)
+  };
+
+  const isBoolean = (pid) => {
+    return (typeof pid === "boolean");
+  };
+
+  const isNumberOrStringNumber = (pid) => {
+    let check = false;
+    if (typeof pid === 'number') {
+      check = true;
+    } else {
+      try {
+        let parsed = JSON.parse(pid);
+        if (typeof parsed === 'number') {
+          check = true;
+        }
+      } catch (ignore) {
+      }
+    }
+
+    return check;
+  };
+
   const verifyPersistedStatePIDRead = (pid, expectedState) => {
     // 1.) verify using direct system access
     const persistedState = db[pregelSystemCollectionName].document(pid);
@@ -85,13 +110,15 @@ function pregelStatusWriterSuite() {
     assertEqual(modulePersistedState.data.state, expectedState);
   };
 
-  const verifyPersistedStatePIDNotAvailableRead = (pid) => {
+  const verifyPersistedStatePIDNotAvailableRead = (pid, testDocumentAPI) => {
     // 1.) verify using direct system access
-    try {
-      db[pregelSystemCollectionName].document(pid);
-      fail();
-    } catch (error) {
-      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+    if (testDocumentAPI) {
+      try {
+        db[pregelSystemCollectionName].document(pid);
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+      }
     }
 
     // 2.) verify using HTTP call
@@ -106,11 +133,25 @@ function pregelStatusWriterSuite() {
     }
 
     // 3.) verify using Pregel JavaScript module
+    const isNumeric = isNumberOrStringNumber(pid);
+    const isBool = isBoolean(pid);
+    const isStringy = isString(pid);
+
     try {
       pregel.history(pid);
       fail();
     } catch (error) {
-      assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+      if (!isServer && (isNumeric || isBool || isStringy)) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+      } else if (isServer && (isNumeric || isStringy)) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
+      } else if (isServer && isBool) {
+        // due v8 internal representation ...
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      } else {
+        // everything else ...
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      }
     }
   };
 
@@ -156,9 +197,26 @@ function pregelStatusWriterSuite() {
       verifyPersistedStatePIDRead(pid, "done");
     },
 
-    testRequestValidButNonAvailableHistoricPregelEntry: function () {
-      const pid = "1337";
-      verifyPersistedStatePIDNotAvailableRead(pid);
+    testRequestValidPidsButNonAvailableHistoricPregelEntry: function () {
+      verifyPersistedStatePIDNotAvailableRead(1337, false);
+      verifyPersistedStatePIDNotAvailableRead("1337", true);
+    },
+
+    testRequestInvalidPidsHistoricPregelEntry: function () {
+      const pidsToTestMapableToNumericValue = [0, 1, 1.337];
+      print(" ==== A ==== ");
+      pidsToTestMapableToNumericValue.forEach(pid => {
+        print("Testing now pid: " + pid);
+        verifyPersistedStatePIDNotAvailableRead(pid, false);
+      });
+
+      print(" ==== B ==== ");
+      const nonNumerics = [true, false, "aString"];
+
+      nonNumerics.forEach(pid => {
+        print("Testing now pid: " + pid);
+        verifyPersistedStatePIDNotAvailableRead(pid, false);
+      });
     },
 
     testSystemCollectionsIsAvailablePerEachDatabase: function () {

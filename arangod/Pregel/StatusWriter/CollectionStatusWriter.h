@@ -77,12 +77,16 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override {
-    TRI_ASSERT(_executionNumber.value != 0);
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::CREATE_DOCUMENT, opData);
   }
   [[nodiscard]] auto readResult() -> OperationResult override {
-    TRI_ASSERT(_executionNumber.value != 0);
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::READ_DOCUMENT, opData);
   }
@@ -90,12 +94,16 @@ struct CollectionStatusWriter : StatusWriterInterface {
     return createOperation(OperationType::READ_DOCUMENT, std::nullopt);
   }
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override {
-    TRI_ASSERT(_executionNumber.value != 0);
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::UPDATE_DOCUMENT, opData);
   }
   [[nodiscard]] auto deleteResult() -> OperationResult override {
-    TRI_ASSERT(_executionNumber.value != 0);
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::DELETE_DOCUMENT, opData);
   }
@@ -143,7 +151,14 @@ struct CollectionStatusWriter : StatusWriterInterface {
     // transaction options
     SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
                                     accessModeType);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    if (accessModeType == AccessMode::Type::READ && !data.has_value()) {
+      // this case potentially handles multiple document reads.
+      trx.addHint(transaction::Hints::Hint::NONE);
+    } else {
+      // in every other case we only need a single operation
+      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    }
+
     OperationOptions options(ExecContext::current());
 
     // begin transaction

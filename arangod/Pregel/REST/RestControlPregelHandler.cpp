@@ -159,7 +159,7 @@ void RestControlPregelHandler::handleGetRequest() {
     return;
   }
 
-  if (suffixes.size() == 1) {
+  if (suffixes.size() == 1 && suffixes.at(0) != "history") {
     if (suffixes[0].empty()) {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -180,18 +180,17 @@ void RestControlPregelHandler::handleGetRequest() {
     c->toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
     return;
-  } else if (suffixes.size() >= 2) {
-    if (suffixes.at(0).empty() || suffixes.at(0) != "history") {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "superfluous parameter, expecting "
-                    "/_api/control_pregel/history[/<id>]");
-      return;
+  } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
+             suffixes.at(0) == "history") {
+    if (suffixes.size() == 1) {
+      return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+          _vocbase, _request->requestType(), std::nullopt));
+    } else {
+      auto executionNumber = arangodb::pregel::ExecutionNumber{
+          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
+      return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+          _vocbase, _request->requestType(), executionNumber));
     }
-    auto executionNumber = arangodb::pregel::ExecutionNumber{
-        arangodb::basics::StringUtils::uint64(suffixes[1])};
-    return handlePregelHistoryResult(_pregel.handleHistoryRequest(
-        _vocbase, _request->requestType(), executionNumber));
   }
 
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
