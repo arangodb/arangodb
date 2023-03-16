@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added support to log response bodies as well as HTTP headers (incoming
+  and outgoing), when the requests log topic is set to TRACE.
+
 * Added support for sending gzip-compressed responses from the server.
   Previously only deflated responses were supported.
 
