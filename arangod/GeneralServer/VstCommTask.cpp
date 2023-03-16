@@ -329,12 +329,12 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << VstRequest::translateMethod(req->requestType()) << "\",\""
           << url(req.get()) << "\"";
 
-      std::string_view body = req->rawPayload();
       if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
           Logger::logRequestParameters()) {
         // Log HTTP headers:
         this->logRequestHeaders("vst", req->headers());
 
+        std::string_view body = req->rawPayload();
         if (!body.empty()) {
           this->logRequestBody("vst", req->contentType(), body);
         }
