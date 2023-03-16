@@ -29,10 +29,21 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 	const [progressValue, setProgressValue] = useState(0);
 	
 	const [visGraphData, setVisGraphData] = useState(null);
+	const [editEdgeMode, setEditEdgeMode] = useState(false);
 
 	if (!isEqual(visGraphData, graphData)) {
 		setVisGraphData(graphData);
 	};
+
+	useEffect(() => {
+		if(networkData) {
+			if(editEdgeMode) {
+				networkData.addEdgeMode();
+			} else {
+				networkData.disableEditMode();
+			}
+		}
+	}, [editEdgeMode]);
 
 	const nodes = [
 		...graphData.nodes
@@ -51,6 +62,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				enabled: false,
 				addEdge: function (data, callback) {
 					onAddEdge(data);
+					setEditEdgeMode(false);
 				}
 			};
 			setLayoutOptions(graphData.settings.layout);
@@ -201,7 +213,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				</li>
 				<li title='addEdgeToDb'
 					onClick={() => {
-						networkData.addEdgeMode();
+						setEditEdgeMode(true);
 						toggleContextMenu("");
 					}}>
 					Add edge to database
