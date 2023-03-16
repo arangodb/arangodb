@@ -435,7 +435,7 @@ clicked in the web interface. For backwards compatibility, the default value is
       .setIntroducedIn(31100)
       .setLongDescription(R"(The default behavior is to return an HTTP
 `403 Forbidden` status code. You can set the option to `503` to return a
-`503 Service Unavailable`, which leads to retries on the Coordinator.)");
+`503 Service Unavailable`.)");
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
