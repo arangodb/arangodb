@@ -236,6 +236,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _replicatedStateId =
           info.get("replicatedStateId").extract<replication2::LogId>();
     }
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
 
