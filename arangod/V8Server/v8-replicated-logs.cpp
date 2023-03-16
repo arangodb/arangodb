@@ -42,7 +42,6 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/Utilities.h"
 
-#include <absl/strings/str_cat.h>
 
 using namespace arangodb::replication2;
 
