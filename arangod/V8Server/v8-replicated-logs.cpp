@@ -99,7 +99,7 @@ static void JS_GetReplicatedLog(
     TRI_V8_THROW_EXCEPTION_USAGE("_replicatedLog(<id>)");
   }
 
-  auto id = LogId{TRI_ObjectToUInt64(isolate, args[0], false)};
+  auto id = LogId{TRI_ObjectToUInt64(isolate, args[0], true)};
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
@@ -437,7 +437,7 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() == 0) {
     length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() == 1) {
-    length = TRI_ObjectToUInt64(isolate, args[0], false);
+    length = TRI_ObjectToUInt64(isolate, args[0], true);
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 10>)");
   }
@@ -471,7 +471,7 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() == 0) {
     length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() == 1) {
-    length = TRI_ObjectToUInt64(isolate, args[0], false);
+    length = TRI_ObjectToUInt64(isolate, args[0], true);
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 10>)");
   }
@@ -507,11 +507,11 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto startIdx = LogIndex(0);
   if (args.Length() > 0) {
-    startIdx = LogIndex(TRI_ObjectToUInt64(isolate, args[0], false));
+    startIdx = LogIndex(TRI_ObjectToUInt64(isolate, args[0], true));
   }
   auto stopIdx = LogIndex(startIdx + ReplicatedLogMethods::kDefaultLimit + 1);
   if (args.Length() > 1) {
-    stopIdx = LogIndex(TRI_ObjectToUInt64(isolate, args[1], false));
+    stopIdx = LogIndex(TRI_ObjectToUInt64(isolate, args[1], true));
   }
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
@@ -547,10 +547,10 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto limit = ReplicatedLogMethods::kDefaultLimit;
 
   if (args.Length() > 0) {
-    first = LogIndex(TRI_ObjectToUInt64(isolate, args[0], false));
+    first = LogIndex(TRI_ObjectToUInt64(isolate, args[0], true));
   }
   if (args.Length() > 1) {
-    limit = TRI_ObjectToUInt64(isolate, args[1], false);
+    limit = TRI_ObjectToUInt64(isolate, args[1], true);
   }
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
@@ -583,12 +583,16 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("at(<index>)");
   } else {
-    index = LogIndex(TRI_ObjectToUInt64(isolate, args[0], false));
+    index = LogIndex(TRI_ObjectToUInt64(isolate, args[0], true));
   }
 
   auto entry = ReplicatedLogMethods::createInstance(vocbase)
                    ->getLogEntryByIndex(id, index)
                    .get();
+  if (!entry) {
+    TRI_V8_RETURN(
+        TRI_VPackToV8(isolate, arangodb::velocypack::Slice::nullSlice()));
+  }
   VPackBuilder response;
   entry->toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
@@ -611,7 +615,7 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("release(<index>)");
   } else {
-    index = LogIndex(TRI_ObjectToUInt64(isolate, args[0], false));
+    index = LogIndex(TRI_ObjectToUInt64(isolate, args[0], true));
   }
 
   auto result =
