@@ -456,7 +456,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
         } else if (_state == DB_DROP) {
           // prepareDropDatabase should always write entry
           VPackSlice const del = data.get("deleted");
-          TRI_ASSERT(del.isBool() && del.getBool());
+          TRI_ASSERT(del.isTrue()) << data.toJson();
           {
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(_currentSequence)));
