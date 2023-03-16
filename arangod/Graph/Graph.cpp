@@ -807,11 +807,6 @@ void Graph::createCollectionOptions(VPackBuilder& builder,
               VPackValue(replicationFactor()));
 }
 
-void Graph::createSatelliteCollectionOptions(VPackBuilder& builder,
-                                             bool waitForSync) const {
-  TRI_ASSERT(false);
-}
-
 std::optional<std::reference_wrapper<const EdgeDefinition>>
 Graph::getEdgeDefinition(std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);

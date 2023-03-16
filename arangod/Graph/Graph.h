@@ -172,14 +172,6 @@ class Graph {
   virtual void createCollectionOptions(VPackBuilder& builder,
                                        bool waitForSync) const;
 
-  /*
-   * Creates a document in the builder containing all relevant options for the
-   * creation satellite collection process (e.g. replicationFactor,
-   * numberOfShards, ...)
-   */
-  virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
-                                                bool waitForSync) const;
-
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
