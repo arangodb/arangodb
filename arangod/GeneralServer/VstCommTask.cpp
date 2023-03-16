@@ -329,6 +329,47 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << VstRequest::translateMethod(req->requestType()) << "\",\""
           << url(req.get()) << "\"";
 
+      std::string_view body = req->rawPayload();
+      if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+          Logger::logRequestParameters()) {
+        // Log HTTP headers:
+        std::string headersForLogging =
+            StringUtils::headersToString(req->headers());
+        LOG_TOPIC("92fd7", TRACE, Logger::REQUESTS)
+            << "\"vst-request-headers\",\"" << (void*)this << "\",\""
+            << headersForLogging << "\"";
+
+        if (!body.empty()) {
+          std::string bodyForLogging;
+          if (req->contentType() == ContentType::JSON ||
+              req->contentType() == ContentType::HTML ||
+              req->contentType() == ContentType::TEXT) {
+            bodyForLogging = StringUtils::escapeUnicode(
+                std::string_view(body.data(), body.size()));
+          } else {
+            try {
+              velocypack::Slice s = req->payload(false);
+              if (!s.isNone()) {
+                // "none" can happen if the content-type is neither JSON nor
+                // vpack
+                bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+              }
+            } catch (...) {
+              // cannot stringify request body
+            }
+
+            if (bodyForLogging.empty() && !body.empty()) {
+              bodyForLogging = "potential binary data";
+            }
+          }
+
+          LOG_TOPIC("92fd8", TRACE, Logger::REQUESTS)
+              << "\"vst-request-body\",\"" << (void*)this << "\",\""
+              << rest::contentTypeToString(req->contentType()) << "\",\""
+              << req->contentLength() << "\",\"" << bodyForLogging << "\"";
+        }
+      }
+
       // TODO use different token if authentication header is present
       CommTask::Flow cont = this->prepareExecution(_authToken, *req, mode);
       if (cont == CommTask::Flow::Continue) {
@@ -410,6 +451,46 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << static_cast<int>(response.responseCode()) << ","
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
+  }
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    // Log HTTP headers:
+    std::string headersForLogging =
+        StringUtils::headersToString(response.headers());
+    LOG_TOPIC("92fda", TRACE, Logger::REQUESTS)
+        << "\"vst-response-headers\",\"" << (void*)this << "\",\""
+        << headersForLogging << "\"";
+
+    auto& payload = response.payload();
+    if (!payload.empty()) {
+      std::string bodyForLogging;
+      if (response.contentType() == ContentType::JSON ||
+          response.contentType() == ContentType::HTML ||
+          response.contentType() == ContentType::TEXT) {
+        bodyForLogging = StringUtils::escapeUnicode(std::string_view(
+            reinterpret_cast<char const*>(payload.data()), payload.size()));
+      } else {
+        try {
+          velocypack::Slice s(payload.data());
+          if (!s.isNone()) {
+            // "none" can happen if the content-type is neither JSON nor vpack
+            bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+          }
+        } catch (...) {
+          // cannot stringify request body
+        }
+
+        if (bodyForLogging.empty()) {
+          bodyForLogging = "potential binary data";
+        }
+      }
+
+      LOG_TOPIC("92fdb", TRACE, Logger::REQUESTS)
+          << "\"vst-response-body\",\"" << (void*)this << "\",\""
+          << rest::contentTypeToString(response.contentType()) << "\",\""
+          << bodyForLogging.size() << "\",\"" << bodyForLogging << "\"";
+    }
   }
 
   // and give some request information

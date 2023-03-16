@@ -558,7 +558,7 @@ void HttpCommTask<T>::doProcessRequest() {
             _request->contentType() == ContentType::HTML ||
             _request->contentType() == ContentType::TEXT) {
           bodyForLogging = StringUtils::escapeUnicode(
-              std::string_view(_response->data(), _response->size()));
+              std::string_view(body.data(), body.size()));
         } else {
           try {
             velocypack::Slice s = _request->payload(false);
@@ -787,7 +787,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
           // cannot stringify request body
         }
 
-        if (bodyForLogging.empty() && !_response->empty()) {
+        if (bodyForLogging.empty()) {
           bodyForLogging = "potential binary data";
         }
       }
