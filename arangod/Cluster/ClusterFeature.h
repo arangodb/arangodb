@@ -121,7 +121,9 @@ class ClusterFeature : public ArangodFeature {
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
   std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
 
-  std::uint32_t statusCodeFailedWriteConcern() const { return _statusCodeFailedWriteConcern; }
+  std::uint32_t statusCodeFailedWriteConcern() const {
+    return _statusCodeFailedWriteConcern;
+  }
 
   metrics::Counter& followersDroppedCounter() {
     TRI_ASSERT(_followersDroppedCounter != nullptr);
