@@ -8356,11 +8356,12 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
     if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
-      nodes.clear();
+      containers::SmallVector<ExecutionNode*, 8> graphNodes;
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
+          graphNodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS},
+          true);
       bool const allSatellite =
-          std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+          std::all_of(graphNodes.begin(), graphNodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
             return graphNode->isLocalGraphNode();
           });
