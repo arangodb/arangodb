@@ -65,6 +65,9 @@ class endpointRunner extends tu.runInArangoshRunner {
     // we append one cleanup directory for the invoking logic...
     this.dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
     fs.makeDirectory(this.dummyDir);
+    // For now we allways want the noise here!
+    this.options = _.clone(this.options);
+    this.options.extremeVerbosity = true;
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
                                       {
