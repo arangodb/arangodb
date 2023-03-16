@@ -28,7 +28,6 @@
 #include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
-
 #include <optional>
 #include <cstdint>
 
