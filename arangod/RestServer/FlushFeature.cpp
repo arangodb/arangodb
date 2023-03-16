@@ -78,6 +78,10 @@ void FlushFeature::registerFlushSubscription(
   }
 
   _flushSubscriptions.emplace_back(subscription);
+
+  LOG_TOPIC("8bbbc", DEBUG, arangodb::Logger::FLUSH)
+      << "registered flush subscription: " << subscription->name() << ", tick "
+      << subscription->tick();
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
@@ -131,7 +135,7 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   }
 
   LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
-      << "Flush tick released: '" << minTick << "'"
+      << "Flush tick released: " << minTick
       << ", stale flush subscription(s) released: " << stale
       << ", active flush subscription(s): " << active
       << ", initial engine tick: " << initialTick;

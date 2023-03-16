@@ -783,8 +783,6 @@ class ClusterInfo final {
 
   void setFailedServers(containers::FlatHashSet<ServerID> failedServers);
 
-  bool isFailedServer(ServerID const& id) const noexcept;
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setServers(containers::FlatHashMap<ServerID, std::string> servers);
 
