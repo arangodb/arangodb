@@ -1,10 +1,5 @@
 version: 2.1
 
-parameters:
-  enterprise-branch:
-    type: string
-    default: devel
-
 jobs:
   minimal-checkout:
     docker:
