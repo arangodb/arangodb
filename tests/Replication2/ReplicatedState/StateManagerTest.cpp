@@ -45,6 +45,8 @@
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/IScheduler.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -69,11 +71,11 @@ struct FakeScheduler : IScheduler {
     auto p = futures::Promise<futures::Unit>{};
     auto f = p.getFuture();
 
-    auto thread = std::jthread(
+    auto thread = std::thread(
         [delay, p = std::move(p), name = std::string(name)]() mutable noexcept {
-          // for debugging
-          __attribute__((used)) thread_local std::string const _name =
-              std::move(name);
+          // // for debugging
+          // __attribute__((used)) thread_local std::string const _name =
+          //    std::move(name);
           std::this_thread::sleep_for(delay);
           p.setValue();
         });
@@ -87,7 +89,7 @@ struct FakeScheduler : IScheduler {
                     fu2::unique_function<void(bool canceled)> handler) noexcept
       -> WorkItemHandle override {
     auto thread =
-        std::jthread([delay, handler = std::move(handler)]() mutable noexcept {
+        std::thread([delay, handler = std::move(handler)]() mutable noexcept {
           std::this_thread::sleep_for(delay);
           std::move(handler)(false);
         });
@@ -96,7 +98,7 @@ struct FakeScheduler : IScheduler {
   }
 
   void queue(fu2::unique_function<void()> cb) noexcept override {
-    auto thread = std::jthread(
+    auto thread = std::thread(
         [cb = std::move(cb)]() mutable noexcept { std::move(cb)(); });
     thread.detach();
   }
