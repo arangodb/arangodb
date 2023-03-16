@@ -551,6 +551,7 @@ void HttpCommTask<T>::doProcessRequest() {
       LOG_TOPIC("b9e77", TRACE, Logger::REQUESTS)
           << "\"http-request-headers\",\"" << (void*)this << "\",\""
           << headersForLogging << "\"";
+
       if (!body.empty()) {
         std::string bodyForLogging;
         if (_request->contentType() == ContentType::JSON ||
@@ -766,6 +767,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     LOG_TOPIC("8f553", TRACE, Logger::REQUESTS)
         << "\"http-response-headers\",\"" << (void*)this << "\",\""
         << headersForLogging << "\"";
+
     if (!_response->empty()) {
       std::string bodyForLogging;
       if (response.contentType() == ContentType::JSON ||
