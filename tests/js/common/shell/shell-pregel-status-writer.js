@@ -237,9 +237,29 @@ function pregelStatusWriterSuite() {
     },
 
     testReadAllHistoricEntriesHTTP: function () {
+      if (isServer) {
+        // This specific test can only be executed in shell_client environment.
+        return;
+      }
+      // to guarantee we have at least two results available
+      for (let i = 0; i < 2; i++) {
+        executeExamplePregel();
+      }
+      const cmd = `${pregelHistoricEndpoint}`;
+      const response = arango.GET(cmd);
+      assertTrue(Array.isArray(response));
+      assertTrue(response.length >= 2);
     },
 
     testReadAllHistoricEntriesModule: function () {
+      // to guarantee we have at least two results available
+      for (let i = 0; i < 2; i++) {
+        executeExamplePregel();
+      }
+
+      const result = pregel.history();
+      assertTrue(Array.isArray(result));
+      assertTrue(result.length >= 2);
     },
 
     testRemoveHistoricPregelEntryHTTP: function () {
