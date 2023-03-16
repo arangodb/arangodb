@@ -83,8 +83,7 @@ void ShellFeature::collectOptions(
 
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
   options->addOption("--telemetrics.send-to-endpoint",
                      "Send telemetrics to endpoint",
                      new BooleanParameter(&_sendToEndpoint));
