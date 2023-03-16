@@ -72,6 +72,7 @@
 
     events: {
       'click #downloadPNG': 'downloadPNG',
+      'click #switchToVisGraphViewer': 'switchToVisGraphViewer',
       'click #loadFullGraph': 'loadFullGraphModal',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
@@ -103,6 +104,12 @@
         background: 'white',
         zoom: false
       });
+    },
+
+    switchToVisGraphViewer: function () {
+      const url = window.location.href;
+      const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
+      window.location.href = `/_db/_system/_admin/aardvark/index.html#visgraphs/${linkToNewGraphViewer}`;
     },
 
     loadFullGraphModal: function () {

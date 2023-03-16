@@ -55,7 +55,7 @@ struct AppendEntriesManager;
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
 
-namespace arangodb::replication2::replicated_log::refactor {
+namespace arangodb::replication2::replicated_log {
 
 struct MethodsProvider;
 struct FollowerManager {
@@ -107,7 +107,7 @@ struct LogFollowerImpl : ILogFollower {
 
   auto getQuickStatus() const -> QuickLogStatus override;
 
-  [[nodiscard]] auto resign2() && -> std::tuple<
+  [[nodiscard]] auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
@@ -129,4 +129,4 @@ struct LogFollowerImpl : ILogFollower {
   Guarded<FollowerManager> guarded;
 };
 
-}  // namespace arangodb::replication2::replicated_log::refactor
+}  // namespace arangodb::replication2::replicated_log

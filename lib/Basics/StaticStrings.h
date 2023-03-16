@@ -97,9 +97,8 @@ class StaticStrings {
   static std::string const JobsCollection;
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
-  static std::string const ModulesCollection;
-  static std::string const FishbowlCollection;
   static std::string const FrontendCollection;
+  static std::string const PregelCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -235,6 +234,7 @@ class StaticStrings {
   // encodings
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
+  static std::string const EncodingGzip;
 
   // arangosh result body
   static std::string const Body;
@@ -380,6 +380,10 @@ class StaticStrings {
   static std::string const LowestIndexToKeep;
   static std::string const Outcome;
   constexpr static std::string_view MessageId = "messageId";
+  constexpr static std::string_view LogIndex = "logIndex";
+  constexpr static std::string_view LogTerm = "logTerm";
+  constexpr static std::string_view Payload = "payload";
+  constexpr static std::string_view Meta = "meta";
 
   // Replication 2.0 API Strings
   constexpr static std::string_view ApiLogInternal = "/_api/log-internal";

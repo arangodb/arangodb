@@ -219,6 +219,7 @@ class LogicalCollection : public LogicalDataSource {
   ShardingInfo* shardingInfo() const;
 
   UserInputCollectionProperties getCollectionProperties() const noexcept;
+
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;

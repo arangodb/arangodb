@@ -1673,7 +1673,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   triggerAsyncReplication();
   return index;
 }
-auto replicated_log::LogLeader::resign2() && -> std::tuple<
+auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   auto [core, actionOuter, leaderEstablished, stateHandle] =
