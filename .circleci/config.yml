@@ -32,7 +32,6 @@ jobs:
 
       - continuation/continue:
           configuration_path: generated_config.yml # use newly generated config to continue
-          parameters: '{ "enterprise-branch-api": "<< pipeline.parameters.enterprise-branch >>" }'
 
 # our single workflow, that triggers the setup job defined above
 workflows:

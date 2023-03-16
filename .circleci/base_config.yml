@@ -1,8 +1,7 @@
 version: 2.1
 
-# Parameters in base_config must use different names from config.yml
 parameters:
-  enterprise-branch-api:
+  enterprise-branch:
     type: string
     default: devel
 
@@ -96,7 +95,7 @@ jobs:
           command: |
             if [ << parameters.enterprise >> = true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
-              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "<< pipeline.parameters.enterprise-branch-api >>" /root/project/enterprise
+              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "<< pipeline.parameters.enterprise-branch >>" /root/project/enterprise
             fi
       - run:
           name: Print SCCache Settings
