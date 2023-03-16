@@ -140,7 +140,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
 
-  auto resign2() && -> std::tuple<
+  auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
