@@ -287,7 +287,14 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
     }
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+    if (result.get().hasSlice()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+    } else {
+      // Should always have a slice, doing this check to be sure.
+      // (e.g. a truncate might not return a Slice)
+      TRI_V8_RETURN(TRI_VPackToV8(
+          isolate, arangodb::velocypack::Slice::emptyObjectSlice()));
+    }
   };
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -346,7 +353,15 @@ static void JS_PregelHistoryRemove(
 
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
     }
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+
+    if (result.get().hasSlice()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+    } else {
+      // Should always have a slice, doing this check to be sure.
+      // (e.g. a truncate might not return a Slice)
+      TRI_V8_RETURN(TRI_VPackToV8(
+          isolate, arangodb::velocypack::Slice::emptyObjectSlice()));
+    }
   };
 
   auto& vocbase = GetContextVocBase(isolate);

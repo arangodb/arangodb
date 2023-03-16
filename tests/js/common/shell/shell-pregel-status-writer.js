@@ -236,30 +236,55 @@ function pregelStatusWriterSuite() {
       });
     },
 
-    testReadAllHistoricEntriesHTTP: function () {
+    testReadAllHistoricEntriesHTTPAndDeleteAfterwards: function () {
       if (isServer) {
         // This specific test can only be executed in shell_client environment.
         return;
       }
       // to guarantee we have at least two results available
+      // We need forcefully wait here, otherwise we might create
+      // new entries during pregel execution.
       for (let i = 0; i < 2; i++) {
-        executeExamplePregel();
+        executeExamplePregel(true);
       }
       const cmd = `${pregelHistoricEndpoint}`;
       const response = arango.GET(cmd);
       assertTrue(Array.isArray(response));
       assertTrue(response.length >= 2);
+
+      // now performing a full remove of all historic entries as well
+      // Note: Also tested here to save time (setup/tearDown)
+      const deletedResponse = arango.DELETE_RAW(cmd);
+      assertEqual(deletedResponse.code, 200);
+
+      {
+        // verify entries are gone
+        const response = arango.GET(cmd);
+        assertTrue(Array.isArray(response));
+        assertEqual(response.length, 0);
+      }
     },
 
     testReadAllHistoricEntriesModule: function () {
       // to guarantee we have at least two results available
+      // We need forcefully wait here, otherwise we might create
+      // new entries during pregel execution.
       for (let i = 0; i < 2; i++) {
-        executeExamplePregel();
+        executeExamplePregel(true);
       }
 
       const result = pregel.history();
       assertTrue(Array.isArray(result));
       assertTrue(result.length >= 2);
+
+      // now performing a full remove of all historic entries as well
+      // Note: Also tested here to save time (setup/tearDown)
+      {
+        pregel.removeHistory();
+        const result = pregel.history();
+        assertTrue(Array.isArray(result));
+        assertEqual(result.length, 0);
+      }
     },
 
     testRemoveHistoricPregelEntryHTTP: function () {
@@ -307,12 +332,6 @@ function pregelStatusWriterSuite() {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message, error.errorMessage);
       }
-    },
-
-    testRemoveCompleteHistoryHTTP: function () {
-    },
-
-    testRemoveCompleteHistoryModule: function () {
     }
   };
 }

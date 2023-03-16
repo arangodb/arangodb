@@ -96,7 +96,7 @@ RestControlPregelHandler::forwardingTarget() {
   // Do NOT forward requests to any other arangod instance in case we're
   // requesting the history API. Any coordinator is able to handle this
   // request.
-  if (suffixes.size() >= 2 && suffixes.at(0) == "history") {
+  if (suffixes.size() >= 1 && suffixes.at(0) == "history") {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -221,26 +221,36 @@ void RestControlPregelHandler::handlePregelHistoryResult(
     return;
   }
 
-  TRI_ASSERT(result->hasSlice());
-  generateResult(rest::ResponseCode::OK, result.get().slice());
+  if (result->hasSlice()) {
+    generateResult(rest::ResponseCode::OK, result.get().slice());
+  } else {
+    // Should always have a Slice, doing this check to be sure.
+    // (e.g. a truncate might not return a Slice)
+    generateResult(rest::ResponseCode::OK,
+                   arangodb::velocypack::Slice::emptyObjectSlice());
+  }
 }
 
 void RestControlPregelHandler::handleDeleteRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() >= 2) {
-    if (suffixes.at(0).empty() || suffixes.at(0) != "history") {
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-          "bad parameter, expecting /_api/control_pregel/history[/<id>]");
-      return;
+
+  if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
+      suffixes.at(0) == "history") {
+    if (suffixes.size() == 1) {
+      return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+          _vocbase, _request->requestType(), std::nullopt));
+    } else {
+      auto executionNumber = arangodb::pregel::ExecutionNumber{
+          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
+      return handlePregelHistoryResult(_pregel.handleHistoryRequest(
+          _vocbase, _request->requestType(), executionNumber));
     }
-    auto executionNumber = arangodb::pregel::ExecutionNumber{
-        arangodb::basics::StringUtils::uint64(suffixes[1])};
-    return handlePregelHistoryResult(_pregel.handleHistoryRequest(
-        _vocbase, _request->requestType(), executionNumber));
-  } else if ((suffixes.size() != 1) || suffixes[0].empty()) {
+  }
+
+  if ((suffixes.size() != 1) || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "bad parameter, expecting /_api/control_pregel/<id>");
+                  "bad parameter, expecting /_api/control_pregel/<id> or "
+                  "/_api/control_pregel/history[/<id>]");
     return;
   }
 

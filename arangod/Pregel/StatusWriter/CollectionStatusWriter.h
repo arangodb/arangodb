@@ -151,8 +151,10 @@ struct CollectionStatusWriter : StatusWriterInterface {
     // transaction options
     SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
                                     accessModeType);
-    if (accessModeType == AccessMode::Type::READ && !data.has_value()) {
-      // this case potentially handles multiple document reads.
+    if ((accessModeType == AccessMode::Type::READ && !data.has_value()) ||
+        (operation == OperationType::DELETE_DOCUMENT && !data.has_value())) {
+      // this case potentially handles multiple document reads or
+      // multiple deletes.
       trx.addHint(transaction::Hints::Hint::NONE);
     } else {
       // in every other case we only need a single operation
@@ -199,8 +201,11 @@ struct CollectionStatusWriter : StatusWriterInterface {
                 trx.remove(StaticStrings::PregelCollection, payload->slice(),
                            {}));
           } else {
-            return trx.truncateAsync(StaticStrings::PregelCollection, options)
-                .get();
+            OperationOptions peter;
+            return handleOperationResult(
+                trx, options, transactionResult,
+                trx.truncateAsync(StaticStrings::PregelCollection, options)
+                    .get());
           }
         }
       }
