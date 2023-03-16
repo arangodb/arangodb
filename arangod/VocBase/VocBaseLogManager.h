@@ -64,7 +64,7 @@ struct IStorageEngineMethods;
 }  // namespace replication2
 
 struct VocBaseLogManager {
-  explicit VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database);
+  VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database);
 
   [[nodiscard]] auto getReplicatedStateById(replication2::LogId id) -> ResultT<
       std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
@@ -124,8 +124,7 @@ struct VocBaseLogManager {
     bool resignAllWasCalled{false};
 
     auto buildReplicatedStateWithMethods(
-        replication2::LogId const id, std::string_view type,
-        VPackSlice parameters,
+        replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
         TRI_vocbase_t& vocbase,
@@ -136,8 +135,7 @@ struct VocBaseLogManager {
             replication2::replicated_state::ReplicatedStateBase>>;
 
     auto buildReplicatedState(
-        replication2::LogId const id, std::string_view type,
-        VPackSlice parameters,
+        replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
         TRI_vocbase_t& vocbase)

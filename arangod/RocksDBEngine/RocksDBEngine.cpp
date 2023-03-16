@@ -104,6 +104,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
 #include "Inspection/VPack.h"
 
@@ -2881,6 +2882,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
+
+      if (collection->replicationVersion() ==
+          arangodb::replication::Version::TWO) {
+        vocbase->_logManager->_initCollections.emplace(
+            collection->replicatedStateId(), collection);
+      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)

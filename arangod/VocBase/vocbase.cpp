@@ -242,12 +242,6 @@ void TRI_vocbase_t::registerCollection(
     ScopeGuard guard3{[&]() noexcept { _dataSourceByUuid.erase(guid); }};
 
     _collections.emplace_back(collection);
-    if (collection->replicationVersion() ==
-        arangodb::replication::Version::TWO) {
-      // TODO do the guard dance as well
-      _logManager->_initCollections.emplace(collection->replicatedStateId(),
-                                            collection);
-    }
     guard1.cancel();
     guard2.cancel();
     guard3.cancel();
