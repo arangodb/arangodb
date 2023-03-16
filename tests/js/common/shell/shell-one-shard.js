@@ -387,7 +387,7 @@ function OneShardPropertiesSuite () {
         }
 
         {
-          let col = db._create("overrideCollection1", { writeConcern : 1});
+          let col = db._create("overrideCollection1", {writeConcern: 1});
           let colProperties = col.properties();
           assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
           assertEqual(colProperties.writeConcern, 1);
@@ -448,6 +448,7 @@ function OneShardPropertiesSuite () {
           assertEqual(col3Properties.distributeShardsLike, col2.name());
           assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
         }
+      }
     },
 
     testSatelliteDB : function () {
