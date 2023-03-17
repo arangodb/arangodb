@@ -233,6 +233,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
                                 payload->slice(), {})
                   .get());
         }
+        TRI_ASSERT(false);
       }
       default: {
         TRI_ASSERT(false);
