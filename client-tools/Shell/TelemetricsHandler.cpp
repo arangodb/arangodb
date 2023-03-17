@@ -31,6 +31,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -38,13 +39,10 @@
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
 #include "Rest/GeneralRequest.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-utils.h"
 
 #include <velocypack/Slice.h>
-
-#include "Logger/LogMacros.h"
-
-#include "V8/v8-deadline.h"
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
