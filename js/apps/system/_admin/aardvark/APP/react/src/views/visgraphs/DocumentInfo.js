@@ -11,7 +11,7 @@ export const DocumentInfo = ({ attributes }) => {
         {
           Object.keys(attributes)
           .map((key, i) => (
-            <Tag size={'md'} key={'nodesCountTag'} variant='solid' background='gray.800' color='white'>
+            <Tag size={'md'} key={`${key}`} variant='solid' background='gray.800' color='white'>
               {`${key}: ${JSON.stringify(attributes[key])}`}
             </Tag>
           ))
