@@ -58,11 +58,11 @@ class TelemetricsHandler {
 
  private:
   static constexpr char kOriginalUrl[] =
-      "https://europe-west3-telemetrics-project.cloudfunctions.net/"
-      "telemetrics-cf-3";
-
+      //"https://europe-west3-telemetrics-project.cloudfunctions.net/"
+      // "telemetrics-cf-3";
+      "https://telemetrics.arangodb.com/v1/collect";
   Result checkHttpResponse(
-      std::unique_ptr<httpclient::SimpleHttpResult> const& response);
+      std::unique_ptr<httpclient::SimpleHttpResult> const& response) const;
   void fetchTelemetricsFromServer();
 
   void arrangeTelemetrics();

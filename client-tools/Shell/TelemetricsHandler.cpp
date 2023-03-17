@@ -83,7 +83,7 @@ TelemetricsHandler::~TelemetricsHandler() {
 }
 
 Result TelemetricsHandler::checkHttpResponse(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response) {
+    std::unique_ptr<httpclient::SimpleHttpResult> const& response) const {
   using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
@@ -234,15 +234,17 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
         clientParams.setRequestTimeout(30);
       }
       lk.unlock();
+      std::unique_ptr<httpclient::SimpleHttpResult> response;
       if (isOriginalUrl) {
-        std::unique_ptr<httpclient::SimpleHttpResult> response(
+        response =
+            std::make_unique<httpclient::SimpleHttpResult>(_httpClient->request(
+                rest::RequestType::POST, relativeUrl, compressedBody.data(),
+                compressedBody.size(), headers));
+      } else {
+        response = std::make_unique<httpclient::SimpleHttpResult>(
             _httpClient->request(rest::RequestType::POST, relativeUrl,
-                                 compressedBody.data(), compressedBody.size(),
-                                 headers));
+                                 body.data(), body.size(), headers));
       }
-      std::unique_ptr<httpclient::SimpleHttpResult> response(
-          _httpClient->request(rest::RequestType::POST, relativeUrl,
-                               body.data(), body.size(), headers));
       lk.lock();
       result = this->checkHttpResponse(response);
       if (result.ok()) {
