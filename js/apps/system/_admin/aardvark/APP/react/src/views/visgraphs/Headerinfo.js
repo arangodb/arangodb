@@ -22,6 +22,12 @@ import GraphLayoutSelector from "./GraphLayoutSelector";
 import AccordionView from './components/Accordion/Accordion';
 import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
+import {
+  Box,
+  Flex,
+  Spacer,
+  Input,
+  Center } from '@chakra-ui/react';
 
 export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onGraphDataLoaded, onIsLoadingData }) => {
   
@@ -98,78 +104,88 @@ export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onG
         {graphName}
 
         <div style={{ 'marginLeft': 'auto' }}>
-          <ToolTip
-            title={"Download screenshot"}
-            setArrow={true}
-          >
-            <button
-              onClick={() => {
-                let canvas = document.getElementsByTagName('canvas')[0];
-                
-                // set canvas background to white for screenshot download
-                let context = canvas.getContext("2d");
-                context.globalCompositeOperation = "destination-over";
-                context.fillStyle = '#ffffff';
-                context.fillRect(0, 0, canvas.width, canvas.height);
-                
-                let canvasUrl = canvas.toDataURL("image/jpeg", 1);
-                const createEl = document.createElement('a');
-                createEl.style.backgroundColor = '#ffffff';
-                createEl.href = canvasUrl;
-                createEl.download = `${graphName}`;
-                createEl.click();
-                createEl.remove();
-              }}
-              style={{
-                'background': '#fff',
-                'border': 0,
-                'marginLeft': 'auto'
-              }}><i class="fa fa-download" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
-            </button>
-          </ToolTip>
+        <Flex direction='row'>
+          <Center>
+            <Box mr='3'>
+              <ToolTip
+                title={"Download screenshot"}
+                setArrow={true}
+              >
+                <button
+                  onClick={() => {
+                    let canvas = document.getElementsByTagName('canvas')[0];
+                    
+                    // set canvas background to white for screenshot download
+                    let context = canvas.getContext("2d");
+                    context.globalCompositeOperation = "destination-over";
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    let canvasUrl = canvas.toDataURL("image/jpeg", 1);
+                    const createEl = document.createElement('a');
+                    createEl.style.backgroundColor = '#ffffff';
+                    createEl.href = canvasUrl;
+                    createEl.download = `${graphName}`;
+                    createEl.click();
+                    createEl.remove();
+                  }}
+                  style={{
+                    'background': '#fff',
+                    'border': 0,
+                    'marginLeft': 'auto'
+                  }}><i class="fa fa-download" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+                </button>
+              </ToolTip>
+            </Box>
 
-          <ToolTip
-            title={"Enter full screen"}
-            setArrow={true}
-          >
-            <button
-              onClick={() => {
-                const elem = document.getElementById("visnetworkdiv");
-                enterFullscreen(elem);
-              }}
-              style={{
-                'background': '#fff',
-                'border': 0
-              }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
-            </button>
-          </ToolTip>
+            <Box mr='3'>
+              <ToolTip
+                title={"Enter full screen"}
+                setArrow={true}
+              >
+                <button
+                  onClick={() => {
+                    const elem = document.getElementById("visnetworkdiv");
+                    enterFullscreen(elem);
+                  }}
+                  style={{
+                    'background': '#fff',
+                    'border': 0
+                  }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+                </button>
+              </ToolTip>
+            </Box>
 
-          <ToolTip
-            title={"Switch to the old graph viewer"}
-            setArrow={true}
-          >
-            <button
-              onClick={() => {
-                window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
-              }}
+            <Box mr='3'>
+              <ToolTip
+                title={"Switch to the old graph viewer"}
+                setArrow={true}
+              >
+                <button
+                  onClick={() => {
+                    window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+                  }}
+                  style={{
+                    'background': '#fff',
+                    'border': 0
+                  }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+                </button>
+              </ToolTip>
+            </Box>
+            
+            <IconButton icon={'bars'} onClick={() => {
+              toggleDrawer(!open)
+            }}
               style={{
-                'background': '#fff',
-                'border': 0
-              }}><i class="fa fa-retweet" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
-            </button>
-          </ToolTip>
-        
-        <IconButton icon={'bars'} onClick={() => {
-          toggleDrawer(!open)
-        }}
-          style={{
-          background: '#2ECC71',
-          color: 'white',
-          paddingLeft: '14px',
-          marginLeft: 'auto'
-        }}>
-          Settings
-        </IconButton>
+              background: '#2ECC71',
+              color: 'white',
+              paddingLeft: '14px',
+              marginLeft: 'auto'
+            }}>
+              Settings
+            </IconButton>
+          </Center>
+        </Flex>
         </div>
       </div>
       <Drawer
