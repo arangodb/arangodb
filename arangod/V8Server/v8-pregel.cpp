@@ -326,7 +326,6 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
 
-  VPackBuilder builder;
   auto result = pregel.handleHistoryRequest(
       vocbase, arangodb::rest::RequestType::GET, executionNumber);
   handlePregelHistoryV8Result(result);
