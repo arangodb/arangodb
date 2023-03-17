@@ -57,7 +57,14 @@ export const FieldBreadcrumbs = ({
   });
   const { setCurrentFieldData } = useInvertedIndexContext();
   return (
-    <Stack direction="row">
+    <Stack
+      direction="row"
+      fontSize="md"
+      background={"gray.800"}
+      color="white"
+      paddingX="4"
+      paddingY="2"
+    >
       {breadcrumbs?.map(breadcrumb => {
         return (
           <Stack direction="row" key={breadcrumb.breadcrumbPath}>
@@ -74,7 +81,7 @@ export const FieldBreadcrumbs = ({
             >
               {breadcrumb.breadcrumbValue}
             </Box>
-            <Box>{">"}</Box>
+            <Box>{">>"}</Box>
           </Stack>
         );
       })}

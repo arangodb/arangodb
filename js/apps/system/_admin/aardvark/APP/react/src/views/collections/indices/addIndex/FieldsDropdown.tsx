@@ -16,9 +16,11 @@ const MultiValueLabel = (
     fieldIndex: number;
   }
 ) => {
-  const { setCurrentFieldData } = useInvertedIndexContext();
+  const { setCurrentFieldData, currentFieldData } = useInvertedIndexContext();
   const { fieldName, fieldIndex, ...rest } = props;
-
+  const isSelected =
+    currentFieldData?.fieldIndex === fieldIndex &&
+    currentFieldData.fieldName === fieldName;
   return (
     <Box
       onClick={() => {
@@ -31,6 +33,7 @@ const MultiValueLabel = (
       }}
       textDecoration="underline"
       cursor="pointer"
+      backgroundColor={isSelected ? "blue.100" : undefined}
     >
       <components.MultiValueLabel {...rest} />
     </Box>
