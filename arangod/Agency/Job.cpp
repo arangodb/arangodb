@@ -51,6 +51,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Agency/NodeDeserialization.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -1157,8 +1158,7 @@ std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
     return std::nullopt;
   }
   auto target =
-      velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
-          targetNode->get().toBuilder().slice());
+      deserialize<arangodb::replication2::agency::LogTarget>(targetNode->get());
   return target;
 }
 
@@ -1170,9 +1170,8 @@ Job::readLogPlan(Node const& snap, std::string const& db,
   if (not planNode.has_value()) {
     return std::nullopt;
   }
-  auto plan = velocypack::deserialize<
-      arangodb::replication2::agency::LogPlanSpecification>(
-      planNode->get().toBuilder().slice());
+  auto plan = deserialize<arangodb::replication2::agency::LogPlanSpecification>(
+      planNode->get());
   return plan;
 }
 
@@ -1208,9 +1207,9 @@ std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
   if (not groupNode.has_value()) {
     return std::nullopt;
   }
-  auto group = velocypack::deserialize<
-      replication2::agency::CollectionGroupPlanSpecification>(
-      groupNode->get().toBuilder().slice());
+  auto group =
+      deserialize<replication2::agency::CollectionGroupPlanSpecification>(
+          groupNode->get());
   TRI_ASSERT(shardIndex < group.shardSheaves.size());
   auto logId = group.shardSheaves.at(shardIndex).replicatedLog;
   return logId;
