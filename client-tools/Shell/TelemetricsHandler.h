@@ -30,6 +30,7 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <string_view>
 #include <thread>
 
 namespace arangodb {
@@ -52,23 +53,28 @@ class TelemetricsHandler {
   void getTelemetricsInfo(VPackBuilder& builder);
 
   void sendTelemetricsToEndpointTestRedirect(VPackBuilder& builder);
+  std::optional<VPackBuilder> sendTelemetricsToEndpoint(
+      std::string const& reqUrl = kOriginalUrl);
 
  private:
+  static constexpr char kOriginalUrl[] =
+      "https://europe-west3-telemetrics-project.cloudfunctions.net/"
+      "telemetrics-cf-3";
+
   Result checkHttpResponse(
-      std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-      bool storeResult);
+      std::unique_ptr<httpclient::SimpleHttpResult> const& response);
   void fetchTelemetricsFromServer();
-  void sendTelemetricsToEndpoint();
+
   void arrangeTelemetrics();
 
   ArangoshServer& _server;
   std::mutex _mtx;
   std::condition_variable _runCondition;
+  std::condition_variable _runCondition2;
   std::thread _telemetricsThread;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  Result _telemetricsResponse;
-  Result _response;
-  VPackBuilder _telemetricsResult;
+  Result _telemetricsFetchResponse;
+  VPackBuilder _telemetricsFetchedInfo;
   bool _sendToEndpoint;
 };
 

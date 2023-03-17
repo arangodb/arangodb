@@ -26,6 +26,7 @@
 #include "Shell/arangosh.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -50,8 +51,11 @@ class ShellFeature final : public ArangoshFeature {
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
   void beginShutdown() override;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void getTelemetricsInfo(velocypack::Builder& builder);
-  void sendTelemetricsToEndpointTestRedirect(velocypack::Builder& builder);
+  std::optional<velocypack::Builder> sendTelemetricsToEndpoint(
+      std::string const& url);
+#endif
 
   void setExitCode(int code) { *_result = code; }
 
@@ -83,7 +87,9 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _scriptParameters;
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
-  bool _sendToEndpoint{false};
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _sendTelemetricsToEndpoint{false};
+#endif
 };
 
 }  // namespace arangodb

@@ -28,6 +28,8 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
 if (getOptions === true) {
   return {
     'server.statistics': "false",
@@ -35,11 +37,13 @@ if (getOptions === true) {
   };
 }
 
+
 const jsunity = require('jsunity');
 
 function testSuite() {
   return {
     testGetAdminStatistics : function() {
+
       let res = arango.GET("/_admin/statistics");
       assertTrue(res.error);
       assertEqual(404, res.code);

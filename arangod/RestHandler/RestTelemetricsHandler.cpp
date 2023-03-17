@@ -44,9 +44,10 @@ RestTelemetricsHandler::RestTelemetricsHandler(ArangodServer& server,
 RestStatus RestTelemetricsHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   if (!gs.isTelemetricsEnabled()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "telemetrics is disabled. Must enable with startup parameter "
-                  "`--server.send-telemetrics`.");
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+        "telemetrics API is disabled. Must enable with startup parameter "
+        "`--server.send-telemetrics`.");
     return RestStatus::DONE;
   }
 
@@ -73,7 +74,6 @@ RestStatus RestTelemetricsHandler::execute() {
   SupportInfoBuilder::buildInfoMessage(result, _request->databaseName(),
                                        _server, isLocal, true);
   generateResult(rest::ResponseCode::OK, result.slice());
-  _response->setHeader(StaticStrings::Location, _request->requestPath());
 
   return RestStatus::DONE;
 }

@@ -223,7 +223,8 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--server.support-info-api",
-                  "The policy for exposing the support info API.",
+                  "The policy for exposing the support info and also the "
+                  "telemetrics API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
@@ -811,10 +812,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   if (_supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
-  }
 
-  f.addHandler("/_admin/telemetrics",
-               RestHandlerCreator<RestTelemetricsHandler>::createNoData);
+    f.addHandler("/_admin/telemetrics",
+                 RestHandlerCreator<RestTelemetricsHandler>::createNoData);
+  }
 
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData);

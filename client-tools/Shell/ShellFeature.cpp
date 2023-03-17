@@ -84,9 +84,10 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 
-  options->addOption("--telemetrics.send-to-endpoint",
-                     "Send telemetrics to endpoint",
-                     new BooleanParameter(&_sendToEndpoint));
+  options->addOption(
+      "--telemetrics.send-to-endpoint", "Send telemetrics to endpoint",
+      new BooleanParameter(&_sendTelemetricsToEndpoint),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 }
 
@@ -208,26 +209,27 @@ void ShellFeature::beginShutdown() {
   }
 }
 
-void ShellFeature::sendTelemetricsToEndpointTestRedirect(
-    VPackBuilder& builder) {
-  if (_telemetricsHandler != nullptr) {
-    _telemetricsHandler->sendTelemetricsToEndpointTestRedirect(builder);
-  }
-}
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
   if (_telemetricsHandler != nullptr) {
     _telemetricsHandler->getTelemetricsInfo(builder);
   }
 }
+std::optional<VPackBuilder> ShellFeature::sendTelemetricsToEndpoint(
+    std::string const& url) {
+  if (_telemetricsHandler != nullptr) {
+    return _telemetricsHandler->sendTelemetricsToEndpoint(url);
+  } else {
+    return std::nullopt;
+  }
+}
+#endif
 
 void ShellFeature::startTelemetrics() {
-  if (_telemetricsHandler != nullptr) {
-    _telemetricsHandler.reset(nullptr);
-  }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _telemetricsHandler =
-      std::make_unique<TelemetricsHandler>(server(), _sendToEndpoint);
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(
+      server(), _sendTelemetricsToEndpoint);
 #else
   _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
 #endif

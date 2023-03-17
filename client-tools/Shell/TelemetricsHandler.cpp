@@ -44,6 +44,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
@@ -81,8 +83,7 @@ TelemetricsHandler::~TelemetricsHandler() {
 }
 
 Result TelemetricsHandler::checkHttpResponse(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-    bool storeResult) {
+    std::unique_ptr<httpclient::SimpleHttpResult> const& response) {
   using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
@@ -107,15 +108,12 @@ Result TelemetricsHandler::checkHttpResponse(
             concatT("got invalid response from server: HTTP ",
                     itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
-  if (storeResult) {
-    _telemetricsResult.clear();
-    _telemetricsResult.add(response->getBodyVelocyPack()->slice());
-  }
 
   return {TRI_ERROR_NO_ERROR};
 }
 
 void TelemetricsHandler::fetchTelemetricsFromServer() {
+  _telemetricsFetchedInfo.clear();
   std::string const url = "/_admin/telemetrics";
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 1;
@@ -134,14 +132,15 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
           _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
       lk.lock();
 
-      result = this->checkHttpResponse(response, true);
+      result = this->checkHttpResponse(response);
       if (auto errorNum = result.errorNumber();
           errorNum == TRI_ERROR_NO_ERROR ||
           errorNum == TRI_ERROR_HTTP_FORBIDDEN) {
-        _telemetricsResponse = std::move(result);
+        _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
+        _telemetricsFetchResponse = std::move(result);
         break;
       } else {
-        _telemetricsResponse = std::move(result);
+        _telemetricsFetchResponse = std::move(result);
       }
     }
     _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
@@ -151,47 +150,108 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
   }
 }
 
-// Tests the redirection when telemetrics is sent to an endpoint, though not
-// exactly the same thing, because here the endpoint is local, hence the same
-// client is used and a new endpoint is not created.
-void TelemetricsHandler::sendTelemetricsToEndpointTestRedirect(
-    VPackBuilder& builder) {
-  std::string const originalUrl = "/test-redirect/redirect";
-  std::string url = originalUrl;
+// Sends telemetrics to the endpoint and ests the redirection when telemetrics
+// is sent to an endpoint, though not exactly the same thing, because here the
+// endpoint is local, hence the same client is used and a new endpoint is not
+// created.
+std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
+    std::string const& reqUrl) {
+  VPackBuilder testResponseBuilder;
+
+  bool isLocal = false;
+  if (reqUrl.starts_with('/')) {
+    isLocal = true;
+  }
+  bool isOriginalUrl = (reqUrl.compare(kOriginalUrl) == 0) ? true : false;
+
+  std::string url = reqUrl;
+
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 10;
+  uint64_t sslProtocol = TLS_V13;
   uint32_t maxRedirects = 5;
 
+  std::string const body = _telemetricsFetchedInfo.toJson();
+
   uint32_t numRedirects = 0;
+  basics::StringBuffer compressedBody;
 
   while (!_server.isStopping()) {
-    ClientManager clientManager(
-        _server.getFeature<HttpEndpointProvider, ClientFeature>(),
-        Logger::FIXME);
-    std::unique_lock lk(_mtx);
-
-    _httpClient = clientManager.getConnectedClient(true, false, false, 0);
-    if (_httpClient != nullptr && _httpClient->isConnected()) {
-      std::string const body = _telemetricsResult.toJson();
-      auto& clientParams = _httpClient->params();
-      clientParams.setRequestTimeout(30);
-      lk.unlock();
-
-      std::unordered_map<std::string, std::string> headers;
-      headers.emplace(StaticStrings::ContentTypeHeader,
-                      StaticStrings::MimeTypeJson);
+    std::unique_lock lk(_mtx, std::defer_lock);
+    std::unordered_map<std::string, std::string> headers;
+    headers.emplace(StaticStrings::ContentTypeHeader,
+                    StaticStrings::MimeTypeJson);
+    std::string relativeUrl;
+    if (!isOriginalUrl) {
+      headers.emplace(StaticStrings::ContentLength,
+                      std::to_string(compressedBody.size()));
+    } else {
+      auto res =
+          encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
+                                 body.size(), compressedBody);
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
       headers.emplace(StaticStrings::ContentLength,
                       std::to_string(body.size()));
-
-      std::unique_ptr<httpclient::SimpleHttpResult> response(
-          _httpClient->request(rest::RequestType::POST, url, body.data(),
-                               body.size(), headers));
+      headers.emplace(StaticStrings::ContentEncoding,
+                      StaticStrings::EncodingGzip);
+    }
+    if (isLocal) {
+      relativeUrl = url;
+      ClientManager clientManager(
+          _server.getFeature<HttpEndpointProvider, ClientFeature>(),
+          Logger::FIXME);
       lk.lock();
-      result = this->checkHttpResponse(response, false);
+      _httpClient = clientManager.getConnectedClient(true, false, false, 0);
+    } else {
+      std::string lastEndpoint = getEndpointFromUrl(url);
+      std::vector<std::string> endpoints;
+      auto [endpoint, relative, error] =
+          getEndpoint(nullptr, endpoints, url, lastEndpoint);
+      relativeUrl = std::move(relative);
+      ClientFeature& client =
+          _server.getFeature<HttpEndpointProvider, ClientFeature>();
+      std::unique_ptr<Endpoint> newEndpoint(Endpoint::clientFactory(endpoint));
+
+      lk.lock();
+
+      TRI_ASSERT(newEndpoint.get() != nullptr);
+      std::unique_ptr<httpclient::GeneralClientConnection> connection(
+          httpclient::GeneralClientConnection::factory(
+              client.getCommFeaturePhase(), newEndpoint, 30, 60, 3,
+              sslProtocol));
+
+      if (connection == nullptr) {
+        continue;
+      }
+      httpclient::SimpleHttpClientParams const params(30, false);
+      _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
+          connection.get(), params);
+    }
+    if (_httpClient != nullptr) {
+      if (!isOriginalUrl) {
+        auto& clientParams = _httpClient->params();
+        clientParams.setRequestTimeout(30);
+      }
+      lk.unlock();
+      if (isOriginalUrl) {
+        std::unique_ptr<httpclient::SimpleHttpResult> response(
+            _httpClient->request(rest::RequestType::POST, relativeUrl,
+                                 compressedBody.data(), compressedBody.size(),
+                                 headers));
+      }
+      std::unique_ptr<httpclient::SimpleHttpResult> response(
+          _httpClient->request(rest::RequestType::POST, relativeUrl,
+                               body.data(), body.size(), headers));
+      lk.lock();
+      result = this->checkHttpResponse(response);
       if (result.ok()) {
         auto returnCode = response->getHttpReturnCode();
         if (returnCode == 200) {
-          builder.add(response->getBodyVelocyPack()->slice());
+          if (!isOriginalUrl) {
+            testResponseBuilder.add(response->getBodyVelocyPack()->slice());
+          }
           break;
         } else if (returnCode == 301 || returnCode == 302 ||
                    returnCode == 307) {
@@ -201,129 +261,35 @@ void TelemetricsHandler::sendTelemetricsToEndpointTestRedirect(
             if (found) {
               numRedirects++;
             } else {
-              url = originalUrl;
+              url = reqUrl;
               numRedirects = 0;
             }
           } else {
-            url = originalUrl;
+            url = reqUrl;
             numRedirects = 0;
           }
         }
-      } else {
-        builder.openObject();
-        builder.add("errorNum", VPackValue(_telemetricsResponse.errorNumber()));
-        builder.add("errorMessage",
-                    VPackValue(_telemetricsResponse.errorMessage()));
-        builder.close();
+      } else if (result.errorNumber() == TRI_ERROR_INTERNAL) {
         numRedirects = 0;
+      } else {
+        // do not retry if 401, 403, 404, etc.
+        break;
       }
-    }
-
-    if (numRedirects == 0) {
-      timeoutInSecs *= 3;
-      timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
-      _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                             [this] { return _server.isStopping(); });
+      if (numRedirects == 0) {
+        timeoutInSecs *= 3;
+        timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
+        _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
+                               [this] { return _server.isStopping(); });
+      }
+      if (isOriginalUrl) {
+        _httpClient.reset(nullptr);
+      }
     }
   }
-}
-
-void TelemetricsHandler::sendTelemetricsToEndpoint() {
-  std::string const originalUrl =
-      "https://europe-west3-telemetrics-project.cloudfunctions.net/"
-      "telemetrics-cf-3";
-
-  std::string url = originalUrl;
-
-  Result result = {TRI_ERROR_NO_ERROR};
-  uint32_t timeoutInSecs = 10;
-  uint64_t sslProtocol = TLS_V12;
-  uint32_t maxRedirects = 5;
-
-  std::string const body = _telemetricsResult.toJson();
-
-  httpclient::SimpleHttpClientParams const params(30, false);
-  uint32_t numRedirects = 0;
-
-  while (!_server.isStopping()) {
-    std::string lastEndpoint = getEndpointFromUrl(url);
-    std::vector<std::string> endpoints;
-    auto [endpoint, relative, error] =
-        getEndpoint(nullptr, endpoints, url, lastEndpoint);
-
-    basics::StringBuffer compressedBody;
-
-    auto res =
-        encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
-                               body.size(), compressedBody);
-    if (res != TRI_ERROR_NO_ERROR) {
-      break;
-    }
-    std::unordered_map<std::string, std::string> headers;
-    headers.emplace(StaticStrings::ContentTypeHeader,
-                    StaticStrings::MimeTypeJson);
-    headers.emplace(StaticStrings::ContentLength,
-                    std::to_string(compressedBody.size()));
-    headers.emplace(StaticStrings::ContentEncoding,
-                    StaticStrings::EncodingGzip);
-
-    ClientFeature& client =
-        _server.getFeature<HttpEndpointProvider, ClientFeature>();
-    std::unique_ptr<Endpoint> newEndpoint(Endpoint::clientFactory(endpoint));
-
-    std::unique_lock lk(_mtx);
-
-    TRI_ASSERT(newEndpoint.get() != nullptr);
-    std::unique_ptr<httpclient::GeneralClientConnection> connection(
-        httpclient::GeneralClientConnection::factory(
-            client.getCommFeaturePhase(), newEndpoint, 30, 60, 3, sslProtocol));
-
-    TRI_ASSERT(connection != nullptr);
-
-    if (_httpClient != nullptr) {
-      _httpClient.reset(nullptr);
-    }
-    _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
-        connection.get(), params);
-    TRI_ASSERT(_httpClient != nullptr);
-
-    lk.unlock();
-
-    std::unique_ptr<httpclient::SimpleHttpResult> response(_httpClient->request(
-        rest::RequestType::POST, relative, compressedBody.data(),
-        compressedBody.size(), headers));
-    lk.lock();
-    result = this->checkHttpResponse(response, false);
-    if (result.ok()) {
-      auto returnCode = response->getHttpReturnCode();
-      if (returnCode == 200) {
-        break;
-      } else if (returnCode == 301 || returnCode == 302 || returnCode == 307) {
-        if (numRedirects < maxRedirects) {
-          bool found;
-          url = response->getHeaderField(StaticStrings::Location, found);
-          if (found) {
-            numRedirects++;
-          } else {
-            url = originalUrl;
-            numRedirects = 0;
-          }
-        } else {
-          url = originalUrl;
-          numRedirects = 0;
-        }
-      }
-    } else {
-      numRedirects = 0;
-    }
-    if (numRedirects == 0) {
-      timeoutInSecs *= 3;
-      timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
-      _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                             [this] { return _server.isStopping(); });
-    }
-    _httpClient.reset(nullptr);
-    connection.reset(nullptr);
+  if (!testResponseBuilder.isEmpty()) {
+    return testResponseBuilder;
+  } else {
+    return std::nullopt;
   }
 }
 
@@ -332,13 +298,15 @@ void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
   // telemetrics object if the request returned ok and the error if not to
   // parse the error in the tests
   std::unique_lock lk(_mtx);
-  if (_telemetricsResponse.ok()) {
-    builder.add(_telemetricsResult.slice());
-  } else {
+
+  if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
+    builder.add(_telemetricsFetchedInfo.slice());
+  } else if (_telemetricsFetchResponse.fail()) {
     builder.openObject();
-    builder.add("errorNum", VPackValue(_telemetricsResponse.errorNumber()));
+    builder.add("errorNum",
+                VPackValue(_telemetricsFetchResponse.errorNumber()));
     builder.add("errorMessage",
-                VPackValue(_telemetricsResponse.errorMessage()));
+                VPackValue(_telemetricsFetchResponse.errorMessage()));
     builder.close();
   }
 }
@@ -347,7 +315,9 @@ void TelemetricsHandler::arrangeTelemetrics() {
   try {
     this->fetchTelemetricsFromServer();
 
-    if (_telemetricsResponse.ok()) {
+    std::unique_lock lk(_mtx);
+    if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
+      lk.unlock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (_sendToEndpoint) {
         this->sendTelemetricsToEndpoint();

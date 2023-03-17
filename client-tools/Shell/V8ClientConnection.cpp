@@ -63,6 +63,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -1008,7 +1010,7 @@ static void ClientConnection_httpPostRaw(
   ClientConnection_httpPostAny(args, true);
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "startTelemetrics"
@@ -1059,7 +1061,7 @@ static void ClientConnection_restartTelemetrics(
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "startTelemetrics() must be invoked on an arango connection object "
+        "restartTelemetrics() must be invoked on an arango connection object "
         "instance.");
   }
 
@@ -1076,7 +1078,7 @@ static void ClientConnection_restartTelemetrics(
 /// @brief ClientConnection method "sendTelemetricsToEndpointTestRedirect"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_sendTelemetricsToEndpointTestRedirect(
+static void ClientConnection_sendTelemetricsToEndpoint(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1089,15 +1091,21 @@ static void ClientConnection_sendTelemetricsToEndpointTestRedirect(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "sendTelemetricsToEndpointTestRedirect() must be invoked on an arango "
+        "sendTelemetricsToEndpoint() must be invoked on an arango "
         "connection object "
         "instance.");
   }
 
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sendTelemetricsToEndpoint(<url>)");
+  }
+
   auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
 
-  VPackBuilder builder;
-  shellFeature.sendTelemetricsToEndpointTestRedirect(builder);
+  std::string url = TRI_ObjectToString(isolate, args[0]);
+  auto telemetricsBody = shellFeature.sendTelemetricsToEndpoint(url);
+
+  VPackBuilder builder = telemetricsBody.value_or(VPackBuilder());
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
@@ -1135,7 +1143,9 @@ static void ClientConnection_getTelemetricsInfo(
 
   TRI_V8_TRY_CATCH_END
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "fuzzRequests"
 ////////////////////////////////////////////////////////////////////////////////
@@ -2741,7 +2751,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "fuzzRequests",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
+#endif
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   connection_proto->Set(
       isolate, "getTelemetricsInfo",
       v8::FunctionTemplate::New(isolate, ClientConnection_getTelemetricsInfo));
@@ -2753,9 +2765,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "restartTelemetrics",
       v8::FunctionTemplate::New(isolate, ClientConnection_restartTelemetrics));
   connection_proto->Set(
-      isolate, "sendTelemetricsToEndpointTestRedirect",
-      v8::FunctionTemplate::New(
-          isolate, ClientConnection_sendTelemetricsToEndpointTestRedirect));
+      isolate, "sendTelemetricsToEndpoint",
+      v8::FunctionTemplate::New(isolate,
+                                ClientConnection_sendTelemetricsToEndpoint));
 #endif
 
   connection_proto->Set(isolate, "getEndpoint",
