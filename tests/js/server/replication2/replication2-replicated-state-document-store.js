@@ -732,6 +732,51 @@ const replicatedStateSnapshotTransferSuite = function () {
   };
 };
 
+const replicatedStateDocumentShardsSuite = function () {
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+      lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  const checkCollectionShards = function (collection) {
+    const shards = collection.shards(true);
+    const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+
+    for (const shard in shards) {
+      const servers = shards[shard];
+
+      for (const server of servers) {
+        const assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
+        assertTrue(_.includes(assocShards, shard));
+      }
+    }
+  };
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: setUpAnd(() => {
+    }),
+    tearDown: tearDownAnd(() => {
+    }),
+
+    testCreateSingleCollection: function () {
+      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      checkCollectionShards(collection);
+      collection.drop();
+    },
+
+    testCreateMultipleCollections: function () {
+      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      checkCollectionShards(collection);
+      const collection2 = db._create("other-collection", {
+        numberOfShards: 4,
+        distributeShardsLike: collectionName,
+      });
+      checkCollectionShards(collection2);
+      collection2.drop();
+      collection.drop();
+    },
+  };
+};
+
 
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
@@ -744,5 +789,6 @@ jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
 jsunity.run(replicatedStateSnapshotTransferSuite);
+jsunity.run(replicatedStateDocumentShardsSuite);
 
 return jsunity.done();

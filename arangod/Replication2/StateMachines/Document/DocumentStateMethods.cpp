@@ -79,6 +79,32 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
         params.params);
   }
 
+  auto getAssociatedShardList(LogId logId) const
+      -> std::vector<ShardID> override {
+    auto stateMachine =
+        std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+            replicated_state::document::DocumentState>>(
+            _vocbase.getReplicatedStateById(logId).get());
+    if (stateMachine == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+          fmt::format("DocumentState {} not found", logId));
+    }
+
+    if (auto leader = stateMachine->getLeader(); leader != nullptr) {
+      return leader->getAssociatedShardList();
+    } else if (auto follower = stateMachine->getFollower();
+               follower != nullptr) {
+      return follower->getAssociatedShardList();
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,
+          fmt::format("Failed to get DocumentState with id {}; this "
+                      "is unconfigured.",
+                      logId));
+    }
+  }
+
  private:
   [[nodiscard]] auto getDocumentStateLeaderById(LogId logId) const -> ResultT<
       std::shared_ptr<replicated_state::document::DocumentLeaderState>> {

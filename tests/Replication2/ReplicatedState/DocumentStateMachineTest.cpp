@@ -133,7 +133,7 @@ struct DocumentStateMachineTest : testing::Test {
         .WillByDefault(Return(leaderInterfaceMock));
 
     ON_CALL(*handlersFactoryMock, createShardHandler)
-        .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           ON_CALL(*shardHandlerMock, ensureShard).WillByDefault(Return(true));
           ON_CALL(*shardHandlerMock, dropShard).WillByDefault(Return(true));
           ON_CALL(*shardHandlerMock, dropAllShards)

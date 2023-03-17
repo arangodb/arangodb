@@ -1259,10 +1259,6 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   return replication2::LogId::fromString(stateId);
 }
 
-void LogicalCollection::setDocumentStateId(replication2::LogId id) {
-  _replicatedStateId = id;
-}
-
 auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
@@ -1340,4 +1336,11 @@ auto LogicalCollection::groupID() const noexcept
   ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
                   _groupId.has_value());
   return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+}
+
+auto LogicalCollection::replicatedStateId() const noexcept
+    -> arangodb::replication2::LogId {
+  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
+                  _replicatedStateId.has_value());
+  return _replicatedStateId.value();
 }

@@ -65,10 +65,10 @@ RestStatus RestDocumentStateHandler::executeByMethod(
 RestStatus RestDocumentStateHandler::handleGetRequest(
     replication2::DocumentStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 3) {
+  if (suffixes.size() < 2) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expect GET /_api/document-state/<state-id>/snapshot/<action>");
+        "expect GET /_api/document-state/<state-id>/[shards|snapshot]");
     return RestStatus::DONE;
   }
 
@@ -85,8 +85,19 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
 
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
+    if (suffixes.size() != 3) {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expect GET /_api/document-state/<state-id>/snapshot/<action>");
+      return RestStatus::DONE;
+    }
     return processSnapshotRequest(methods, logId.value(),
                                   parseGetSnapshotParams());
+  } else if (verb == "shards") {
+    auto shards = methods.getAssociatedShardList(logId.value());
+    VPackBuilder builder;
+    velocypack::serialize(builder, shards);
+    generateOk(rest::ResponseCode::OK, builder.slice());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
