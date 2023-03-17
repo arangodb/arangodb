@@ -396,7 +396,6 @@ static void JS_PregelHistoryRemove(
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
 
-  VPackBuilder builder;
   auto result = pregel.handleHistoryRequest(
       vocbase, arangodb::rest::RequestType::DELETE_REQ, executionNumber);
   handlePregelHistoryV8Result(result);
