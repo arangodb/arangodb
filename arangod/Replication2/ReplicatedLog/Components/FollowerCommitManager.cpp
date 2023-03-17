@@ -50,7 +50,7 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   auto newResolveIndex = std::min(guard->commitIndex, ctx->log.getLastIndex());
 
   if (newResolveIndex > guard->resolveIndex) {
-    LOG_CTX("71a8f", DEBUG, loggerContext)
+    LOG_CTX("71a8f", TRACE, loggerContext)
         << "resolving commit index up to " << newResolveIndex;
     guard->resolveIndex = newResolveIndex;
     guard->stateHandle.updateCommitIndex(guard->resolveIndex);

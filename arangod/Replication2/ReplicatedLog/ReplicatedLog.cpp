@@ -322,7 +322,8 @@ auto DefaultParticipantsFactory::constructFollower(
 
   return std::make_shared<LogFollowerImpl>(
       info.myself, std::move(methods), std::move(context.stateHandle), info2,
-      std::move(context.options), std::move(context.metrics), leaderComm);
+      std::move(context.options), std::move(context.metrics), leaderComm,
+      context.loggerContext);
 }
 
 auto DefaultParticipantsFactory::constructLeader(
