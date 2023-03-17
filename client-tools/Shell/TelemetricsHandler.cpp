@@ -107,7 +107,6 @@ Result TelemetricsHandler::checkHttpResponse(
             concatT("got invalid response from server: HTTP ",
                     itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
-
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -180,6 +179,11 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
       headers.emplace(StaticStrings::ContentLength,
                       std::to_string(body.size()));
     } else {
+      // we compress the body only in case we're sending telemetrics to the
+      // endpoint if the url is the original one. If the url was passed by
+      // reference, it means the function is being called for testing
+      // redirection, which wouldn't demand compression, just for the
+      // telemetrics body to be sent in the response
       auto res =
           encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
                                  body.size(), compressedBody);
@@ -216,7 +220,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
                 client.getCommFeaturePhase(), newEndpoint, 30, 60, 3,
                 sslProtocol));
 
-        if (connection == nullptr) {
+        if (connection != nullptr) {
           httpclient::SimpleHttpClientParams const params(30, false);
           _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
               connection, params);
