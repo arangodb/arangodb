@@ -39,7 +39,6 @@
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
@@ -64,12 +63,6 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
-
 #include <algorithm>
 #include <memory>
 
@@ -80,9 +73,10 @@ using namespace arangodb::pregel;
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
 template<typename V, typename E>
-GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-                             ExecutionNumber executionNumber,
-                             GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(
+    PregelFeature& feature, TRI_vocbase_t& vocbase,
+    ExecutionNumber executionNumber,
+    std::shared_ptr<GraphFormat<V, E> const> graphFormat)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _resourceMonitor(GlobalResourceMonitor::instance()),
@@ -99,7 +93,8 @@ static const char* shardError =
 
 template<typename V, typename E>
 void GraphStore<V, E>::loadShards(
-    WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
+    std::shared_ptr<WorkerConfig const> config,
+    std::function<void()> const& statusUpdateCallback,
     std::function<void()> const& finishedLoadingCallback) {
   _config = config;
 
@@ -471,7 +466,7 @@ void GraphStore<V, E>::storeVertices(
 
 template<typename V, typename E>
 void GraphStore<V, E>::storeResults(
-    WorkerConfig* config, std::function<void()> cb,
+    std::shared_ptr<WorkerConfig const> config, std::function<void()> cb,
     std::function<void()> const& statusUpdateCallback) {
   _config = config;
   double now = TRI_microtime();

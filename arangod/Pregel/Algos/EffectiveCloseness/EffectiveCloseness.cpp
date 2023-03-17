@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EffectiveCloseness.h"
+#include <memory>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounterFormat.h"
@@ -37,9 +38,17 @@ using namespace arangodb::pregel::algos;
 MessageFormat<HLLCounter>* EffectiveCloseness::messageFormat() const {
   return new HLLCounterFormat();
 }
+[[nodiscard]] auto EffectiveCloseness::messageFormatUnique() const
+    -> std::unique_ptr<message_format> {
+  return std::make_unique<HLLCounterFormat>();
+}
 
 MessageCombiner<HLLCounter>* EffectiveCloseness::messageCombiner() const {
   return new HLLCounterCombiner();
+}
+[[nodiscard]] auto EffectiveCloseness::messageCombinerUnique() const
+    -> std::unique_ptr<message_combiner> {
+  return std::make_unique<HLLCounterCombiner>();
 }
 
 struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
@@ -84,7 +93,8 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
 };
 
 VertexComputation<ECValue, int8_t, HLLCounter>*
-EffectiveCloseness::createComputation(WorkerConfig const*) const {
+EffectiveCloseness::createComputation(
+    std::shared_ptr<WorkerConfig const>) const {
   return new ECComputation();
 }
 
@@ -100,7 +110,7 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       ECValue& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ECValue const* ptr) const override {
@@ -123,6 +133,49 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   }
 };
 
-GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
-  return new ECGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<ECValue, int8_t> const>
+EffectiveCloseness::inputFormat() const {
+  return std::make_shared<ECGraphFormat>(_resultField);
+}
+
+struct EffectiveClosenessWorkerContext : public WorkerContext {
+  EffectiveClosenessWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto EffectiveCloseness::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new EffectiveClosenessWorkerContext(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
+[[nodiscard]] auto EffectiveCloseness::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<EffectiveClosenessWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
+
+struct EffectiveClosenessMasterContext : public MasterContext {
+  EffectiveClosenessMasterContext(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto EffectiveCloseness::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new EffectiveClosenessMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto EffectiveCloseness::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<EffectiveClosenessMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
 }

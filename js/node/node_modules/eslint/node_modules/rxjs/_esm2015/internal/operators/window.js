@@ -1,6 +1,5 @@
 import { Subject } from '../Subject';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function window(windowBoundaries) {
     return function windowOperatorFunction(source) {
         return source.lift(new WindowOperator(windowBoundaries));
@@ -14,24 +13,24 @@ class WindowOperator {
         const windowSubscriber = new WindowSubscriber(subscriber);
         const sourceSubscription = source.subscribe(windowSubscriber);
         if (!sourceSubscription.closed) {
-            windowSubscriber.add(subscribeToResult(windowSubscriber, this.windowBoundaries));
+            windowSubscriber.add(innerSubscribe(this.windowBoundaries, new SimpleInnerSubscriber(windowSubscriber)));
         }
         return sourceSubscription;
     }
 }
-class WindowSubscriber extends OuterSubscriber {
+class WindowSubscriber extends SimpleOuterSubscriber {
     constructor(destination) {
         super(destination);
         this.window = new Subject();
         destination.next(this.window);
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.openWindow();
     }
-    notifyError(error, innerSub) {
+    notifyError(error) {
         this._error(error);
     }
-    notifyComplete(innerSub) {
+    notifyComplete() {
         this._complete();
     }
     _next(value) {

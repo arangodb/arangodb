@@ -5,8 +5,8 @@ import { subscribeToResult } from '../util/subscribeToResult';
 import { fromArray } from './fromArray';
 const NONE = {};
 export function combineLatest(...observables) {
-    let resultSelector = null;
-    let scheduler = null;
+    let resultSelector = undefined;
+    let scheduler = undefined;
     if (isScheduler(observables[observables.length - 1])) {
         scheduler = observables.pop();
     }
@@ -49,7 +49,7 @@ export class CombineLatestSubscriber extends OuterSubscriber {
             this.toRespond = len;
             for (let i = 0; i < len; i++) {
                 const observable = observables[i];
-                this.add(subscribeToResult(this, observable, observable, i));
+                this.add(subscribeToResult(this, observable, undefined, i));
             }
         }
     }
@@ -58,7 +58,7 @@ export class CombineLatestSubscriber extends OuterSubscriber {
             this.destination.complete();
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(_outerValue, innerValue, outerIndex) {
         const values = this.values;
         const oldVal = values[outerIndex];
         const toRespond = !this.toRespond

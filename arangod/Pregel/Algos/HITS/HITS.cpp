@@ -29,6 +29,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/WorkerContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -38,7 +39,10 @@ static std::string const kAuthNorm = "auth";
 static std::string const kHubNorm = "hub";
 
 struct HITSWorkerContext : public WorkerContext {
-  HITSWorkerContext() {}
+  HITSWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators), std::move(writeAggregators)) {
+  }
 
   double authNormRoot = 0;
   double hubNormRoot = 0;
@@ -98,7 +102,7 @@ struct HITSComputation
 };
 
 VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-HITS::createComputation(WorkerConfig const* config) const {
+HITS::createComputation(std::shared_ptr<WorkerConfig const> config) const {
   return new HITSComputation();
 }
 
@@ -114,7 +118,7 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       HITSValue& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) override {}
+                      uint64_t& /*vertexIdRange*/) const override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            HITSValue const* value) const override {
@@ -124,12 +128,24 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
   }
 };
 
-GraphFormat<HITSValue, int8_t>* HITS::inputFormat() const {
-  return new HITSGraphFormat(_resultField);
+std::shared_ptr<GraphFormat<HITSValue, int8_t> const> HITS::inputFormat()
+    const {
+  return std::make_shared<HITSGraphFormat>(_resultField);
 }
 
-WorkerContext* HITS::workerContext(VPackSlice userParams) const {
-  return new HITSWorkerContext();
+[[nodiscard]] auto HITS::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new HITSWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto HITS::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<HITSWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
 }
 
 struct HITSMasterContext : public MasterContext {
@@ -137,7 +153,12 @@ struct HITSMasterContext : public MasterContext {
   // and could be unified, but
   // (1) we are going to refactor it anyway
   // (2) this would introduce common code for different algorithms
-  HITSMasterContext(VPackSlice userParams) : authNorm(0), hubNorm(0) {
+  HITSMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators,
+                    VPackSlice userParams)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)),
+        authNorm(0),
+        hubNorm(0) {
     if (userParams.hasKey(Utils::threshold)) {
       if (!userParams.get(Utils::threshold).isNumber()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -164,8 +185,18 @@ struct HITSMasterContext : public MasterContext {
   }
 };
 
-MasterContext* HITS::masterContext(VPackSlice userParams) const {
-  return new HITSMasterContext(userParams);
+[[nodiscard]] auto HITS::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new HITSMasterContext(0, 0, std::move(aggregators), userParams);
+}
+[[nodiscard]] auto HITS::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<HITSMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators), userParams);
 }
 
 IAggregator* HITS::aggregator(std::string const& name) const {

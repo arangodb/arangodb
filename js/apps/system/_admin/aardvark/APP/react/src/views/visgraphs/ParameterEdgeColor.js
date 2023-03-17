@@ -30,7 +30,7 @@ const ParameterEdgeColor = () => {
         width={'60px'}
         height={'30px'}
         onChange={handleChange}
-      disabled={urlParameters.edgeColorByCollection}>
+        disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
       </Center>
     </Flex>

@@ -44,25 +44,53 @@ namespace arangodb::pregel::algos {
 /// color as you.
 ///    All nodes visited belongs to the SCC identified by the root color.
 
+struct HITSType {
+  using Vertex = HITSValue;
+  using Edge = int8_t;
+  using Message = SenderMessage<double>;
+};
+
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   explicit HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("hits",
-                                                                  userParams) {}
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(userParams) {}
 
-  [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "hits";
+  };
+
+  [[nodiscard]] std::shared_ptr<GraphFormat<HITSValue, int8_t> const>
+  inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
       const override {
     return new SenderMessageFormat<double>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<SenderMessageFormat<double>>();
+  }
 
   VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
-  [[nodiscard]] MasterContext* masterContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };

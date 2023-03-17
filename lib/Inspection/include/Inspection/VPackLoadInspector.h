@@ -49,7 +49,7 @@ template<bool AllowUnsafeTypes, class Context = NoContext>
 struct VPackLoadInspectorImpl
     : LoadInspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes, Context>,
                         velocypack::Slice, Context> {
- protected:
+ public:
   using Base =
       LoadInspectorBase<VPackLoadInspectorImpl, velocypack::Slice, Context>;
 
@@ -279,6 +279,8 @@ struct VPackLoadInspectorImpl
       return type == ValueType::Array &&
              detail::TupleSize<T>::value == _slice.length();
     } else if constexpr (detail::IsListLike<T>::value) {
+      return type == ValueType::Array;
+    } else if constexpr (detail::IsSetLike<T>::value) {
       return type == ValueType::Array;
     } else if constexpr (detail::IsMapLike<T>::value) {
       return type == ValueType::Object;

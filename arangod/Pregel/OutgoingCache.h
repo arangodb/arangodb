@@ -53,7 +53,7 @@ class ArrayInCache;
 template<typename M>
 class OutCache {
  protected:
-  WorkerConfig const* _config;
+  std::shared_ptr<WorkerConfig const> _config;
   MessageFormat<M> const* _format;
   InCache<M>* _localCache = nullptr;
   InCache<M>* _localCacheNextGSS = nullptr;
@@ -68,7 +68,8 @@ class OutCache {
   virtual void _removeContainedMessages() = 0;
 
  public:
-  OutCache(WorkerConfig* state, MessageFormat<M> const* format);
+  OutCache(std::shared_ptr<WorkerConfig const> state,
+           MessageFormat<M> const* format);
   virtual ~OutCache() = default;
 
   size_t sendCount() const { return _sendCount; }
@@ -107,7 +108,8 @@ class ArrayOutCache : public OutCache<M> {
   void _removeContainedMessages() override;
 
  public:
-  ArrayOutCache(WorkerConfig* state, MessageFormat<M> const* format)
+  ArrayOutCache(std::shared_ptr<WorkerConfig const> state,
+                MessageFormat<M> const* format)
       : OutCache<M>(state, format) {}
   ~ArrayOutCache();
 
@@ -129,7 +131,8 @@ class CombiningOutCache : public OutCache<M> {
   void _removeContainedMessages() override;
 
  public:
-  CombiningOutCache(WorkerConfig* state, MessageFormat<M> const* format,
+  CombiningOutCache(std::shared_ptr<WorkerConfig const> state,
+                    MessageFormat<M> const* format,
                     MessageCombiner<M> const* combiner);
   ~CombiningOutCache();
 

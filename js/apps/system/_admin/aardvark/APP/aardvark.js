@@ -1333,22 +1333,12 @@ authRouter.get('/visgraph/:name', function (req, res) {
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
         shape: "dot",
-        //shape: "circle",
         color: calculatedNodeColor,
         font: {
           strokeWidth: 2,
           strokeColor: '#ffffff',
           vadjust: -7
         }
-        /*
-        style: {
-          fill: calculatedNodeColor,
-          stroke: calculatedNodeColor,
-          label: {
-            value: nodeLabel
-          }
-        }
-        */
       };
 
       if (config.nodeColorByCollection === 'true') {

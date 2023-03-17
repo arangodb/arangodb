@@ -41,6 +41,9 @@ struct AlgoRegistry {
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
                                                CreateWorker const& parameters,
                                                PregelFeature& feature);
+  static auto createAlgorithmNew(std::string const& algorithm,
+                                 VPackSlice userParams)
+      -> std::optional<std::unique_ptr<IAlgorithm>>;
 
  private:
   template<typename V, typename E, typename M>
