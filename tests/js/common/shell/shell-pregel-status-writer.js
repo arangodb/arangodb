@@ -255,6 +255,7 @@ function pregelStatusWriterSuite() {
       // now performing a full remove of all historic entries as well
       // Note: Also tested here to save time (setup/tearDown)
       const deletedResponse = arango.DELETE_RAW(cmd);
+      assertTrue(deletedResponse.parsedBody === true);
       assertEqual(deletedResponse.code, 200);
 
       {
@@ -280,7 +281,8 @@ function pregelStatusWriterSuite() {
       // now performing a full remove of all historic entries as well
       // Note: Also tested here to save time (setup/tearDown)
       {
-        pregel.removeHistory();
+        const deleted = pregel.removeHistory();
+        assertTrue(deleted === true);
         const result = pregel.history();
         assertTrue(Array.isArray(result));
         assertEqual(result.length, 0);

@@ -222,12 +222,16 @@ void RestControlPregelHandler::handlePregelHistoryResult(
   }
 
   if (result->hasSlice()) {
-    generateResult(rest::ResponseCode::OK, result.get().slice());
+    if (result->slice().isNone()) {
+      // Truncate does not deliver a proper slice in a Cluster.
+      generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
+    } else {
+      generateResult(rest::ResponseCode::OK, result.get().slice());
+    }
   } else {
     // Should always have a Slice, doing this check to be sure.
-    // (e.g. a truncate might not return a Slice)
-    generateResult(rest::ResponseCode::OK,
-                   arangodb::velocypack::Slice::emptyObjectSlice());
+    // (e.g. a truncate might not return a Slice in SingleServer)
+    generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
   }
 }
 

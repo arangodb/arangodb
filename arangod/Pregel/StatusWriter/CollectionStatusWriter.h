@@ -215,7 +215,6 @@ struct CollectionStatusWriter : StatusWriterInterface {
                 trx.remove(StaticStrings::PregelCollection, payload->slice(),
                            {}));
           } else {
-            OperationOptions peter;
             return handleOperationResult(
                 trx, options, transactionResult,
                 trx.truncateAsync(StaticStrings::PregelCollection, options)
