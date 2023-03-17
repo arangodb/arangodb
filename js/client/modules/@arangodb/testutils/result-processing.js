@@ -328,15 +328,16 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        fn = fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
+          fn = '\\\\?\\' + fn;
+        }
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
