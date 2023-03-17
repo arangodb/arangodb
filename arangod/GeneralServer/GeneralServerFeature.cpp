@@ -209,7 +209,7 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options
-      ->addOption("--server.send-telemetrics",
+      ->addOption("--server.enable-telemetrics-api",
                   "Whether to enable the telemetrics API.",
                   new options::BooleanParameter(&_enableTelemetrics),
                   arangodb::options::makeDefaultFlags(

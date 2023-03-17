@@ -665,7 +665,6 @@ static void ClientConnection_reconnect(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to connect to this endpoint") + endpoint);
   }
-  // SET
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);

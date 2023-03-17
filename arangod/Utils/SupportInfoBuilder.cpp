@@ -686,9 +686,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             std::vector<std::string_view> idxTypes = {
-                "edge",      "geo",        "hash",      "fulltext", "inverted",
-                "no-access", "persistent", "iresearch", "skiplist", "ttl",
-                "zkd",       "primary",    "unknown"};
+                "edge",     "geo",      "geo1",       "geo2",      "hash",
+                "fulltext", "inverted", "persistent", "iresearch", "skiplist",
+                "ttl",      "zkd",      "primary",    "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
@@ -727,6 +727,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
               }
 
               auto idxType = it.get("type").stringView();
+              if (idxType == "geo1" || idxType == "geo2") {
+                idxType = "geo";
+              }
               result.add("type", VPackValue(idxType));
               bool isSparse = it.get("sparse").getBoolean();
               bool isUnique = it.get("unique").getBoolean();
@@ -739,11 +742,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             result.close();
             collsAlreadyVisited.insert(planId);
             for (auto const& [type, amount] : idxTypesToAmounts) {
-              if (type == "no-access") {
-                result.add("n_no_access", VPackValue(amount));
-              } else {
-                result.add({"n_" + type}, VPackValue(amount));
-              }
+              result.add({"n_" + type}, VPackValue(amount));
             }
           }
 

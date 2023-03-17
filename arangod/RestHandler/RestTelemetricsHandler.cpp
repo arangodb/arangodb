@@ -47,7 +47,7 @@ RestStatus RestTelemetricsHandler::execute() {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
         "telemetrics API is disabled. Must enable with startup parameter "
-        "`--server.send-telemetrics`.");
+        "`--server.enable-telemetrics-api`.");
     return RestStatus::DONE;
   }
 
