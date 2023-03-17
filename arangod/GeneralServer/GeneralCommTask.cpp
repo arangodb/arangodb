@@ -145,12 +145,6 @@ void GeneralCommTask<T>::asyncReadSome() try {
   close();
 }
 
-template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
-template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
-#ifndef _WIN32
-template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
-#endif
-
 template<SocketType T>
 void GeneralCommTask<T>::logRequestHeaders(
     std::string_view protocol,
@@ -201,3 +195,10 @@ void GeneralCommTask<T>::logResponseHeaders(
       << "\"" << protocol << "-response-headers\",\"" << (void*)this << "\",\""
       << headersForLogging << "\"";
 }
+
+template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
+template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
+#ifndef _WIN32
+template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
+#endif
+
