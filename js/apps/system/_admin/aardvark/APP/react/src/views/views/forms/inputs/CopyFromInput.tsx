@@ -16,13 +16,16 @@ type CopyFromInputProps = {
 
 
 const filterAndSortViews = (views: FormState[]) => {
-  return sortBy(views, "name")
-    .filter(view => {
-      return view.type === "arangosearch";
-    })
-    .map(view => {
-      return { value: view.name, label: view.name };
-    });
+  return sortBy(
+    views
+      .filter(view => {
+        return view.type === "arangosearch";
+      })
+      .map(view => {
+        return { value: view.name, label: view.name };
+      }),
+    "name"
+  );
 };
 
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
