@@ -33,34 +33,6 @@ const MultiValueLabel = (
   );
 };
 
-export const InvertedIndexFieldsDropdownWrap = ({
-  field,
-  autoFocus
-}: {
-  autoFocus: boolean;
-  field: IndexFormFieldProps;
-}) => {
-  const { currentFieldData } = useInvertedIndexContext();
-  const [formikField] = useField<InvertedIndexFieldType[]>(field.name);
-  const index = formikField.value?.findIndex(
-    fieldData => fieldData.name === currentFieldData?.name
-  );
-  let newIndex = index && index !== -1 ? index : 0;
-  const isTopLevel = currentFieldData?.path.startsWith(`fields`);
-  const showFieldDetailsForm = isTopLevel;
-  return (
-    <FieldsDropdown field={field} autoFocus={autoFocus}>
-      <Box>
-        Selected field path: {currentFieldData?.path}, My field name:{" "}
-        {field.name}{" "}
-      </Box>
-      {currentFieldData && showFieldDetailsForm ? (
-        <FieldDataForm currentFieldData={currentFieldData} index={newIndex} />
-      ) : null}
-    </FieldsDropdown>
-  );
-};
-
 /**
  * 
 {
@@ -81,7 +53,6 @@ const FieldDataForm = ({
   currentFieldData
 }: {
   currentFieldData: FieldData;
-  index: number;
 }) => {
   return (
     <Box padding="4">
@@ -208,5 +179,28 @@ const FieldsDropdown = ({
       </Box>
       {children}
     </Box>
+  );
+};
+
+export const InvertedIndexFieldsDropdownWrap = ({
+  field,
+  autoFocus
+}: {
+  autoFocus: boolean;
+  field: IndexFormFieldProps;
+}) => {
+  const { currentFieldData } = useInvertedIndexContext();
+  const isTopLevel = currentFieldData?.path.startsWith(`fields`);
+  const showFieldDetailsForm = isTopLevel;
+  return (
+    <FieldsDropdown field={field} autoFocus={autoFocus}>
+      <Box>
+        Selected field path: {currentFieldData?.path}, My field name:{" "}
+        {field.name}{" "}
+      </Box>
+      {currentFieldData && showFieldDetailsForm ? (
+        <FieldDataForm currentFieldData={currentFieldData} />
+      ) : null}
+    </FieldsDropdown>
   );
 };
