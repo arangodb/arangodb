@@ -667,6 +667,7 @@ class instance {
   startArango () {
     try {
       this.pid = this._executeArangod().pid;
+      internal.addPidToMonitor(this.pid);
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 

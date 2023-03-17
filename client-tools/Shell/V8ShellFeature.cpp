@@ -36,6 +36,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -61,6 +62,7 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8/processMonitor.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
@@ -160,12 +162,12 @@ void V8ShellFeature::validateOptions(
 }
 
 void V8ShellFeature::startProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>()->isAllowedToControlProcesses(_isolate)) {
+  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(_isolate)) {
     launchMonitorThread(server());
   }
 }
 void V8ShellFeature::stopProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>()->isAllowedToControlProcesses(_isolate)) {
+  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(_isolate)) {
     terminateMonitorThread(server());
   }
 }
@@ -181,7 +183,6 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform.createIsolate();
-  startProcessMonitor();
   
   v8::Locker locker{_isolate};
 
@@ -220,6 +221,7 @@ void V8ShellFeature::start() {
       .FromMaybe(false);
 
   initGlobals();
+  startProcessMonitor();
 }
 
 void V8ShellFeature::unprepare() {

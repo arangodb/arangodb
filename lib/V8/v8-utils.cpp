@@ -111,6 +111,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8/v8-deadline.h"
+#include "V8/processMonitor.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -4701,7 +4702,7 @@ static void JS_addPidToMonitor(v8::FunctionCallbackInfo<v8::Value> const& args) 
   ExternalId pid;
 
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  addMonitorPID(pid._pid);
+  addMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -4736,7 +4737,7 @@ static void JS_removePidFromMonitor(v8::FunctionCallbackInfo<v8::Value> const& a
   ExternalId pid;
 
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  removeMonitorPID(pid._pid);
+  removeMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -4783,7 +4784,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external;
-  auto *x = getHistoricStatus(pid);
+  auto *x = getHistoricStatus(pid._pid);
   if (x != nullptr) {
     external = *x;
   } else {
