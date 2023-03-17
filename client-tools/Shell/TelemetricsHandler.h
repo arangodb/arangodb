@@ -52,7 +52,6 @@ class TelemetricsHandler {
 
   void getTelemetricsInfo(VPackBuilder& builder);
 
-  void sendTelemetricsToEndpointTestRedirect(VPackBuilder& builder);
   std::optional<VPackBuilder> sendTelemetricsToEndpoint(
       std::string const& reqUrl = kOriginalUrl);
 
@@ -70,7 +69,6 @@ class TelemetricsHandler {
   ArangoshServer& _server;
   std::mutex _mtx;
   std::condition_variable _runCondition;
-  std::condition_variable _runCondition2;
   std::thread _telemetricsThread;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   Result _telemetricsFetchResponse;

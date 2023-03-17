@@ -132,14 +132,12 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       lk.lock();
 
       result = this->checkHttpResponse(response);
+      _telemetricsFetchResponse = result;
       if (auto errorNum = result.errorNumber();
           errorNum == TRI_ERROR_NO_ERROR ||
           errorNum == TRI_ERROR_HTTP_FORBIDDEN) {
         _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
-        _telemetricsFetchResponse = std::move(result);
         break;
-      } else {
-        _telemetricsFetchResponse = std::move(result);
       }
     }
     _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
@@ -149,7 +147,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
   }
 }
 
-// Sends telemetrics to the endpoint and ests the redirection when telemetrics
+// Sends telemetrics to the endpoint and tests the redirection when telemetrics
 // is sent to an endpoint, though not exactly the same thing, because here the
 // endpoint is local, hence the same client is used and a new endpoint is not
 // created.
@@ -157,11 +155,8 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
   VPackBuilder testResponseBuilder;
 
-  bool isLocal = false;
-  if (reqUrl.starts_with('/')) {
-    isLocal = true;
-  }
-  bool isOriginalUrl = (reqUrl.compare(kOriginalUrl) == 0) ? true : false;
+  bool isLocal = reqUrl.starts_with('/');
+  bool isOriginalUrl = reqUrl == kOriginalUrl;
 
   std::string url = reqUrl;
 
@@ -304,9 +299,9 @@ void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
     builder.add(_telemetricsFetchedInfo.slice());
   } else if (_telemetricsFetchResponse.fail()) {
     builder.openObject();
-    builder.add("errorNum",
+    builder.add(StaticStrings::ErrorNum,
                 VPackValue(_telemetricsFetchResponse.errorNumber()));
-    builder.add("errorMessage",
+    builder.add(StaticStrings::ErrorMessage,
                 VPackValue(_telemetricsFetchResponse.errorMessage()));
     builder.close();
   }
@@ -329,7 +324,7 @@ void TelemetricsHandler::arrangeTelemetrics() {
     }
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
-        << "Exception on handling telemetrics " << err.what();
+        << "Exception on handling telemetrics: " << err.what();
   }
 }
 
