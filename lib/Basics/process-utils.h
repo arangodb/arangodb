@@ -25,6 +25,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
@@ -38,6 +39,12 @@
 #else
 #define TRI_INVALID_PROCESS_ID (-1)
 #endif
+
+namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -131,6 +138,28 @@ struct ExternalProcessStatus {
 
   ExternalProcessStatus();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief external process stati of processes exited while being monitored
+////////////////////////////////////////////////////////////////////////////////
+
+extern std::map<TRI_pid_t, ExternalProcessStatus> ExitedExternalProcessStatus;
+
+
+extern ExternalProcessStatus const *getHistoricStatus(TRI_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief external process being monitored
+////////////////////////////////////////////////////////////////////////////////
+
+extern std::vector<ExternalId> monitoredProcesses;
+
+extern void addMonitorPID(ExternalId& pid);
+extern void removeMonitorPID(ExternalId& pid);
+extern void launchMonitorThread(arangodb::application_features::ApplicationServer& server);
+extern void terminateMonitorThread(arangodb::application_features::ApplicationServer& server);
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds

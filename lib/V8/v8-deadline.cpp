@@ -138,6 +138,12 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   return delta;
 }
 
+void triggerV8DeadlineNow() {
+  // Set the deadline to expired:
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  executionDeadline = TRI_microtime() - 100;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,9 +157,7 @@ static bool SignalHandler(DWORD eventType) {
     case CTRL_CLOSE_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT: {
-      // Set the deadline to expired:
-      MUTEX_LOCKER(mutex, singletonDeadlineMutex);
-      executionDeadline = TRI_microtime() - 100;
+      triggerV8DeadlineNow();
       return true;
     }
     default: {
@@ -166,8 +170,7 @@ static bool SignalHandler(DWORD eventType) {
 
 static void SignalHandler(int /*signal*/) {
   // Set the deadline to expired:
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
-  executionDeadline = TRI_microtime() - 100;
+  triggerV8DeadlineNow();
 }
 
 #endif

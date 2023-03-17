@@ -159,6 +159,17 @@ void V8ShellFeature::validateOptions(
   }
 }
 
+void V8ShellFeature::startProcessMonitor() {
+  if (server().getFeature<V8SecurityFeature>()->isAllowedToControlProcesses(_isolate)) {
+    launchMonitorThread(server());
+  }
+}
+void V8ShellFeature::stopProcessMonitor() {
+  if (server().getFeature<V8SecurityFeature>()->isAllowedToControlProcesses(_isolate)) {
+    terminateMonitorThread(server());
+  }
+}
+
 void V8ShellFeature::start() {
   auto& platform = server().getFeature<V8PlatformFeature>();
 
@@ -170,7 +181,8 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform.createIsolate();
-
+  startProcessMonitor();
+  
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -213,7 +225,6 @@ void V8ShellFeature::start() {
 void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
-
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
 
@@ -221,6 +232,7 @@ void V8ShellFeature::unprepare() {
         v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
+    stopProcessMonitor();
 
     // clear globals to free memory
     auto isolate = _isolate;

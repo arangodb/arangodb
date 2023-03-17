@@ -141,7 +141,13 @@ T readEntry(char const*& p, char const* e) {
 }  // namespace
 
 /// @brief all external processes
+// TODO: locking
 std::vector<ExternalProcess*> ExternalProcesses;
+
+/// @brief if monitored & exited we keep them here:
+std::map<TRI_pid_t, ExternalProcessStatus> ExitedExternalProcessStatus;
+
+std::vector<ExternalId> monitoredProcesses;
 
 /// @brief lock for protected access to vector ExternalProcesses
 static arangodb::Mutex ExternalProcessesLock;
@@ -1555,4 +1561,78 @@ void TRI_ShutdownProcess() {
     delete external;
   }
   ExternalProcesses.clear();
+}
+
+void addMonitorPID(ExternalId& pid) {
+  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  monitoredProcesses.push_back(pid);
+}
+
+void removeMonitorPID(ExternalId& pid) {
+  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  monitoredProcesses.erase(std::remove(
+                             monitoredProcesses.begin(),
+                             monitoredProcesses.end(),
+                             pid),
+                           monitoredProcesses.end());
+}
+
+
+ExternalProcessStatus const *getHistoricStatus(TRI_pid_t pid) {
+  auto it = ExitedExternalProcessStatus.find(pid);
+  if (it == ExitedExternalProcessStatus.end()) {
+    return nullptr;
+  }
+  return &(it->second);
+}
+
+
+extern void triggerV8DeadlineNow();
+
+class ProcessMonitorThread : public arangodb::Thread {
+ public:
+  ProcessMonitorThread(application_features::ApplicationServer& server)
+    : Thread(server, "ProcessMonitorThread") {}
+  ~ProcessMonitorThread() { shutdown(); }
+ protected:
+  void run() override {
+    while (!isStopping()) {
+      // TODO lock
+      std::vector<TRI_pid_t> mp;
+      {
+        MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+        mp = monitoredProcesses;
+      }
+      for (auto const &pid: mp) {
+        auto status = TRI_CheckExternalProcess(pid, false, 0);
+        if ((status._status == TRI_EXT_TERMINATED) ||
+            (status._status == TRI_EXT_ABORTED) ||
+            (status._status == TRI_EXT_NOT_FOUND)) {
+          // Its dead and gone - good.
+          MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+          for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
+               ++it) {
+            if (*it == external) {
+              ExternalProcesses.erase(it);
+              break;
+            }
+          }
+          ExitedExternalProcessStatus[pid] = status;
+          triggerV8DeadlineNow();
+        }
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
+
+ProcessMonitorThread *mt = nullptr;
+void launchMonitorThread(application_features::ApplicationServer& server) {
+  if (mt == nullptr) {
+    mt = new ProcessMonitorThread(server);
+    mt->start();
+  }
+}
+void terminateMonitorThread(application_features::ApplicationServer& server) {
+  mt->end();
 }
