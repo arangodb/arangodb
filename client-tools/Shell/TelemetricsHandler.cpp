@@ -155,10 +155,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
   VPackBuilder testResponseBuilder;
 
-  bool isLocal = false;
-  if (reqUrl.starts_with('/')) {
-    isLocal = true;
-  }
+  bool isLocal = reqUrl.starts_with('/');
   bool isOriginalUrl = (reqUrl.compare(kOriginalUrl) == 0) ? true : false;
 
   std::string url = reqUrl;
