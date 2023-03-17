@@ -147,7 +147,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
   }
 }
 
-// Sends telemetrics to the endpoint and ests the redirection when telemetrics
+// Sends telemetrics to the endpoint and tests the redirection when telemetrics
 // is sent to an endpoint, though not exactly the same thing, because here the
 // endpoint is local, hence the same client is used and a new endpoint is not
 // created.
