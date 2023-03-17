@@ -1,6 +1,10 @@
 import React, { createContext, ReactNode, useContext, useState } from "react";
 
-export type FieldData = { path: string; name: string };
+export type FieldData = {
+  fieldName: string;
+  fieldValue: string;
+  fieldIndex: number;
+};
 type InvertedIndexContextType = {
   currentFieldData?: FieldData;
   setCurrentFieldData: (data?: FieldData) => void;
