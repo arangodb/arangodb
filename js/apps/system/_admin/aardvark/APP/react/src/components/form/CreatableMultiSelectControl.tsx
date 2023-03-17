@@ -5,8 +5,7 @@ import {
   Props as ReactSelectProps,
   PropsValue
 } from "react-select";
-import CreatableSelect from "react-select/creatable";
-import { getSelectBase } from "../select/SelectBase";
+import { CreatableSelectBase } from "../select/SelectBase";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -16,8 +15,6 @@ type OptionType = {
 export type InputControlProps = BaseFormControlProps & {
   selectProps?: ReactSelectProps<OptionType>;
 };
-
-const CreatableSelectBase = getSelectBase(CreatableSelect);
 
 export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
