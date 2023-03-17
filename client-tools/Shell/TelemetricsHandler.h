@@ -56,10 +56,7 @@ class TelemetricsHandler {
       std::string const& reqUrl = {kOriginalUrl.begin(), kOriginalUrl.end()});
 
  private:
-  //  static constexpr char kOriginalUrl[] =
   static constexpr std::string_view kOriginalUrl =
-      //"https://europe-west3-telemetrics-project.cloudfunctions.net/"
-      // "telemetrics-cf-3";
       "https://telemetrics.arangodb.com/v1/collect";
   Result checkHttpResponse(
       std::unique_ptr<httpclient::SimpleHttpResult> const& response) const;
