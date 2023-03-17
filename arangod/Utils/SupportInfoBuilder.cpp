@@ -216,7 +216,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
 // if it's a telemetrics request, keys can only have lowercase letters and
 // underscores
 void SupportInfoBuilder::normalizeKeyForTelemetrics(std::string& key) {
-  key = arangodb::basics::StringUtils::tolower(key.data());
+  arangodb::basics::StringUtils::tolowerInPlace(key);
   key = absl::StrReplaceAll(std::move(key), {{".", "_"}, {"-", "_"}});
 }
 
