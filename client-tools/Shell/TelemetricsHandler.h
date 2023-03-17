@@ -52,7 +52,6 @@ class TelemetricsHandler {
 
   void getTelemetricsInfo(VPackBuilder& builder);
 
-  void sendTelemetricsToEndpointTestRedirect(VPackBuilder& builder);
   std::optional<VPackBuilder> sendTelemetricsToEndpoint(
       std::string const& reqUrl = kOriginalUrl);
 
