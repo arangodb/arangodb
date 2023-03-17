@@ -389,7 +389,7 @@ static void JS_PregelHistoryRemove(
 
   if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistory(<executionNum>]");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistoryRemove(<executionNum>]");
   }
 
   // Read single history entry
