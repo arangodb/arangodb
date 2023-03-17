@@ -92,10 +92,9 @@ Result TelemetricsHandler::checkHttpResponse(
   if (response->wasHttpError()) {
     auto errorNum = TRI_ERROR_INTERNAL;
     std::string errorMsg = response->getHttpReturnMessage();
-    std::shared_ptr<velocypack::Builder> bodyBuilder;
     // Handle case of no body:
     try {
-      bodyBuilder = response->getBodyVelocyPack();
+      auto bodyBuilder = response->getBodyVelocyPack();
       velocypack::Slice error = bodyBuilder->slice();
       if (!error.isNone() && error.hasKey(StaticStrings::ErrorMessage)) {
         errorNum = ErrorCode{
