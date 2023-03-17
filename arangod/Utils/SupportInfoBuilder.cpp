@@ -103,7 +103,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
     size_t numDocColls;
     size_t numEdgeColls;
     size_t numSmartColls;
-    size_t numDisjointGraphs;
+    size_t numDisjointSmartColls;
     VPackBuilder builder;
   };
 
@@ -159,7 +159,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
             visitedDbInfo.numSmartColls++;
           }
           if (collIt.get("disjoint").getBoolean()) {
-            visitedDbInfo.numDisjointGraphs++;
+            visitedDbInfo.numDisjointSmartColls++;
           }
           visitedColls[planId].insert(collName);
         }
@@ -178,7 +178,8 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
     result.add("n_doc_colls", VPackValue(dbInfo.numDocColls));
     result.add("n_edge_colls", VPackValue(dbInfo.numEdgeColls));
     result.add("n_smart_colls", VPackValue(dbInfo.numSmartColls));
-    result.add("n_disjoint_graphs", VPackValue(dbInfo.numDisjointGraphs));
+    result.add("n_disjoint_smart_colls",
+               VPackValue(dbInfo.numDisjointSmartColls));
 
     for (auto const dbIt : velocypack::ObjectIterator(dbInfo.builder.slice())) {
       std::string_view key = dbIt.key.stringView();
@@ -248,9 +249,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     if (isTelemetricsReq) {
       // it's single server, but we maintain the format the same as cluster
       std::string envValue;
-      TRI_GETENV("STARTUP_MODE", envValue);
+      TRI_GETENV("ARANGODB_STARTUP_MODE", envValue);
       result.add("startup_mode", VPackValue(envValue));
-      result.add("persistedId",
+      result.add("persisted_id",
                  VPackValue("single_" + std::to_string(serverId)));
 #ifdef USE_ENTERPRISE
       result.add("license", VPackValue("enterprise"));
@@ -289,15 +290,15 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         result.add("license", VPackValue("community"));
 #endif
         if (ServerState::instance()->hasPersistedId()) {
-          result.add("persistedId",
+          result.add("persisted_id",
                      VPackValue(arangodb::basics::StringUtils::tolower(
                          ServerState::instance()->getPersistedId())));
         } else {
-          result.add("persistedId", VPackValue(serverId));
+          result.add("persisted_id", VPackValue(serverId));
         }
 
         std::string envValue;
-        TRI_GETENV("STARTUP_MODE", envValue);
+        TRI_GETENV("ARANGODB_STARTUP_MODE", envValue);
         result.add("startup_mode", VPackValue(envValue));
       }
       if (isActiveFailover) {
@@ -598,7 +599,10 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
   result.add("databases", VPackValue(VPackValueType::Array));
   for (auto const& database : databases) {
-    auto vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
+    if (vocbase == nullptr) {
+      continue;
+    }
 
     result.openObject();
     result.add("name", database);
@@ -606,14 +610,11 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
     size_t numDocColls = 0;
     size_t numEdgeColls = 0;
     size_t numSmartColls = 0;
-    size_t numDisjointGraphs = 0;
+    size_t numDisjointSmartColls = 0;
 
     result.add("colls", VPackValue(VPackValueType::Array));
 
     containers::FlatHashSet<size_t> collsAlreadyVisited;
-
-    containers::FlatHashMap<size_t, containers::FlatHashSet<std::string_view>>
-        visitedColls;
 
     DatabaseGuard guard(dbFeature, database);
     methods::Collections::enumerate(
@@ -674,7 +675,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
               result.add("smart_graph", VPackValue(false));
             }
             if (coll->isDisjoint()) {
-              numDisjointGraphs++;
+              numDisjointSmartColls++;
               result.add("disjoint", VPackValue(true));
             } else {
               result.add("disjoint", VPackValue(false));
@@ -755,7 +756,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
     result.add("n_doc_colls", VPackValue(numDocColls));
     result.add("n_edge_colls", VPackValue(numEdgeColls));
     result.add("n_smart_colls", VPackValue(numSmartColls));
-    result.add("n_disjoint_graphs", VPackValue(numDisjointGraphs));
+    result.add("n_disjoint_smart_colls", VPackValue(numDisjointSmartColls));
 
     result.close();
   }
