@@ -155,7 +155,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
           if (collIt.get("smart_graph").isTrue()) {
             visitedDatabases[dbName].numSmartColls++;
           }
-          if (collIt.get("disjoint").getBoolean()) {
+          if (collIt.get("disjoint").isTrue()) {
             visitedDatabases[dbName].numDisjointGraphs++;
           }
           visitedColls[planId].insert(collName);
