@@ -20,7 +20,7 @@ const ParameterNodeColorAttribute = () => {
   }
 
   return (
-    <Flex direction='row' mt='24' mb='12'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Node color attribute</Box>
       </Center>
@@ -29,6 +29,8 @@ const ParameterNodeColorAttribute = () => {
         min={1}
         required={true}
         value={nodeColorAttribute}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
         disabled={urlParameters.nodeColorByCollection}
       />

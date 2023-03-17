@@ -19,7 +19,7 @@ const ParameterNodeSize = () => {
   }
 
   return (
-    <Flex direction='row' mt='24' mb='12'>
+    <Flex direction='row' mt='3' mb='3'>
       <Center>
         <Box color='#fff' w='150px'>Sizing attribute</Box>
       </Center>
@@ -28,6 +28,8 @@ const ParameterNodeSize = () => {
         min={1}
         required={true}
         value={nodeSize}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
         disabled={urlParameters.nodeSizeByEdges}
       />

@@ -1,6 +1,9 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Flex,
+  Center } from '@chakra-ui/react';
 
 const ParameterEdgeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -17,7 +20,8 @@ const ParameterEdgeColor = () => {
   }
 
   return (
-    <div style={{ 'marginTop': '12px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <Flex direction='row'>
+      <Center>
       <Textinput
         label={'Default edge color'}
         type={'color'}
@@ -28,7 +32,8 @@ const ParameterEdgeColor = () => {
         onChange={handleChange}
       disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
-    </div>
+      </Center>
+    </Flex>
   );
 };
 

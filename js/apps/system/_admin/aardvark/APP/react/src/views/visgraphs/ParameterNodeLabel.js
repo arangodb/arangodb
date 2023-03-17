@@ -19,7 +19,7 @@ const ParameterNodeLabel = () => {
   }
   
   return (
-    <Flex direction='row' mt='24' mb='12'>
+    <Flex direction='row' mt='6' mb='3'>
       <Center>
         <Box color='#fff' w='150px'>Node label</Box>
       </Center>
@@ -28,6 +28,8 @@ const ParameterNodeLabel = () => {
         min={1}
         required={true}
         value={nodeLabel}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
       />
       <Spacer />

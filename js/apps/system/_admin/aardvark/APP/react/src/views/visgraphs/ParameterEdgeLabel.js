@@ -19,7 +19,7 @@ const ParameterEdgeLabel = () => {
   }
 
   return (
-    <Flex direction='row' mt='24' mb='12'>
+    <Flex direction='row' mt='6'>
       <Center>
         <Box color='#fff' w='150px'>Edge label</Box>
       </Center>
@@ -28,6 +28,8 @@ const ParameterEdgeLabel = () => {
         min={1}
         required={true}
         value={edgeLabel}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
       />
       <Spacer />

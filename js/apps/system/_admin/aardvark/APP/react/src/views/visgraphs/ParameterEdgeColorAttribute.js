@@ -19,7 +19,7 @@ const ParameterEdgeColorAttribute = () => {
   }
 
   return (
-    <Flex direction='row' mt='24' mb='12'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Edge color attribute</Box>
       </Center>
@@ -27,6 +27,8 @@ const ParameterEdgeColorAttribute = () => {
         width='200px'
         min={1}
         value={edgeColorAttribute}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
         disabled={urlParameters.edgeColorByCollection}
       />

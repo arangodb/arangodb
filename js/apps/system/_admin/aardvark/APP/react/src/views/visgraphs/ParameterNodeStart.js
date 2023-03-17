@@ -19,7 +19,7 @@ const ParameterNodeStart = () => {
   }
 
   return (
-    <Flex direction='row' mt='12'>
+    <Flex direction='row' mt='3'>
       <Center>
         <Box color='#fff' w='150px'>Start node</Box>
       </Center>
@@ -28,6 +28,8 @@ const ParameterNodeStart = () => {
         min={1}
         required={true}
         value={urlParameters.nodeStart}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
       />
       <Spacer />

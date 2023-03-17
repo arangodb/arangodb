@@ -18,7 +18,7 @@ const ParameterEdgeLabelByCollection = () => {
   }
   
   return (
-    <Flex direction='row' mt='12'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Show collection name</Box>
       </Center>

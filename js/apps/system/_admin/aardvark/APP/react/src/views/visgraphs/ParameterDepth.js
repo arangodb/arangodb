@@ -28,6 +28,8 @@ const ParameterDepth = () => {
         min={1}
         required={true}
         value={depth}
+        background='#ffffff'
+        size='sm'
         onChange={handleChange}
       />
       <Spacer />

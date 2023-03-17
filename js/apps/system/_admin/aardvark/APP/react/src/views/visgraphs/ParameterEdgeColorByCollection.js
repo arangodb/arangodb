@@ -18,7 +18,7 @@ const ParameterEdgeColorByCollection = () => {
   }
 
   return (
-    <Flex direction='row' mt='12'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Color edges by collection</Box>
       </Center>

@@ -18,7 +18,7 @@ const ParameterEdgeDirection = () => {
   }
 
   return (
-    <Flex direction='row' mt='12'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Show edge direction</Box>
       </Center>

@@ -1,6 +1,9 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import Textinput from "./components/pure-css/form/Textinput.tsx";
+import {
+  Flex,
+  Center } from '@chakra-ui/react';
 
 const ParameterNodeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -18,18 +21,20 @@ const ParameterNodeColor = () => {
   }
 
   return (
-    <div style={{ 'marginTop': '12px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <Textinput
-        label={'Default node color'}
-        type={'color'}
-        value={calculatedNodeColor}
-        template={'graphviewer'}
-        width={'60px'}
-        height={'30px'}
-        onChange={handleChange}
-      disabled={urlParameters.nodeColorByCollection}>
-      </Textinput>
-    </div>
+    <Flex direction='row'>
+      <Center>
+        <Textinput
+          label={'Default node color'}
+          type={'color'}
+          value={calculatedNodeColor}
+          template={'graphviewer'}
+          width={'60px'}
+          height={'30px'}
+          onChange={handleChange}
+          disabled={urlParameters.nodeColorByCollection}>
+        </Textinput>
+      </Center>
+    </Flex>
   );
 };
 
