@@ -218,8 +218,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
               marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
               marker->add("db", VPackValue(vocbase->name()));
               marker->add("cuid", VPackValue(coll->guid()));
-              printMarker(vocbase);
             }
+            printMarker(vocbase);
           }
         }
         break;
