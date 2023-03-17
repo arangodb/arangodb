@@ -1,6 +1,13 @@
 devel
 -----
 
+* A Pregel execution now stores it's state during and after execution
+  into a system collection. To read or delete entries the new API
+  `/_api/control_pregel/history[/<id>]`. Additionally, the Pregel JavaScript
+  module has been extended to support access as well.
+  Read history `<PregelModule>.history(<pid>)`.
+  Remove history `<PregelModule>.removeHistory(<pid>)`.
+
 * Added support for sending gzip-compressed responses from the server.
   Previously only deflated responses were supported.
 
