@@ -101,31 +101,37 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
 
   struct DbCollStats {
     size_t numDocColls;
-    size_t numGraphColls;
+    size_t numEdgeColls;
     size_t numSmartColls;
     size_t numDisjointGraphs;
     VPackBuilder builder;
   };
 
+  // because there could be replication, so we gather info from all of the
+  // databases with the same name, but only add one to the response it's the
+  // database by name and its own properties
   std::unordered_map<std::string_view, DbCollStats> visitedDatabases;
+  // plan id of the visited collection and a set containing their already
+  // visited shards
   containers::FlatHashMap<size_t, containers::FlatHashSet<std::string_view>>
       visitedColls;
+  // plan id of the collection and its amount of docs
   containers::FlatHashMap<size_t, size_t> collNumDocs;
   // merge all collections belonging to the database into
   // the same object, as the database might be in more
   // than one dbserver
-  for (auto const dbItFromServers : velocypack::ObjectIterator(infoSlice)) {
-    for (auto const dbIt : velocypack::ArrayIterator(dbItFromServers.value)) {
+  for (auto dbItFromServers : velocypack::ObjectIterator(infoSlice)) {
+    for (auto dbIt : velocypack::ArrayIterator(dbItFromServers.value)) {
       std::string_view dbName = dbIt.get("name").stringView();
       if (visitedDatabases.find(dbName) == visitedDatabases.end()) {
-        visitedDatabases.insert(std::make_pair(dbName, DbCollStats()));
-        visitedDatabases[dbName].builder.openObject();
-        visitedDatabases[dbName].builder.add("n_views",
-                                             VPackValue(dbViews[dbName]));
-        visitedDatabases[dbName].builder.add(
-            "single_shard", VPackValue(dbIt.get("single_shard").getBoolean()));
-        visitedDatabases[dbName].builder.add("colls",
-                                             VPackValue(VPackValueType::Array));
+        auto insertedEl =
+            visitedDatabases.insert(std::make_pair(dbName, DbCollStats()));
+        VPackBuilder& dbBuilder = insertedEl.first->second.builder;
+        dbBuilder.openObject();
+        dbBuilder.add("n_views", VPackValue(dbViews[dbName]));
+        dbBuilder.add("single_shard",
+                      VPackValue(dbIt.get("single_shard").getBoolean()));
+        dbBuilder.add("colls", VPackValue(VPackValueType::Array));
       }
 
       for (auto const collIt : velocypack::ArrayIterator(dbIt.get("colls"))) {
@@ -136,27 +142,24 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
             visitedCollIt != visitedColls.end()) {
           if (visitedCollIt->second.find(collName) ==
               visitedCollIt->second.end()) {
-            auto amountDocs = collNumDocs[planId];
-            collNumDocs[planId] +=
-                collIt.get("n_docs").getNumber<decltype(amountDocs)>();
+            collNumDocs[planId] += collIt.get("n_docs").getNumber<size_t>();
             visitedColls[planId].insert(collName);
           }
         } else {
-          auto amountDocs = collNumDocs[planId];
-          collNumDocs[planId] +=
-              collIt.get("n_docs").getNumber<decltype(amountDocs)>();
-          visitedDatabases[dbName].builder.add(collIt);
+          collNumDocs[planId] += collIt.get("n_docs").getNumber<size_t>();
+          auto& visitedDbInfo = visitedDatabases[dbName];
+          visitedDbInfo.builder.add(collIt);
           std::string_view collType = collIt.get("type").stringView();
           if (collType == "document") {
-            visitedDatabases[dbName].numDocColls++;
+            visitedDbInfo.numDocColls++;
           } else if (collType == "edge") {
-            visitedDatabases[dbName].numGraphColls++;
+            visitedDbInfo.numEdgeColls++;
           }
           if (collIt.get("smart_graph").getBoolean()) {
-            visitedDatabases[dbName].numSmartColls++;
+            visitedDbInfo.numSmartColls++;
           }
           if (collIt.get("disjoint").getBoolean()) {
-            visitedDatabases[dbName].numDisjointGraphs++;
+            visitedDbInfo.numDisjointGraphs++;
           }
           visitedColls[planId].insert(collName);
         }
@@ -173,7 +176,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
     }
     result.openObject();
     result.add("n_doc_colls", VPackValue(dbInfo.numDocColls));
-    result.add("n_graph_colls", VPackValue(dbInfo.numGraphColls));
+    result.add("n_edge_colls", VPackValue(dbInfo.numEdgeColls));
     result.add("n_smart_colls", VPackValue(dbInfo.numSmartColls));
     result.add("n_disjoint_graphs", VPackValue(dbInfo.numDisjointGraphs));
 
@@ -601,7 +604,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
     result.add("name", database);
 
     size_t numDocColls = 0;
-    size_t numGraphColls = 0;
+    size_t numEdgeColls = 0;
     size_t numSmartColls = 0;
     size_t numDisjointGraphs = 0;
 
@@ -660,7 +663,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
               result.add("type", VPackValue("document"));
             } else if (collType == TRI_COL_TYPE_EDGE) {
               result.add("type", VPackValue("edge"));
-              numGraphColls++;
+              numEdgeColls++;
             } else {
               result.add("type", VPackValue("unknown"));
             }
@@ -750,7 +753,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
     result.add("single_shard", VPackValue(vocbase->isOneShard()));
     result.add("n_doc_colls", VPackValue(numDocColls));
-    result.add("n_graph_colls", VPackValue(numGraphColls));
+    result.add("n_edge_colls", VPackValue(numEdgeColls));
     result.add("n_smart_colls", VPackValue(numSmartColls));
     result.add("n_disjoint_graphs", VPackValue(numDisjointGraphs));
 
