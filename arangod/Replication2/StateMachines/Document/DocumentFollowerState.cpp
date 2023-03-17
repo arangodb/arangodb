@@ -80,7 +80,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   // A follower may request a snapshot before leadership has been
   // established. A retry will occur in that case.
   auto leader = _networkHandler->getLeaderInterface(destination);
-  auto fut = leader->startSnapshot(waitForIndex);
+  auto fut = leader->startSnapshot();
   return handleSnapshotTransfer(leader, waitForIndex, snapshotVersion.get(),
                                 std::move(fut))
       .thenValue([leader, self = shared_from_this()](
@@ -94,7 +94,6 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
             .thenValue([snapshotTransferResult](auto&& res) {
               if (res.fail()) {
-                LOG_DEVEL << "fuck " << res;
                 LOG_TOPIC("0e168", ERR, Logger::REPLICATION2)
                     << "Failed to finish snapshot "
                     << *snapshotTransferResult.snapshotId << ": " << res;

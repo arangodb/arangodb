@@ -292,7 +292,7 @@ auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
   });
 }
 
-auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     -> ResultT<SnapshotConfig> {
   auto shardMap = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -303,7 +303,7 @@ auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
   });
 
   return executeSnapshotOperation<ResultT<SnapshotConfig>>(
-      [&](auto& handler) { return handler->create(shardMap); },
+      [&](auto& handler) { return handler->create(shardMap, params); },
       [](auto& snapshot) { return snapshot->config(); });
 }
 
@@ -316,9 +316,15 @@ auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
 
 auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
     -> Result {
-  return executeSnapshotOperation<Result>(
-      [&](auto& handler) { return handler->find(params.id); },
-      [](auto& snapshot) { return snapshot->finish(); });
+  return _snapshotHandler.doUnderLock([&](auto& handler) -> Result {
+    if (handler == nullptr) {
+      return Result{
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Could not get snapshot status of {}, state resigned.",
+                      gid)};
+    }
+    return handler->finish(params.id);
+  });
 }
 
 auto DocumentLeaderState::snapshotStatus(SnapshotId id)
@@ -463,14 +469,12 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
   if (snapshotRes.fail()) {
     return snapshotRes.result();
   }
-  if (auto snapshot = snapshotRes.get().lock()) {
+  if (auto snapshot = snapshotRes.get().lock(); snapshot != nullptr) {
     return processSnapshot(snapshot);
   }
-  return Result(
-      TRI_ERROR_INTERNAL,
-      fmt::format("Snapshot not available for {}! Most often this happens "
-                  "because the leader resigned in the meantime!",
-                  gid));
+
+  return Result(TRI_ERROR_INTERNAL,
+                fmt::format("Snapshot not available for {}!", gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

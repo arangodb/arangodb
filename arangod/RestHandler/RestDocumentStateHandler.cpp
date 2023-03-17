@@ -29,6 +29,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
+#include <optional>
+
 namespace arangodb {
 
 RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
@@ -85,8 +87,13 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
 
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    return processSnapshotRequest(methods, logId.value(),
-                                  parseGetSnapshotParams());
+    auto params = parseGetSnapshotParams();
+    if (params.fail()) {
+      generateError(rest::ResponseCode::BAD, params.result().errorNumber(),
+                    params.result().errorMessage());
+      return RestStatus::DONE;
+    }
+    return processSnapshotRequest(methods, logId.value(), params.get());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
@@ -160,22 +167,18 @@ auto RestDocumentStateHandler::parsePostSnapshotParams()
           TRI_ERROR_BAD_PARAMETER,
           fmt::format("expect POST "
                       "/_api/document-state/<state-id>/snapshot/"
-                      "start?waitForIndex=<index>"));
+                      "start"));
     }
 
-    auto waitForIndexParam =
-        _request->parsedValue<decltype(replication2::LogIndex::value)>(
-            "waitForIndex");
-    if (!waitForIndexParam.has_value()) {
+    bool parseSuccess{false};
+    auto body = parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
       return ResultT<document::SnapshotParams>::error(
-          TRI_ERROR_HTTP_BAD_PARAMETER,
-          "invalid waitForIndex parameter, expect POST "
-          "/_api/document-state/<state-id>/snapshot/"
-          "start?waitForIndex=<index>");
+          TRI_ERROR_HTTP_BAD_PARAMETER, "could not parse body as VPack object");
     }
 
-    return document::SnapshotParams{document::SnapshotParams::Start{
-        .waitForIndex = replication2::LogIndex{*waitForIndexParam}}};
+    return document::SnapshotParams{
+        velocypack::deserialize<document::SnapshotParams::Start>(body)};
   } else if (suffixes[2] == "next") {
     if (suffixes.size() != 4) {
       return ResultT<document::SnapshotParams>::error(
@@ -213,11 +216,10 @@ RestStatus RestDocumentStateHandler::handleDeleteRequest(
   std::optional<replication2::LogId> logId =
       replication2::LogId::fromString(suffixes[0]);
   if (!logId.has_value()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format(
-            "invalid state id {} during DELETE /_api/document-state/<state-id>",
-            suffixes[0]));
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  fmt::format("invalid state id {} during DELETE "
+                              "/_api/document-state/<state-id>",
+                              suffixes[0]));
     return RestStatus::DONE;
   }
 

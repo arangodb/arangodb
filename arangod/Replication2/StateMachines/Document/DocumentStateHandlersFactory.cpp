@@ -29,6 +29,9 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -46,9 +49,10 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
 
 auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
-    -> std::unique_ptr<IDocumentStateSnapshotHandler> {
-  return std::make_unique<DocumentStateSnapshotHandler>(
-      std::make_unique<DatabaseSnapshotFactory>(vocbase));
+    -> std::shared_ptr<IDocumentStateSnapshotHandler> {
+  auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  return std::make_shared<DocumentStateSnapshotHandler>(
+      std::make_unique<DatabaseSnapshotFactory>(vocbase), ci.rebootTracker());
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

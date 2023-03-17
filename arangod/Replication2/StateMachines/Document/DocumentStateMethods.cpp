@@ -24,7 +24,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
 #include "Cluster/ServerState.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
@@ -71,7 +70,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
             },
             [&](document::SnapshotParams::Status& params) {
               if (params.id.has_value()) {
-                return processResult(leader->snapshotStatus(*params.id));
+                return processResult(leader->snapshotStatus(params.id.value()));
               }
               return processResult(leader->allSnapshotsStatus());
             },

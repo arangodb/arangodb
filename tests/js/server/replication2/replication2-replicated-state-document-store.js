@@ -613,7 +613,7 @@ const replicatedStateSnapshotTransferSuite = function () {
   let shardsToLogs = null;
   let logs = null;
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait, continueServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
   return {
@@ -635,14 +635,17 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    // This is disabled because we currently implement no cleanup for snapshots
-    DISABLED_testDropCollectionOngoingTransfer: function (testName) {
+    testDropCollectionOngoingTransfer: function (testName) {
       collection.insert({_key: testName});
-      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
-      let leaderUrl = lh.getServerUrl(leader);
-      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/first?waitForIndex=0`;
-      let result = request.get({url: url});
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      let leaderUrl = lh.getServerUrl(participants[0]);
+      const follower = participants.slice(1)[0];
+      const rebootId = lh.getServerRebootId(follower);
+      let result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
+        {body: {serverId: follower, rebootId: rebootId}, json: true});
       lh.checkRequestResult(result);
+      collection.drop();
+      collection = null;
     },
 
     testFollowerSnapshotTransfer: function () {
@@ -725,6 +728,62 @@ const replicatedStateSnapshotTransferSuite = function () {
         assertTrue(keysSet.has(doc._key));
         keysSet.delete(doc._key);
       }
+    },
+
+    testSnapshotDiscardedOnRebootIdChange() {
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      let leaderUrl = lh.getServerUrl(participants[0]);
+      const follower = participants.slice(1)[0];
+
+      // Start a new snapshot as one of the followers, and wait for the follower to be marked as failed.
+      let rebootId = lh.getServerRebootId(follower);
+      let result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
+        {body: {serverId: follower, rebootId: rebootId}, json: true});
+      lh.checkRequestResult(result);
+      stopServerWait(follower);
+
+      // The snapshot should no longer be available.
+      let snapshotId = result.json.result.snapshotId;
+      lh.checkRequestResult(result);
+      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      assertTrue(result.json.error);
+
+      // Pretending again to be the same follower, start a snapshot, but with a lower rebootId
+      continueServerWait(follower);
+      lh.waitFor(() => {
+        if (lh.getServerRebootId(follower) > rebootId) {
+          return true;
+        }
+        return Error('follower rebootId did not increase');
+      });
+      rebootId = lh.getServerRebootId(follower);
+      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
+        {body: {serverId: follower, rebootId: rebootId - 1}, json: true});
+      lh.checkRequestResult(result);
+
+      // The snapshot should no longer be available.
+      snapshotId = result.json.result.snapshotId;
+      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      assertTrue(result.json.error);
+
+      // Now start a snapshot with the correct rebootId and expect it to be available.
+      rebootId = lh.getServerRebootId(follower);
+      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
+        {body: {serverId: follower, rebootId: rebootId}, json: true});
+      lh.checkRequestResult(result);
+      snapshotId = result.json.result.snapshotId;
+      lh.checkRequestResult(result);
+
+      // We should be able to call /next on it
+      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
+      lh.checkRequestResult(result);
+
+      // Also, finish should work
+      result = request.delete(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
+      lh.checkRequestResult(result);
+      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      assertTrue(result.json.error);
+
     }
   };
 };

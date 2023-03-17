@@ -60,11 +60,6 @@ Snapshot::Snapshot(SnapshotId id, ShardMap shardsConfig,
   }
 }
 
-Snapshot::~Snapshot() {
-  TRI_ASSERT(std::holds_alternative<state::Finished>(_state) ||
-             std::holds_alternative<state::Aborted>(_state));
-}
-
 auto Snapshot::config() -> SnapshotConfig { return _config; }
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
@@ -192,6 +187,11 @@ auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
   }
 
   return {};
+}
+
+auto Snapshot::isInactive() const -> bool {
+  return std::holds_alternative<state::Finished>(_state) ||
+         std::holds_alternative<state::Aborted>(_state);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
