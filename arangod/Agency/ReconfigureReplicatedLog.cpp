@@ -152,22 +152,23 @@ bool ReconfigureReplicatedLog::create(std::shared_ptr<VPackBuilder> envelope) {
 
   std::string path = toDoPrefix + _jobId;
 
+  if (selfCreate) {
+    _jb->openArray();
+    _jb->openObject();
+  }
+
+  _jb->add(VPackValue(path));
   {
-    VPackArrayBuilder guard(_jb.get());
-    VPackObjectBuilder guard2(_jb.get());
-    _jb->add(VPackValue(path));
-    {
-      VPackObjectBuilder guard3(_jb.get());
-      _jb->add("type", VPackValue("reconfigureReplicatedLog"));
-      _jb->add("jobId", VPackValue(_jobId));
-      _jb->add("database", VPackValue(_database));
-      _jb->add("logId", VPackValue(_logId));
-      _jb->add(VPackValue("operations"));
-      velocypack::serialize(*_jb, _operations);
-      _jb->add("creator", VPackValue(_creator));
-      _jb->add("timeCreated",
-               VPackValue(timepointToString(std::chrono::system_clock::now())));
-    }
+    VPackObjectBuilder guard3(_jb.get());
+    _jb->add("type", VPackValue("reconfigureReplicatedLog"));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("logId", VPackValue(_logId));
+    _jb->add(VPackValue("operations"));
+    velocypack::serialize(*_jb, _operations);
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("timeCreated",
+             VPackValue(timepointToString(std::chrono::system_clock::now())));
   }
 
   _status = TODO;
@@ -175,6 +176,9 @@ bool ReconfigureReplicatedLog::create(std::shared_ptr<VPackBuilder> envelope) {
   if (!selfCreate) {
     return true;
   }
+
+  _jb->close();  // transaction object
+  _jb->close();  // close array
 
   write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
@@ -285,3 +289,12 @@ bool ReconfigureReplicatedLog::start(bool&) {
       << "Start precondition failed for MoveShard job " << _jobId;
   return false;
 }
+
+ReconfigureReplicatedLog::ReconfigureReplicatedLog(
+    Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+    std::string const& creator, std::string const& database,
+    arangodb::replication2::LogId logId, std::vector<ReconfigureOperation> ops)
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+      _database(database),
+      _logId(logId),
+      _operations(std::move(ops)) {}

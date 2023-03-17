@@ -152,6 +152,9 @@ struct Job {
   static std::string findOtherHealthyParticipant(
       Node const& snap, std::string const& db, replication2::LogId stateId,
       std::string const& serverToAvoid);
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, arangodb::replication2::agency::LogTarget const& target,
+      std::string const& serverToAvoid);
 
   static bool isServerLeaderForState(Node const& snap, std::string const& db,
                                      replication2::LogId stateId,

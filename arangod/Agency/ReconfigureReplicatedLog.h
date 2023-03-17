@@ -48,6 +48,12 @@ struct ReconfigureReplicatedLog : Job {
   ReconfigureReplicatedLog(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId);
 
+  ReconfigureReplicatedLog(Node const& snapshot, AgentInterface* agent,
+                           std::string const& jobId, std::string const& creator,
+                           std::string const& database,
+                           replication2::LogId logId,
+                           std::vector<ReconfigureOperation> ops);
+
   JOB_STATUS status() final;
   bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) final;
   void run(bool&) final;

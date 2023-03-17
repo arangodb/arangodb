@@ -1214,7 +1214,6 @@ std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
   auto logId = group.shardSheaves.at(shardIndex).replicatedLog;
   return logId;
 }
-
 std::string Job::findOtherHealthyParticipant(Node const& snap,
                                              std::string const& db,
                                              replication2::LogId stateId,
@@ -1223,13 +1222,19 @@ std::string Job::findOtherHealthyParticipant(Node const& snap,
   if (not target) {
     return {};
   }
+  return findOtherHealthyParticipant(snap, *target, serverToAvoid);
+}
+
+std::string Job::findOtherHealthyParticipant(
+    Node const& snap, arangodb::replication2::agency::LogTarget const& target,
+    std::string const& serverToAvoid) {
   std::unordered_map<std::string, bool> good;
   for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
     good[i.first] = ((*i.second).hasAsString("Status").value() ==
                      Supervision::HEALTH_STATUS_GOOD);
   }
 
-  for (const auto& [id, participantData] : target->participants) {
+  for (const auto& [id, participantData] : target.participants) {
     if (id == serverToAvoid) {
       // Skip current leader for which we are seeking a replacement
       continue;
