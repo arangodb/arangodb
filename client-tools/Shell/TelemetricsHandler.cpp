@@ -299,7 +299,7 @@ void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
     builder.openObject();
     builder.add(StaticStrings::ErrorNum,
                 VPackValue(_telemetricsFetchResponse.errorNumber()));
-    builder.add("errorMessage",
+    builder.add(StaticStrings::ErrorMessage,
                 VPackValue(_telemetricsFetchResponse.errorMessage()));
     builder.close();
   }
