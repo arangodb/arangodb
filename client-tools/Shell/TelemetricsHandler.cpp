@@ -168,7 +168,6 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
   std::string const body = _telemetricsFetchedInfo.toJson();
 
   uint32_t numRedirects = 0;
-  basics::StringBuffer compressedBody;
 
   while (!_server.isStopping()) {
     std::unique_lock lk(_mtx, std::defer_lock);
@@ -176,9 +175,10 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
     headers.emplace(StaticStrings::ContentTypeHeader,
                     StaticStrings::MimeTypeJson);
     std::string relativeUrl;
+    basics::StringBuffer compressedBody;
     if (!isOriginalUrl) {
       headers.emplace(StaticStrings::ContentLength,
-                      std::to_string(compressedBody.size()));
+                      std::to_string(body.size()));
     } else {
       auto res =
           encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
@@ -187,7 +187,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
         break;
       }
       headers.emplace(StaticStrings::ContentLength,
-                      std::to_string(body.size()));
+                      std::to_string(compressedBody.size()));
       headers.emplace(StaticStrings::ContentEncoding,
                       StaticStrings::EncodingGzip);
     }
@@ -210,35 +210,30 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
 
       lk.lock();
 
-      TRI_ASSERT(newEndpoint.get() != nullptr);
-      std::unique_ptr<httpclient::GeneralClientConnection> connection(
-          httpclient::GeneralClientConnection::factory(
-              client.getCommFeaturePhase(), newEndpoint, 30, 60, 3,
-              sslProtocol));
+      if (newEndpoint.get() != nullptr) {
+        std::unique_ptr<httpclient::GeneralClientConnection> connection(
+            httpclient::GeneralClientConnection::factory(
+                client.getCommFeaturePhase(), newEndpoint, 30, 60, 3,
+                sslProtocol));
 
-      if (connection == nullptr) {
-        continue;
+        if (connection == nullptr) {
+          httpclient::SimpleHttpClientParams const params(30, false);
+          _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
+              connection, params);
+        }
       }
-      httpclient::SimpleHttpClientParams const params(30, false);
-      _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
-          connection.get(), params);
     }
     if (_httpClient != nullptr) {
-      if (!isOriginalUrl) {
-        auto& clientParams = _httpClient->params();
-        clientParams.setRequestTimeout(30);
-      }
       lk.unlock();
       std::unique_ptr<httpclient::SimpleHttpResult> response;
       if (isOriginalUrl) {
-        response =
-            std::make_unique<httpclient::SimpleHttpResult>(_httpClient->request(
-                rest::RequestType::POST, relativeUrl, compressedBody.data(),
-                compressedBody.size(), headers));
+        response.reset(_httpClient->request(rest::RequestType::POST,
+                                            relativeUrl, compressedBody.data(),
+                                            compressedBody.size(), headers));
       } else {
-        response = std::make_unique<httpclient::SimpleHttpResult>(
-            _httpClient->request(rest::RequestType::POST, relativeUrl,
-                                 body.data(), body.size(), headers));
+        response.reset(_httpClient->request(rest::RequestType::POST,
+                                            relativeUrl, body.data(),
+                                            body.size(), headers));
       }
       lk.lock();
       result = this->checkHttpResponse(response);

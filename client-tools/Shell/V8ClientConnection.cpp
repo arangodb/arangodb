@@ -1137,6 +1137,9 @@ static void ClientConnection_getTelemetricsInfo(
 
   VPackBuilder builder;
   shellFeature.getTelemetricsInfo(builder);
+  if (builder.isEmpty()) {
+    TRI_V8_RETURN_UNDEFINED();
+  }
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
