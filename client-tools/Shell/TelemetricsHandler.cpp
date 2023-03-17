@@ -132,14 +132,12 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       lk.lock();
 
       result = this->checkHttpResponse(response);
+      _telemetricsFetchResponse = result;
       if (auto errorNum = result.errorNumber();
           errorNum == TRI_ERROR_NO_ERROR ||
           errorNum == TRI_ERROR_HTTP_FORBIDDEN) {
         _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
-        _telemetricsFetchResponse = std::move(result);
         break;
-      } else {
-        _telemetricsFetchResponse = std::move(result);
       }
     }
     _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
