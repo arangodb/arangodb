@@ -420,6 +420,21 @@ any extra JWT checks compared to v3.7.)");
 shards operations that can be made when the **Rebalance Shards** button is
 clicked in the web interface. For backwards compatibility, the default value is
 `10`. A value of `0` disables the button.)");
+
+  options
+      ->addOption(
+          "--cluster.failed-write-concern-status-code",
+          "The HTTP status code to send if a shard has not enough in-sync "
+          "replicas to fulfill the write concern.",
+          new DiscreteValuesParameter<UInt32Parameter>(
+              &_statusCodeFailedWriteConcern, {403, 503}),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(The default behavior is to return an HTTP
+`403 Forbidden` status code. You can set the option to `503` to return a
+`503 Service Unavailable`.)");
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -803,7 +818,8 @@ void ClusterFeature::start() {
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId
       << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint
+      << ", advertised endpoint: "
+      << (_myAdvertisedEndpoint.empty() ? "-" : _myAdvertisedEndpoint)
       << ", role: " << ServerState::roleToString(role);
 
   auto [acb, idx] = _agencyCache->read(std::vector<std::string>{

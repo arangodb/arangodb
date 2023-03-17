@@ -234,6 +234,7 @@ class StaticStrings {
   // encodings
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
+  static std::string const EncodingGzip;
 
   // arangosh result body
   static std::string const Body;
