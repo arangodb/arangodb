@@ -48,6 +48,8 @@ struct DocumentFollowerState
 
   LoggerContext const loggerContext;
 
+  auto getAssociatedShardList() const -> std::vector<ShardID>;
+
  protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;

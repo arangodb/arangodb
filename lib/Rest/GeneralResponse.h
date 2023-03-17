@@ -169,6 +169,7 @@ class GeneralResponse {
   }
 
   virtual ErrorCode deflate() { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode gzip() { return TRI_ERROR_NO_ERROR; }
 
  protected:
   std::unordered_map<std::string, std::string>

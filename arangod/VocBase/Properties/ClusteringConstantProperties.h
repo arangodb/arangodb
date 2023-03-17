@@ -25,8 +25,8 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Replication2/AgencyCollectionSpecification.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/Properties/InspectContexts.h"
+#include "VocBase/Properties/UtilityInvariants.h"
 
 #include <optional>
 #include <cstdint>

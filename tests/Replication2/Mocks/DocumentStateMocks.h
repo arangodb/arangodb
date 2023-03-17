@@ -144,7 +144,7 @@ struct MockDocumentStateHandlersFactory
 
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>,
-      createShardHandler, (GlobalLogIdentifier), (override));
+      createShardHandler, (TRI_vocbase_t&, GlobalLogIdentifier), (override));
   MOCK_METHOD(std::unique_ptr<
                   replicated_state::document::IDocumentStateSnapshotHandler>,
               createSnapshotHandler,

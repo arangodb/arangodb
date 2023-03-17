@@ -287,6 +287,9 @@ class StringBuffer {
   /// @brief compress the buffer in place, using zlib-deflate
   ErrorCode deflate();
 
+  /// @brief compress the buffer in place, using gzip compression
+  ErrorCode gzip();
+
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
   ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
 

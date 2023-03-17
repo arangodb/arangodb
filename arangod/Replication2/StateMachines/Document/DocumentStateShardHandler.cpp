@@ -28,14 +28,32 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/DropCollection.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/VocBaseLogManager.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
-    GlobalLogIdentifier gid, MaintenanceFeature& maintenanceFeature)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    MaintenanceFeature& maintenanceFeature)
     : _gid(std::move(gid)),
       _maintenanceFeature(maintenanceFeature),
-      _server(ServerState::instance()->getId()) {}
+      _server(ServerState::instance()->getId()) {
+  auto manager = vocbase._logManager;
+  // TODO this is more like a hack than an actual solution
+  //  but for now its good enough
+
+  auto [from, to] = manager->_initCollections.equal_range(_gid.id);
+  for (auto iter = from; iter != to; ++iter) {
+    auto const& coll = iter->second;
+    auto properties = std::make_shared<VPackBuilder>();
+    coll->properties(*properties, LogicalDataSource::Serialization::Properties);
+    _shardMap.shards.emplace(
+        coll->name(),
+        ShardProperties{std::to_string(coll->planId().id()), properties});
+  }
+  manager->_initCollections.erase(from, to);
+}
 
 auto DocumentStateShardHandler::ensureShard(
     ShardID shard, CollectionID collection,

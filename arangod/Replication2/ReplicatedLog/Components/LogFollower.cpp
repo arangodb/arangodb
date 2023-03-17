@@ -104,8 +104,8 @@ FollowerManager::FollowerManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm)
-    : loggerContext(deriveLoggerContext(*termInfo)),
+    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    : loggerContext(deriveLoggerContext(*termInfo, logContext)),
       options(options),
       metrics(metrics),
       storage(
@@ -313,10 +313,10 @@ LogFollowerImpl::LogFollowerImpl(
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm)
+    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
               std::move(termInfo), std::move(options), std::move(metrics),
-              std::move(leaderComm)) {}
+              std::move(leaderComm), logContext) {}
 
 }  // namespace arangodb::replication2::replicated_log

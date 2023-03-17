@@ -292,14 +292,11 @@ const std::string fu_content_encoding_gzip("gzip");
 ContentEncoding to_ContentEncoding(std::string_view val) {
   if (val.empty()) {
     return ContentEncoding::Identity;
-  } else if (val.compare(0, fu_content_encoding_gzip.size(),
-                         fu_content_encoding_gzip) == 0) {
+  } else if (val.starts_with(fu_content_encoding_gzip)) {
     return ContentEncoding::Gzip;
-  } else if (val.compare(0, fu_content_encoding_deflate.size(),
-                         fu_content_encoding_deflate) == 0) {
+  } else if (val.starts_with(fu_content_encoding_deflate)) {
     return ContentEncoding::Deflate;
-  } else if (val.compare(0, fu_content_encoding_identity.size(),
-                         fu_content_encoding_identity) == 0) {
+  } else if (val.starts_with(fu_content_encoding_identity)) {
     return ContentEncoding::Identity;
   }
   return ContentEncoding::Custom;

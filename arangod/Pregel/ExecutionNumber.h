@@ -31,8 +31,8 @@
 namespace arangodb::pregel {
 struct ExecutionNumber {
   // FIXME: handle invalid execution numbers better
-  ExecutionNumber() : value(0) {}
-  explicit ExecutionNumber(uint64_t v) : value(v) {}
+  ExecutionNumber() noexcept : value(0) {}
+  explicit ExecutionNumber(uint64_t v) noexcept : value(v) {}
   friend auto operator<=>(ExecutionNumber, ExecutionNumber) noexcept = default;
 
   uint64_t value;

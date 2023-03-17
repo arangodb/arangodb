@@ -41,9 +41,10 @@ DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     : _connectionPool(connectionPool),
       _maintenanceFeature(maintenanceFeature) {}
 
-auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
+auto DocumentStateHandlersFactory::createShardHandler(TRI_vocbase_t& vocbase,
+                                                      GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
-  return std::make_shared<DocumentStateShardHandler>(std::move(gid),
+  return std::make_shared<DocumentStateShardHandler>(vocbase, std::move(gid),
                                                      _maintenanceFeature);
 }
 
