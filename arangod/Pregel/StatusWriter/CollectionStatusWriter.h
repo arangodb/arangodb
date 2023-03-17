@@ -92,7 +92,21 @@ struct CollectionStatusWriter : StatusWriterInterface {
     return createOperation(OperationType::READ_DOCUMENT, opData);
   }
   [[nodiscard]] auto readAllResults() -> OperationResult override {
-    return createOperation(OperationType::READ_DOCUMENT, std::nullopt);
+    std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
+    auto query = arangodb::aql::Query::create(
+        ctx(), arangodb::aql::QueryString(queryString), nullptr);
+    query->queryOptions().skipAudit = true;
+    aql::QueryResult queryResult = query->executeSync();
+    if (queryResult.result.fail()) {
+      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
+        return OperationResult(Result(TRI_ERROR_REQUEST_CANCELED), {});
+      }
+      return OperationResult(queryResult.result, {});
+    }
+
+    return OperationResult(Result(TRI_ERROR_NO_ERROR),
+                           queryResult.data->buffer(), {});
   }
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override {
     if (_executionNumber.value == 0) {
@@ -152,8 +166,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
     // transaction options
     SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
                                     accessModeType);
-    if ((accessModeType == AccessMode::Type::READ && !data.has_value()) ||
-        (operation == OperationType::DELETE_DOCUMENT && !data.has_value())) {
+    if (operation == OperationType::DELETE_DOCUMENT && !data.has_value()) {
       // this case potentially handles multiple document reads or
       // multiple deletes.
       trx.addHint(transaction::Hints::Hint::NONE);
@@ -212,6 +225,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
       }
       case AccessMode::Type::READ: {
         // Note: documentAsync can throw.
+        TRI_ASSERT(data.has_value());
         if (data.has_value()) {
           auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
@@ -219,43 +233,6 @@ struct CollectionStatusWriter : StatusWriterInterface {
               trx.documentAsync(StaticStrings::PregelCollection,
                                 payload->slice(), {})
                   .get());
-        } else {
-          // size_t skip = 0;
-          // size_t limit = 0;
-          // TODO: Note: This call can be used in SingleServer, but can't be
-          // called / used from a Coordinator! <WIP>
-          // Note: I really do not want to distinguish here between Cluster
-          // SingleServer. To be discusses. <WIP>
-          //
-          //  return trx.all(StaticStrings::PregelCollection, skip, limit,
-          //  options);
-          /*
-           * TODO: OK this now needs a cleanup before we merge.
-           * This attempt tries to use a query directly. Without a transaction
-           * but transaction has been already created above. Therefore I'll
-           * close it here for testing. But this needs to be cleaned up.
-           */
-          transactionResult = trx.abortAsync().get();
-          // TODO: -- line above must be removed. --
-
-          std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
-          auto query = arangodb::aql::Query::create(
-              ctx(), arangodb::aql::QueryString(queryString), nullptr);
-          query->queryOptions().skipAudit = true;
-          aql::QueryResult queryResult = query->executeSync();
-          if (queryResult.result.fail()) {
-            if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-                (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-              return OperationResult(Result(TRI_ERROR_REQUEST_CANCELED), {});
-            }
-            return OperationResult(queryResult.result, {});
-          }
-
-          return OperationResult(Result(TRI_ERROR_NO_ERROR),
-                                 std::move(queryResult.data->buffer()), {});
-          // TODO <WIP> Note: This is dirty and we cannot leave it like this:
-          // THIS = `std::move(queryResult.data->buffer())`
-          // return OperationResult(std::move(queryResult.result), {});
         }
       }
       default: {
