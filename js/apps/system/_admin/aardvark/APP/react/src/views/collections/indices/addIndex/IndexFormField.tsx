@@ -1,6 +1,5 @@
 import { Box, FormLabel } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
 import { InputControl } from "../../../../components/form/InputControl";
 import { MultiSelectControl } from "../../../../components/form/MultiSelectControl";
 import { SwitchControl } from "../../../../components/form/SwitchControl";
@@ -23,10 +22,10 @@ export const IndexFormField = ({
   index
 }: {
   field: IndexFormFieldProps;
-  index: number;
+  index?: number;
   render?: (props: {
     field: IndexFormFieldProps;
-    index: number;
+    index?: number;
     autoFocus: boolean;
   }) => JSX.Element;
 }) => {
@@ -38,7 +37,9 @@ export const IndexFormField = ({
     case "boolean":
       return (
         <>
-          <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
           <SwitchControl
             isDisabled={field.isDisabled}
             isRequired={field.isRequired}
@@ -50,7 +51,9 @@ export const IndexFormField = ({
     case "number":
       return (
         <>
-          <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
           <InputControl
             isDisabled={field.isDisabled}
             inputProps={{ type: "number", autoFocus }}
@@ -60,26 +63,12 @@ export const IndexFormField = ({
           {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
         </>
       );
-    case "creatableSelect":
-      return (
-        <>
-          <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
-          <CreatableMultiSelectControl
-            isDisabled={field.isDisabled}
-            selectProps={{
-              autoFocus,
-              noOptionsMessage: () => "Start typing to add a field"
-            }}
-            isRequired={field.isRequired}
-            name={field.name}
-          />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
-        </>
-      );
     case "multiSelect":
       return (
         <>
-          <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
           <MultiSelectControl
             isDisabled={field.isDisabled}
             selectProps={{
@@ -96,7 +85,9 @@ export const IndexFormField = ({
     default:
       return (
         <>
-          <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
           <InputControl
             isDisabled={field.isDisabled}
             isRequired={field.isRequired}

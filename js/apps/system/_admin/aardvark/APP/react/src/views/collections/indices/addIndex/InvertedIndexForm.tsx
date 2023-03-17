@@ -6,7 +6,7 @@ import useElementSize from "../../../views/useElementSize";
 import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
-import { InvertedIndexFieldsDropdown } from "./InvertedIndexFieldsDropdown";
+import { InvertedIndexFieldsDropdownWrap } from "./InvertedIndexFieldsDropdown";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
 import { useCreateInvertedIndex } from "./useCreateInvertedIndex";
 
@@ -55,7 +55,7 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
                       }
                       if (field.name === "fields") {
                         return (
-                          <InvertedIndexFieldsDropdown
+                          <InvertedIndexFieldsDropdownWrap
                             field={field}
                             autoFocus={autoFocus}
                           />

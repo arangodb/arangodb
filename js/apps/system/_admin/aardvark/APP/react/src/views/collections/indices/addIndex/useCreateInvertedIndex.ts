@@ -54,26 +54,29 @@ import { useCreateIndex } from "./useCreateIndex";
 
 type AnalyzerFeatures = "frequency" | "position" | "offset" | "norm";
 
-// type FieldType = {
-//   name: string;
-//   analyzer: string;
-//   searchField: boolean;
-//   features: AnalyzerFeatures[];
-//   includeAllFields: boolean;
-//   trackListPositions: boolean;
-//   nested: Omit<FieldType, "includeAllFields" | "trackListPositions">[];
-// };
+export type InvertedIndexFieldType = {
+  name: string;
+  analyzer?: string;
+  features?: AnalyzerFeatures[];
+  searchField?: boolean;
+  includeAllFields?: boolean;
+  trackListPositions?: boolean;
+  nested?: Omit<
+    InvertedIndexFieldType,
+    "includeAllFields" | "trackListPositions"
+  >[];
+};
 
 export type InvertedIndexValuesType = {
   type: string;
   name?: string;
-  inBackground: boolean;
+  inBackground?: boolean;
   analyzer?: string;
-  features: AnalyzerFeatures[];
-  includeAllFields: boolean;
-  trackListPositions: boolean;
-  searchField: boolean;
-  fields?: string[];
+  features?: AnalyzerFeatures[];
+  includeAllFields?: boolean;
+  trackListPositions?: boolean;
+  searchField?: boolean;
+  fields?: InvertedIndexFieldType[];
 };
 
 const initialValues = {
@@ -88,45 +91,84 @@ const initialValues = {
   fields: []
 };
 
-const analyzerFeaturesOptions = ["frequency", "position", "offset", "norm"].map(
-  value => {
-    return { value, label: value };
-  }
-);
-const invertedIndexFields = [
-  {
+const analyzerFeaturesOptions = [
+  "frequency",
+  "position",
+  "offset",
+  "norm"
+].map(value => {
+  return { value, label: value };
+});
+
+export const invertedIndexFieldsMap = {
+  fields: {
     label: "Fields",
     name: "fields",
     isRequired: true,
     type: "custom",
     tooltip: "A comma-separated list of attribute paths."
   },
-  {
+  analyzer: {
     label: "Analyzer",
     name: "analyzer",
     type: "custom"
   },
-  {
+  features: {
     label: "Analyzer Features",
     name: "features",
     type: "multiSelect",
     options: analyzerFeaturesOptions
   },
+  includeAllFields: {
+    label: "Include All Fields",
+    name: "includeAllFields",
+    type: "boolean",
+    initialValue: false
+  },
+  trackListPositions: {
+    label: "Track List Positions",
+    name: "trackListPositions",
+    type: "boolean",
+    initialValue: false
+  },
+  searchField: {
+    label: "Search Field",
+    name: "searchField",
+    type: "boolean",
+    initialValue: false
+  }
+};
+const invertedIndexFields = [
+  invertedIndexFieldsMap.fields,
+  invertedIndexFieldsMap.analyzer,
+  invertedIndexFieldsMap.features,
+  invertedIndexFieldsMap.includeAllFields,
+  invertedIndexFieldsMap.trackListPositions,
+  invertedIndexFieldsMap.searchField,
   commonFieldsMap.name,
   commonFieldsMap.inBackground
 ];
 
+const fieldSchema: any = Yup.object().shape({
+  name: Yup.string().required(),
+  inBackground: Yup.boolean(),
+  analyzer: Yup.string(),
+  features: Yup.array().of(Yup.string().required()),
+  includeAllFields: Yup.boolean(),
+  trackListPositions: Yup.boolean(),
+  searchField: Yup.boolean(),
+  nested: Yup.array().of(Yup.lazy(() => fieldSchema.default(undefined)))
+});
 const schema = Yup.object({
   fields: Yup.array()
-    .of(Yup.string().required("Field should be a string"))
+    .of(Yup.array())
+    .of(fieldSchema)
     .min(1, "At least one field is required")
     .required("At least one field is required")
 });
 
 export const useCreateInvertedIndex = () => {
-  const { onCreate: onCreateIndex } = useCreateIndex<
-    InvertedIndexValuesType
-  >();
+  const { onCreate: onCreateIndex } = useCreateIndex<InvertedIndexValuesType>();
   const onCreate = async ({ values }: { values: InvertedIndexValuesType }) => {
     return onCreateIndex({
       ...values,

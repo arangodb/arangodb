@@ -1,8 +1,9 @@
 import React, { createContext, ReactNode, useContext, useState } from "react";
 
+export type FieldData = { path: string; name: string };
 type InvertedIndexContextType = {
-  currentFieldPath?: string;
-  setCurrentFieldPath: (path: string) => void;
+  currentFieldData?: FieldData;
+  setCurrentFieldData: (data?: FieldData) => void;
 };
 const InvertedIndexContext = createContext<InvertedIndexContextType>(
   {} as InvertedIndexContextType
@@ -13,12 +14,12 @@ export const InvertedIndexProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  const [currentFieldPath, setCurrentFieldPath] = useState("");
+  const [currentFieldData, setCurrentFieldData] = useState<FieldData>();
   return (
     <InvertedIndexContext.Provider
       value={{
-        setCurrentFieldPath,
-        currentFieldPath
+        setCurrentFieldData,
+        currentFieldData
       }}
     >
       {children}

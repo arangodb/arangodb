@@ -25,7 +25,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
           gridTemplateColumns={"200px 1fr 40px"}
           rowGap="5"
           columnGap="3"
-          maxWidth="500px"
+          maxWidth="800px"
         >
           <Box fontSize={"lg"}>Add new index</Box>
           <SingleSelect

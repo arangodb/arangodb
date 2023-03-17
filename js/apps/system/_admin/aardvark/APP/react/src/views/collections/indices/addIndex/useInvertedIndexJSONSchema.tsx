@@ -12,6 +12,7 @@ import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
   searchField: boolean;
   fields?: FieldType[] | null;
  */
+
 const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   $id: "https://arangodb.com/schemas/views/invertedIndex.json",
   type: "object",
@@ -29,34 +30,72 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       type: "string"
     },
     features: {
-      nullable: false,
+      nullable: true,
       type: "array",
       items: {
         type: "string"
       }
     },
     includeAllFields: {
-      nullable: false,
+      nullable: true,
       type: "boolean"
     },
     trackListPositions: {
-      nullable: false,
+      nullable: true,
       type: "boolean"
     },
     searchField: {
-      nullable: false,
+      nullable: true,
       type: "boolean"
     },
     inBackground: {
-      nullable: false,
+      nullable: true,
       type: "boolean"
     },
     fields: {
+      $id: "https://arangodb.com/schemas/views/invertedIndexFields.json",
       type: "array",
       nullable: true,
       items: {
-        type: "string",
-        nullable: false
+        type: "object",
+        nullable: false,
+        properties: {
+          name: {
+            type: "string",
+            nullable: false
+          },
+          analyzer: {
+            type: "string",
+            nullable: true
+          },
+          features: {
+            type: "array",
+            nullable: true,
+            items: {
+              type: "string",
+              nullable: true
+            }
+          },
+          searchField: {
+            type: "boolean",
+            nullable: true
+          },
+          includeAllFields: {
+            type: "boolean",
+            nullable: true
+          },
+          trackListPositions: {
+            type: "boolean",
+            nullable: true
+          },
+          nested: {
+            type: "array",
+            $ref: "invertedIndexFields.json",
+            nullable: true
+          }
+        },
+        required: ["name"],
+        additionalProperties: false
       }
     }
   },
@@ -64,6 +103,19 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   additionalProperties: false
 };
 
+/**
+ * 
+type FieldType = {
+  name: string;
+  analyzer?: string;
+  searchField?: boolean;
+  features?: AnalyzerFeatures[];
+  includeAllFields?: boolean;
+  trackListPositions?: boolean;
+  nested?: Omit<FieldType, "includeAllFields" | "trackListPositions">[];
+};
+
+ */
 export const useInvertedIndexJSONSchema = () => {
   // const [schema, setSchema] = useState(invertedIndexJSONSchema);
   // useEffect(() => {

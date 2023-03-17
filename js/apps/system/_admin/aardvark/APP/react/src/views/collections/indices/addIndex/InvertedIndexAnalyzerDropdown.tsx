@@ -1,5 +1,5 @@
 import { Box, FormLabel } from "@chakra-ui/react";
-import { useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import { SelectControl } from "../../../../components/form/SelectControl";
@@ -10,10 +10,12 @@ import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
   field,
-  autoFocus
+  autoFocus,
+  dependentFieldName = "features"
 }: {
   field: IndexFormFieldProps;
   autoFocus: boolean;
+  dependentFieldName?: string;
 }) => {
   const [options, setOptions] = useState<OptionType[]>([]);
   const { data: analyzersResponse } = useSWR("/analyzer", path =>
@@ -23,21 +25,18 @@ export const InvertedIndexAnalyzerDropdown = ({
     name: string;
     features: string[];
   }[];
-  const { values, touched, setFieldValue } = useFormikContext<
-    InvertedIndexValuesType
-  >();
-
+  const { setFieldValue } = useFormikContext<InvertedIndexValuesType>();
+  const [formikField] = useField(field.name);
+  const fieldValue = formikField.value;
   React.useEffect(() => {
-    // set the value of textC, based on textA and textB
-    if (values.analyzer) {
+    if (fieldValue) {
       const features = analyzersList.find(
-        analyzer => analyzer.name === values.analyzer
+        analyzer => analyzer.name === fieldValue
       )?.features;
-      console.log("setting value", { features, analyzersList });
-      setFieldValue("features", features);
+      setFieldValue(dependentFieldName, features);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyzersList, touched.analyzer, values.analyzer]);
+  }, [analyzersList, fieldValue, dependentFieldName]);
 
   useEffect(() => {
     if (analyzersList) {

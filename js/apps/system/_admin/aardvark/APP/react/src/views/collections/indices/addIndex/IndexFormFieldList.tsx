@@ -10,7 +10,7 @@ export const IndexFormFieldsList = ({
   fields: IndexFormFieldProps[];
   renderField?: (props: {
     field: IndexFormFieldProps;
-    index: number;
+    index?: number;
     autoFocus: boolean;
   }) => JSX.Element;
 }) => {
@@ -20,8 +20,9 @@ export const IndexFormFieldsList = ({
       gridTemplateColumns={"200px 1fr 40px"}
       rowGap="5"
       columnGap="3"
-      maxWidth="564px"
+      maxWidth="800px"
       padding="8"
+      alignItems="center"
     >
       {fields.map((field, index) => {
         return (
