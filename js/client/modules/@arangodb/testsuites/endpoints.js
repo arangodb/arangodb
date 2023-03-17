@@ -41,6 +41,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
+const crashUtils = require('@arangodb/testutils/crash-utils');
 const sleep = internal.sleep;
 
 const platform = require('internal').platform;
@@ -64,9 +65,15 @@ class endpointRunner extends tu.runInArangoshRunner {
     // we append one cleanup directory for the invoking logic...
     this.dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
     fs.makeDirectory(this.dummyDir);
+    // For now we always want the noise here!
+    this.options = _.clone(this.options);
+    this.options.extremeVerbosity = true;
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
-                                      {'log.level': 'startup=trace'},
+                                      {
+                                        'log.level': 'startup=trace',
+                                        'log.force-direct': 'true'
+                                      },
                                       {}, 'tcp', this.dummyDir, '',
                                       new inst.agencyConfig(this.options, null));
     this.endpoint = this.instance.args['server.endpoint'];
@@ -285,6 +292,9 @@ class endpointRunner extends tu.runInArangoshRunner {
         fatalError = true;
         print(RED + Date() + ' Server did not become available on time' + RESET);
         obj.instance.shutdownArangod(true);
+        crashUtils.aggregateDebugger(obj.instance, obj.options);
+        obj.instance.waitForExitAfterDebugKill();
+
         results[endpointName + '-' + 'all'] = {
           failed: 1,
           status: false,
