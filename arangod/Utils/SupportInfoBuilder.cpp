@@ -152,7 +152,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
           } else if (collType == "edge") {
             visitedDatabases[dbName].numGraphColls++;
           }
-          if (collIt.get("smart_graph").getBoolean()) {
+          if (collIt.get("smart_graph").isTrue()) {
             visitedDatabases[dbName].numSmartColls++;
           }
           if (collIt.get("disjoint").getBoolean()) {
