@@ -98,9 +98,9 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
       return follower->getAssociatedShardList();
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-          fmt::format("Failed to get leader of DocumentState with id {}; this "
-                      "is not a leader instance.",
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,
+          fmt::format("Failed to get DocumentState with id {}; this "
+                      "is unconfigured.",
                       logId));
     }
   }

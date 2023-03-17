@@ -160,7 +160,7 @@ function testSuite () {
       const dbServers = getCtrlDBServers();
       const leader = dbServers.find(server => server.id === leaderId);
 
-      // trigger a compaction to get rig of the create-collection entry
+      // trigger a compaction to get rid of the create-collection entry
       db._replicatedLog(logId).compact();
 
       enableMaintenanceMode();
