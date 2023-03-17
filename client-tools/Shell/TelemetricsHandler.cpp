@@ -322,7 +322,7 @@ void TelemetricsHandler::arrangeTelemetrics() {
     }
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
-        << "Exception on handling telemetrics " << err.what();
+        << "Exception on handling telemetrics: " << err.what();
   }
 }
 
