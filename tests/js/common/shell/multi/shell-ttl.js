@@ -34,7 +34,11 @@ const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const globalProperties = internal.ttlProperties();
-const versionHas = require("@arangodb/test-helper").versionHas;
+const { versionHas,
+  getEndpointsByType,
+  debugSetFailAt,
+  debugClearFailAt
+} = require('@arangodb/test-helper');
 
 let deltaTimeout = 1;
 let divisor = 1;
@@ -72,7 +76,7 @@ function TtlSuite () {
 
     let stats;
     while (tries-- > 0) {
-      internal.wait(1, false);
+      internal.wait(0.2, false);
     
       stats = internal.ttlStatistics();
       if (stats.runs - oldRuns >= numServers) {
@@ -85,11 +89,13 @@ function TtlSuite () {
   return {
 
     setUp : function () {
+      getEndpointsByType("dbserver").forEach(ep => debugSetFailAt(ep, "allow-low-ttl-frequency"));
       db._drop(cn);
       internal.ttlProperties(globalProperties);
     },
 
     tearDown : function () {
+      getEndpointsByType("dbserver").forEach(ep => debugClearFailAt(ep));
       db._drop(cn);
       internal.ttlProperties(globalProperties);
     },
@@ -175,11 +181,11 @@ function TtlSuite () {
       const oldRuns = stats.runs;
       
       // reenable first
-      internal.ttlProperties({ active: true, frequency: 1000 });
+      internal.ttlProperties({ active: true, frequency: 100 });
 
       let tries = 0;
       while (tries++ < 10) {
-        internal.wait(1, false);
+        internal.wait(0.1, false);
       
         stats = internal.ttlStatistics();
         if (stats.runs > oldRuns) {
@@ -199,11 +205,11 @@ function TtlSuite () {
       const oldRuns = stats.runs;
       
       // set properties, but keep disabled
-      internal.ttlProperties({ active: false, frequency: 1000 });
+      internal.ttlProperties({ active: false, frequency: 100 });
 
       let tries = 0;
       while (tries++ < 10) {
-        internal.wait(1, false);
+        internal.wait(0.1, false);
       
         stats = internal.ttlStatistics();
         if (stats.runs > oldRuns) {
@@ -421,7 +427,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -451,7 +457,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -482,7 +488,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -518,7 +524,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -549,7 +555,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -583,7 +589,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -614,7 +620,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
       
@@ -644,7 +650,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
       
@@ -674,7 +680,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -704,7 +710,7 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -745,9 +751,9 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      let props = internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      let props = internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       assertTrue(props.active);
-      assertEqual(1000, props.frequency);
+      assertEqual(100, props.frequency);
       assertEqual(100000 / divisor, props.maxTotalRemoves);
       assertEqual(100000 / divisor, props.maxCollectionRemoves);
 
@@ -759,7 +765,7 @@ function TtlSuite () {
 
       let tries = 0;
       while (++tries < 20 && db._collection(cn).count() !== 1000 / divisor) {
-        internal.wait(1, false);
+        internal.wait(0.1, false);
       }
       
       assertEqual(1000, db._collection(cn).count());
@@ -795,9 +801,9 @@ function TtlSuite () {
       const oldStats = internal.ttlStatistics();
       
       // reenable
-      let props = internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
+      let props = internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       assertTrue(props.active);
-      assertEqual(1000, props.frequency);
+      assertEqual(100, props.frequency);
       assertEqual(100000 / divisor, props.maxTotalRemoves);
       assertEqual(100000 / divisor, props.maxCollectionRemoves);
 
@@ -809,7 +815,7 @@ function TtlSuite () {
       
       let tries = 0;
       while (++tries < 20 && db._collection(cn).count() !== 1000 / divisor) {
-        internal.wait(1, false);
+        internal.wait(0.1, false);
       }
       
       assertEqual(1000, db._collection(cn).count());
@@ -835,7 +841,7 @@ function TtlSuite () {
       let oldCount = 10000;  
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
     
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -879,7 +885,7 @@ function TtlSuite () {
       let oldCount = 10000;  
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
     
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -923,7 +929,7 @@ function TtlSuite () {
       let oldCount = 10000;  
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
     
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
@@ -967,7 +973,7 @@ function TtlSuite () {
       let oldCount = 10000;
       
       // reenable
-      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+      internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
     
       let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
 
