@@ -81,7 +81,6 @@
 #include "V8/processMonitor.h"
 #include "V8/v8-deadline.h"
 
-
 using namespace arangodb;
 
 namespace {
@@ -89,7 +88,8 @@ namespace {
 /// @brief lock for protected access to vector ExternalProcesses
 static arangodb::Mutex ExitedExternalProcessesLock;
 
-}
+}  // namespace
+
 namespace arangodb {
 
 /// @brief if monitored & exited we keep them here:
@@ -113,8 +113,7 @@ void removeMonitorPID(ExternalId const& pid) {
   }
 }
 
-
-ExternalProcessStatus const *getHistoricStatus(TRI_pid_t pid) {
+ExternalProcessStatus const* getHistoricStatus(TRI_pid_t pid) {
   auto it = ExitedExternalProcessStatus.find(pid);
   if (it == ExitedExternalProcessStatus.end()) {
     return nullptr;
@@ -125,8 +124,9 @@ ExternalProcessStatus const *getHistoricStatus(TRI_pid_t pid) {
 class ProcessMonitorThread : public arangodb::Thread {
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server)
-    : Thread(server, "ProcessMonitorThread") {}
+      : Thread(server, "ProcessMonitorThread") {}
   ~ProcessMonitorThread() { shutdown(); }
+
  protected:
   void run() override {
     while (!isStopping()) {
@@ -136,7 +136,7 @@ class ProcessMonitorThread : public arangodb::Thread {
         MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
         mp = monitoredProcesses;
       }
-      for (auto const &pid: mp) {
+      for (auto const& pid : mp) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
@@ -153,7 +153,7 @@ class ProcessMonitorThread : public arangodb::Thread {
 };
 
 namespace {
-ProcessMonitorThread *mt = nullptr;
+ProcessMonitorThread* mt = nullptr;
 }
 
 void launchMonitorThread(application_features::ApplicationServer& server) {
@@ -167,4 +167,4 @@ void terminateMonitorThread(application_features::ApplicationServer& server) {
   mt->shutdown();
 }
 
-}
+}  // namespace arangodb

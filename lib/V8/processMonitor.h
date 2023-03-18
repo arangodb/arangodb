@@ -34,7 +34,7 @@ namespace arangodb {
 extern std::map<TRI_pid_t, ExternalProcessStatus> ExitedExternalProcessStatus;
 
 
-extern ExternalProcessStatus const *getHistoricStatus(TRI_pid_t pid);
+extern ExternalProcessStatus const* getHistoricStatus(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process being monitored

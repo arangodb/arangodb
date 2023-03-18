@@ -47,9 +47,9 @@
 static double executionDeadline = 0.0;
 static arangodb::Mutex singletonDeadlineMutex;
 
-const char *errorDeadline = "Execution deadline reached!";
-const char *errorExternalDeadline = "Signaled deadline from extern!";
-const char *errorProcessMonitor = "Monitored child process exited unexpectedly";
+const char* errorDeadline = "Execution deadline reached!";
+const char* errorExternalDeadline = "Signaled deadline from extern!";
+const char* errorProcessMonitor = "Monitored child process exited unexpectedly";
 
 const char* errorState = errorDeadline;
 
@@ -89,8 +89,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
     return false;
   }
 
-  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED,
-                        errorState, true);
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
   return true;
 }
 

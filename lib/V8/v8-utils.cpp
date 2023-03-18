@@ -4677,14 +4677,14 @@ static void JS_ExecuteExternal(
 /// @brief enables monitoring for an external PID
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_addPidToMonitor(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_addPidToMonitor(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract the arguments
   if (args.Length() < 1 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "addPidToMonitor(<external-identifier>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("addPidToMonitor(<external-identifier>)");
   }
 
   TRI_GET_GLOBALS();
@@ -4712,14 +4712,14 @@ static void JS_addPidToMonitor(v8::FunctionCallbackInfo<v8::Value> const& args) 
 /// @brief disables monitoring for an external PID
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_removePidFromMonitor(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_removePidFromMonitor(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract the arguments
   if (args.Length() < 1 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "removePidFromMonitor(<external-identifier>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("removePidFromMonitor(<external-identifier>)");
   }
 
   TRI_GET_GLOBALS();
@@ -4784,9 +4784,8 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external;
-  auto *x = getHistoricStatus(pid._pid);
+  ExternalProcessStatus* x = getHistoricStatus(pid._pid);
   if (x != nullptr) {
-    printf("the pid is already gone on our old gone list");
     external = *x;
   } else {
     external = TRI_CheckExternalProcess(pid, wait, timeoutms);
