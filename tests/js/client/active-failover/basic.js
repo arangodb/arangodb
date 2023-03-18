@@ -455,7 +455,7 @@ function ActiveFailoverSuite() {
       //serverTeardown();
 
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
+        print(`${Date()} Teardown: Resuming: ${arangod.name} ${arangod.pid}`);
         assertTrue(continueExternal(arangod.pid));
       });
 
@@ -519,7 +519,7 @@ function ActiveFailoverSuite() {
       try {
         suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
         suspended.forEach(arangod => {
-          print("Suspending Leader: ", arangod.endpoint);
+          print(`${Date()} Suspending Leader: ${arangod.name} ${arangod.pid}`);
           assertTrue(suspendExternal(arangod.pid));
         });
 
@@ -541,7 +541,7 @@ function ActiveFailoverSuite() {
       } finally {
         // restart the old leader
         suspended.forEach(arangod => {
-          print("Resuming: ", arangod.endpoint);
+          print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
           assertTrue(continueExternal(arangod.pid));
         });
         assertTrue(checkInSync(currentLead, servers));
@@ -549,7 +549,7 @@ function ActiveFailoverSuite() {
         suspended = instanceinfo.arangods.filter(arangod =>
           (arangod.endpoint !== oldLead) && (arangod.instanceRole === 'activefailover'));
         suspended.forEach(arangod => {
-          print("Suspending all but old Leader: ", arangod.endpoint);
+          print(`${Date()} Suspending all but old Leader: ${arangod.name} ${arangod.pid}`);
           assertTrue(suspendExternal(arangod.pid));
         });
         currentLead = checkForFailover(currentLead);
@@ -557,7 +557,7 @@ function ActiveFailoverSuite() {
         connectToServer(currentLead);
         // restart the other followers so the system is all up and running again
         suspended.forEach(arangod => {
-          print("Resuming: ", arangod.endpoint);
+          print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
           assertTrue(continueExternal(arangod.pid));
         });
         assertTrue(checkInSync(currentLead, servers));
@@ -611,7 +611,7 @@ function ActiveFailoverSuite() {
         arangod.endpoint !== currentLead &&
         arangod.endpoint !== nextLead);
       suspended.forEach(arangod => {
-        print("Suspending: ", arangod.endpoint);
+          print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
         assertTrue(suspendExternal(arangod.pid));
       });
 
@@ -639,7 +639,7 @@ function ActiveFailoverSuite() {
       // resume followers
       print("Resuming followers");
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
+        print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
         assertTrue(continueExternal(arangod.pid));
       });
       suspended = [];
@@ -651,7 +651,7 @@ function ActiveFailoverSuite() {
       print("Suspending leader ", currentLead);
       instanceinfo.arangods.forEach(arangod => {
         if (arangod.endpoint === currentLead) {
-          print("Suspending: ", arangod.endpoint);
+          print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
           suspended.push(arangod);
           assertTrue(suspendExternal(arangod.pid));
         }
@@ -672,7 +672,7 @@ function ActiveFailoverSuite() {
       // Resuming stopped second leader
       print("Resuming server that still thinks it is leader (ArangoError 1004 is expected)");
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
+        print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
         assertTrue(continueExternal(arangod.pid));
       });
       suspended = [];
@@ -697,7 +697,7 @@ function ActiveFailoverSuite() {
       suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
-        print("Suspending: ", arangod.endpoint);
+        print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
         assertTrue(suspendExternal(arangod.pid));
       });
 
@@ -708,7 +708,7 @@ function ActiveFailoverSuite() {
       assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
+        print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
         assertTrue(continueExternal(arangod.pid));
       });
       suspended = [];

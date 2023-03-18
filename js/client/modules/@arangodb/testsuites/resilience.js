@@ -140,6 +140,7 @@ function activeFailover (options) {
   localOptions.singles = 4;
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
+  localOptions.enableAliveMonitor = false;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
   let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
       'javascript.allow-external-process-control': 'true',

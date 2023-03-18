@@ -667,7 +667,9 @@ class instance {
   startArango () {
     try {
       this.pid = this._executeArangod().pid;
-      internal.addPidToMonitor(this.pid);
+      if (this.options.enableAliveMonitor) {
+        internal.addPidToMonitor(this.pid);
+      }
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
@@ -717,7 +719,9 @@ class instance {
     }
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
-    internal.addPidToMonitor(this.pid);
+    if (this.options.enableAliveMonitor) {
+      internal.addPidToMonitor(this.pid);
+    }
   };
 
   waitForExitAfterDebugKill() {
@@ -882,7 +886,9 @@ class instance {
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
     } else {
-      internal.removePidFromMonitor(this.pid);
+      if (this.options.enableAliveMonitor) {
+        internal.removePidFromMonitor(this.pid);
+      }
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
   }
@@ -912,7 +918,9 @@ class instance {
       forceTerminate = false;
       this.options.useKillExternal = true;
     }
-    internal.removePidFromMonitor(this.pid);
+      if (this.options.enableAliveMonitor) {
+        internal.removePidFromMonitor(this.pid);
+      }
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
@@ -1007,7 +1015,9 @@ class instance {
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
     let shutdownTime = time();
-    internal.removePidFromMonitor(this.pid);
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
       if (forceTerminate) {
