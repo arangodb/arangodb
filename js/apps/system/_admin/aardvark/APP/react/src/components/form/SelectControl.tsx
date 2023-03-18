@@ -16,9 +16,10 @@ export const SelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
   const [field, , helper] = useField(name);
   const { isSubmitting } = useFormikContext();
-  const value = selectProps?.options?.find(option => {
-    return (option as OptionType).value === field.value;
-  }) as PropsValue<OptionType> || null;
+  const value =
+    (selectProps?.options?.find(option => {
+      return (option as OptionType).value === field.value;
+    }) as PropsValue<OptionType>) || null;
   return (
     <FormikFormControl name={name} label={label} {...rest}>
       <SelectBase
