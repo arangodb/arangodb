@@ -5,7 +5,7 @@ import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { InfoTooltip } from "./InfoTooltip";
-import { InvertedIndexForm } from "./InvertedIndexForm";
+import { InvertedIndexForm } from "./invertedIndex/InvertedIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { ZKDIndexForm } from "./ZKDIndexForm";

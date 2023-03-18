@@ -3,7 +3,7 @@ import { useFormikContext } from "formik";
 import React from "react";
 import { FieldBreadcrumbs } from "./FieldBreadcrumbs";
 import { FieldsDropdown } from "./FieldsDropdown";
-import { IndexFormField, IndexFormFieldProps } from "./IndexFormField";
+import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { FieldData, useInvertedIndexContext } from "./InvertedIndexContext";
 import {

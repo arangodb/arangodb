@@ -2,10 +2,10 @@ import { Box, FormLabel } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import { SelectControl } from "../../../../components/form/SelectControl";
-import { OptionType } from "../../../../components/select/SelectBase";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-import { IndexFormFieldProps } from "./IndexFormField";
+import { SelectControl } from "../../../../../components/form/SelectControl";
+import { OptionType } from "../../../../../components/select/SelectBase";
+import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
+import { IndexFormFieldProps } from "../IndexFormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({

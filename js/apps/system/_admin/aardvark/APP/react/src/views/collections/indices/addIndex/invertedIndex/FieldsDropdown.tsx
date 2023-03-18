@@ -5,8 +5,8 @@ import { components, MultiValueGenericProps } from "react-select";
 import {
   CreatableSelectBase,
   OptionType
-} from "../../../../components/select/SelectBase";
-import { IndexFormFieldProps } from "./IndexFormField";
+} from "../../../../../components/select/SelectBase";
+import { IndexFormFieldProps } from "../IndexFormField";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 

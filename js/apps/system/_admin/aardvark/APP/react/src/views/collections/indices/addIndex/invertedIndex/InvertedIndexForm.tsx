@@ -2,7 +2,7 @@ import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import Split from "react-split";
-import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
+import { FormActions, IndexFormFieldsList } from "../IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFieldsDataEntry } from "./InvertedIndexFieldsDataEntry";

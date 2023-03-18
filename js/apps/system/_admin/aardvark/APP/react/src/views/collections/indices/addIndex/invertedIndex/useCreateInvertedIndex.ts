@@ -1,6 +1,6 @@
 import * as Yup from "yup";
-import { commonFieldsMap } from "./IndexFieldsHelper";
-import { useCreateIndex } from "./useCreateIndex";
+import { commonFieldsMap } from "../IndexFieldsHelper";
+import { useCreateIndex } from "../useCreateIndex";
 
 /**
  * Index definition could be split on several blocks.
