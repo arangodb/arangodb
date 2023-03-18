@@ -38,4 +38,4 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout);
 void TRI_InitV8Deadline(v8::Isolate* isolate);
 
 // make the deadline handling bite Now.
-void triggerV8DeadlineNow();
+void triggerV8DeadlineNow(bool fromSignal);

@@ -781,6 +781,7 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownInstance (forceTerminate, moreReason="") {
+    print('-----zzzzzz')
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -799,6 +800,9 @@ class instanceManager {
       }
     }
     catch (e) {
+      print('-----yyyzzzzzz')
+      print(e)
+      print(e.stack)
       if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
         let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
         if (timeoutReached) {
@@ -815,19 +819,13 @@ class instanceManager {
 
   _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
+    let e=new Error('xxx')
+    print(e.stack)
     this.arangods.forEach((arangod) => {
-      if (arangod.pid !== null) {
-        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-        arangod.serverCrashedLocal = true;
-      } else {
-        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
-      }
+      arangod.killWithCoreDump('force terminating');
     });
     this.arangods.forEach((arangod) => {
-      if (arangod.checkArangoAlive()) {
-        crashUtils.aggregateDebugger(arangod, this.options);
-        arangod.waitForExitAfterDebugKill();
-      }
+      arangod.aggregateDebugger();
     });
     return true;
   }

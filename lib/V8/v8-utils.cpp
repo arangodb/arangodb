@@ -4786,6 +4786,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ExternalProcessStatus external;
   auto *x = getHistoricStatus(pid._pid);
   if (x != nullptr) {
+    printf("the pid is already gone on our old gone list");
     external = *x;
   } else {
     external = TRI_CheckExternalProcess(pid, wait, timeoutms);

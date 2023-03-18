@@ -162,12 +162,14 @@ void V8ShellFeature::validateOptions(
 }
 
 void V8ShellFeature::startProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(_isolate)) {
+  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
+        _isolate)) {
     launchMonitorThread(server());
   }
 }
 void V8ShellFeature::stopProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(_isolate)) {
+  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
+        _isolate)) {
     terminateMonitorThread(server());
   }
 }

@@ -47,6 +47,12 @@
 static double executionDeadline = 0.0;
 static arangodb::Mutex singletonDeadlineMutex;
 
+const char *errorDeadline = "Execution deadline reached!";
+const char *errorExternalDeadline = "Signaled deadline from extern!";
+const char *errorProcessMonitor = "Monitored child process exited unexpectedly";
+
+const char* errorState = errorDeadline;
+
 // arangosh only: set a deadline
 static void JS_SetExecutionDeadlineTo(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -84,7 +90,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
   }
 
   TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED,
-                        "Execution deadline reached!", true);
+                        errorState, true);
   return true;
 }
 
@@ -138,8 +144,9 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   return delta;
 }
 
-void triggerV8DeadlineNow() {
+void triggerV8DeadlineNow(bool fromSignal) {
   // Set the deadline to expired:
+  errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
   MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   executionDeadline = TRI_microtime() - 100;
 }
@@ -157,7 +164,7 @@ static bool SignalHandler(DWORD eventType) {
     case CTRL_CLOSE_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT: {
-      triggerV8DeadlineNow();
+      triggerV8DeadlineNow(true);
       return true;
     }
     default: {
@@ -170,7 +177,7 @@ static bool SignalHandler(DWORD eventType) {
 
 static void SignalHandler(int /*signal*/) {
   // Set the deadline to expired:
-  triggerV8DeadlineNow();
+  triggerV8DeadlineNow(true);
 }
 
 #endif

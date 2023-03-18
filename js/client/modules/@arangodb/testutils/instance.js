@@ -701,7 +701,6 @@ class instance {
       let args = {...this.args, ...moreArgs};
       /// TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
-      
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
 
@@ -718,6 +717,7 @@ class instance {
     }
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
+    internal.addPidToMonitor(this.pid);
   };
 
   waitForExitAfterDebugKill() {
@@ -876,11 +876,21 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    this.getInstanceProcessStatus();
+    this.serverCrashedLocal = true;
     if (this.pid === null) {
-      print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
-      return;
+      print(`${RED}${Date()} instance already gone? ${arangod.name} ${JSON.stringify(arangod.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${arangod.name} during force terminate server already dead? ${JSON.stringify(arangod.exitStatus)}`);
+    } else {
+      print(arangod.name)
+      internal.removePidFromMonitor(this.pid)
+      crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
-    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
+  }
+  aggregateDebugger () {
+    crashUtils.aggregateDebugger(this, this.options);
+    print("unlisting our instance");
+    this.waitForExitAfterDebugKill();
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
@@ -903,6 +913,9 @@ class instance {
       forceTerminate = false;
       this.options.useKillExternal = true;
     }
+    print('-----------------------------')
+    internal.removePidFromMonitor(this.pid);
+    print(this.exitStatus)
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
@@ -997,6 +1010,7 @@ class instance {
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
     let shutdownTime = time();
+    internal.removePidFromMonitor(this.pid)
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
       if (forceTerminate) {
@@ -1060,6 +1074,15 @@ class instance {
       }
       crashUtils.stopProcdump(this.options, this);
       return false;
+    }
+  }
+
+  getInstanceProcessStatus() {
+    if (this.pid !== null) {
+      this.exitStatus = statusExternal(this.pid, false);
+      if (this.exitStatus.status !== 'RUNNING') {
+        this.pid = null;
+      }
     }
   }
 

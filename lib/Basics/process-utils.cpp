@@ -1557,4 +1557,3 @@ void TRI_ShutdownProcess() {
   }
   ExternalProcesses.clear();
 }
-

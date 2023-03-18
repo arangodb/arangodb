@@ -25,7 +25,6 @@
 
 #include <string>
 #include <vector>
-#include <map>
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
@@ -39,12 +38,6 @@
 #else
 #define TRI_INVALID_PROCESS_ID (-1)
 #endif
-
-namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process

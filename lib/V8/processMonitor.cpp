@@ -144,7 +144,7 @@ class ProcessMonitorThread : public arangodb::Thread {
           // Its dead and gone - good
           removeMonitorPID(pid);
           ExitedExternalProcessStatus[pid._pid] = status;
-          triggerV8DeadlineNow();
+          triggerV8DeadlineNow(false);
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -152,14 +152,19 @@ class ProcessMonitorThread : public arangodb::Thread {
   }
 };
 
+namespace {
 ProcessMonitorThread *mt = nullptr;
+}
+
 void launchMonitorThread(application_features::ApplicationServer& server) {
   if (mt == nullptr) {
     mt = new ProcessMonitorThread(server);
     mt->start();
   }
 }
+
 void terminateMonitorThread(application_features::ApplicationServer& server) {
   mt->shutdown();
 }
+
 }
