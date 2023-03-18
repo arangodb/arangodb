@@ -26,5 +26,3 @@ export const TTLIndexForm = ({ onClose }: { onClose: () => void }) => {
     </Formik>
   );
 };
-
-

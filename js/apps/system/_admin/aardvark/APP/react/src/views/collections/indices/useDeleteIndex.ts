@@ -74,30 +74,7 @@ const postDeleteIndex = async ({
       } catch {
         handleError();
       }
-      // $.ajax({
-      //   cache: false,
-      //   type: 'DELETE',
-      //   url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(self.get('name')) + '/' + encodeURIComponent(id)),
-      //   headers: {
-      //     'x-arango-async': 'store'
-      //   },
-      //   success: function (data, textStatus, xhr) {
-      //     if (xhr.getResponseHeader('x-arango-async-id')) {
-      //       window.arangoHelper.addAardvarkJob({
-      //         id: xhr.getResponseHeader('x-arango-async-id'),
-      //         type: 'index',
-      //         desc: 'Removing Index',
-      //         collection: self.get('id')
-      //       });
-      //       callback(false, data);
-      //     } else {
-      //       callback(true, data);
-      //     }
-      //   },
-      //   error: function (data) {
-      //     callback(true, data);
-      //   }
-      // });
+    
     }
   );
 };
