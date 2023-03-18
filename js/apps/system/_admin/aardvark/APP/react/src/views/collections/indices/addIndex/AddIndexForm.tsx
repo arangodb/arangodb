@@ -4,10 +4,8 @@ import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
-import { HashIndexForm } from "./HashIndexForm";
 import { InfoTooltip } from "./InfoTooltip";
 import { PersistentIndexForm } from "./PersistentIndexForm";
-import { SkiplistIndexForm } from "./SkiplistIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { ZKDIndexForm } from "./ZKDIndexForm";
 
@@ -56,12 +54,6 @@ const IndexTypeForm = ({
   }
   if (type === "fulltext") {
     return <FulltextIndexForm onClose={onClose} />;
-  }
-  if (type === "skiplist") {
-    return <SkiplistIndexForm onClose={onClose} />;
-  }
-  if (type === "hash") {
-    return <HashIndexForm onClose={onClose} />;
   }
   if (type === "ttl") {
     return <TTLIndexForm onClose={onClose} />;

@@ -41,16 +41,8 @@ const indexTypeOptions = [
     value: "geo"
   },
   {
-    label: "Hash Index",
-    value: "hash"
-  },
-  {
     label: "Fulltext Index",
     value: "fulltext"
-  },
-  {
-    label: "Skiplist Index",
-    value: "skiplist"
   },
   {
     label: "TTL Index",
