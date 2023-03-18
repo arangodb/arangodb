@@ -4784,7 +4784,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external;
-  ExternalProcessStatus* x = getHistoricStatus(pid._pid);
+  const ExternalProcessStatus* x = getHistoricStatus(pid._pid);
   if (x != nullptr) {
     external = *x;
   } else {
