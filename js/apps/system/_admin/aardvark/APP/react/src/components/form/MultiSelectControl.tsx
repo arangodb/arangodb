@@ -33,7 +33,6 @@ export const MultiSelectControl = (props: InputControlProps) => {
         value={value}
         inputId={name}
         isDisabled={isSubmitting}
-        {...selectProps}
         onChange={values => {
           const valueStringArray = (values as MultiValue<OptionType>)?.map(
             value => {
@@ -42,6 +41,7 @@ export const MultiSelectControl = (props: InputControlProps) => {
           );
           helper.setValue(valueStringArray);
         }}
+        {...selectProps}
       />
     </FormikFormControl>
   );
