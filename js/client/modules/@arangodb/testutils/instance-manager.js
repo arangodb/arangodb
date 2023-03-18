@@ -781,7 +781,6 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownInstance (forceTerminate, moreReason="") {
-    print('-----zzzzzz')
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -800,9 +799,6 @@ class instanceManager {
       }
     }
     catch (e) {
-      print('-----yyyzzzzzz')
-      print(e)
-      print(e.stack)
       if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
         let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
         if (timeoutReached) {
@@ -819,8 +815,6 @@ class instanceManager {
 
   _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
-    let e=new Error('xxx')
-    print(e.stack)
     this.arangods.forEach((arangod) => {
       arangod.killWithCoreDump('force terminating');
     });

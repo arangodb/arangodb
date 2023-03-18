@@ -793,7 +793,7 @@ class instance {
     const res = statusExternal(this.pid, false);
     const running = res.status === 'RUNNING';
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
-      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
       pu.killRemainingProcesses({status: false});
       process.exit();
     }
@@ -879,11 +879,10 @@ class instance {
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
-      print(`${RED}${Date()} instance already gone? ${arangod.name} ${JSON.stringify(arangod.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${arangod.name} during force terminate server already dead? ${JSON.stringify(arangod.exitStatus)}`);
+      print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
     } else {
-      print(arangod.name)
-      internal.removePidFromMonitor(this.pid)
+      internal.removePidFromMonitor(this.pid);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
   }
@@ -913,9 +912,7 @@ class instance {
       forceTerminate = false;
       this.options.useKillExternal = true;
     }
-    print('-----------------------------')
     internal.removePidFromMonitor(this.pid);
-    print(this.exitStatus)
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
@@ -1010,7 +1007,7 @@ class instance {
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
     let shutdownTime = time();
-    internal.removePidFromMonitor(this.pid)
+    internal.removePidFromMonitor(this.pid);
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
       if (forceTerminate) {
