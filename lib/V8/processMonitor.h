@@ -33,7 +33,6 @@ namespace arangodb {
 
 extern std::map<TRI_pid_t, ExternalProcessStatus> ExitedExternalProcessStatus;
 
-
 extern ExternalProcessStatus const* getHistoricStatus(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,12 +57,14 @@ extern void removeMonitorPID(ExternalId const& pid);
 /// @brief launch the actual process monitor worker thread
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void launchMonitorThread(arangodb::application_features::ApplicationServer& server);
+extern void launchMonitorThread(
+    arangodb::application_features::ApplicationServer& server);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop external process motiror worker thread
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void terminateMonitorThread(arangodb::application_features::ApplicationServer& server);
+extern void terminateMonitorThread(
+    arangodb::application_features::ApplicationServer& server);
 
-}
+}  // namespace arangodb

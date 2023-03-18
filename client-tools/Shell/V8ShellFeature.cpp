@@ -163,13 +163,13 @@ void V8ShellFeature::validateOptions(
 
 void V8ShellFeature::startProcessMonitor() {
   if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
-        _isolate)) {
+          _isolate)) {
     launchMonitorThread(server());
   }
 }
 void V8ShellFeature::stopProcessMonitor() {
   if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
-        _isolate)) {
+          _isolate)) {
     terminateMonitorThread(server());
   }
 }
@@ -185,7 +185,7 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform.createIsolate();
-  
+
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
