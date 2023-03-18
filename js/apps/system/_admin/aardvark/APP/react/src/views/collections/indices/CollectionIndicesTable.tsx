@@ -13,6 +13,19 @@ import { IndexActionCell } from "./IndexActionCell";
 import { IndexType } from "./useFetchIndices";
 import { useSyncIndexCreationJob } from "./useSyncIndexCreationJob";
 
+const TABLE_HEADERS = [
+  { id: "id", name: "ID" },
+  { id: "type", name: "Type" },
+  { id: "unique", name: "Unique" },
+  { id: "sparse", name: "Sparse" },
+  { id: "extras", name: "Extras" },
+  { id: "selectivityEstimate", name: "Selectivity Est." },
+  { id: "fields", name: "Fields" },
+  { id: "storedValues", name: "Stored Values" },
+  { id: "name", name: "Name" },
+  { id: "action", name: "Action" }
+];
+
 export const CollectionIndicesTable = ({
   indices
 }: {
@@ -24,45 +37,30 @@ export const CollectionIndicesTable = ({
       <Table whiteSpace="normal" size="sm" variant="striped" colorScheme="gray">
         <Thead>
           <Tr height="10">
-            <Th>ID</Th>
-            <Th>Type</Th>
-            <Th>Unique</Th>
-            <Th>Sparse</Th>
-            <Th>Extras</Th>
-            <Th>Selectivity Est.</Th>
-            <Th>Fields</Th>
-            <Th>Stored Values</Th>
-            <Th>Name</Th>
-            <Th>Action</Th>
+            {TABLE_HEADERS.map(tableHeader => {
+              return <Th key={tableHeader.id}>{tableHeader.name}</Th>;
+            })}
           </Tr>
         </Thead>
         <Tbody>
           {indices?.map(indexRow => {
-            var {
-              indexId,
-              extras,
-              fields,
-              selectivityEstimate,
-              storedValues,
-              sparse,
-              unique,
-              name,
-              type
-            } = getIndexRowData(indexRow);
+            var indexRowData = getIndexRowData(indexRow);
             return (
               <Tr>
-                <Td>{indexId}</Td>
-                <Td>{type}</Td>
-                <Td>{unique}</Td>
-                <Td>{sparse}</Td>
-                <Td>{extras}</Td>
-                <Td>{selectivityEstimate}</Td>
-                <Td>{fields}</Td>
-                <Td>{storedValues}</Td>
-                <Td>{name}</Td>
-                <Td>
-                  <IndexActionCell indexRow={indexRow} />
-                </Td>
+                {TABLE_HEADERS.map(tableHeader => {
+                  const tableCellContent =
+                    indexRowData[
+                      (tableHeader.id as unknown) as keyof typeof indexRowData
+                    ];
+                  if (tableHeader.id === "action") {
+                    return (
+                      <Td key={indexRow.id}>
+                        <IndexActionCell indexRow={indexRow} />
+                      </Td>
+                    );
+                  }
+                  return <Td key={indexRow.id}>{tableCellContent}</Td>;
+                })}
               </Tr>
             );
           })}
@@ -110,7 +108,7 @@ const getIndexRowData = (indexRow: IndexType) => {
     })
     .join(", ");
   return {
-    indexId,
+    id: indexId,
     extras: extras.join(", "),
     fields: fieldsString,
     sparse: sparse === undefined ? "n/a" : `${sparse}`,
