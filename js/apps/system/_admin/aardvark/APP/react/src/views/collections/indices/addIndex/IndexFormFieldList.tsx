@@ -15,32 +15,36 @@ export const IndexFormFieldsList = ({
   }) => JSX.Element;
 }) => {
   return (
-    <Box
-      display={"grid"}
-      gridTemplateColumns={"200px 1fr 40px"}
-      rowGap="5"
-      columnGap="3"
-      maxWidth="800px"
-      padding="8"
-      alignItems="center"
-    >
-      {fields.map((field, index) => {
-        return (
-          <IndexFormField
-            render={renderField}
-            key={field.name}
-            index={index}
-            field={field}
-          />
-        );
-      })}
+    <Box>
+      <Box
+        display={"grid"}
+        gridTemplateColumns={"200px 1fr 40px"}
+        rowGap="5"
+        columnGap="3"
+        maxWidth="800px"
+        padding="8"
+        alignItems="center"
+        marginTop="4"
+        alignSelf="flex-start"
+      >
+        {fields.map((field, index) => {
+          return (
+            <IndexFormField
+              render={renderField}
+              key={field.name}
+              index={index}
+              field={field}
+            />
+          );
+        })}
+      </Box>
     </Box>
   );
 };
 export const FormActions = ({ onClose }: { onClose: () => void }) => {
   const { isValid, isSubmitting } = useFormikContext();
   return (
-    <Stack direction="row" justifyContent="flex-end">
+    <Stack marginY="2" direction="row" justifyContent="flex-end">
       <Button size="sm" onClick={onClose}>
         Close
       </Button>

@@ -18,7 +18,7 @@ export const InvertedIndexFormJSONEditor = () => {
   const { schema } = useInvertedIndexJSONSchema();
   const [errors, setErrors] = useState<ValidationError[]>();
   return (
-    <Box height="70%">
+    <Box height="100%">
       <ControlledJSONEditor
         value={values}
         onValidationError={errors => {
@@ -51,7 +51,7 @@ const JSONErrors = ({ errors }: { errors?: ValidationError[] }) => {
   }
   return (
     <Box
-      maxHeight={"40px"}
+      maxHeight={"80px"}
       paddingX="2"
       paddingY="1"
       fontSize="sm"

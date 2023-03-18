@@ -9,7 +9,7 @@ import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
-import "./split-pane-styles.css";
+import "./split-pane-gutter-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 

@@ -1,9 +1,8 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
-import SplitPane from "react-split-pane";
+import Split from "react-split";
 import { FormProps, State } from "../../utils/constants";
 import { FormState } from "./constants";
-import useElementSize from "./useElementSize";
 import { ViewLeftPane } from "./ViewLeftPane";
 import { ViewRightPane } from "./ViewRightPane";
 
@@ -19,21 +18,24 @@ export const ViewSection = ({
   isAdminUser: boolean;
   state: State<FormState>;
 } & Pick<FormProps<FormState>, "dispatch">) => {
-  const [sectionRef, sectionSize] = useElementSize();
-  const sectionWidth = sectionSize.width;
-  const maxSize = sectionWidth - 200;
-  const localStorageSplitPos = localStorage.getItem("splitPos") || "400";
-  let splitPos = parseInt(localStorageSplitPos, 10);
-  if (splitPos > (sectionWidth - 200)) {
-    splitPos = sectionWidth - 200;
+  const localStorageSplitSize = localStorage.getItem("viewJSONSplitSizes");
+  let sizes = [50, 50];
+  try {
+    sizes = localStorageSplitSize ? JSON.parse(localStorageSplitSize) : sizes;
+  } catch {
+    // ignore error
   }
   return (
-    <Box as="section" width="full" height="100vh" ref={sectionRef}>
-      <SplitPane
-        paneStyle={{ overflow: "auto" }}
-        maxSize={maxSize}
-        defaultSize={splitPos}
-        onChange={size => localStorage.setItem("splitPos", size.toString())}
+    <Box as="section" width="full" height="calc(100vh - 200px)">
+      <Split
+        style={{
+          display: "flex",
+          height: "100%"
+        }}
+        sizes={sizes}
+        onDragEnd={sizes =>
+          localStorage.setItem("viewJSONSplitSizes", JSON.stringify(sizes))
+        }
       >
         <ViewLeftPane
           name={name}
@@ -46,7 +48,7 @@ export const ViewSection = ({
           dispatch={dispatch}
           state={state}
         />
-      </SplitPane>
+      </Split>
     </Box>
   );
 };
