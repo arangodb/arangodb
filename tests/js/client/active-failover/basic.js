@@ -504,11 +504,8 @@ function ActiveFailoverSuite() {
       installFoxx('/crud', minimalWorkingZip);
 
       checkFoxxService(false);
-      print('xxx')
       assertTrue(checkInSync(currentLead, servers));
-      print('yyy')
       assertEqual(checkData(currentLead), 10000);
-      print('zzz')
       let suspended;
       let oldLead = currentLead;
       try {
