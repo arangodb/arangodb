@@ -324,8 +324,11 @@ function getTestCode(file, options, instanceManager) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
-         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
+  let ret = '';
+  if (instanceManager != null) {
+    ret = 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+  }
+  return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a remote unittest file using /_admin/execute
@@ -509,8 +512,8 @@ class runLocalInArangoshRunner extends testRunnerBase{
       }
     }
 
-    let testCode = getTestCode(file, this.options, this.instanceManager);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
+    let testCode = getTestCode(file, this.options, null);
+    global.instanceManager = this.instanceManager;
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");

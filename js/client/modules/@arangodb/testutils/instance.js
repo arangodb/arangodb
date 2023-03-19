@@ -1099,10 +1099,14 @@ class instance {
       return;
     }
     print(CYAN + Date() + ' suspending ' + this.name + RESET);
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     if (!suspendExternal(this.pid)) {
       throw new Error("Failed to suspend " + this.name);
     }
     this.suspended = true;
+    return true;
   }
 
   resume() {
@@ -1114,7 +1118,11 @@ class instance {
     if (!continueExternal(this.pid)) {
       throw new Error("Failed to resume " + this.name);
     }
+    if (this.options.enableAliveMonitor) {
+      internal.addPidToMonitor(this.pid);
+    }
     this.suspended = false;
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
