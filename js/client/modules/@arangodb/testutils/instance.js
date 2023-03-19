@@ -918,9 +918,9 @@ class instance {
       forceTerminate = false;
       this.options.useKillExternal = true;
     }
-      if (this.options.enableAliveMonitor) {
-        internal.removePidFromMonitor(this.pid);
-      }
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
@@ -994,6 +994,9 @@ class instance {
   waitForInstanceShutdown(timeout) {
     if (this.pid === null) {
       throw new Error(this.name + " already exited!");
+    }
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
     }
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
