@@ -14,7 +14,7 @@ export const ViewsList = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <HashRouter basename="/" hashType={"noslash"}>
         <ViewsListInner />
       </HashRouter>

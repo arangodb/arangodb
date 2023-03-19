@@ -4,7 +4,7 @@ import { CollectionIndicesTabWrap } from "./CollectionIndicesTabWrap";
 
 const CollectionIndicesReactView = ({ collectionName, collection }) => {
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <CollectionIndicesTabWrap
         collection={collection}
         collectionName={collectionName}

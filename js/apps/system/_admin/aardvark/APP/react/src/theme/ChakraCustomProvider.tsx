@@ -3,20 +3,33 @@ import { Global } from "@emotion/react";
 import React, { ReactNode } from "react";
 import { theme } from "./theme";
 
-export const ChakraCustomProvider = ({ children }: { children: ReactNode }) => {
+export const ChakraCustomProvider = ({
+  children,
+  overrideNonReact
+}: {
+  children: ReactNode;
+  // used by components which are rendered in content-react div
+  overrideNonReact?: boolean;
+}) => {
+  let overrideNonReactStyles = {};
+  if (overrideNonReact) {
+    overrideNonReactStyles = {
+      ".contentWrapper": {
+        display: "none"
+      },
+      ".reactContainer": {
+        height: "calc(100% - 120px)",
+        display: "flex",
+        width: "100%"
+      }
+    };
+  }
   return (
     <ChakraProvider theme={theme}>
       <Global
         styles={{
           // {/* This is to override the non-react wrappers */}
-          ".contentWrapper": {
-            display: "none"
-          },
-          ".reactContainer": {
-            height: "calc(100% - 120px)",
-            display: "flex",
-            width: "100%"
-          },
+          ...overrideNonReactStyles,
           // {/* This is to override bootstrap styles */}
           "input[type='number'], input[type='number']:focus": {
             height: "40px"
