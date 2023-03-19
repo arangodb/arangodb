@@ -1,6 +1,6 @@
 import { toNumber } from "lodash";
 import { useCreateIndex } from "./useCreateIndex";
-import { commonFieldsMap } from "./IndexFieldsHelper";
+import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import * as Yup from "yup";
 
 const initialValues = {
@@ -25,7 +25,7 @@ const fields = [
 ];
 
 const schema = Yup.object({
-  fields: Yup.string().required("Fields are required")
+  ...commonSchema
 });
 
 type ValuesType = Omit<typeof initialValues, "fields"> & {

@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { commonFieldsMap } from "./IndexFieldsHelper";
+import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import { useCreateIndex } from "./useCreateIndex";
 
 const persistentIndexFields = [
@@ -55,8 +55,9 @@ const initialValues = {
 };
 
 const schema = Yup.object({
-  fields: Yup.string().required("Fields are required")
+  ...commonSchema
 });
+
 
 type ValuesType = Omit<typeof initialValues, "fields"> & { fields: string[] };
 

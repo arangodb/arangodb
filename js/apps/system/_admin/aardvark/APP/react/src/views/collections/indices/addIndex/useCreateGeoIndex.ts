@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 import { useCreateIndex } from "./useCreateIndex";
-import { commonFieldsMap } from "./IndexFieldsHelper";
+import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 
 const initialValues = {
   type: "geo",
@@ -24,8 +24,9 @@ const fields = [
 ];
 
 const schema = Yup.object({
-  fields: Yup.string().required("Fields are required")
+  ...commonSchema
 });
+
 
 type ValuesType = Omit<typeof initialValues, "fields"> & {
   fields: string[];

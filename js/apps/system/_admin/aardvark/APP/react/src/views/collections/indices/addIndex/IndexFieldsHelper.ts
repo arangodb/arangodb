@@ -1,3 +1,4 @@
+import * as Yup from "yup";
 
 export const commonFieldsMap = {
   fields: {
@@ -12,7 +13,8 @@ export const commonFieldsMap = {
     label: "Name",
     name: "name",
     type: "text",
-    tooltip: "Index name. If left blank, a name will be auto-generated. Example: byValue",
+    tooltip:
+      "Index name. If left blank, a name will be auto-generated. Example: byValue",
     initialValue: ""
   },
   inBackground: {
@@ -22,4 +24,10 @@ export const commonFieldsMap = {
     initialValue: true,
     tooltip: "Create the index in background."
   }
+};
+
+export const commonSchema = {
+  fields: Yup.string().required("Fields are required"),
+  name: Yup.string().matches(/^[^\s]+$/, "Name can't contain spaces"),
+  inBackground: Yup.boolean()
 };
