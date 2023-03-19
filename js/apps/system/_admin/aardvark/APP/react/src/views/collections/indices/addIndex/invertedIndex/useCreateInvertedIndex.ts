@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { commonFieldsMap } from "../IndexFieldsHelper";
+import { commonFieldsMap, commonSchema } from "../IndexFieldsHelper";
 import { useCreateIndex } from "../useCreateIndex";
 
 /**
@@ -91,14 +91,11 @@ const initialValues = {
   fields: []
 };
 
-const analyzerFeaturesOptions = [
-  "frequency",
-  "position",
-  "offset",
-  "norm"
-].map(value => {
-  return { value, label: value };
-});
+const analyzerFeaturesOptions = ["frequency", "position", "offset", "norm"].map(
+  value => {
+    return { value, label: value };
+  }
+);
 
 export const invertedIndexFieldsMap = {
   fields: {
@@ -160,6 +157,7 @@ const fieldSchema: any = Yup.object().shape({
   nested: Yup.array().of(Yup.lazy(() => fieldSchema.default(undefined)))
 });
 const schema = Yup.object({
+  ...commonSchema,
   fields: Yup.array()
     .of(Yup.array())
     .of(fieldSchema)
