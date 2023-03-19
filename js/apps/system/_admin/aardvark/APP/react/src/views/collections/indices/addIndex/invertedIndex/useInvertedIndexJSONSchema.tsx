@@ -104,44 +104,8 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
 };
 
 /**
- * 
-type FieldType = {
-  name: string;
-  analyzer?: string;
-  searchField?: boolean;
-  features?: AnalyzerFeatures[];
-  includeAllFields?: boolean;
-  trackListPositions?: boolean;
-  nested?: Omit<FieldType, "includeAllFields" | "trackListPositions">[];
-};
-
+ * Currently returns a static schema, to be modified in the future for update case
  */
 export const useInvertedIndexJSONSchema = () => {
-  // const [schema, setSchema] = useState(invertedIndexJSONSchema);
-  // useEffect(() => {
-  //   const newProperties = schema.properties
-  //     ? {
-  //         ...schema.properties,
-  //         id: {
-  //           ...schema.properties.id,
-  //           const: view.id
-  //         },
-  //         globallyUniqueId: {
-  //           ...schema.properties.globallyUniqueId,
-  //           const: view.globallyUniqueId
-  //         },
-  //         ...nameProperty
-  //       }
-  //     : undefined;
-  //   const newSchema = {
-  //     ...schema,
-  //     // all updates need to update the ID
-  //     $id: `${schema.$id}/${view.name}/1`,
-  //     properties: newProperties
-  //   };
-  //   setSchema(newSchema);
-  //   // Only run this once on mount, set const values
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
   return { schema: invertedIndexJSONSchema };
 };
