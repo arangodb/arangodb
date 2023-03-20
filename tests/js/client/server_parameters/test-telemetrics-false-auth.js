@@ -29,7 +29,7 @@ const jwtSecret = 'abc';
 
 if (getOptions === true) {
   return {
-    'server.send-telemetrics': 'false',
+    'server.enable-telemetrics-api': 'false',
     'server.authentication': 'true',
     'server.jwt-secret': jwtSecret,
   };
@@ -39,21 +39,18 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 
 function getTelemetricsResult() {
-  try {
-    let res;
-    let numSecs = 0.5;
-    while (true) {
-      res = arango.getTelemetricsInfo();
-      if (res !== undefined || numSecs >= 16) {
-        break;
-      }
-      internal.sleep(numSecs);
-      numSecs *= 2;
+  let res;
+  let numSecs = 0.5;
+  while (true) {
+    res = arango.getTelemetricsInfo();
+    if (res !== undefined || numSecs >= 16) {
+      break;
     }
-    assertNotUndefined(res);
-    return res;
-  } catch (err) {
+    internal.sleep(numSecs);
+    numSecs *= 2;
   }
+  assertNotUndefined(res);
+  return res;
 }
 
 function telemetricsOnShellTestsuite() {
@@ -61,15 +58,13 @@ function telemetricsOnShellTestsuite() {
   return {
 
     testTelemetricsShellRequestByUserNotEnabled: function () {
-      try {
-        arango.startTelemetrics();
-        const res = getTelemetricsResult();
-        assertTrue(res.hasOwnProperty("errorNum"));
-        assertTrue(res.hasOwnProperty("errorMessage"));
-        assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
-        assertTrue(res.errorMessage.includes("telemetrics is disabled"));
-      } catch (err) {
-      }
+      arango.disableAutomaticallySendTelemetricsToEndpoint();
+      arango.startTelemetrics();
+      const res = getTelemetricsResult();
+      assertTrue(res.hasOwnProperty("errorNum"));
+      assertTrue(res.hasOwnProperty("errorMessage"));
+      assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
+      assertTrue(res.errorMessage.includes("telemetrics API is disabled"), "error message mentioning that telemetrics API is disabled should have been returned");
     },
 
   };
@@ -80,10 +75,11 @@ function telemetricsApiUsageTestsuite() {
   return {
 
     testTelemetricsApiRequestByUserNotEnabled: function () {
+      arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
       const res = arango.GET("/_admin/telemetrics");
       assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
-      assertTrue(res.errorMessage.includes("telemetrics is disabled"));
+      assertTrue(res.errorMessage.includes("telemetrics API is disabled"), "error message mentioning that telemetrics API is disabled should have been returned");
     },
 
   };

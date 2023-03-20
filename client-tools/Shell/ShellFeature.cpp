@@ -83,11 +83,6 @@ void ShellFeature::collectOptions(
 
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
-
-  options->addOption(
-      "--telemetrics.send-to-endpoint", "Send telemetrics to endpoint",
-      new BooleanParameter(&_sendTelemetricsToEndpoint),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 }
 
@@ -229,7 +224,7 @@ std::optional<VPackBuilder> ShellFeature::sendTelemetricsToEndpoint(
 void ShellFeature::startTelemetrics() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _telemetricsHandler = std::make_unique<TelemetricsHandler>(
-      server(), _sendTelemetricsToEndpoint);
+      server(), _automaticallySendTelemetricsToEndpoint);
 #else
   _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
 #endif

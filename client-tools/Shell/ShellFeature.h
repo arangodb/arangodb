@@ -56,6 +56,11 @@ class ShellFeature final : public ArangoshFeature {
   std::optional<velocypack::Builder> sendTelemetricsToEndpoint(
       std::string const& url);
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void disableAutomaticallySendTelemetricsToEndpoint() {
+    this->_automaticallySendTelemetricsToEndpoint = false;
+  }
+#endif
 
   void setExitCode(int code) { *_result = code; }
 
@@ -88,7 +93,7 @@ class ShellFeature final : public ArangoshFeature {
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _sendTelemetricsToEndpoint{false};
+  bool _automaticallySendTelemetricsToEndpoint{true};
 #endif
 };
 

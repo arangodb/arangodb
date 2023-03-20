@@ -29,7 +29,7 @@ const jwtSecret = 'abc';
 
 if (getOptions === true) {
   return {
-    'server.send-telemetrics': 'true',
+    'server.enable-telemetrics-api': 'true',
     'server.authentication': 'true',
     'server.jwt-secret': jwtSecret,
   };
@@ -91,7 +91,7 @@ function getTelemetricsSentToEndpoint() {
     let res;
     let numSecs = 0.5;
     while (true) {
-      res = arango.sendTelemetricsToEndpointTestRedirect();
+      res = arango.sendTelemetricsToEndpoint("/test-redirect/redirect");
       if (res !== undefined || numSecs >= 16) {
         break;
       }
@@ -129,7 +129,6 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_hash"));
     assertTrue(coll.hasOwnProperty("n_inverted"));
     assertTrue(coll.hasOwnProperty("n_iresearch"));
-    assertTrue(coll.hasOwnProperty("n_no_access"));
     assertTrue(coll.hasOwnProperty("n_persistent"));
     assertTrue(coll.hasOwnProperty("n_primary"));
     assertTrue(coll.hasOwnProperty("n_skiplist"));
@@ -148,9 +147,9 @@ function parseDatabases(databases) {
     parseCollections(colls);
     assertTrue(database.hasOwnProperty("single_shard"));
     assertTrue(database.hasOwnProperty("n_views"));
-    assertTrue(database.hasOwnProperty("n_disjoint_graphs"));
+    assertTrue(database.hasOwnProperty("n_disjoint_smart_colls"));
     assertTrue(database.hasOwnProperty("n_doc_colls"));
-    assertTrue(database.hasOwnProperty("n_graph_colls"));
+    assertTrue(database.hasOwnProperty("n_edge_colls"));
     assertTrue(database.hasOwnProperty("n_smart_colls"));
   });
 
@@ -252,6 +251,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
 
     testTelemetricsShellRequestByUserAuthorized: function () {
       try {
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         let telemetrics = getTelemetricsResult();
         assertForTelemetricsResponse(telemetrics);
@@ -341,6 +341,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
       try {
         createUser();
         arango.reconnect(arango.getEndpoint(), '_system', userName, "123");
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         const res = getTelemetricsResult();
         assertTrue(res.hasOwnProperty("errorNum"));
@@ -374,6 +375,7 @@ function telemetricsShellReconnectGraphTestsuite() {
 
     testTelemetricsShellRequestByUserAuthorized2: function () {
       try {
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         let telemetrics = getTelemetricsResult();
         assertForTelemetricsResponse(telemetrics);
@@ -441,7 +443,7 @@ function telemetricsShellReconnectGraphTestsuite() {
           } else {
             // there are already 12 collections in the _system database + 2 created here
             assertEqual(database["n_doc_colls"], 14);
-            assertEqual(database["n_graph_colls"], 1);
+            assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
@@ -492,6 +494,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
 
     testTelemetricsApiRequestByUserAuthorized: function () {
       try {
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         let telemetrics = arango.GET("/_admin/telemetrics");
         assertForTelemetricsResponse(telemetrics);
@@ -579,6 +582,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       try {
         createUser();
         arango.reconnect(arango.getEndpoint(), '_system', userName, "123");
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         const res = arango.GET("/_admin/telemetrics");
         assertTrue(res.hasOwnProperty("errorNum"));
@@ -595,6 +599,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
 
 
     testTelemetricsInsertingEndpointReqBodyAsDocument: function () {
+      arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
       const telemetrics = arango.GET("/_admin/telemetrics");
       assertForTelemetricsResponse(telemetrics);
@@ -626,6 +631,7 @@ function telemetricsApiReconnectGraphTestsuite() {
 
     testTelemetricsApiRequestByUserAuthorized2: function () {
       try {
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         let telemetrics = arango.GET("/_admin/telemetrics");
         assertForTelemetricsResponse(telemetrics);
@@ -689,7 +695,7 @@ function telemetricsApiReconnectGraphTestsuite() {
             assertEqual(totalNumDocs, 2000);
           } else {
             assertEqual(database["n_doc_colls"], 14);
-            assertEqual(database["n_graph_colls"], 1);
+            assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
@@ -719,41 +725,19 @@ function telemetricsSendToEndpointRedirectTestsuite() {
   return {
 
     setUpAll: function () {
-
-      try {
-        smartGraph._drop(cn2, true);
-      } catch (err) {
-      }
-      try {
-        FoxxManager.uninstall(mount, {force: true});
-      } catch (err) {
-      }
-      try {
-        FoxxManager.install(basePath, mount);
-      } catch (err) {
-      }
       db._create(cn);
-      const vn = "verticesCollection";
-      const en = "edgesCollection";
-      const graphRelation = [smartGraph._relation(en, vn, vn)];
-      smartGraph._create(cn2, graphRelation, null, {smartGraphAttribute: "value1", replicationFactor: 1});
-      smartGraph._graph(cn2);
+      let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
+      coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
     },
 
     tearDownAll: function () {
       db._drop(cn);
-      try {
-        FoxxManager.uninstall(mount, {force: true});
-      } catch (err) {
-      }
-      try {
-        smartGraph._drop(cn2, true);
-      } catch (err) {
-      }
+      db._drop(cn3);
     },
 
     testTelemetricsSendToEndpointWithRedirection: function () {
       try {
+        arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         getTelemetricsResult();
         const telemetrics = getTelemetricsSentToEndpoint();
