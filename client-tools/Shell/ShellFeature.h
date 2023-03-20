@@ -53,8 +53,7 @@ class ShellFeature final : public ArangoshFeature {
   void beginShutdown() override;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void getTelemetricsInfo(velocypack::Builder& builder);
-  std::optional<velocypack::Builder> sendTelemetricsToEndpoint(
-      std::string const& url);
+  velocypack::Builder sendTelemetricsToEndpoint(std::string const& url);
 #endif
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void disableAutomaticallySendTelemetricsToEndpoint() {

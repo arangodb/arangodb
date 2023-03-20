@@ -211,13 +211,11 @@ void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
     _telemetricsHandler->getTelemetricsInfo(builder);
   }
 }
-std::optional<VPackBuilder> ShellFeature::sendTelemetricsToEndpoint(
-    std::string const& url) {
+VPackBuilder ShellFeature::sendTelemetricsToEndpoint(std::string const& url) {
   if (_telemetricsHandler != nullptr) {
     return _telemetricsHandler->sendTelemetricsToEndpoint(url);
-  } else {
-    return std::nullopt;
   }
+  return VPackBuilder();
 }
 #endif
 
