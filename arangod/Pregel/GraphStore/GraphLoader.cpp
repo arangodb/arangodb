@@ -238,9 +238,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
 template<typename V, typename E>
 void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
                                   Vertex<V, E>& vertex,
-                                  ShardID const& edgeShard,
                                   std::string_view documentID,
-                                  uint64_t numVertices,
                                   traverser::EdgeCollectionInfo& info) {
   auto cursor = info.getEdges(std::string{documentID});
 

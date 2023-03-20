@@ -56,9 +56,8 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   auto loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards) -> void;
   auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
-                 ShardID const& edgeShard, std::string_view documentID,
-                 uint64_t numVertices, traverser::EdgeCollectionInfo& info)
-      -> void;
+                 std::string_view documentID,
+                 traverser::EdgeCollectionInfo& info) -> void;
 
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
