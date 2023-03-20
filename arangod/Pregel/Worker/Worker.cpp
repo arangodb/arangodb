@@ -518,13 +518,30 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   _state = WorkerState::DONE;
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
-    // tell graphstore to remove read locks
-    auto storer =
-        GraphStorer<V, E>(_config, _algorithm->inputFormat(),
-                          _config->globalShardIDs(), _makeStatusCallback());
-    storer.store(_quiver);
-    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-    cleanup();
+
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(
+        RequestLane::INTERNAL_LOW,
+        [this, self = shared_from_this(),
+         statusUpdateCallback = std::move(_makeStatusCallback()),
+         finishedCallback = std::move(finishedCallback)] {
+          try {
+            auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
+                                            _config->globalShardIDs(),
+                                            _makeStatusCallback());
+            _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+            storer.store(_quiver);
+          } catch (std::exception const& ex) {
+            LOG_PREGEL("a47c4", WARN)
+                << "caught exception in loadShards: " << ex.what();
+            throw;
+          } catch (...) {
+            LOG_PREGEL("e932d", WARN)
+                << "caught unknown exception in loadShards";
+            throw;
+          }
+          cleanup();
+        });
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
