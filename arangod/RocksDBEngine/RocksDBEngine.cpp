@@ -145,8 +145,12 @@ DECLARE_GAUGE(
     "RocksDB WAL sequence number until which background thread has caught up");
 DECLARE_GAUGE(rocksdb_live_wal_files, uint64_t,
               "Number of live RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_live_wal_files_size, uint64_t,
+              "Cumulated size of live RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t,
               "Number of archived RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_archived_wal_files_size, uint64_t,
+              "Cumulated size of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t,
               "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t,
@@ -232,7 +236,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
       _pruneWaitTime(10.0),
-      _pruneWaitTimeInitial(180.0),
+      _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
       _syncInterval(100),
@@ -254,8 +258,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
-      _autoFlushCheckInterval(60.0 * 60.0),
-      _autoFlushMinWalFiles(10),
+      _autoFlushCheckInterval(60.0 * 30.0),
+      _autoFlushMinWalFiles(20),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -266,6 +270,11 @@ RocksDBEngine::RocksDBEngine(Server& server,
           rocksdb_live_wal_files{})),
       _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
+      _metricsLiveWalFilesSize(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files_size{})),
+      _metricsArchivedWalFilesSize(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_archived_wal_files_size{})),
       _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
       _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
@@ -1178,6 +1187,11 @@ void RocksDBEngine::start() {
   if (hd.res.fail()) {
     LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
   }
+
+  // make an initial inventory of WAL files, so that all WAL files
+  // metrics are correctly populated once the HTTP interface comes
+  // up
+  determineWalFilesInitial();
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -2378,19 +2392,26 @@ void RocksDBEngine::determineWalFilesInitial() {
 
   size_t liveFiles = 0;
   size_t archivedFiles = 0;
+  uint64_t liveFilesSize = 0;
+  uint64_t archivedFilesSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
     if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
       ++archivedFiles;
+      archivedFilesSize += f->SizeFileBytes();
     } else if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
       ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
     }
   }
   _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
                                       std::memory_order_relaxed);
   _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
   _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
@@ -2421,14 +2442,21 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  // number of live WAL files
   size_t liveFiles = 0;
+  // number of archived WAL files
   size_t archivedFiles = 0;
-  uint64_t totalArchiveSize = 0;
+  // cumulated size of live WAL files
+  uint64_t liveFilesSize = 0;
+  // cumulated size of archived WAL files
+  uint64_t archivedFilesSize = 0;
+
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
     if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
       ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
       LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
           << "live WAL file #" << current << "/" << files.size()
           << ", filename: '" << f->PathName()
@@ -2442,12 +2470,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     }
 
     ++archivedFiles;
-
-    // determine the size of the archive only if it there is a cap on the
-    // archive size otherwise we can save the underlying file access
-    if (_maxWalArchiveSizeLimit > 0) {
-      totalArchiveSize += f->SizeFileBytes();
-    }
+    archivedFilesSize += f->SizeFileBytes();
 
     // check if there is another WAL file coming after the currently-looked-at
     // There should be at least one live WAL file after it, however, let's be
@@ -2499,15 +2522,18 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   LOG_TOPIC("01e20", DEBUG, Logger::ENGINES)
       << "found " << files.size() << " WAL file(s), with " << liveFiles
       << " live file(s) and " << archivedFiles << " file(s) in the archive, "
-      << "number of prunable files: " << _prunableWalFiles.size();
+      << "number of prunable files: " << _prunableWalFiles.size()
+      << ", live file size: " << liveFilesSize
+      << ", archived file size: " << archivedFilesSize;
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize > _maxWalArchiveSizeLimit) {
+      archivedFilesSize > _maxWalArchiveSizeLimit) {
     // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
-        << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
+        << "total size of the RocksDB WAL file archive: " << archivedFilesSize
+        << ", limit: " << _maxWalArchiveSizeLimit;
 
     // we got more archived files than configured. time for purging some files!
     for (size_t current = 0; current < files.size(); current++) {
@@ -2535,7 +2561,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
-        TRI_ASSERT(totalArchiveSize > _maxWalArchiveSizeLimit);
+        TRI_ASSERT(archivedFilesSize > _maxWalArchiveSizeLimit);
 
         // never change this id without adjusting wal-archive-size-limit tests
         // in tests/js/client/server-parameters
@@ -2545,15 +2571,15 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize
+            << ", actual archive size is: " << archivedFilesSize
             << ". if these warnings persist, try to increase the value of "
             << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
-      TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
-      totalArchiveSize -= f->SizeFileBytes();
+      TRI_ASSERT(archivedFilesSize >= f->SizeFileBytes());
+      archivedFilesSize -= f->SizeFileBytes();
 
-      if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
+      if (archivedFilesSize <= _maxWalArchiveSizeLimit) {
         // got enough files to remove
         break;
       }
@@ -2564,6 +2590,9 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                       std::memory_order_relaxed);
   _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
   _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
   _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
                                  std::memory_order_relaxed);
   _metricsWalPruningActive.store(1, std::memory_order_relaxed);
