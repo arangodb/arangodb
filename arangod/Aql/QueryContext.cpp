@@ -131,10 +131,6 @@ void QueryContext::addDataSource(  // track DataSource
 
 aql::Ast* QueryContext::ast() { return _ast.get(); }
 
-std::lock_guard<std::mutex> QueryContext::acquireLockGuard() {
-  return std::lock_guard(_mutex);
-}
-
 void QueryContext::enterV8Context() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "V8 support not implemented");

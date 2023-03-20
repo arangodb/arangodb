@@ -8349,6 +8349,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
   for (auto node : nodes) {
@@ -8356,7 +8357,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
     if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
-      containers::SmallVector<ExecutionNode*, 8> graphNodes;
+      graphNodes.clear();
       plan->findNodesOfType(
           graphNodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS},
           true);

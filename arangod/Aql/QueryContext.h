@@ -105,7 +105,9 @@ class QueryContext {
 
   /// @brief Acquire a lock_guard on the mutex to serialize concurrent snippet
   /// execution
-  std::lock_guard<std::mutex> acquireLockGuard();
+  std::lock_guard<std::mutex> acquireLockGuard() {
+    return std::lock_guard{_mutex};
+  }
 
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
