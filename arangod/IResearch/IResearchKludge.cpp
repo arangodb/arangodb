@@ -38,6 +38,7 @@
 #include <string>
 #include <string_view>
 
+namespace arangodb {
 namespace {
 
 inline void normalizeExpansion(std::string& name) {
@@ -53,33 +54,32 @@ std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};
 std::string_view constexpr kStringSuffix{"\0_s", 3};
 
-}  // namespace
+template<typename T>
+T& syncImpl(Index& index) {
+  auto& store = basics::downCast<T>(index);
+  store.finishCreation();
+  store.commit();
+  return store;
+};
 
-namespace arangodb {
+}  // namespace
 
 void syncIndexOnCreate(Index& index) {
   switch (index.type()) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
-      auto& store = basics::downCast<iresearch::IResearchRocksDBLink>(index);
-      store.commit();
-      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle") {}
-      else {
-        store.setBuilding(false);
-      }
+      auto& store = syncImpl<iresearch::IResearchRocksDBLink>(index);
+      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle");
+      else store.setBuilding(false);
     } break;
     case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
-      auto& store =
-          basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
-      store.commit();
+      syncImpl<iresearch::IResearchRocksDBInvertedIndex>(index);
     } break;
     default:
       break;
   }
 }
 
-}  // namespace arangodb
-
-namespace arangodb::iresearch::kludge {
+namespace iresearch::kludge {
 
 void mangleType(std::string& name) { name += kTypeDelimiter; }
 
@@ -205,4 +205,5 @@ bool isPrimitiveAnalyzer(std::string_view type) noexcept {
   return !isGeoAnalyzer(type);
 }
 
-}  // namespace arangodb::iresearch::kludge
+}  // namespace iresearch::kludge
+}  // namespace arangodb
