@@ -97,6 +97,42 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
         required: ["name"],
         additionalProperties: false
       }
+    },
+    primarySort: {
+      type: "object",
+      nullable: true,
+      properties: {
+        fields: {
+          type: "array",
+          nullable: false,
+          items: {
+            type: "object",
+            nullable: false,
+            properties: {
+              field: {
+                type: "string",
+                nullable: false
+              },
+              direction: {
+                type: "string",
+                nullable: false
+              }
+            },
+            default: {
+              field: "",
+              direction: "asc"
+            },
+            required: ["field", "direction"],
+            additionalProperties: false
+          }
+        },
+        compression: {
+          type: "string",
+          enum: ["lz4", "none"],
+          default: "lz4"
+        }
+      },
+      required: ['compression', 'fields']
     }
   },
   required: ["type"],

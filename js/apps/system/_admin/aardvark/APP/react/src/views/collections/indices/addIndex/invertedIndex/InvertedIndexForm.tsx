@@ -7,6 +7,7 @@ import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFieldsDataEntry } from "./InvertedIndexFieldsDataEntry";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
+import { InvertedIndexPrimarySort } from "./InvertedIndexPrimarySort";
 import { useCreateInvertedIndex } from "./useCreateInvertedIndex";
 
 export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
@@ -63,6 +64,9 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
                         autoFocus={autoFocus}
                       />
                     );
+                  }
+                  if (field.name === "primarySort") {
+                    return <InvertedIndexPrimarySort field={field} />;
                   }
                   return <>{field.name}</>;
                 }}

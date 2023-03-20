@@ -54,6 +54,11 @@ import { useCreateIndex } from "../useCreateIndex";
 
 type AnalyzerFeatures = "frequency" | "position" | "offset" | "norm";
 
+type PrimarySortFieldType = {
+  field: string;
+  direction: string;
+};
+
 export type InvertedIndexFieldType = {
   name: string;
   analyzer?: string;
@@ -76,6 +81,10 @@ export type InvertedIndexValuesType = {
   includeAllFields?: boolean;
   trackListPositions?: boolean;
   searchField?: boolean;
+  primarySort?: {
+    fields: PrimarySortFieldType[];
+    compression: "lz4" | "none";
+  };
   fields?: InvertedIndexFieldType[];
 };
 
@@ -133,6 +142,11 @@ export const invertedIndexFieldsMap = {
     name: "searchField",
     type: "boolean",
     initialValue: false
+  },
+  primarySort: {
+    label: "Primary Sort",
+    name: "primarySort",
+    type: "custom"
   }
 };
 const invertedIndexFields = [
@@ -143,6 +157,7 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.trackListPositions,
   invertedIndexFieldsMap.searchField,
   commonFieldsMap.name,
+  invertedIndexFieldsMap.primarySort,
   commonFieldsMap.inBackground
 ];
 
