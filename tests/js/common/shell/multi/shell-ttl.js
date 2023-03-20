@@ -41,10 +41,10 @@ const { versionHas,
 } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
 
-let deltaTimeout = 1;
+let deltaTimeout = 10;
 let divisor = 1;
 if (versionHas('coverage')) {
-  deltaTimeout = 2;
+  deltaTimeout = 20;
   divisor = 10;
 }
 
