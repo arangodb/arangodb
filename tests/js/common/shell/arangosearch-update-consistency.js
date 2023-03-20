@@ -44,13 +44,13 @@ function UpdateConsistency() {
 
     tearDownAll: function () {
       db._dropView(view);
-      db._drop(collection)
+      db._drop(collection);
     },
 
     testSimple: function () {
       let c = db._collection(collection);
       for (let j = 0; j < 10000; j++) {
-        print("Iteration " + j);
+        // print("Iteration " + j);
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
         c.update("279974", {value: 345, flag: true});
