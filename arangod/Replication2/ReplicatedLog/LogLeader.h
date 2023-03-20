@@ -49,6 +49,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -229,8 +231,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // The LogCore parameter will (and must) stay untouched in case of an
     // exception.
     LocalFollower(LogLeader& self, LoggerContext logContext,
-                  std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
-                  TermIndexPair lastIndex);
+                  std::shared_ptr<IStorageManager>, TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -243,15 +244,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto appendEntries(AppendEntriesRequest methods)
         -> arangodb::futures::Future<AppendEntriesResult> override;
 
-    [[nodiscard]] auto resign() && noexcept
-        -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
     [[nodiscard]] auto release(LogIndex stop) const -> Result;
 
    private:
     LogLeader& _leader;
     LoggerContext const _logContext;
-    Guarded<std::unique_ptr<replicated_state::IStorageEngineMethods>>
-        _guardedMethods;
+    std::shared_ptr<IStorageManager> const _storageManager;
   };
 
   struct PreparedAppendEntryRequest {
@@ -366,6 +364,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
+  std::shared_ptr<IStorageManager> _storageManager;
+  std::shared_ptr<ICompactionManager> _compactionManager;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in

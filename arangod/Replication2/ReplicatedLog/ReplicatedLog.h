@@ -80,7 +80,6 @@ struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
   // TODO waitForSync parameter is missing
   virtual auto insertDeferred(LogPayload)
       -> std::pair<LogIndex, DeferredAction> = 0;
-  virtual auto getLogSnapshot() -> InMemoryLog = 0;
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {

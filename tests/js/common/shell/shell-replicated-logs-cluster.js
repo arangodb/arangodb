@@ -261,7 +261,7 @@ function ReplicatedLogsWriteSuite() {
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
       let s2 = getLeaderStatus(log);
-      assertEqual(s2.local.firstIndex, 1501);
+      assertEqual(s2.local.firstIndex, 1500);
     },
 
    testPoll: function () {
@@ -316,7 +316,7 @@ function ReplicatedLogsCompactSuite() {
       assertEqual(s2.local.firstIndex, 1, JSON.stringify(s2));
       log.compact();
       const s3 = getLeaderStatus(log);
-      assertEqual(s3.local.firstIndex, 101, JSON.stringify(s3));
+      assertEqual(s3.local.firstIndex, 100, JSON.stringify(s3));
     }
   };
 }
