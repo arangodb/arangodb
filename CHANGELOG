@@ -1,3 +1,20 @@
+v3.10.6 (XXXX-XX-XX)
+--------------------
+
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files_size`: cumulated size of alive WAL files (not
+    archived)
+  - `rocksdb_archived_wal_files_size`: cumulated size of archive WAL files
+
+* By default, start pruning of archived WAL files 60 seconds after server
+  start. Previously, pruning of WAL files started 180 seconds after server
+  startup.
+
+* Set default threshold value for automatic column flushing to 20 live WAL
+  files (previously: 10 files), and retry flushing every 30 minutes (previous
+  interval: every 60 minutes).
+
+
 v3.10.5 (XXXX-XX-XX)
 --------------------
 
