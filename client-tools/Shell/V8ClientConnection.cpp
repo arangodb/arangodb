@@ -1102,6 +1102,10 @@ static void ClientConnection_sendTelemetricsToEndpoint(
   std::string url = TRI_ObjectToString(isolate, args[0]);
   auto builder = shellFeature.sendTelemetricsToEndpoint(url);
 
+  if (builder.isEmpty()) {
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
   TRI_V8_TRY_CATCH_END
