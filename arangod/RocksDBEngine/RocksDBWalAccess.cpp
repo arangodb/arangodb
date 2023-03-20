@@ -211,8 +211,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             LogicalCollection* coll = loadCollection(dbid, cid);
-            TRI_ASSERT(vocbase != nullptr && coll != nullptr);
-            {
+            if (coll != nullptr) {
               uint64_t tick = _currentSequence;
               VPackObjectBuilder marker(&_builder, true);
               marker->add("tick", VPackValue(std::to_string(tick)));
@@ -235,21 +234,23 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             LogicalCollection* coll = loadCollection(dbid, cid);
-            TRI_ASSERT(vocbase != nullptr && coll != nullptr);
-            VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
-            auto stripped = rocksutils::stripObjectIds(indexDef);
+            if (coll != nullptr) {
+              VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
+              auto stripped = rocksutils::stripObjectIds(indexDef);
 
-            {
-              uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(tick)));
-              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("cuid", VPackValue(coll->guid()));
-              marker->add("data", stripped.first);
+              {
+                uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+                VPackObjectBuilder marker(&_builder, true);
+                marker->add("tick", VPackValue(std::to_string(tick)));
+                marker->add("type",
+                            VPackValue(rocksutils::convertLogType(type)));
+                marker->add("db", VPackValue(vocbase->name()));
+                marker->add("cuid", VPackValue(coll->guid()));
+                marker->add("data", stripped.first);
+              }
+
+              printMarker(vocbase);
             }
-
-            printMarker(vocbase);
           }
         }
 
@@ -267,22 +268,22 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             LogicalCollection* col = loadCollection(dbid, cid);
-            TRI_ASSERT(vocbase != nullptr && col != nullptr);
-
-            {
+            if (col != nullptr) {
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(tick)));
-              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("cuid", VPackValue(col->guid()));
+              {
+                VPackObjectBuilder marker(&_builder, true);
+                marker->add("tick", VPackValue(std::to_string(tick)));
+                marker->add("type",
+                            VPackValue(rocksutils::convertLogType(type)));
+                marker->add("db", VPackValue(vocbase->name()));
+                marker->add("cuid", VPackValue(col->guid()));
 
-              VPackObjectBuilder data(&_builder, "data", true);
+                VPackObjectBuilder data(&_builder, "data", true);
 
-              data->add("id", VPackValue(std::to_string(iid.id())));
+                data->add("id", VPackValue(std::to_string(iid.id())));
+              }
+              printMarker(vocbase);
             }
-
-            printMarker(vocbase);
           }
         }
         break;
@@ -314,7 +315,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
               marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
                                                  VPackValueType::String));
             }
-
             printMarker(vocbase);
           }
         }
@@ -456,7 +456,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
         } else if (_state == DB_DROP) {
           // prepareDropDatabase should always write entry
           VPackSlice const del = data.get("deleted");
-          TRI_ASSERT(del.isBool() && del.getBool());
+          TRI_ASSERT(del.isTrue()) << data.toJson();
           {
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -475,30 +475,34 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             LogicalCollection* col = loadCollection(dbid, cid);
-            TRI_ASSERT(vocbase != nullptr && col != nullptr);
-
-            {
+            if (col != nullptr) {
               VPackSlice collectionDef = RocksDBValue::data(value);
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("cuid", VPackValue(col->guid()));
+              {
+                VPackObjectBuilder marker(&_builder, true);
+                marker->add("tick",
+                            VPackValue(std::to_string(_currentSequence)));
+                marker->add("db", VPackValue(vocbase->name()));
+                marker->add("cuid", VPackValue(col->guid()));
 
-              if (_state == COLLECTION_CREATE) {
-                auto stripped = rocksutils::stripObjectIds(collectionDef);
-                marker->add("type", VPackValue(REPLICATION_COLLECTION_CREATE));
-                marker->add("data", stripped.first);
-              } else if (_state == COLLECTION_RENAME) {
-                marker->add("type", VPackValue(REPLICATION_COLLECTION_RENAME));
-                VPackObjectBuilder data(&_builder, "data", true);
-                data->add("name", VPackValue(col->name()));
-              } else if (_state == COLLECTION_CHANGE) {
-                auto stripped = rocksutils::stripObjectIds(collectionDef);
-                marker->add("type", VPackValue(REPLICATION_COLLECTION_CHANGE));
-                marker->add("data", stripped.first);
+                if (_state == COLLECTION_CREATE) {
+                  auto stripped = rocksutils::stripObjectIds(collectionDef);
+                  marker->add("type",
+                              VPackValue(REPLICATION_COLLECTION_CREATE));
+                  marker->add("data", stripped.first);
+                } else if (_state == COLLECTION_RENAME) {
+                  marker->add("type",
+                              VPackValue(REPLICATION_COLLECTION_RENAME));
+                  VPackObjectBuilder data(&_builder, "data", true);
+                  data->add("name", VPackValue(col->name()));
+                } else if (_state == COLLECTION_CHANGE) {
+                  auto stripped = rocksutils::stripObjectIds(collectionDef);
+                  marker->add("type",
+                              VPackValue(REPLICATION_COLLECTION_CHANGE));
+                  marker->add("data", stripped.first);
+                }
               }
+              printMarker(vocbase);
             }
-            printMarker(vocbase);
           }
         }
       } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
@@ -557,20 +561,22 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
       TRI_ASSERT(_state != TRANSACTION || _trxDbId == dbid);
 
       TRI_vocbase_t* vocbase = loadVocbase(dbid);
-      LogicalCollection* col = loadCollection(dbid, cid);
-      TRI_ASSERT(vocbase != nullptr && col != nullptr);
-
-      {
-        VPackObjectBuilder marker(&_builder, true);
-        marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-        marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-        marker->add("db", VPackValue(vocbase->name()));
-        marker->add("cuid", VPackValue(col->guid()));
-        marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
-        marker->add("data", RocksDBValue::data(value));
+      if (vocbase != nullptr) {
+        LogicalCollection* col = loadCollection(dbid, cid);
+        if (col != nullptr) {
+          {
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+            marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
+            marker->add("db", VPackValue(vocbase->name()));
+            marker->add("cuid", VPackValue(col->guid()));
+            marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
+            marker->add("data", RocksDBValue::data(value));
+          }
+          printMarker(vocbase);
+        }
       }
 
-      printMarker(vocbase);
       if (_state == SINGLE_PUT) {
         resetTransientState();  // always reset after single op
       }
@@ -613,26 +619,28 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
     TRI_ASSERT(_state != TRANSACTION || _trxDbId == dbid);
 
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
-    LogicalCollection* col = loadCollection(dbid, cid);
-    TRI_ASSERT(vocbase != nullptr && col != nullptr);
+    if (vocbase != nullptr) {
+      LogicalCollection* col = loadCollection(dbid, cid);
+      if (col != nullptr) {
+        {
+          VPackObjectBuilder marker(&_builder, true);
+          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+          marker->add("type", VPackValue(REPLICATION_MARKER_REMOVE));
+          marker->add("db", VPackValue(vocbase->name()));
+          marker->add("cuid", VPackValue(col->guid()));
+          marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
 
-    {
-      VPackObjectBuilder marker(&_builder, true);
-      marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-      marker->add("type", VPackValue(REPLICATION_MARKER_REMOVE));
-      marker->add("db", VPackValue(vocbase->name()));
-      marker->add("cuid", VPackValue(col->guid()));
-      marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
-
-      VPackObjectBuilder data(&_builder, "data", true);
-      data->add(
-          StaticStrings::KeyString,
-          VPackValuePair(docKey.data(), docKey.size(), VPackValueType::String));
-      data->add(StaticStrings::RevString,
-                VPackValue(_removedDocRid.toString()));
+          VPackObjectBuilder data(&_builder, "data", true);
+          data->add(StaticStrings::KeyString,
+                    VPackValuePair(docKey.data(), docKey.size(),
+                                   VPackValueType::String));
+          data->add(StaticStrings::RevString,
+                    VPackValue(_removedDocRid.toString()));
+        }
+        printMarker(vocbase);
+      }
     }
 
-    printMarker(vocbase);
     _removedDocRid = RevisionId::none();  // always reset
 
     if (_state == SINGLE_REMOVE) {
