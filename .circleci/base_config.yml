@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   enterprise-branch:
     type: string
-    default: devel
+    default: ""
 
 jobs:
   minimal-checkout:
@@ -93,9 +93,20 @@ jobs:
       - run:
           name: Checkout Enterprise
           command: |
-            if [ << parameters.enterprise >> = true ]; then
+            if [ << parameters.enterprise >> == true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
-              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "<< pipeline.parameters.enterprise-branch >>" /root/project/enterprise
+              if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+                git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
+                if [ "$?" == "0" ] ; then
+                  ENTERPRISE_BRANCH=$CIRCLE_BRANCH
+                else
+                  ENTERPRISE_BRANCH=devel
+                fi
+              else
+                ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+              fi
+              echo "Using enterprise branch $ENTERPRISE_BRANCH"
+              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" /root/project/enterprise
             fi
       - run:
           name: Print SCCache Settings
