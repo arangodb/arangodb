@@ -194,6 +194,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
                       std::to_string(compressedBody.size()));
       headers.emplace(StaticStrings::ContentEncoding,
                       StaticStrings::EncodingGzip);
+      headers.emplace("arangodb-request-type", "telemetrics");
     }
     if (isLocal) {
       relativeUrl = url;
