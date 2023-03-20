@@ -81,10 +81,6 @@ uint64_t GraphLoader<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 
 template<typename V, typename E>
 auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
-  // hold the current position where the ith vertex shard can
-  // start to write its data. At the end the offset should equal the
-  // sum of the counts of all ith edge shards
-
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
