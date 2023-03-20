@@ -19,7 +19,8 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   properties: {
     type: {
       nullable: false,
-      type: "string"
+      type: "string",
+      const: "inverted"
     },
     name: {
       nullable: true,
@@ -132,7 +133,7 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
           default: "lz4"
         }
       },
-      required: ['compression', 'fields']
+      required: ["compression", "fields"]
     }
   },
   required: ["type"],
