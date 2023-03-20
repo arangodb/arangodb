@@ -212,8 +212,10 @@ class ExecutionNode {
                   "invalid type passed into ExecutionNode::castTo");
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(node != nullptr);
     T result = dynamic_cast<T>(node);
-    TRI_ASSERT(result != nullptr);
+    TRI_ASSERT(result != nullptr)
+        << "input node type " << node->getTypeString();
     return result;
 #else
     // At least GraphNode is virtually inherited by its subclasses. We have to
