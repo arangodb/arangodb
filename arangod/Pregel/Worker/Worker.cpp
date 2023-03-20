@@ -581,7 +581,7 @@ auto Worker<V, E, M>::_observeStatus() const -> Status const {
   if (!currentGss.isDefault()) {
     fullGssStatus.gss.emplace_back(currentGss);
   }
-  return Status{.graphStoreStatus = {},  // TODO: _graphStore->status(),
+  return Status{.graphStoreStatus = {},  // TODO: GORDO-1583
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};
