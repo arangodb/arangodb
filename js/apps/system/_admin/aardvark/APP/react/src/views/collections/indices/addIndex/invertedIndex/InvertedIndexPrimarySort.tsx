@@ -1,6 +1,6 @@
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
-import { FieldArray, useField } from "formik";
+import { FieldArray, useField, useFormikContext } from "formik";
 import React from "react";
 import { InputControl } from "../../../../../components/form/InputControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
@@ -13,7 +13,15 @@ export const InvertedIndexPrimarySort = ({
   field: IndexFormFieldProps;
 }) => {
   return (
-    <Box gridColumn="1 / span 3" paddingY="4">
+    <Box
+      gridColumn="1 / span 3"
+      border="2px solid"
+      borderRadius="md"
+      borderColor="gray.200"
+      paddingY="4"
+      paddingX="2"
+      marginX="-4"
+    >
       <PrimarySortFields field={{ ...field, name: "primarySort.fields" }} />
     </Box>
   );
@@ -32,13 +40,14 @@ const directionOptions = [
 
 const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
+  const { values, setFieldValue } = useFormikContext<InvertedIndexValuesType>();
   return (
-    <Box gridColumn="1 / span 3" paddingY="4" background="gray.100">
+    <>
       <FormLabel>{field.label}</FormLabel>
       <Box
         display={"grid"}
         gridColumnGap="4"
-        gridTemplateColumns={"1fr 1fr 40px"}
+        gridTemplateColumns="200px 1fr 40px"
         rowGap="5"
         alignItems={"end"}
         marginTop="2"
@@ -71,6 +80,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                     rowGap="5"
                     alignItems={"end"}
                     key={index}
+                    marginTop="4"
                   >
                     <Box>
                       <FormLabel htmlFor={`primarySort.fields.${index}.field`}>
@@ -107,9 +117,14 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                 );
               })}
               <Button
+                marginTop="4"
                 colorScheme="blue"
                 onClick={() => {
                   push({ field: "", direction: "asc" });
+
+                  if (!values.primarySort?.compression) {
+                    setFieldValue("primarySort.compression", "lz4");
+                  }
                 }}
                 variant={"ghost"}
                 justifySelf="start"
@@ -120,6 +135,6 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
           );
         }}
       </FieldArray>
-    </Box>
+    </>
   );
 };

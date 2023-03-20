@@ -33,7 +33,7 @@ const SelectedFieldDetails = ({
         gridTemplateColumns="200px 1fr 40px"
         columnGap="3"
         rowGap="3"
-        maxWidth="800px"
+        maxWidth="832px"
         alignItems="center"
       >
         <InvertedIndexAnalyzerDropdown
@@ -102,6 +102,7 @@ export const InvertedIndexFieldsDataEntry = ({
       borderColor="gray.200"
       paddingY="4"
       backgroundColor={currentFieldData ? "gray.100" : "white"}
+      marginX="-4"
     >
       <Box paddingX="2">
         <FieldsDropdown field={field} />
