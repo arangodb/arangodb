@@ -200,4 +200,3 @@ template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
 #ifndef _WIN32
 template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
 #endif
-
