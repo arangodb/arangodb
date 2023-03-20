@@ -87,6 +87,19 @@ struct AlgorithmFake : IAlgorithm {
       -> std::unique_ptr<MasterContext> override {
     return nullptr;
   }
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const -> WorkerContext* override {
+    return nullptr;
+  }
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override {
+    return nullptr;
+  }
   [[nodiscard]] auto name() const -> std::string_view override {
     return "fake";
   };
@@ -209,8 +222,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto invalidMessage = message::ConductorStart{};
     auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -230,8 +242,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
         .server = "UnknownServerX", .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(unknownActorPid, message::WorkerCreated{});
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }
 
@@ -252,7 +263,6 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
     auto errorMessage = arangodb::ResultT<message::WorkerCreated>(
         TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
-    // Currenty returns nullopt. After (GORDO-1553) will return error state.
-    ASSERT_EQ(receiveResponse, std::nullopt);
+    ASSERT_EQ(receiveResponse->get()->name(), "fatal error");
   }
 }

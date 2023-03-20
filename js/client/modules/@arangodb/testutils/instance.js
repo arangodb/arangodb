@@ -830,18 +830,18 @@ class instance {
     }
     return ret;
   }
-  checkArangoConnection(count) {
+  checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
-        if(this.options.extremeVerbosity) {
+        if (this.options.extremeVerbosity || overrideVerbosity) {
           print('tickeling ' + this.endpoint);
         }
         arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
         return;
       } catch (e) {
-        if(this.options.extremeVerbosity) {
-          print('no...');
+        if (this.options.extremeVerbosity || overrideVerbosity) {
+          print(`no... ${e.message}`);
         }
         sleep(0.5);
       }

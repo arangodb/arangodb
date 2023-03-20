@@ -38,9 +38,17 @@ using namespace arangodb::pregel::algos;
 MessageFormat<HLLCounter>* EffectiveCloseness::messageFormat() const {
   return new HLLCounterFormat();
 }
+[[nodiscard]] auto EffectiveCloseness::messageFormatUnique() const
+    -> std::unique_ptr<message_format> {
+  return std::make_unique<HLLCounterFormat>();
+}
 
 MessageCombiner<HLLCounter>* EffectiveCloseness::messageCombiner() const {
   return new HLLCounterCombiner();
+}
+[[nodiscard]] auto EffectiveCloseness::messageCombinerUnique() const
+    -> std::unique_ptr<message_combiner> {
+  return std::make_unique<HLLCounterCombiner>();
 }
 
 struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
@@ -128,6 +136,28 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 std::shared_ptr<GraphFormat<ECValue, int8_t> const>
 EffectiveCloseness::inputFormat() const {
   return std::make_shared<ECGraphFormat>(_resultField);
+}
+
+struct EffectiveClosenessWorkerContext : public WorkerContext {
+  EffectiveClosenessWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto EffectiveCloseness::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new EffectiveClosenessWorkerContext(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
+[[nodiscard]] auto EffectiveCloseness::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<EffectiveClosenessWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
 }
 
 struct EffectiveClosenessMasterContext : public MasterContext {

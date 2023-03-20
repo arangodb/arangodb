@@ -194,6 +194,7 @@ describe('FoxxApi commit', function () {
     expect(result.body).to.contain('doctype');
 
     result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
+    expect(result.body).to.contain('doctype');
     expect(result).to.have.property('body');
     expect(result.body).to.be.a('string');
 
@@ -211,6 +212,13 @@ describe('FoxxApi commit', function () {
       expect(result).to.have.property('parsedBody');
     }
 
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
 
     result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
     if (!isVst) {
@@ -221,6 +229,22 @@ describe('FoxxApi commit', function () {
     }
 
     result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+    
+    result = arango.GET_RAW('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = arango.GET_RAW('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
     if (!isVst) {
       // no transparent compression support in VST atm.
       expect(result.body).to.be.instanceof(Buffer);

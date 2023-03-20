@@ -65,12 +65,24 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
       const override {
     return new SenderMessageFormat<double>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<SenderMessageFormat<double>>();
+  }
 
   VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
       createComputation(std::shared_ptr<WorkerConfig const>) const override;
 
-  [[nodiscard]] WorkerContext* workerContext(
-      VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
   [[nodiscard]] auto masterContext(
       std::unique_ptr<AggregatorHandler> aggregators,
       arangodb::velocypack::Slice userParams) const -> MasterContext* override;

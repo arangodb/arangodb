@@ -1,6 +1,7 @@
 #include "CreateWorkersState.h"
 
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
+#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel::conductor;
@@ -28,13 +29,11 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     -> std::optional<std::unique_ptr<ExecutionState>> {
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
-    // TODO return error state (GORDO-1553)
-    return std::nullopt;
+    return std::make_unique<FatalError>(conductor);
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
-    // TODO return error state (GORDO-1553)
-    return std::nullopt;
+    return std::make_unique<FatalError>(conductor);
   }
   conductor.workers.emplace(sender);
   respondedServers.emplace(sender.server);

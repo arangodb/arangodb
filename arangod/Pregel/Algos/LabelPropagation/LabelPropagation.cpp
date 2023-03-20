@@ -138,6 +138,28 @@ LabelPropagation::inputFormat() const {
   return std::make_shared<LPGraphFormat>(_resultField);
 }
 
+struct LabelPropagationWorkerContext : public WorkerContext {
+  LabelPropagationWorkerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto LabelPropagation::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new LabelPropagationWorkerContext(std::move(readAggregators),
+                                           std::move(writeAggregators));
+}
+[[nodiscard]] auto LabelPropagation::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<LabelPropagationWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
+
 struct LabelPropagationMasterContext : public MasterContext {
   LabelPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
                                 std::unique_ptr<AggregatorHandler> aggregators)
