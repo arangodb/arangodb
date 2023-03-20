@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgrade bundled version of RocksDB to 8.0.
+* Upgrade bundled version of RocksDB to 8.1.
 
 * Made the return code configurable that is delivered if a write fails because
   the write concern is not fulfilled (not enough in-sync replicas available).
