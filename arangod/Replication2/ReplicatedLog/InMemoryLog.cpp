@@ -256,6 +256,11 @@ auto replicated_log::InMemoryLog::getInternalIteratorRange(LogIndex fromIdx,
   return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
 }
 
+auto replicated_log::InMemoryLog::getInternalIteratorRange(
+    LogRange bounds) const -> std::unique_ptr<PersistedLogIterator> {
+  return getInternalIteratorRange(bounds.from, bounds.to);
+}
+
 auto replicated_log::InMemoryLog::getPersistedLogIterator() const
     -> std::unique_ptr<PersistedLogIterator> {
   return std::make_unique<InMemoryPersistedLogIterator>(_log);
@@ -423,4 +428,8 @@ auto replicated_log::InMemoryLog::loadFromMethods(
     log.push_back(InMemoryLogEntry(std::move(entry).value()));
   }
   return InMemoryLog{log.persistent()};
+}
+auto replicated_log::InMemoryLog::getIteratorRange(LogRange bounds) const
+    -> std::unique_ptr<LogRangeIterator> {
+  return getIteratorRange(bounds.from, bounds.to);
 }

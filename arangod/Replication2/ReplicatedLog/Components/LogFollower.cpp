@@ -45,11 +45,7 @@ struct MethodsProvider : IReplicatedLogFollowerMethods {
     follower.compaction->updateReleaseIndex(index);
   }
 
-  auto getLogSnapshot() -> InMemoryLog override {
-    return follower.storage->getCommittedLog();
-  }
-
-  auto getLogIterator(LogRange range)
+  auto getCommittedLogIterator(std::optional<LogRange> range)
       -> std::unique_ptr<LogRangeIterator> override {
     return follower.storage->getCommittedLogIterator(range);
   }
@@ -275,8 +271,24 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
   return guarded.getLockedGuard()->commit->waitForIterator(index);
 }
 
-auto LogFollowerImpl::copyInMemoryLog() const -> InMemoryLog {
-  return guarded.getLockedGuard()->storage->getCommittedLog();
+auto LogFollowerImpl::getCommittedLogIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+  auto log = guarded.getLockedGuard()->storage->getCommittedLog();
+  if (bounds.has_value()) {
+    return log.getIteratorRange(*bounds);
+  } else {
+    return log.getRangeIteratorFrom(LogIndex{0});
+  }
+}
+
+auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<PersistedLogIterator> {
+  auto log = guarded.getLockedGuard()->storage->getCommittedLog();
+  if (bounds.has_value()) {
+    return log.getInternalIteratorRange(*bounds);
+  } else {
+    return log.getPersistedLogIterator();
+  }
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {

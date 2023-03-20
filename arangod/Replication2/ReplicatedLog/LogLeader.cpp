@@ -697,7 +697,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto getLogSnapshot() -> InMemoryLog override {
       return _log.copyInMemoryLog();
     }
-    auto getLogIterator(LogRange)
+    auto getCommittedLogIterator(std::optional<LogRange>)
         -> std::unique_ptr<LogRangeIterator> override {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
@@ -1277,6 +1277,16 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
+auto replicated_log::LogLeader::getCommittedLogIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+  auto log = _guardedLeaderData.getLockedGuard()->_inMemoryLog;
+  if (bounds.has_value()) {
+    return log.getIteratorRange(*bounds);
+  } else {
+    return log.getRangeIteratorFrom(LogIndex{0});
+  }
+}
+
 auto replicated_log::LogLeader::copyInMemoryLog() const
     -> replicated_log::InMemoryLog {
   return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
@@ -1728,6 +1738,18 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
   }
   return std::make_tuple(std::move(core), std::move(stateHandle),
                          std::move(actionOuter));
+}
+
+auto replicated_log::LogLeader::getInternalLogIterator(
+    std::optional<LogRange> bounds) const
+    -> std::unique_ptr<PersistedLogIterator> {
+  auto log = copyInMemoryLog();
+  if (bounds) {
+    return log.getInternalIteratorRange(*bounds);
+  } else {
+    return log.getPersistedLogIterator();
+  }
+  return std::unique_ptr<PersistedLogIterator>();
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

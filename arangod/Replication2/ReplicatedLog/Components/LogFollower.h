@@ -24,7 +24,6 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
@@ -115,7 +114,10 @@ struct LogFollowerImpl : ILogFollower {
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  auto copyInMemoryLog() const -> InMemoryLog override;
+  [[nodiscard]] auto getCommittedLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<LogRangeIterator> override;
+  [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<PersistedLogIterator> override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
 

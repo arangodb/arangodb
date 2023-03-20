@@ -109,6 +109,10 @@ struct LogLeaderMock : replicated_log::ILogLeader {
   MOCK_METHOD(WaitForFuture, waitForLeadership, (), (override));
   MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
+  MOCK_METHOD(std::unique_ptr<LogRangeIterator>, getCommittedLogIterator,
+              (std::optional<LogRange> bounds), (const, override));
+  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, getInternalLogIterator,
+              (std::optional<LogRange> bounds), (const, override));
   MOCK_METHOD(InMemoryLog, copyInMemoryLog, (), (const, override));
   MOCK_METHOD(Result, release, (LogIndex), (override));
   MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
@@ -130,7 +134,10 @@ struct LogFollowerMock : replicated_log::ILogFollower {
 
   MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
-  MOCK_METHOD(InMemoryLog, copyInMemoryLog, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<LogRangeIterator>, getCommittedLogIterator,
+              (std::optional<LogRange> bounds), (const, override));
+  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, getInternalLogIterator,
+              (std::optional<LogRange> bounds), (const, override));
   MOCK_METHOD(Result, release, (LogIndex), (override));
   MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
               compact, (), (override));

@@ -57,7 +57,8 @@ struct StorageManagerMock : IStorageManager {
               (override));
   MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
   MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
-              getCommittedLogIterator, (LogRange), (const, override));
+              getCommittedLogIterator, (std::optional<LogRange>),
+              (const, override));
   MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
   MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
               (const, override));
