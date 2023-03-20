@@ -88,12 +88,14 @@ ClientManager::~ClientManager() = default;
 Result ClientManager::getConnectedClient(
     std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
     bool logServerVersion, bool logDatabaseNotFound, bool quiet,
-    size_t threadNumber) {
+    size_t threadNumber) const {
   try {
     httpClient = _client.createHttpClient(threadNumber);
   } catch (...) {
-    LOG_TOPIC("2b5fd", FATAL, _topic)
-        << "cannot create server connection, giving up!";
+    if (!force) {
+      LOG_TOPIC("2b5fd", FATAL, _topic)
+          << "cannot create server connection, giving up!";
+    }
     return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
@@ -120,8 +122,6 @@ Result ClientManager::getConnectedClient(
           << "Could not connect to endpoint '" << _client.endpoint()
           << "', database: '" << dbName << "', username: '"
           << _client.username() << "'";
-      LOG_TOPIC("b1ad6", ERR, _topic)
-          << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
     return {errorCode};
   }
@@ -156,12 +156,12 @@ Result ClientManager::getConnectedClient(
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
     bool force, bool logServerVersion, bool logDatabaseNotFound,
-    size_t threadNumber) {
+    size_t threadNumber) const {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
 
   Result result = getConnectedClient(httpClient, force, logServerVersion,
                                      logDatabaseNotFound, false, threadNumber);
-  if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
+  if (!force && result.fail()) {
     FATAL_ERROR_EXIT();
   }
 
