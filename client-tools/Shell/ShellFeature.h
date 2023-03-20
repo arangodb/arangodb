@@ -92,7 +92,7 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _scriptParameters;
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   bool _automaticallySendTelemetricsToEndpoint{true};
 #endif
 };

@@ -222,7 +222,7 @@ std::optional<VPackBuilder> ShellFeature::sendTelemetricsToEndpoint(
 #endif
 
 void ShellFeature::startTelemetrics() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   _telemetricsHandler = std::make_unique<TelemetricsHandler>(
       server(), _automaticallySendTelemetricsToEndpoint);
 #else

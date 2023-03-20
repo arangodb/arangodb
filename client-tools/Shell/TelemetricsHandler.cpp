@@ -111,7 +111,6 @@ Result TelemetricsHandler::checkHttpResponse(
 }
 
 void TelemetricsHandler::fetchTelemetricsFromServer() {
-  _telemetricsFetchedInfo.clear();
   std::string const url = "/_admin/telemetrics";
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 1;
@@ -120,7 +119,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
         _server.getFeature<HttpEndpointProvider, ClientFeature>(),
         Logger::FIXME);
     std::unique_lock lk(_mtx);
-
+    _telemetricsFetchedInfo.clear();
     _httpClient = clientManager.getConnectedClient(true, false, false, 0);
     if (_httpClient != nullptr && _httpClient->isConnected()) {
       auto& clientParams = _httpClient->params();

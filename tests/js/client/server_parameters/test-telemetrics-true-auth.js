@@ -69,39 +69,33 @@ function removeUser() {
 }
 
 function getTelemetricsResult() {
-  try {
-    let res;
-    let numSecs = 0.5;
-    while (true) {
-      res = arango.getTelemetricsInfo();
-      if (res !== undefined || numSecs >= 16) {
-        break;
-      }
-      internal.sleep(numSecs);
-      numSecs *= 2;
+  let res;
+  let numSecs = 0.5;
+  while (true) {
+    res = arango.getTelemetricsInfo();
+    if (res !== undefined || numSecs >= 16) {
+      break;
     }
-    assertNotUndefined(res);
-    return res;
-  } catch (err) {
+    internal.sleep(numSecs);
+    numSecs *= 2;
   }
+  assertNotUndefined(res);
+  return res;
 }
 
 function getTelemetricsSentToEndpoint() {
-  try {
-    let res;
-    let numSecs = 0.5;
-    while (true) {
-      res = arango.sendTelemetricsToEndpoint("/test-redirect/redirect");
-      if (res !== undefined || numSecs >= 16) {
-        break;
-      }
-      internal.sleep(numSecs);
-      numSecs *= 2;
+  let res;
+  let numSecs = 0.5;
+  while (true) {
+    res = arango.sendTelemetricsToEndpoint("/test-redirect/redirect");
+    if (res !== undefined || numSecs >= 16) {
+      break;
     }
-    assertNotUndefined(res);
-    return res;
-  } catch (err) {
+    internal.sleep(numSecs);
+    numSecs *= 2;
   }
+  assertNotUndefined(res);
+  return res;
 }
 
 function parseIndexes(idxs) {
@@ -267,9 +261,11 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
           numShards = 2;
         }
         db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          db[cn].insert({value: i + 1, name: "abc"});
+          docs.push({value: i + 1, name: "abc"});
         }
+        db[cn].insert(docs);
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
@@ -329,6 +325,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
           }
         });
       } finally {
+        db._useDatabase("_system");
         try {
           db._dropDatabase(databaseName);
         } catch (err) {
@@ -391,9 +388,11 @@ function telemetricsShellReconnectGraphTestsuite() {
           numShards = 2;
         }
         db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          db[cn].insert({value: i + 1, name: "abc"});
+          docs.push({value: i + 1, name: "abc"});
         }
+        db[cn].insert(docs);
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
@@ -455,6 +454,7 @@ function telemetricsShellReconnectGraphTestsuite() {
           }
         });
       } finally {
+        db._useDatabase("_system");
         try {
           db._dropDatabase(databaseName);
         } catch (err) {
@@ -510,9 +510,11 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
           numShards = 2;
         }
         db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          db[cn].insert({value: i + 1, name: "abc"});
+          docs.push({value: i + 1, name: "abc"});
         }
+        db[cn].insert(docs);
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
@@ -570,6 +572,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
           }
         });
       } finally {
+        db._useDatabase("_system");
         try {
           db._dropDatabase(databaseName);
         } catch (err) {
@@ -647,9 +650,11 @@ function telemetricsApiReconnectGraphTestsuite() {
           numShards = 2;
         }
         db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          db[cn].insert({value: i + 1, name: "abc"});
+          docs.push({value: i + 1, name: "abc"});
         }
+        db[cn].insert(docs);
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
@@ -707,6 +712,7 @@ function telemetricsApiReconnectGraphTestsuite() {
           }
         });
       } finally {
+        db._useDatabase("_system");
         try {
           db._dropDatabase(databaseName);
         } catch (err) {
@@ -748,18 +754,11 @@ function telemetricsSendToEndpointRedirectTestsuite() {
     },
 
     testTelemetricsSendToEndpointWithRedirection: function () {
-      try {
-        arango.disableAutomaticallySendTelemetricsToEndpoint();
-        arango.startTelemetrics();
-        getTelemetricsResult();
-        const telemetrics = getTelemetricsSentToEndpoint();
-        assertForTelemetricsResponse(telemetrics);
-      } finally {
-        try {
-          db._dropDatabase(databaseName);
-        } catch (err) {
-        }
-      }
+      arango.disableAutomaticallySendTelemetricsToEndpoint();
+      arango.startTelemetrics();
+      getTelemetricsResult();
+      const telemetrics = getTelemetricsSentToEndpoint();
+      assertForTelemetricsResponse(telemetrics);
     },
 
   };

@@ -686,9 +686,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             std::vector<std::string_view> idxTypes = {
-                "edge",     "geo",      "geo1",       "geo2",      "hash",
-                "fulltext", "inverted", "persistent", "iresearch", "skiplist",
-                "ttl",      "zkd",      "primary",    "unknown"};
+                "edge",     "geo",        "hash",      "fulltext",
+                "inverted", "persistent", "iresearch", "skiplist",
+                "ttl",      "zkd",        "primary",   "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
