@@ -55,12 +55,9 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
   explicit GraphVPackBuilderStorer(
       bool withId, std::shared_ptr<WorkerConfig> config,
       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-      std::vector<ShardID> globalShards,
       std::function<void()> const& statusUpdateCallback)
       : withId(withId),
         graphFormat(graphFormat),
-        globalShards(globalShards),
-        resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         statusUpdateCallback(statusUpdateCallback) {}
 
@@ -70,8 +67,6 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
   bool withId{false};
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
-  std::vector<ShardID> globalShards;
-  ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
   std::function<void()> const& statusUpdateCallback;
 };

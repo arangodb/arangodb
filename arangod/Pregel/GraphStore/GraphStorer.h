@@ -47,7 +47,6 @@ struct GraphStorer : GraphStorerBase<V, E> {
                        std::function<void()> statusUpdateCallback)
       : graphFormat(graphFormat),
         globalShards(globalShards),
-        resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         statusUpdateCallback(statusUpdateCallback) {}
 
@@ -55,7 +54,6 @@ struct GraphStorer : GraphStorerBase<V, E> {
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::vector<ShardID> globalShards;
-  ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
   std::function<void()> statusUpdateCallback;
 };
