@@ -57,7 +57,7 @@
     "react-redux": "^7.2.4",
     "react-router-dom": "5.3.1",
     "react-select": "^5.7.0",
-    "react-split": "^2.0.14",
+    "react-split-grid": "^1.0.4",
     "redux": "^4.1.0",
     "resolve": "1.8.1",
     "sass-loader": "^10.1.1",

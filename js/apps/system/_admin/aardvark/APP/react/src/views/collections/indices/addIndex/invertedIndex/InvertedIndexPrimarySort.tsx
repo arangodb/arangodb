@@ -121,7 +121,6 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                 colorScheme="blue"
                 onClick={() => {
                   push({ field: "", direction: "asc" });
-
                   if (!values.primarySort?.compression) {
                     setFieldValue("primarySort.compression", "lz4");
                   }

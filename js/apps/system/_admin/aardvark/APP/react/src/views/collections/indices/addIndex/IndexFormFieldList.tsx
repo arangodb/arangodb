@@ -15,7 +15,7 @@ export const IndexFormFieldsList = ({
   }) => JSX.Element;
 }) => {
   return (
-    <Box>
+    <Box minWidth="0">
       <Box
         display={"grid"}
         gridTemplateColumns={"200px 1fr 40px"}

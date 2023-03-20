@@ -1,7 +1,7 @@
 import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
-import React from "react";
-import Split from "react-split";
+import React, { useState } from "react";
+import Split from "react-split-grid";
 import { FormActions, IndexFormFieldsList } from "../IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
@@ -13,14 +13,11 @@ import { useCreateInvertedIndex } from "./useCreateInvertedIndex";
 export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { onCreate, initialValues, schema, fields } = useCreateInvertedIndex();
   const localStorageSplitSize = localStorage.getItem(
-    "invertedIndexJSONSplitSizes"
+    "invertedIndexJSONSplitTemplate"
   );
-  let sizes = [50, 50];
-  try {
-    sizes = localStorageSplitSize ? JSON.parse(localStorageSplitSize) : sizes;
-  } catch {
-    // ignore error
-  }
+  const [gridTemplateColumns, setGridTemplateColumns] = useState(
+    localStorageSplitSize || "1fr 10px 1fr"
+  );
   return (
     <InvertedIndexProvider>
       <Formik
@@ -34,45 +31,61 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
         {() => (
           <Box as={Form} height="calc(100% - 30px)">
             <Split
-              style={{
-                display: "flex",
-                height: "100%"
-              }}
-              sizes={sizes}
-              onDragEnd={sizes =>
+              gridTemplateColumns={gridTemplateColumns}
+              minSize={100}
+              cursor="col-resize"
+              onDrag={(_direction, _track, gridTemplateStyle) => {
+                setGridTemplateColumns(gridTemplateStyle);
                 localStorage.setItem(
-                  "invertedIndexJSONSplitSizes",
-                  JSON.stringify(sizes)
-                )
-              }
-            >
-              <IndexFormFieldsList
-                fields={fields}
-                renderField={({ field, autoFocus }) => {
-                  if (field.name === "analyzer") {
-                    return (
-                      <InvertedIndexAnalyzerDropdown
-                        field={field}
-                        autoFocus={autoFocus}
-                      />
-                    );
-                  }
-                  if (field.name === "fields") {
-                    return (
-                      <InvertedIndexFieldsDataEntry
-                        field={field}
-                        autoFocus={autoFocus}
-                      />
-                    );
-                  }
-                  if (field.name === "primarySort") {
-                    return <InvertedIndexPrimarySort field={field} />;
-                  }
-                  return <>{field.name}</>;
-                }}
-              />
-              <InvertedIndexFormJSONEditor />
-            </Split>
+                  "invertedIndexJSONSplitTemplate",
+                  gridTemplateStyle
+                );
+              }}
+              render={({ getGridProps, getGutterProps }) => {
+                const gridProps = getGridProps();
+                const gutterProps = getGutterProps("column", 1);
+                return (
+                  <Box display="grid" {...gridProps}>
+                    <IndexFormFieldsList
+                      fields={fields}
+                      renderField={({ field, autoFocus }) => {
+                        if (field.name === "analyzer") {
+                          return (
+                            <InvertedIndexAnalyzerDropdown
+                              field={field}
+                              autoFocus={autoFocus}
+                            />
+                          );
+                        }
+                        if (field.name === "fields") {
+                          return (
+                            <InvertedIndexFieldsDataEntry
+                              field={field}
+                              autoFocus={autoFocus}
+                            />
+                          );
+                        }
+                        if (field.name === "primarySort") {
+                          return <InvertedIndexPrimarySort field={field} />;
+                        }
+                        return <>{field.name}</>;
+                      }}
+                    />
+                    <Box
+                      gridRow="1/-1"
+                      backgroundColor="gray.300"
+                      cursor="col-resize"
+                      gridColumn="2"
+                      position="relative"
+                      {...gutterProps}
+                    ></Box>
+
+                    <InvertedIndexFormJSONEditor />
+                  </Box>
+                );
+              }}
+            />
+
             <FormActions onClose={onClose} />
           </Box>
         )}

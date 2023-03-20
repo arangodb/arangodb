@@ -1,4 +1,4 @@
-import { Box, Stack } from "@chakra-ui/react";
+import { Box, Stack, Text } from "@chakra-ui/react";
 import { get, toNumber } from "lodash";
 import React from "react";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
@@ -55,7 +55,8 @@ export const FieldBreadcrumbs = ({
     values,
     fullPath
   });
-  const { setCurrentFieldData } = useInvertedIndexContext();
+  const { setCurrentFieldData, currentFieldData } = useInvertedIndexContext();
+
   return (
     <Stack
       direction="row"
@@ -65,23 +66,37 @@ export const FieldBreadcrumbs = ({
       paddingX="4"
       paddingY="2"
     >
-      {breadcrumbs?.map(breadcrumb => {
+      <Text
+        cursor="pointer"
+        textDecoration="underline"
+        onClick={() => {
+          setCurrentFieldData(undefined);
+        }}
+      >
+        Fields
+      </Text>
+      <Text>{">>"}</Text>
+      {breadcrumbs?.map((breadcrumb, index) => {
+        const isCurrentBreadcrumb =
+          currentFieldData?.fieldIndex === breadcrumb.breakcrumbIndex &&
+          currentFieldData?.fieldValue === breadcrumb.breadcrumbValue;
         return (
           <Stack direction="row" key={breadcrumb.breadcrumbPath}>
+            {index > 0 ? <Box>{">>"}</Box> : null}
             <Box
-              textDecoration="underline"
-              cursor="pointer"
+              textDecoration={!isCurrentBreadcrumb ? "underline" : ""}
+              cursor={!isCurrentBreadcrumb ? "pointer" : ""}
               onClick={() => {
-                setCurrentFieldData({
-                  fieldIndex: breadcrumb.breakcrumbIndex,
-                  fieldValue: breadcrumb.breadcrumbValue,
-                  fieldName: breadcrumb.breadcrumbPath
-                });
+                !isCurrentBreadcrumb &&
+                  setCurrentFieldData({
+                    fieldIndex: breadcrumb.breakcrumbIndex,
+                    fieldValue: breadcrumb.breadcrumbValue,
+                    fieldName: breadcrumb.breadcrumbPath
+                  });
               }}
             >
               {breadcrumb.breadcrumbValue}
             </Box>
-            <Box>{">>"}</Box>
           </Stack>
         );
       })}
