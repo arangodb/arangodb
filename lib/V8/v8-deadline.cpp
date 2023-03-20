@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
+#include "Basics/process-utils.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 
@@ -36,11 +37,14 @@
 #include <signal.h>
 #endif
 
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-deadline.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/processMonitor.h"
 
+using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort certain operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,6 +185,76 @@ static void SignalHandler(int /*signal*/) {
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enables monitoring for an external PID
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_addPidToMonitor(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() < 1 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("addPidToMonitor(<external-identifier>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+  ExternalId pid;
+
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+  addMonitorPID(pid);
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disables monitoring for an external PID
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_removePidFromMonitor(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() < 1 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("removePidFromMonitor(<external-identifier>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+  ExternalId pid;
+
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+  removeMonitorPID(pid);
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_RegisterExecutionDeadlineInterruptHandler(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -201,7 +275,25 @@ static void JS_RegisterExecutionDeadlineInterruptHandler(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GetDeadlineString(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  TRI_V8_RETURN_STRING(errorState);
+  TRI_V8_TRY_CATCH_END
+}
+
+
 void TRI_InitV8Deadline(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ADD_TO_PID_MONITORING"),
+      JS_addPidToMonitor);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REMOVE_FROM_PID_MONITORING"),
+      JS_removePidFromMonitor);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_DEADLINE_STRING"),
+      JS_GetDeadlineString);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
       JS_SetExecutionDeadlineTo);
