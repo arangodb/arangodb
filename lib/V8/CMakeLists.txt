@@ -1,5 +1,4 @@
 add_library(arango_v8 STATIC
-  processMonitor.cpp
   V8SecurityFeature.cpp
   JavaScriptSecurityContext.cpp
   JSLoader.cpp
@@ -26,6 +25,7 @@ target_include_directories(arango_v8
   ${ICU_INCLUDE_DIR})
 
 add_library(arango_v8_deadline STATIC
+  processMonitor.cpp
   v8-deadline.cpp)
 target_link_libraries(arango_v8_deadline
   arango

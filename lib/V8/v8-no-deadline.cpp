@@ -20,7 +20,9 @@
 ///
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+#include <optional>
 #include "v8-deadline.h"
+#include "Basics/process-utils.h"
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
 
@@ -39,3 +41,9 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
 
 void TRI_InitV8Deadline(v8::Isolate* isolate) {}
 void triggerV8DeadlineNow(bool fromSignal) {}
+
+namespace arangodb {
+std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid) {
+  return std::nullopt;
+}
+}

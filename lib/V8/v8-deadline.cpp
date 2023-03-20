@@ -286,7 +286,7 @@ static void JS_GetDeadlineString(
 void TRI_InitV8Deadline(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ADD_TO_PID_MONITORING"),
-      JS_addPidToMonitor);
+      JS_AddPidToMonitor);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REMOVE_FROM_PID_MONITORING"),
       JS_removePidFromMonitor);
