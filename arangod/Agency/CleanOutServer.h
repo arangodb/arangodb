@@ -50,6 +50,8 @@ struct CleanOutServer : public Job {
   // Check if all shards' replication factors can be satisfied after clean out.
   bool checkFeasibility();
   bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
+  void scheduleJobsR2(std::shared_ptr<Builder>& trx, DatabaseID const& database,
+                      size_t&);
 
   std::string _server;
 };

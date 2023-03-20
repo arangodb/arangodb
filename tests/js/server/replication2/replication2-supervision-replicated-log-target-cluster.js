@@ -41,6 +41,7 @@ const {
   registerAgencyTestEnd,
   replicatedLogUpdateTargetParticipants,
   waitForReplicatedLogAvailable,
+  createReconfigureJob,
 } = helper;
 const {
   replicatedLogIsReady,
@@ -1067,6 +1068,75 @@ const replicatedLogSuite = function () {
       continueServer(leader);
       // if we continue the server, we expect the old leader to come back
       waitFor(replicatedLogIsReady(database, logId, term + 3, servers, leader));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJob: function () {
+      const {logId} = createReplicatedLogAndWaitForLeader(database);
+      const jobId = createReconfigureJob(database, logId, []);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobSetLeader: function () {
+      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+      const jobId = createReconfigureJob(database, logId, [{"operation": "set-leader", "participant": followers[0]}]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+      let {leader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      assertEqual(followers[0], leader);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobAddParticipant: function () {
+      const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
+      const otherServers = _.difference(dbservers, servers);
+      const serverToAdd = _.sample(otherServers);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "add-participant",
+        "participant": serverToAdd
+      }]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToAdd] !== undefined);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobRemoveParticipant: function () {
+      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+      const serverToRemove = _.sample(followers);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "remove-participant",
+        "participant": serverToRemove
+      }]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToRemove] === undefined);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobCombinedOperations: function () {
+      const {logId, followers, servers} = createReplicatedLogAndWaitForLeader(database);
+      const otherServers = _.difference(dbservers, servers);
+      const serverToAdd = _.sample(otherServers);
+      const [newLeader, serverToRemove] = _.sampleSize(followers, 2);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "remove-participant",
+        "participant": serverToRemove
+      }, {
+        "operation": "add-participant",
+        "participant": serverToAdd
+      }, {
+        "operation": "set-leader",
+        "participant": newLeader
+      },]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToRemove] === undefined);
+      assertTrue(plan.participantsConfig.participants[serverToAdd] !== undefined);
+      assertTrue(plan.currentTerm.leader.serverId === newLeader);
       replicatedLogDeleteTarget(database, logId);
     },
   };
