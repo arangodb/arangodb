@@ -1,6 +1,19 @@
 devel
 -----
 
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files_size`: cumulated size of alive WAL files (not
+    archived)
+  - `rocksdb_archived_wal_files_size`: cumulated size of archive WAL files
+
+* By default, start pruning of archived WAL files 60 seconds after server
+  start. Previously, pruning of WAL files started 180 seconds after server
+  startup.
+
+* Set default threshold value for automatic column flushing to 20 live WAL
+  files (previously: 10 files), and retry flushing every 30 minutes (previous
+  interval: every 60 minutes).
+
 * APM-283: Use parallel gather in almost all queries. The only case where we
   cannot use parallel gather is when using traversals, although there are some
   exceptions for disjoint SmartGraphs where the traversal can run completely on
