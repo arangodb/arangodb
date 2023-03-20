@@ -167,8 +167,6 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
   uint64_t numVertices =
       coll->numberDocuments(&trx, transaction::CountType::Normal);
 
-  auto vertices = std::vector<Vertex<V, E>>(numVertices);
-
   uint64_t const vertexIdRangeStart = determineVertexIdRangeStart(numVertices);
   uint64_t vertexIdRange = vertexIdRangeStart;
 
@@ -208,25 +206,17 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
 
     // load edges
     for (std::size_t i = 0; i < edgeShards.size(); ++i) {
-      auto const& edgeShard = edgeShards[i];
       auto& info = *edgeCollectionInfos[i];
-      loadEdges(trx, ventry, edgeShard, documentId, numVertices, info);
+      loadEdges(trx, ventry, documentId, info);
     }
     result->emplace(std::move(ventry));
     return true;
   };
 
-  constexpr uint64_t batchSize = 10000;
   while (cursor->nextDocument(cb, batchSize)) {
     if (config->vocbase()->server().isStopping()) {
       LOG_PREGEL("4355a", WARN) << "Aborting graph loading";
       break;
-    }
-
-    if (batchSize > numVertices) {
-      numVertices = 0;
-    } else {
-      numVertices -= batchSize;
     }
 
     // log only every 10 seconds
