@@ -79,7 +79,7 @@
 #include "Basics/DeadlockDetector.h"
 #include "Basics/Thread.h"
 #include "V8/v8-deadline.h"
-#include "processMonitor.h"
+#include "ProcessMonitoringFeature.h"
 
 using namespace arangodb;
 

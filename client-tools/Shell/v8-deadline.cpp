@@ -42,7 +42,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "processMonitor.h"
+#include "ProcessMonitoringFeature.h"
 
 using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////

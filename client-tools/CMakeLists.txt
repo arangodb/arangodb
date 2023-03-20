@@ -382,8 +382,8 @@ add_executable(${BIN_ARANGOSH}
   Shell/TelemetricsHandler.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
+  Shell/ProcessMonitoringFeature.cpp
   Shell/arangosh.cpp
-  Shell/processMonitor.cpp
   Shell/v8-deadline.cpp
   ${FUZZER}
 )

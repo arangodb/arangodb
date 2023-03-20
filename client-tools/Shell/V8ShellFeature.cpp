@@ -62,7 +62,7 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "processMonitor.h"
+#include "ProcessMonitoringFeature.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
