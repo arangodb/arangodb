@@ -151,7 +151,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 // created.
 std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
-  VPackBuilder testResponseBuilder;
+  VPackBuilder responseBuilder;
 
   bool isLocal = reqUrl.starts_with('/');
   bool isOriginalUrl = reqUrl == kOriginalUrl;
@@ -245,7 +245,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
         auto returnCode = response->getHttpReturnCode();
         if (returnCode == 200) {
           if (!isOriginalUrl) {
-            testResponseBuilder.add(response->getBodyVelocyPack()->slice());
+            responseBuilder.add(response->getBodyVelocyPack()->slice());
           }
           break;
         } else if (returnCode == 301 || returnCode == 302 ||
@@ -281,8 +281,8 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
       }
     }
   }
-  if (!testResponseBuilder.isEmpty()) {
-    return testResponseBuilder;
+  if (!responseBuilder.isEmpty()) {
+    return responseBuilder;
   } else {
     return std::nullopt;
   }
