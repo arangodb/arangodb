@@ -229,8 +229,8 @@ static void JS_removePidFromMonitor(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // extract the arguments
-  if (args.Length() < 1 || args.Length() > 3) {
+  // extract the argument
+  if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("removePidFromMonitor(<external-identifier>)");
   }
 
