@@ -575,7 +575,6 @@ class instance {
   }
   terminateInstance() {
     if (!this.hasOwnProperty('exitStatus')) {
-      // arangod.killWithCoreDump();
       this.exitStatus = killExternal(this.pid, termSignal);
     }
   }
@@ -889,6 +888,7 @@ class instance {
       if (this.options.enableAliveMonitor) {
         internal.removePidFromMonitor(this.pid);
       }
+      print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
   }
