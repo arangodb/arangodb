@@ -149,53 +149,47 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 // is sent to an endpoint, though not exactly the same thing, because here the
 // endpoint is local, hence the same client is used and a new endpoint is not
 // created.
-std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
+VPackBuilder TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
   VPackBuilder responseBuilder;
 
-  bool isLocal = reqUrl.starts_with('/');
-  bool isOriginalUrl = reqUrl == kOriginalUrl;
-
+  // in the first moment, the url we send the request to is reqUrl, then it can
+  // change if there's redirection
   std::string url = reqUrl;
 
   Result result = {TRI_ERROR_NO_ERROR};
   uint32_t timeoutInSecs = 10;
   uint64_t sslProtocol = TLS_V13;
+  // max number of new urls we accept to redirect the request to, otherwise, we
+  // either try to send the request again to reqUrl or stop trying
   uint32_t maxRedirects = 5;
-
-  std::string const body = _telemetricsFetchedInfo.toJson();
-
   uint32_t numRedirects = 0;
 
   while (!_server.isStopping()) {
-    std::unique_lock lk(_mtx, std::defer_lock);
+    bool isLocalUrl = url.starts_with('/');
+    std::unique_lock lk(_mtx);
+    std::string const body = _telemetricsFetchedInfo.toJson();
+    lk.unlock();
     std::unordered_map<std::string, std::string> headers;
     headers.emplace(StaticStrings::ContentTypeHeader,
                     StaticStrings::MimeTypeJson);
     std::string relativeUrl;
     basics::StringBuffer compressedBody;
-    if (!isOriginalUrl) {
-      headers.emplace(StaticStrings::ContentLength,
-                      std::to_string(body.size()));
-    } else {
-      // we compress the body only in case we're sending telemetrics to the
-      // endpoint if the url is the original one. If the url was passed by
-      // reference, it means the function is being called for testing
-      // redirection, which wouldn't demand compression, just for the
-      // telemetrics body to be sent in the response
-      auto res =
-          encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
-                                 body.size(), compressedBody);
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-      headers.emplace(StaticStrings::ContentLength,
-                      std::to_string(compressedBody.size()));
-      headers.emplace(StaticStrings::ContentEncoding,
-                      StaticStrings::EncodingGzip);
-      headers.emplace("arangodb-request-type", "telemetrics");
+    auto res =
+        encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
+                               body.size(), compressedBody);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // no need to retry if the body is never gonna be compressed successfully
+      break;
     }
-    if (isLocal) {
+    headers.emplace(StaticStrings::ContentLength,
+                    std::to_string(compressedBody.size()));
+    headers.emplace(StaticStrings::ContentEncoding,
+                    StaticStrings::EncodingGzip);
+    headers.emplace("arangodb-request-type", "telemetrics");
+    if (isLocalUrl) {
+      // if the url is local, just get the connected client, and the url is
+      // already relative
       relativeUrl = url;
       ClientManager clientManager(
           _server.getFeature<HttpEndpointProvider, ClientFeature>(),
@@ -203,6 +197,7 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
       lk.lock();
       _httpClient = clientManager.getConnectedClient(true, false, false, 0);
     } else {
+      // the url is not local, so we create a connection
       std::string lastEndpoint = getEndpointFromUrl(url);
       std::vector<std::string> endpoints;
       auto [endpoint, relative, error] =
@@ -230,41 +225,34 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
     if (_httpClient != nullptr) {
       lk.unlock();
       std::unique_ptr<httpclient::SimpleHttpResult> response;
-      if (isOriginalUrl) {
-        response.reset(_httpClient->request(rest::RequestType::POST,
-                                            relativeUrl, compressedBody.data(),
-                                            compressedBody.size(), headers));
-      } else {
-        response.reset(_httpClient->request(rest::RequestType::POST,
-                                            relativeUrl, body.data(),
-                                            body.size(), headers));
-      }
+      response.reset(_httpClient->request(rest::RequestType::POST, relativeUrl,
+                                          compressedBody.data(),
+                                          compressedBody.size(), headers));
       lk.lock();
       result = this->checkHttpResponse(response);
       if (result.ok()) {
         auto returnCode = response->getHttpReturnCode();
         if (returnCode == 200) {
-          if (!isOriginalUrl) {
-            responseBuilder.add(response->getBodyVelocyPack()->slice());
-          }
+          responseBuilder.add(response->getBodyVelocyPack()->slice());
           break;
         } else if (returnCode == 301 || returnCode == 302 ||
                    returnCode == 307) {
+          bool foundUrl = false;
           if (numRedirects < maxRedirects) {
-            bool found;
-            url = response->getHeaderField(StaticStrings::Location, found);
-            if (found) {
-              numRedirects++;
-            } else {
-              url = reqUrl;
-              numRedirects = 0;
-            }
+            url = response->getHeaderField(StaticStrings::Location, foundUrl);
+          }
+          if (foundUrl) {
+            numRedirects++;
           } else {
+            // if hasn't found the new url from the redirection, there's no use
+            // in trying to redirect again, so will retry to send the request to
+            // the original url first
             url = reqUrl;
             numRedirects = 0;
           }
         }
       } else if (result.errorNumber() == TRI_ERROR_INTERNAL) {
+        // if is an internal error, will retry to send the request to the server
         numRedirects = 0;
       } else {
         // do not retry if 401, 403, 404, etc.
@@ -276,16 +264,10 @@ std::optional<VPackBuilder> TelemetricsHandler::sendTelemetricsToEndpoint(
         _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
                                [this] { return _server.isStopping(); });
       }
-      if (isOriginalUrl) {
-        _httpClient.reset(nullptr);
-      }
+      _httpClient.reset(nullptr);
     }
   }
-  if (!responseBuilder.isEmpty()) {
-    return responseBuilder;
-  } else {
-    return std::nullopt;
-  }
+  return responseBuilder;
 }
 
 void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {

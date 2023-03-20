@@ -1102,9 +1102,7 @@ static void ClientConnection_sendTelemetricsToEndpoint(
   auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
 
   std::string url = TRI_ObjectToString(isolate, args[0]);
-  auto telemetricsBody = shellFeature.sendTelemetricsToEndpoint(url);
-
-  VPackBuilder builder = telemetricsBody.value_or(VPackBuilder());
+  auto builder = shellFeature.sendTelemetricsToEndpoint(url);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 

@@ -52,8 +52,9 @@ class TelemetricsHandler {
 
   void getTelemetricsInfo(VPackBuilder& builder);
 
-  std::optional<VPackBuilder> sendTelemetricsToEndpoint(
-      std::string const& reqUrl = {kOriginalUrl.begin(), kOriginalUrl.end()});
+  VPackBuilder sendTelemetricsToEndpoint(std::string const& reqUrl = {
+                                             kOriginalUrl.begin(),
+                                             kOriginalUrl.end()});
 
  private:
   static constexpr std::string_view kOriginalUrl =
