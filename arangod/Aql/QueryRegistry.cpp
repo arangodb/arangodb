@@ -424,6 +424,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
       } else {
+        TRI_ASSERT(ei._queryInfo->_expires > 0.0);
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
     }
