@@ -648,7 +648,6 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 /// `process-utils.js` depends on simple http client error messages.
 ///   this needs to be adjusted if this is ever changed!
 ////////////////////////////////////////////////////////////////////////////////
-namespace {
 
 auto getEndpoint(v8::Isolate* isolate,
                  std::vector<std::string> const& endpoints, std::string& url,
@@ -731,7 +730,6 @@ auto getEndpoint(v8::Isolate* isolate,
   }
   return {std::move(endpoint), std::move(relative), ""};
 }
-}  // namespace
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);

@@ -1,6 +1,18 @@
 devel
 -----
 
+* APM-294: Added telemetrics API that gathers anonymous feature usage
+  statistics from a deployment. The API is accessible via the endpoint
+  `/_admin/telemetrics`. The API is enabled by default in release builds, but
+  disabled by default in maintainer mode. It can be explicitly turned on/off 
+  with the server startup parameter `--server.enable-telemetrics-api`. 
+  The required access privileges to access the telemetrics API can be 
+  configured via the server startup option `--server.support-info-api`.
+  The telemetrics API is used by the arangosh: every time the arangosh is 
+  started, it will send a request to the connected server to gather telemetrics
+  from the `/_admin/telemetrics` endpoint. The telemetrics data are then 
+  sent to an aggregation service that is run by ArangoDB.
+
 * Added the following metrics for WAL file tracking:
   - `rocksdb_live_wal_files_size`: cumulated size of alive WAL files (not
     archived)
@@ -30,7 +42,7 @@ devel
 * Changed path were test scripts locate configuration files from `etc/relative`
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
   from `etc/relative` in test environment. 
-
+  
 * Made the return code configurable that is delivered if a write fails because
   the write concern is not fulfilled (not enough in-sync replicas available).
   Previously (and now by default), a code of HTTP 403 is returned and the

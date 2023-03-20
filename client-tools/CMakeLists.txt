@@ -380,6 +380,7 @@ add_executable(${BIN_ARANGOSH}
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ShellFeature.cpp
+  Shell/TelemetricsHandler.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
