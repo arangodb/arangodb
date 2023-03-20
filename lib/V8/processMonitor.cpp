@@ -113,12 +113,13 @@ void removeMonitorPID(ExternalId const& pid) {
   }
 }
 
-ExternalProcessStatus const* getHistoricStatus(TRI_pid_t pid) {
+std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid) {
+  MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
   auto it = ExitedExternalProcessStatus.find(pid);
   if (it == ExitedExternalProcessStatus.end()) {
-    return nullptr;
+    return std::nullopt;
   }
-  return &(it->second);
+  return std::optional<ExternalProcessStatus>{it->second};
 }
 
 class ProcessMonitorThread : public arangodb::Thread {
@@ -130,7 +131,6 @@ class ProcessMonitorThread : public arangodb::Thread {
  protected:
   void run() override {
     while (!isStopping()) {
-      // TODO lock
       std::vector<ExternalId> mp;
       {
         MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);

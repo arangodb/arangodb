@@ -4714,8 +4714,8 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external;
-  ExternalProcessStatus const* x = getHistoricStatus(pid._pid);
-  if (x != nullptr) {
+  auto x = getHistoricStatus(pid._pid);
+  if (x != std::nullopt) {
     external = *x;
   } else {
     external = TRI_CheckExternalProcess(pid, wait, timeoutms);
