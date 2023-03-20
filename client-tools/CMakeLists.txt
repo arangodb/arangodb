@@ -383,6 +383,8 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  Shell/processMonitor.cpp
+  Shell/v8-deadline.cpp
   ${FUZZER}
 )
 
@@ -391,7 +393,6 @@ target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-
 target_link_libraries(${BIN_ARANGOSH}
   arango
   arango_v8
-  arango_v8_deadline
   ${V8_LIBS}
   fuerte
   ${MSVC_LIBS}

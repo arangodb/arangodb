@@ -111,7 +111,6 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8/v8-deadline.h"
-#include "V8/processMonitor.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>

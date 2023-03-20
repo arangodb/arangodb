@@ -42,7 +42,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "V8/processMonitor.h"
+#include "processMonitor.h"
 
 using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +289,7 @@ void TRI_InitV8Deadline(v8::Isolate* isolate) {
       JS_AddPidToMonitor);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REMOVE_FROM_PID_MONITORING"),
-      JS_removePidFromMonitor);
+      JS_RemovePidFromMonitor);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_DEADLINE_STRING"),
       JS_GetDeadlineString);

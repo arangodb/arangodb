@@ -25,6 +25,8 @@
 
 #include <chrono>
 #include <v8.h>
+#include <optional>
+#include "Basics/process-utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
@@ -39,3 +41,7 @@ void TRI_InitV8Deadline(v8::Isolate* isolate);
 
 // make the deadline handling bite Now.
 void triggerV8DeadlineNow(bool fromSignal);
+
+namespace arangodb {
+extern std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid);
+}

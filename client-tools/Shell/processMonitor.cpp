@@ -78,8 +78,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/Thread.h"
-#include "V8/processMonitor.h"
 #include "V8/v8-deadline.h"
+#include "processMonitor.h"
 
 using namespace arangodb;
 

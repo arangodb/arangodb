@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <optional>
 #include "v8-deadline.h"
-#include "Basics/process-utils.h"
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
 
