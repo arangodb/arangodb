@@ -125,7 +125,7 @@ std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid) {
 class ProcessMonitorThread : public arangodb::Thread {
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server)
-      : Thread(server, "ProcessMonitorThread") {}
+      : Thread(server, "ProcessMonitor") {}
   ~ProcessMonitorThread() { shutdown(); }
 
  protected:
