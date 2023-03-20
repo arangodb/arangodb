@@ -47,7 +47,7 @@ const waitInClusterUntil = func => {
       return;
     }
   }
-}
+};
 
 const skipOptions = {"skipDocumentValidation": true};
 
@@ -328,7 +328,7 @@ function ValidationBasicsSuite() {
     testLevelNone: () => {
       validatorJson.level = "none";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
       testCollection.insert(badDoc);
     },
@@ -336,7 +336,7 @@ function ValidationBasicsSuite() {
     testLevelNew: () => {
       validatorJson.level = "new";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(badDoc, skipOptions);
@@ -353,7 +353,7 @@ function ValidationBasicsSuite() {
     testLevelModerateInsert: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       testCollection.insert(badDoc, skipOptions);
@@ -368,7 +368,7 @@ function ValidationBasicsSuite() {
     testLevelModerateModifyBadToGood: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc;
@@ -383,7 +383,7 @@ function ValidationBasicsSuite() {
     testLevelModerateModifyBadWithBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc;
@@ -407,7 +407,7 @@ function ValidationBasicsSuite() {
     testLevelModerateUpdateGoodToBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(goodDoc);
@@ -431,7 +431,7 @@ function ValidationBasicsSuite() {
     testLevelModerateReplaceGoodToBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(goodDoc);
@@ -454,7 +454,7 @@ function ValidationBasicsSuite() {
     testLevelStict: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(badDoc, skipOptions);
@@ -529,7 +529,7 @@ function ValidationBasicsSuite() {
     testJson: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       testCollection.insert(goodDoc);
@@ -550,7 +550,7 @@ function ValidationBasicsSuite() {
       validatorJson.level = "strict";
 
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       try {
@@ -587,7 +587,7 @@ function ValidationBasicsSuite() {
     testAQLSchemaGet: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      waitInClusterUntil(() => testCollection.properties().schema.level == validatorJson.level);
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       // get regular schema
