@@ -431,7 +431,6 @@ bool Worker<V, E, M>::_processVertices() {
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
-  // clearly don't get here atm
   return true;
 }
 
