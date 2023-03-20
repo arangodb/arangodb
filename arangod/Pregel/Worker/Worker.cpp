@@ -528,7 +528,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
           try {
             auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
                                             _config->globalShardIDs(),
-                                            _makeStatusCallback());
+                                            std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
             storer.store(_quiver);
           } catch (std::exception const& ex) {

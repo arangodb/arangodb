@@ -44,7 +44,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
   explicit GraphStorer(std::shared_ptr<WorkerConfig> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::vector<ShardID> globalShards,
-                       std::function<void()> const& statusUpdateCallback)
+                       std::function<void()> statusUpdateCallback)
       : graphFormat(graphFormat),
         globalShards(globalShards),
         resourceMonitor(GlobalResourceMonitor::instance()),
@@ -57,7 +57,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
   std::vector<ShardID> globalShards;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> const& statusUpdateCallback;
+  std::function<void()> statusUpdateCallback;
 };
 
 }  // namespace arangodb::pregel

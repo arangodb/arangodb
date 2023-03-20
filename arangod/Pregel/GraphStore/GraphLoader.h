@@ -44,7 +44,7 @@ template<typename V, typename E>
 struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-                       std::function<void()> const& statusUpdateCallback)
+                       std::function<void()> statusUpdateCallback)
       : result(std::make_shared<Quiver<V, E>>()),
         graphFormat(graphFormat),
         resourceMonitor(GlobalResourceMonitor::instance()),
@@ -67,6 +67,6 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> const& statusUpdateCallback;
+  std::function<void()> const statusUpdateCallback;
 };
 }  // namespace arangodb::pregel
