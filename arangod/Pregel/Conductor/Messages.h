@@ -76,6 +76,26 @@ struct GlobalSuperStepFinished {
         vertexCount{vertexCount},
         edgeCount{edgeCount},
         aggregators{std::move(aggregators)} {};
+  auto add(GlobalSuperStepFinished const& other) -> void {
+    messageStats.accumulate(other.messageStats);
+    for (auto& [actor, count] : other.sendCountPerActor) {
+      sendCountPerActor[actor] += count;
+    }
+    activeCount += other.activeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
+    // TODO directly aggregate in here when aggregators have an inspector
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!aggregators.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(aggregators.slice()));
+      }
+      newAggregators.add(other.aggregators.slice());
+    }
+    aggregators = newAggregators;
+  }
+
   MessageStats messageStats;
   std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
   uint64_t activeCount;
