@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added support to log response bodies as well as HTTP headers (incoming
+  and outgoing), when the requests log topic is set to TRACE.
+
 * Changed path were test scripts locate configuration files from `etc/relative`
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
   from `etc/relative` in test environment. 
