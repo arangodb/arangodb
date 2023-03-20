@@ -63,8 +63,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-#include <optional>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

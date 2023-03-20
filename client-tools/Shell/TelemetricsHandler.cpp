@@ -44,8 +44,6 @@
 
 #include <velocypack/Slice.h>
 
-#include <optional>
-
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
