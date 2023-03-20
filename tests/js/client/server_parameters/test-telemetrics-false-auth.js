@@ -2,8 +2,6 @@
 /* global getOptions, assertEqual, assertTrue, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief dropping followers while replicating
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2023 ArangoDB GmbH, Cologne, Germany
