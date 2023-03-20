@@ -725,6 +725,14 @@ function telemetricsSendToEndpointRedirectTestsuite() {
   return {
 
     setUpAll: function () {
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch (err) {
+      }
+      try {
+        FoxxManager.install(basePath, mount);
+      } catch (err) {
+      }
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
       coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
@@ -733,6 +741,10 @@ function telemetricsSendToEndpointRedirectTestsuite() {
     tearDownAll: function () {
       db._drop(cn);
       db._drop(cn3);
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch (err) {
+      }
     },
 
     testTelemetricsSendToEndpointWithRedirection: function () {
