@@ -20,8 +20,12 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <memory>
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
 namespace futures {
@@ -71,7 +75,8 @@ struct IStorageManager {
   [[nodiscard]] virtual auto getTermIndexMapping() const
       -> TermIndexMapping = 0;
   [[nodiscard]] virtual auto getCommittedLog() const -> InMemoryLog = 0;
-  [[nodiscard]] virtual auto getCommittedLogIterator(LogRange) const
+  [[nodiscard]] virtual auto getCommittedLogIterator(
+      std::optional<LogRange> range = std::nullopt) const
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo = 0;

@@ -65,8 +65,9 @@ struct IAbstractFollowerFactory {
 struct IReplicatedLogMethodsBase {
   virtual ~IReplicatedLogMethodsBase() = default;
   virtual auto releaseIndex(LogIndex) -> void = 0;
-  virtual auto getLogSnapshot() -> InMemoryLog = 0;
-  virtual auto getLogIterator(LogRange)
+  // no range means everything
+  virtual auto getCommittedLogIterator(
+      std::optional<LogRange> range = std::nullopt)
       -> std::unique_ptr<LogRangeIterator> = 0;
   virtual auto waitFor(LogIndex) -> ILogParticipant::WaitForFuture = 0;
   virtual auto waitForIterator(LogIndex)
@@ -79,6 +80,7 @@ struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
   // TODO waitForSync parameter is missing
   virtual auto insertDeferred(LogPayload)
       -> std::pair<LogIndex, DeferredAction> = 0;
+  virtual auto getLogSnapshot() -> InMemoryLog = 0;
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {

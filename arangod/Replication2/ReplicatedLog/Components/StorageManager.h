@@ -43,8 +43,8 @@ struct StorageManager : IStorageManager,
   auto resign() -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLog() const -> InMemoryLog override;
-  auto getCommittedLogIterator(LogRange) const
-      -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> override;
+  auto getCommittedLogIterator(std::optional<LogRange> range) const
+      -> std::unique_ptr<LogRangeIterator> override;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
@@ -76,6 +76,7 @@ struct StorageManager : IStorageManager,
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
+    // TODO remove InMemoryLogs
     InMemoryLog onDiskLog, spearheadLog;
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;

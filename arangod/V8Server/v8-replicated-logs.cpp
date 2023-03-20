@@ -584,15 +584,16 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
     index = LogIndex(TRI_ObjectToUInt64(isolate, args[0], true));
   }
 
-  auto entry = ReplicatedLogMethods::createInstance(vocbase)
-                   ->getLogEntryByIndex(id, index)
-                   .get();
+  auto iter = ReplicatedLogMethods::createInstance(vocbase)
+                  ->slice(id, index, index + 1)
+                  .get();
+  auto entry = iter->next();
   if (!entry) {
     TRI_V8_RETURN(
         TRI_VPackToV8(isolate, arangodb::velocypack::Slice::nullSlice()));
   }
   VPackBuilder response;
-  entry->toVelocyPack(response);
+  entry.value().toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   TRI_V8_TRY_CATCH_END
 }
