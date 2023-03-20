@@ -178,8 +178,6 @@ jobs:
       - run:
           name: Run << parameters.suiteName >> tests
           command: |
-            pwd
-            ls -la
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 scripts/test/test_launch_controller.py << parameters.suites >> \
