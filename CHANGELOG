@@ -1,6 +1,16 @@
 devel
 -----
 
+* APM-283: Use parallel gather in almost all queries. The only case where we
+  cannot use parallel gather is when using traversals, although there are some
+  exceptions for disjoint SmartGraphs where the traversal can run completely on
+  the local DB-server. All other queries should now be able to parallelize the
+  gather node. This can not only speed up queries quite significantly, but also
+  overcomes issues with the previous serial processing within gather nodes,
+  which could lead to high memory usage on coordinators caused by buffering of
+  documents other shards, and timeouts on some DB-Servers because query parts
+  were idle for too long.
+
 * Added support to log response bodies as well as HTTP headers (incoming
   and outgoing), when the requests log topic is set to TRACE.
 
