@@ -189,7 +189,7 @@ static void SignalHandler(int /*signal*/) {
 /// @brief enables monitoring for an external PID
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_addPidToMonitor(
+static void JS_AddPidToMonitor(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
