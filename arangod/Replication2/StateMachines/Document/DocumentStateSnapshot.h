@@ -267,9 +267,24 @@ struct SnapshotStatus {
 struct AllSnapshotsStatus {
   std::unordered_map<SnapshotId, SnapshotStatus> snapshots;
 
+  struct SnapshotMapTransformer {
+    using MemoryType = std::unordered_map<SnapshotId, SnapshotStatus>;
+    using SerializedType = std::unordered_map<std::string, SnapshotStatus>;
+
+    static arangodb::inspection::Status toSerialized(MemoryType const& v,
+                                                     SerializedType& result) {
+      for (auto const& [key, value] : v) {
+        result.emplace(to_string(key), value);
+      }
+
+      return {};
+    }
+  };
+
   template<class Inspector>
   inline friend auto inspect(Inspector& f, AllSnapshotsStatus& s) {
-    return f.object(s).fields(f.field(kStringSnapshots, s.snapshots));
+    return f.object(s).fields(f.field(kStringSnapshots, s.snapshots)
+                                  .transformWith(SnapshotMapTransformer{}));
   }
 };
 

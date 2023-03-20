@@ -116,7 +116,7 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*transactionMock, intermediateCommit)
         .WillByDefault(Return(Result{}));
 
-    ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
+    ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
       return futures::Future<ResultT<SnapshotConfig>>{
           std::in_place, SnapshotConfig{SnapshotId{1}, shardMap}};
     });
@@ -158,7 +158,8 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*handlersFactoryMock, createSnapshotHandler)
         .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           return std::make_unique<DocumentStateSnapshotHandler>(
-              handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
+              handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
+              MockDocumentStateSnapshotHandler::rebootTracker);
         });
 
     ON_CALL(*handlersFactoryMock, createTransaction)
@@ -316,10 +317,15 @@ TEST_F(DocumentStateMachineTest,
        ShardProperties{.collection = collectionId,
                        .properties = std::make_shared<VPackBuilder>()}}};
 
-  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
+  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
     return futures::Future<ResultT<SnapshotConfig>>{
-        std::in_place, SnapshotConfig{SnapshotId{12345}, newShardMap}};
+        std::in_place, SnapshotConfig{SnapshotId{1}, newShardMap}};
   });
+
+  ON_CALL(*leaderInterfaceMock, finishSnapshot)
+      .WillByDefault([&](SnapshotId const& snapshotId) {
+        return futures::Future<Result>{std::in_place, Result{}};
+      });
 
   // The previous shard should be dropped
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
@@ -337,7 +343,7 @@ TEST_F(DocumentStateMachineTest,
 TEST_F(DocumentStateMachineTest, snapshot_fetch_multiple_shards) {
   using namespace testing;
 
-  auto snapshotId = SnapshotId{12345};
+  auto snapshotId = SnapshotId{1};
   const ShardID shardId1 = "s1";
   const ShardID shardId2 = "s2";
 
@@ -559,13 +565,14 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_creation_error) {
   using namespace testing;
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
+      MockDocumentStateSnapshotHandler::rebootTracker);
   EXPECT_CALL(*databaseSnapshotFactoryMock, createSnapshot)
       .WillOnce([]() -> std::unique_ptr<
                          replicated_state::document::IDatabaseSnapshot> {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_WAS_ERLAUBE);
       });
-  auto res = snapshotHandler.create(shardMap);
+  auto res = snapshotHandler.create(shardMap, {});
   ASSERT_TRUE(res.fail());
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 }
@@ -574,7 +581,8 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_cannot_find_snapshot) {
   using namespace testing;
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
+      MockDocumentStateSnapshotHandler::rebootTracker);
   auto res = snapshotHandler.find(SnapshotId::create());
   ASSERT_TRUE(res.fail());
 }
@@ -583,10 +591,17 @@ TEST_F(DocumentStateMachineTest,
        snapshot_handler_create_and_find_successfully_then_clear) {
   using namespace testing;
 
-  auto snapshotHandler = DocumentStateSnapshotHandler(
-      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory());
+  cluster::RebootTracker fakeRebootTracker{nullptr};
+  fakeRebootTracker.updateServerState(
+      {{"documentStateMachineServer", RebootId{1}}});
 
-  auto res = snapshotHandler.create(shardMap);
+  auto snapshotHandler = DocumentStateSnapshotHandler(
+      handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
+      fakeRebootTracker);
+
+  auto res = snapshotHandler.create(
+      shardMap,
+      {.serverId = "documentStateMachineServer", .rebootId = RebootId(1)});
   ASSERT_TRUE(res.ok()) << res.result();
 
   auto snapshot = res.get().lock();
@@ -820,7 +835,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation>(_)))
       .Times(3);
-  EXPECT_CALL(*leaderInterfaceMock, startSnapshot(LogIndex{1})).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
   EXPECT_CALL(*networkHandlerMock, getLeaderInterface("participantId"))
@@ -847,10 +862,13 @@ TEST_F(DocumentStateMachineTest,
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock);
 
+  MockDocumentStateSnapshotHandler::rebootTracker.updateServerState(
+      {{"participantId", RebootId(1)}});
+
   std::atomic<bool> acquireSnapshotCalled = false;
 
   // The snapshot will not stop until the follower resigns
-  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&](LogIndex) {
+  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
     acquireSnapshotCalled.store(true);
     acquireSnapshotCalled.notify_one();
     return futures::Future<ResultT<SnapshotConfig>>{
@@ -1271,11 +1289,15 @@ TEST_F(DocumentStateMachineTest,
 TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
   using namespace testing;
 
-  auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
+  cluster::RebootTracker fakeRebootTracker{nullptr};
+  fakeRebootTracker.updateServerState(
+      {{"documentStateMachineServer", RebootId{1}}});
+
+  auto snapshotHandler =
+      handlersFactoryMock->makeRealSnapshotHandler(&fakeRebootTracker);
   ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
       .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
-        return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
-            snapshotHandler);
+        return snapshotHandler;
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
@@ -1283,9 +1305,9 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock, transactionManagerMock);
 
-  EXPECT_CALL(*snapshotHandler, create(_)).Times(1);
-  auto snapshotStartRes =
-      leader->snapshotStart(SnapshotParams::Start{LogIndex{1}});
+  EXPECT_CALL(*snapshotHandler, create(_, _)).Times(1);
+  auto snapshotStartRes = leader->snapshotStart(SnapshotParams::Start{
+      .serverId = "documentStateMachineServer", .rebootId = RebootId{1}});
   EXPECT_TRUE(snapshotStartRes.ok()) << snapshotStartRes.result();
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
@@ -1296,18 +1318,18 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
   EXPECT_TRUE(snapshotNextRes.ok()) << snapshotNextRes.result();
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
-  EXPECT_CALL(*snapshotHandler, find(snapshotId)).Times(1);
+  EXPECT_CALL(*snapshotHandler, finish(snapshotId)).Times(1);
   auto snapshotFinishRes =
       leader->snapshotFinish(SnapshotParams::Finish{snapshotId});
   EXPECT_TRUE(snapshotFinishRes.ok()) << snapshotFinishRes;
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
+  // The snapshot should be cleared after finish was called
   EXPECT_CALL(*snapshotHandler, find(snapshotId)).Times(1);
   auto snapshotStatusRes = leader->snapshotStatus(snapshotId);
-  EXPECT_TRUE(snapshotStatusRes.ok()) << snapshotStatusRes.result();
+  EXPECT_TRUE(snapshotStatusRes.fail());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
-  EXPECT_CALL(*snapshotHandler, status()).Times(1);
   EXPECT_TRUE(leader->allSnapshotsStatus().ok());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 }
@@ -1318,10 +1340,9 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
   auto snapshotHandler = handlersFactoryMock->makeRealSnapshotHandler();
   ON_CALL(*handlersFactoryMock, createSnapshotHandler(_, _))
       .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
-        return std::make_unique<NiceMock<MockDocumentStateSnapshotHandler>>(
-            snapshotHandler);
+        return snapshotHandler;
       });
-  ON_CALL(*snapshotHandler, create(_))
+  ON_CALL(*snapshotHandler, create(_, _))
       .WillByDefault(Return(
           ResultT<std::weak_ptr<Snapshot>>::error(TRI_ERROR_WAS_ERLAUBE)));
   ON_CALL(*snapshotHandler, find(SnapshotId{1}))
@@ -1333,7 +1354,7 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock, transactionManagerMock);
 
-  EXPECT_TRUE(leader->snapshotStart(SnapshotParams::Start{LogIndex{1}}).fail());
+  EXPECT_TRUE(leader->snapshotStart(SnapshotParams::Start{}).fail());
   EXPECT_TRUE(leader->snapshotNext(SnapshotParams::Next{SnapshotId{1}}).fail());
   EXPECT_TRUE(
       leader->snapshotFinish(SnapshotParams::Finish{SnapshotId{1}}).fail());

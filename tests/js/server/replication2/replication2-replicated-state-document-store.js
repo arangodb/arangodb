@@ -641,8 +641,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       let leaderUrl = lh.getServerUrl(participants[0]);
       const follower = participants.slice(1)[0];
       const rebootId = lh.getServerRebootId(follower);
-      let result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
-        {body: {serverId: follower, rebootId: rebootId}, json: true});
+      let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
       collection.drop();
       collection = null;
@@ -737,15 +736,14 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // Start a new snapshot as one of the followers, and wait for the follower to be marked as failed.
       let rebootId = lh.getServerRebootId(follower);
-      let result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
-        {body: {serverId: follower, rebootId: rebootId}, json: true});
+      let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
       stopServerWait(follower);
 
       // The snapshot should no longer be available.
       let snapshotId = result.json.result.snapshotId;
       lh.checkRequestResult(result);
-      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
       assertTrue(result.json.error);
 
       // Pretending again to be the same follower, start a snapshot, but with a lower rebootId
@@ -757,33 +755,40 @@ const replicatedStateSnapshotTransferSuite = function () {
         return Error('follower rebootId did not increase');
       });
       rebootId = lh.getServerRebootId(follower);
-      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
-        {body: {serverId: follower, rebootId: rebootId - 1}, json: true});
+      result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
       lh.checkRequestResult(result);
 
       // The snapshot should no longer be available.
       snapshotId = result.json.result.snapshotId;
-      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
       assertTrue(result.json.error);
 
       // Now start a snapshot with the correct rebootId and expect it to be available.
       rebootId = lh.getServerRebootId(follower);
-      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/start`,
-        {body: {serverId: follower, rebootId: rebootId}, json: true});
+      result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
       snapshotId = result.json.result.snapshotId;
       lh.checkRequestResult(result);
 
       // We should be able to call /next on it
-      result = request.post(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
+      result = dh.getNextSnapshotBatch(leaderUrl, database, logId, snapshotId);
       lh.checkRequestResult(result);
+
+      result = dh.allSnapshotsStatus(leaderUrl, database, logId);
+      lh.checkRequestResult(result);
+      internal.print(result.json.result.snapshots);
+      assertEqual(Object.keys(result.json.result.snapshots).length, 1);
 
       // Also, finish should work
-      result = request.delete(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
+      result = dh.finishSnapshot(leaderUrl, database, logId, snapshotId);
       lh.checkRequestResult(result);
-      result = request.get(`${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
       assertTrue(result.json.error);
 
+      result = dh.allSnapshotsStatus(leaderUrl, database, logId);
+      lh.checkRequestResult(result);
+      internal.print(result.json.result);
+      assertEqual(Object.keys(result.json.result.snapshots).length, 0);
     }
   };
 };

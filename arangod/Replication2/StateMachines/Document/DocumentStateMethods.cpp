@@ -110,10 +110,14 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     using DocumentStateType =
         std::shared_ptr<replicated_state::document::DocumentLeaderState>;
 
+    auto documentState = _vocbase.getReplicatedStateById(logId);
+    if (documentState.fail()) {
+      return documentState.result();
+    }
+
     auto stateMachine =
         std::dynamic_pointer_cast<replicated_state::ReplicatedState<
-            replicated_state::document::DocumentState>>(
-            _vocbase.getReplicatedStateById(logId).get());
+            replicated_state::document::DocumentState>>(documentState.get());
     if (stateMachine == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,

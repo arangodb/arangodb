@@ -223,6 +223,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           // The follower resigned, there is no need to continue.
           return SnapshotTransferResult{
               .res = TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              .reportFailure = true,
               .snapshotId = snapshotRes->snapshotId};
         }
 
@@ -261,6 +262,12 @@ auto DocumentFollowerState::handleSnapshotTransfer(
             });
 
         if (res.fail()) {
+          if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            return SnapshotTransferResult{
+                .res = res,
+                .reportFailure = true,
+                .snapshotId = snapshotRes->snapshotId};
+          }
           // If we got here, it means the snapshot transfer is no longer needed.
           return SnapshotTransferResult{.snapshotId = snapshotRes->snapshotId};
         }
@@ -303,7 +310,10 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         auto self = weak.lock();
         if (self == nullptr) {
           // The follower resigned, no need to continue the transfer.
-          return SnapshotTransferResult{.snapshotId = snapshotId};
+          return SnapshotTransferResult{
+              .res = TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              .reportFailure = true,
+              .snapshotId = snapshotId};
         }
 
         if (snapshotRes->shardId.has_value()) {
@@ -314,6 +324,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                                                               auto& data)
                                                               -> Result {
             if (data.didResign()) {
+              reportingFailure = true;
               return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
             }
 
