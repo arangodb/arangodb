@@ -382,6 +382,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   TRI_ASSERT(_engine != nullptr);
   TRI_ASSERT(std::to_string(_engine->engineId()) == idString);
+  auto guard = _engine->getQuery().acquireLockGuard();
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
@@ -757,33 +758,44 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
   auto errorCode = VelocyPackHelper::getNumericValue<ErrorCode>(
       querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
-  std::shared_ptr<ClusterQuery> query =
-      _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
-  if (!query) {
-    // this may be a race between query garbage collection and the client
-    // shutting down the query. it is debatable whether this is an actual error
-    // if we only want to abort the query...
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
-  }
 
-  auto f = query->finalizeClusterQuery(errorCode);
+  auto f =
+      _queryRegistry->finishQuery(_vocbase.name(), qid, errorCode)
+          .thenValue([self = shared_from_this(), this, qid,
+                      errorCode](std::shared_ptr<ClusterQuery> query) mutable
+                     -> futures::Future<futures::Unit> {
+            if (query == nullptr) {
+              // this may be a race between query garbage collection and
+              // the client  shutting down the query. it is debatable
+              // whether this is an actual error if we only want to abort
+              // the query...
+              generateError(rest::ResponseCode::NOT_FOUND,
+                            TRI_ERROR_HTTP_NOT_FOUND);
+              return {};
+            }
 
-  return waitForFuture(std::move(f).thenValue(
-      [me = shared_from_this(), this, q = std::move(query)](Result res) {
-        VPackBufferUInt8 buffer;
-        VPackBuilder answerBuilder(buffer);
-        answerBuilder.openObject(/*unindexed*/ true);
-        answerBuilder.add(VPackValue("stats"));
-        q->executionStats().toVelocyPack(answerBuilder,
-                                         q->queryOptions().fullCount);
-        q->warnings().toVelocyPack(answerBuilder);
-        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-        answerBuilder.close();
+            _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+            return query->finalizeClusterQuery(errorCode).thenValue(
+                [self = std::move(self), this,
+                 q = std::move(query)](Result res) {
+                  VPackBufferUInt8 buffer;
+                  VPackBuilder answerBuilder(buffer);
+                  answerBuilder.openObject(/*unindexed*/ true);
+                  answerBuilder.add(VPackValue("stats"));
+                  q->executionStats().toVelocyPack(answerBuilder,
+                                                   q->queryOptions().fullCount);
+                  q->warnings().toVelocyPack(answerBuilder);
+                  answerBuilder.add(StaticStrings::Error,
+                                    VPackValue(res.fail()));
+                  answerBuilder.add(StaticStrings::Code,
+                                    VPackValue(res.errorNumber()));
+                  answerBuilder.close();
 
-        generateResult(rest::ResponseCode::OK, std::move(buffer));
-      }));
+                  generateResult(rest::ResponseCode::OK, std::move(buffer));
+                });
+          });
+
+  return waitForFuture(std::move(f));
 }
 
 RequestLane RestAqlHandler::lane() const {
