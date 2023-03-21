@@ -36,7 +36,6 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -214,6 +213,7 @@ void V8ShellFeature::start() {
 void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
+
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
 
