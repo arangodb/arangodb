@@ -28,8 +28,6 @@
 #include <optional>
 #include "Basics/process-utils.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
