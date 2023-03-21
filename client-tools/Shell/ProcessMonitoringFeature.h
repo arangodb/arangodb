@@ -63,7 +63,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   /// @brief enlist external process to become monitored
   ////////////////////////////////////////////////////////////////////////////////
 
-  void addMonitorPID(ExternalId& pid);
+  void addMonitorPID(ExternalId const& pid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief enlist external process to become monitored
