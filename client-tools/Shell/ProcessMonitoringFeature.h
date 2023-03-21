@@ -56,6 +56,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
  public:
   explicit ProcessMonitoringFeature(Server& server);
   ~ProcessMonitoringFeature();
+  static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
