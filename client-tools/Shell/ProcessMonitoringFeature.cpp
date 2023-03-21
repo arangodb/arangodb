@@ -44,20 +44,24 @@ using namespace arangodb;
 
 namespace arangodb {
 
-void ProcessMonitoringFeature::addMonitorPID(ExternalId& pid) {
+void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
   MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
   _monitoredProcesses.push_back(pid);
 }
 
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
-  for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
-       ++it) {
-    if (it->_pid == pid._pid) {
-      _monitoredProcesses.erase(it);
-      break;
+  {
+    MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+    for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
+         ++it) {
+      if (it->_pid == pid._pid) {
+        _monitoredProcesses.erase(it);
+        break;
+      }
     }
   }
+  // make sure its really not monitored anymore once we exit:
+  std::this_thread::sleep_for(std::chrono::milliseconds(550));
 }
 
 std::optional<ExternalProcessStatus>
@@ -87,7 +91,7 @@ void ProcessMonitoringFeature::start() {
   if (_enabled) {
     _monitorThread = std::make_unique<ProcessMonitorThread>(server(), this);
     if (!_monitorThread->start()) {
-      LOG_TOPIC("33c33", FATAL, Logger::SYSCALL)
+      LOG_TOPIC("33333", FATAL, Logger::SYSCALL)
           << "failed to launch monitoring background thread";
       FATAL_ERROR_EXIT();
     }
@@ -100,9 +104,10 @@ void ProcessMonitoringFeature::beginShutdown() {
 }
 
 void ProcessMonitorThread::run() {  // override
+  std::vector<ExternalId> mp;
+  mp.reserve(10);
   while (!isStopping()) {
     try {
-      std::vector<ExternalId> mp;
       {
         MUTEX_LOCKER(mutexLocker,
                      _processMonitorFeature->_MonitoredExternalProcessesLock);
@@ -125,7 +130,7 @@ void ProcessMonitorThread::run() {  // override
           triggerV8DeadlineNow(false);
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     } catch (std::exception const& ex) {
       LOG_TOPIC("e78b9", ERR, Logger::SYSCALL)
           << "process monitoring thread caught exception: " << ex.what();
