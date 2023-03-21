@@ -39,12 +39,13 @@ struct WorkerState {
               ExecutionSpecifications executionSpecifications,
               CollectionSpecifications collectionSpecifications,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
-              TRI_vocbase_t& vocbase)
+              TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
       : conductor{std::move(conductor)},
         executionSpecifications{std::move(executionSpecifications)},
         collectionSpecifications{std::move(collectionSpecifications)},
         algorithm{std::move(algorithm)},
-        vocbaseGuard{vocbase} {};
+        vocbaseGuard{vocbase},
+        resultActor(resultActor){};
 
   auto observeStatus() -> Status const {
     auto currentGss = currentGssObservables.observe();
@@ -66,7 +67,8 @@ struct WorkerState {
   const CollectionSpecifications collectionSpecifications;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
-  // TODO GOROD-1546
+  const actor::ActorPID resultActor;
+  // TODO GORDO-1546
   // GraphStore graphStore;
   GssObservables currentGssObservables;
   Guarded<AllGssStatus> allGssStatus;

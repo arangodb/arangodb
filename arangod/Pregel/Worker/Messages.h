@@ -27,7 +27,6 @@
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/CollectionSpecifications.h"
-#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/PregelOptions.h"
@@ -61,15 +60,27 @@ auto inspect(Inspector& f, LoadGraph& x) {
   return f.object(x).fields();
 }
 
-struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker, LoadGraph> {
-  using std::variant<WorkerStart, CreateNewWorker, LoadGraph>::variant;
+struct ProduceResults {
+  bool withID;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ProduceResults& x) {
+  return f.object(x).fields(f.field("withID", x.withID));
+}
+
+struct WorkerMessages
+    : std::variant<WorkerStart, CreateNewWorker, LoadGraph, ProduceResults> {
+  using std::variant<WorkerStart, CreateNewWorker, LoadGraph,
+                     ProduceResults>::variant;
+};
+
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<WorkerStart>("Start"),
       arangodb::inspection::type<CreateNewWorker>("CreateWorker"),
-      arangodb::inspection::type<LoadGraph>("LoadGraph"));
+      arangodb::inspection::type<LoadGraph>("LoadGraph"),
+      arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 
 }  // namespace worker::message

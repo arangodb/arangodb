@@ -87,6 +87,25 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::ResultCreated msg)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("e1791", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Received results from {}", this->sender);
+
+    auto state = this->state->executionState->receive(this->sender, msg);
+    if (state.has_value()) {
+      changeState(std::move(state.value()));
+    }
+
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor,
+        pregel::message::AddResults{
+            .results = msg.results,
+            .receivedAllResults =
+                this->state->executionState->aqlResultsAvailable()});
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)
