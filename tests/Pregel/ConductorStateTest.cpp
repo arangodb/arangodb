@@ -111,9 +111,10 @@ TEST(ConductorStateTest,
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> emptyServers{};
-  auto cState = ConductorState(
-      std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(emptyServers), std::move(fakeActorPID));
+  auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
+                               ExecutionSpecifications(),
+                               std::make_unique<LookupInfoMock>(emptyServers),
+                               fakeActorPID, fakeActorPID);
   ASSERT_EQ(cState.executionState->name(), "initial");
 }
 
@@ -126,7 +127,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
   for (auto const& servers : amountOfServers) {
     auto cState = ConductorState(
         std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-        std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+        std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
     auto createWorkersState = CreateWorkers(cState);
     auto msgs = createWorkersState.messages();
     ASSERT_EQ(msgs.size(), servers.size());
@@ -144,7 +145,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto cState = ConductorState(
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+      std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -177,7 +178,7 @@ TEST(CreateWorkersStateTest,
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto cState = ConductorState(
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+      std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
   ASSERT_EQ(msgs.size(), servers.size());
@@ -213,7 +214,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+      std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -233,7 +234,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+      std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 
@@ -253,7 +254,7 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
-      std::make_unique<LookupInfoMock>(servers), std::move(fakeActorPID));
+      std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messages();
 

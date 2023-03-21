@@ -8811,6 +8811,24 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
+  // TODO: As soon as we switch to the actor framework, we do not need the
+  // differentiation between coordinator <-> dbserver anymore. This can be
+  // removed as well.
+  /*
+     * TODO: Enable this as soon as we do use the actor framework fully when
+     *  executing pregel.
+    auto pregelResults = feature.getResults(execNr);
+    if (!pregelResults.ok()) {
+      registerWarning(expressionContext, AFN, pregelResults.errorNumber());
+      return AqlValue(AqlValueHintEmptyArray());
+    }
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
+    }
+  */
+
+  // TODO: This block can be removed.
   if (ServerState::instance()->isCoordinator()) {
     auto c = feature.conductor(execNr);
     if (!c) {
@@ -8818,7 +8836,6 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder, withId);
-
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
     if (!worker) {
@@ -8831,6 +8848,7 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       builder.add(VPackArrayIterator(results.results.slice()));
     }
   }
+  // TODO: This block can be removed.
 
   if (builder.isEmpty()) {
     return AqlValue(AqlValueHintEmptyArray());
