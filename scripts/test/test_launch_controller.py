@@ -39,18 +39,14 @@ def str2bool(value):
 def parse_arguments():
     """argv"""
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "suites", help="comma separated list of suites to run", type=str
-    )
+    parser.add_argument("suites", help="comma separated list of suites to run", type=str)
+
     parser.add_argument("--testBuckets", help="", type=str)
-    parser.add_argument(
-        "--cluster", type=str2bool, nargs="?", const=True, default=False, help=""
-    )
+    parser.add_argument("--cluster", type=str2bool, nargs="?", const=True, default=False, help="")
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
-    parser.add_argument(
-        "--definitions", help="path to the test definitions file", type=str
-    )
+    parser.add_argument("--allProtocols", type=str2bool, nargs="?", const=True, default=False, help="")
+    parser.add_argument("--definitions", help="path to the test definitions file", type=str)
     return parser.parse_args()
 
 
@@ -68,9 +64,15 @@ def main():
             extra_args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
         extra_args += ["--testBuckets", args.testBuckets]
         runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
-        runner.scenarios.append(
-            TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
-        )
+        if args.allProtocols:
+            for proto in ["http", "http2", "vst"]:
+                runner.scenarios.append(
+                    TestConfig(runner.cfg, f"{name}_{proto}", suite, [*extra_args, f"--{proto}", "true"], 1, 1, [])
+                )
+        else:
+            runner.scenarios.append(
+                TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
+            )
         launch_runner(runner, True)
     except Exception as exc:
         print(exc, file=sys.stderr)
