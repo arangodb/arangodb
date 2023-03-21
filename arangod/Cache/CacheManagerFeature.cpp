@@ -134,7 +134,8 @@ void CacheManagerFeature::start() {
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _rebalancingInterval);
   if (!_rebalancer->start()) {
-    LOG_TOPIC("13895", FATAL, Logger::STARTUP) << "cache manager startup failed";
+    LOG_TOPIC("13895", FATAL, Logger::STARTUP)
+        << "cache manager startup failed";
     FATAL_ERROR_EXIT();
   }
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
