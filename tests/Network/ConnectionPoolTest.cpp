@@ -457,7 +457,7 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    EXPECT_EQ(extractCurrentMetric(), 2ull);
+    EXPECT_EQ(extractCurrentMetric(), 1ull);
 
     auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
