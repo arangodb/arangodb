@@ -25,7 +25,18 @@
 
 #include "Shell/arangosh.h"
 
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace arangodb {
+
+class TelemetricsHandler;
+
+namespace velocypack {
+class Builder;
+}
 
 class ShellFeature final : public ArangoshFeature {
  public:
@@ -33,12 +44,27 @@ class ShellFeature final : public ArangoshFeature {
 
   ShellFeature(Server& server, int* result);
 
+  ~ShellFeature();
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
+  void beginShutdown() override;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void getTelemetricsInfo(velocypack::Builder& builder);
+  velocypack::Builder sendTelemetricsToEndpoint(std::string const& url);
+#endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void disableAutomaticallySendTelemetricsToEndpoint() {
+    this->_automaticallySendTelemetricsToEndpoint = false;
+  }
+#endif
 
   void setExitCode(int code) { *_result = code; }
+
+  void startTelemetrics();
+  void restartTelemetrics();
 
  private:
   std::vector<std::string> _jslint;
@@ -63,7 +89,11 @@ class ShellFeature final : public ArangoshFeature {
   std::vector<std::string> _positionals;
   std::string _unitTestFilter;
   std::vector<std::string> _scriptParameters;
+  std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
   bool _runMain{false};
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool _automaticallySendTelemetricsToEndpoint{true};
+#endif
 };
 
 }  // namespace arangodb

@@ -41,10 +41,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
 
-#include <chrono>
-#include <iostream>
-#include <thread>
-
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::application_features;

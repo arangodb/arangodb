@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,31 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestSupportInfoHandler.h"
+#include "RestTelemetricsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SupportInfoBuilder.h"
 
+#include "Logger/LogMacros.h"
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestSupportInfoHandler::RestSupportInfoHandler(ArangodServer& server,
+RestTelemetricsHandler::RestTelemetricsHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestSupportInfoHandler::execute() {
+RestStatus RestTelemetricsHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
+  if (!gs.isTelemetricsEnabled()) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+        "telemetrics API is disabled. Must enable with startup parameter "
+        "`--server.enable-telemetrics-api`.");
+    return RestStatus::DONE;
+  }
+
   auto const& apiPolicy = gs.supportInfoApiPolicy();
   TRI_ASSERT(apiPolicy != "disabled");
 
@@ -60,18 +68,12 @@ RestStatus RestSupportInfoHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (_request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-        TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    return RestStatus::DONE;
-  }
-
   VPackBuilder result;
+
   bool isLocal = _request->parsedValue("local", false);
   SupportInfoBuilder::buildInfoMessage(result, _request->databaseName(),
-                                       _server, isLocal, false);
-
+                                       _server, isLocal, true);
   generateResult(rest::ResponseCode::OK, result.slice());
+
   return RestStatus::DONE;
 }

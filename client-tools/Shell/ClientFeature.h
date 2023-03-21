@@ -123,6 +123,8 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool getWarnConnect() { return _warnConnect; }
 
+  CommunicationFeaturePhase& getCommFeaturePhase() { return _comm; }
+
   ApplicationServer& server() const noexcept;
 
   static std::string buildConnectedMessage(
