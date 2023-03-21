@@ -58,6 +58,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
                       Fields
                     </FormLabel>
                     <CreatableMultiSelectControl
+                      isDisabled={field.isDisabled}
                       selectProps={{
                         noOptionsMessage: () => "Start typing to add a field"
                       }}
@@ -69,6 +70,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
                       Compression
                     </FormLabel>
                     <SelectControl
+                      isDisabled={field.isDisabled}
                       name={`storedValues.${index}.compression`}
                       selectProps={{
                         options: compressionOptions
@@ -76,6 +78,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
                     />
                   </Box>
                   <IconButton
+                    isDisabled={field.isDisabled}
                     size="sm"
                     variant="ghost"
                     colorScheme="red"
@@ -87,6 +90,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
               );
             })}
             <Button
+              isDisabled={field.isDisabled}
               colorScheme="blue"
               onClick={() => {
                 push({ fields: [], compression: "lz4" });

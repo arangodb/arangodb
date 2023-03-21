@@ -5,9 +5,11 @@ import { IndexFormField, IndexFormFieldProps } from "./IndexFormField";
 
 export const IndexFormFieldsList = ({
   fields,
+  isFormDisabled,
   renderField
 }: {
   fields: IndexFormFieldProps[];
+  isFormDisabled?: boolean;
   renderField?: (props: {
     field: IndexFormFieldProps;
     index?: number;
@@ -33,7 +35,10 @@ export const IndexFormFieldsList = ({
               render={renderField}
               key={field.name}
               index={index}
-              field={field}
+              field={{
+                ...field,
+                isDisabled: field.isDisabled || isFormDisabled
+              }}
             />
           );
         })}
@@ -41,22 +46,30 @@ export const IndexFormFieldsList = ({
     </Box>
   );
 };
-export const FormActions = ({ onClose }: { onClose: () => void }) => {
+export const FormActions = ({
+  onClose,
+  isFormDisabled
+}: {
+  onClose: () => void;
+  isFormDisabled?: boolean;
+}) => {
   const { isValid, isSubmitting } = useFormikContext();
   return (
     <Stack marginY="2" direction="row" justifyContent="flex-end" padding="10">
       <Button size="sm" onClick={onClose}>
         Close
       </Button>
-      <Button
-        colorScheme="green"
-        size="sm"
-        type="submit"
-        isDisabled={!isValid}
-        isLoading={isSubmitting}
-      >
-        Create
-      </Button>
+      {!isFormDisabled && (
+        <Button
+          colorScheme="green"
+          size="sm"
+          type="submit"
+          isDisabled={!isValid}
+          isLoading={isSubmitting}
+        >
+          Create
+        </Button>
+      )}
     </Stack>
   );
 };

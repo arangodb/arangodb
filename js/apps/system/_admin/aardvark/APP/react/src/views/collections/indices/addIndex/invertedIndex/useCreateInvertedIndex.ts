@@ -250,6 +250,10 @@ const schema = Yup.object({
     .required("At least one field is required")
 });
 
+export const useInvertedIndexFieldsData = () => {
+  return { initialValues, schema, fields: invertedIndexFields };
+};
+
 export const useCreateInvertedIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<InvertedIndexValuesType>();
   const onCreate = async ({ values }: { values: InvertedIndexValuesType }) => {
@@ -269,5 +273,6 @@ export const useCreateInvertedIndex = () => {
       storedValues: storedValues
     });
   };
-  return { onCreate, initialValues, schema, fields: invertedIndexFields };
+  const { initialValues, schema, fields } = useInvertedIndexFieldsData();
+  return { onCreate, initialValues, schema, fields };
 };

@@ -5,7 +5,7 @@ import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { InfoTooltip } from "./InfoTooltip";
-import { InvertedIndexForm } from "./invertedIndex/InvertedIndexForm";
+import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { ZKDIndexForm } from "./ZKDIndexForm";
@@ -57,7 +57,7 @@ const IndexTypeForm = ({
   onClose: () => void;
 }) => {
   if (type === "inverted") {
-    return <InvertedIndexForm onClose={onClose} />;
+    return <InvertedIndexFormWrap onClose={onClose} />;
   }
   if (type === "persistent") {
     return <PersistentIndexForm onClose={onClose} />;

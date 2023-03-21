@@ -13,7 +13,11 @@ const ajv = new Ajv({
   $data: true
 });
 
-export const InvertedIndexFormJSONEditor = () => {
+export const InvertedIndexFormJSONEditor = ({
+  isFormDisabled
+}: {
+  isFormDisabled?: boolean;
+}) => {
   const { values, setValues } = useFormikContext();
   const { schema } = useInvertedIndexJSONSchema();
   const [errors, setErrors] = useState<ValidationError[]>();
@@ -40,7 +44,7 @@ export const InvertedIndexFormJSONEditor = () => {
           }
         }}
       />
-      <JSONErrors errors={errors} />
+      {!isFormDisabled && <JSONErrors errors={errors} />}
     </Box>
   );
 };

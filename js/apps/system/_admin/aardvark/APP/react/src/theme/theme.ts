@@ -16,5 +16,18 @@ export const theme = extendTheme({
       800: "#424242",
       900: "#212121"
     }
+  },
+  components: {
+    Modal: {
+      sizes: {
+        max: {
+          dialog: {
+            maxW: "calc(100vw - 200px)",
+            minH: "100vh",
+            my: 0
+          }
+        }
+      }
+    }
   }
 });

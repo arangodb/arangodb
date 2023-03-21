@@ -52,6 +52,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
       >
         <FormLabel htmlFor="primarySort.compression">Compression</FormLabel>
         <SelectControl
+          isDisabled={field.isDisabled}
           name="primarySort.compression"
           selectProps={{
             options: [
@@ -85,6 +86,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                         Field
                       </FormLabel>
                       <InputControl
+                        isDisabled={field.isDisabled}
                         name={`primarySort.fields.${index}.field`}
                       />
                     </Box>
@@ -95,6 +97,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                         Direction
                       </FormLabel>
                       <SelectControl
+                        isDisabled={field.isDisabled}
                         name={`primarySort.fields.${index}.direction`}
                         selectProps={{
                           options: directionOptions
@@ -103,6 +106,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                     </Box>
 
                     <IconButton
+                      isDisabled={field.isDisabled}
                       size="sm"
                       variant="ghost"
                       colorScheme="red"
@@ -115,7 +119,9 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                   </Box>
                 );
               })}
+
               <Button
+                isDisabled={field.isDisabled}
                 marginTop="4"
                 colorScheme="blue"
                 onClick={() => {

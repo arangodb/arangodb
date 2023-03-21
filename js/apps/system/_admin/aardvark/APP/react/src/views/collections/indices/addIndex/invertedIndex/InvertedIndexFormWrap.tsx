@@ -1,30 +1,52 @@
 import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
-import React, { useState } from "react";
-import Split from "react-split-grid";
+import React from "react";
+import { Split } from "../../../../../components/split/Split";
 import { FormActions, IndexFormFieldsList } from "../IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
+import { InvertedIndexConsolidationPolicy } from "./InvertedIndexConsolidationPolicy";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFieldsDataEntry } from "./InvertedIndexFieldsDataEntry";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
 import { InvertedIndexPrimarySort } from "./InvertedIndexPrimarySort";
 import { InvertedIndexStoredValues } from "./InvertedIndexStoredValues";
-import { InvertedIndexConsolidationPolicy } from "./InvertedIndexConsolidationPolicy";
-import { useCreateInvertedIndex } from "./useCreateInvertedIndex";
+import {
+  InvertedIndexValuesType,
+  useCreateInvertedIndex
+} from "./useCreateInvertedIndex";
 
-export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
+export const InvertedIndexFormWrap = ({ onClose }: { onClose: () => void }) => {
   const { onCreate, initialValues, schema, fields } = useCreateInvertedIndex();
-  const localStorageSplitSize = localStorage.getItem(
-    "invertedIndexJSONSplitTemplate"
+  return (
+    <InvertedIndexForm
+      onCreate={onCreate}
+      initialValues={initialValues}
+      schema={schema}
+      fields={fields}
+      onClose={onClose}
+    />
   );
-  const [gridTemplateColumns, setGridTemplateColumns] = useState(
-    localStorageSplitSize || "1fr 10px 1fr"
-  );
+};
+export const InvertedIndexForm = ({
+  onCreate,
+  initialValues,
+  schema,
+  fields,
+  onClose,
+  isFormDisabled
+}: {
+  onCreate?: ({ values }: { values: InvertedIndexValuesType }) => Promise<void>;
+  initialValues: InvertedIndexValuesType;
+  schema?: any;
+  fields: { label: string; name: string; type: string }[];
+  onClose: () => void;
+  isFormDisabled?: boolean;
+}) => {
   return (
     <InvertedIndexProvider>
       <Formik
         onSubmit={async values => {
-          await onCreate({ values });
+          await onCreate?.({ values });
         }}
         initialValues={initialValues}
         validationSchema={schema}
@@ -33,22 +55,14 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
         {() => (
           <Box as={Form} height="calc(100% - 30px)">
             <Split
-              gridTemplateColumns={gridTemplateColumns}
-              minSize={100}
-              cursor="col-resize"
-              onDrag={(_direction, _track, gridTemplateStyle) => {
-                setGridTemplateColumns(gridTemplateStyle);
-                localStorage.setItem(
-                  "invertedIndexJSONSplitTemplate",
-                  gridTemplateStyle
-                );
-              }}
+              localStorageKey={"invertedIndexJSONSplitTemplate"}
               render={({ getGridProps, getGutterProps }) => {
                 const gridProps = getGridProps();
                 const gutterProps = getGutterProps("column", 1);
                 return (
                   <Box display="grid" {...gridProps}>
                     <IndexFormFieldsList
+                      isFormDisabled={isFormDisabled}
                       fields={fields}
                       renderField={({ field, autoFocus }) => {
                         if (field.name === "analyzer") {
@@ -74,7 +88,9 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
                           return <InvertedIndexStoredValues field={field} />;
                         }
                         if (field.name === "consolidationPolicy") {
-                          return <InvertedIndexConsolidationPolicy field={field} />;
+                          return (
+                            <InvertedIndexConsolidationPolicy field={field} />
+                          );
                         }
                         return <>{field.name}</>;
                       }}
@@ -88,13 +104,13 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
                       {...gutterProps}
                     ></Box>
 
-                    <InvertedIndexFormJSONEditor />
+                    <InvertedIndexFormJSONEditor isFormDisabled={isFormDisabled} />
                   </Box>
                 );
               }}
             />
 
-            <FormActions onClose={onClose} />
+            <FormActions isFormDisabled={isFormDisabled} onClose={onClose} />
           </Box>
         )}
       </Formik>

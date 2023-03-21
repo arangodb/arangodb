@@ -1,6 +1,6 @@
 import { Box } from "@chakra-ui/react";
-import React, { useState } from "react";
-import Split from "react-split-grid";
+import React from "react";
+import { Split } from "../../components/split/Split";
 import { FormProps, State } from "../../utils/constants";
 import { FormState } from "./constants";
 import { ViewLeftPane } from "./ViewLeftPane";
@@ -18,23 +18,10 @@ export const ViewSection = ({
   isAdminUser: boolean;
   state: State<FormState>;
 } & Pick<FormProps<FormState>, "dispatch">) => {
-  const localStorageSplitSize = localStorage.getItem(
-    "invertedIndexJSONSplitTemplate"
-  );
-  const [gridTemplateColumns, setGridTemplateColumns] = useState(
-    localStorageSplitSize || "1fr 10px 1fr"
-  );
   return (
     <Box as="section" width="full" height="calc(100vh - 200px)">
       <Split
-        gridTemplateColumns={gridTemplateColumns}
-        onDrag={(_direction, _track, gridTemplateStyle) => {
-          setGridTemplateColumns(gridTemplateStyle);
-          localStorage.setItem(
-            "invertedIndexJSONSplitTemplate",
-            gridTemplateStyle
-          );
-        }}
+        localStorageKey={"viewJSONSplitTemplate"}
         render={({ getGridProps, getGutterProps }) => {
           const gridProps = getGridProps();
           const gutterProps = getGutterProps("column", 1);

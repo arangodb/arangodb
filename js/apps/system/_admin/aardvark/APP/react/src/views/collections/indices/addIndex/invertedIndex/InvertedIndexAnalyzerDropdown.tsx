@@ -30,7 +30,7 @@ export const InvertedIndexAnalyzerDropdown = ({
   const fieldValue = formikField.value;
   React.useEffect(() => {
     if (fieldValue) {
-      const features = analyzersList.find(
+      const features = analyzersList?.find(
         analyzer => analyzer.name === fieldValue
       )?.features;
       setFieldValue(dependentFieldName, features);
@@ -49,7 +49,6 @@ export const InvertedIndexAnalyzerDropdown = ({
       setOptions(tempOptions);
     }
   }, [analyzersList]);
-
   return (
     <>
       <FormLabel htmlFor={field.name}>{field.label}</FormLabel>

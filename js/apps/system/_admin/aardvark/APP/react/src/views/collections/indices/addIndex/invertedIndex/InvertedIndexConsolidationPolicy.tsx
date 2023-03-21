@@ -48,7 +48,8 @@ const ConsolidationPolicyFields = ({
           field={{
             name: "consolidationPolicy.segmentsBytesFloor",
             label: "Segments Bytes Floor",
-            type: "number"
+            type: "number",
+            isDisabled: field.isDisabled
           }}
         />
 
@@ -56,7 +57,8 @@ const ConsolidationPolicyFields = ({
           field={{
             name: "consolidationPolicy.segmentsBytesMax",
             label: "Segments Bytes Max",
-            type: "number"
+            type: "number",
+            isDisabled: field.isDisabled
           }}
         />
 
@@ -64,14 +66,16 @@ const ConsolidationPolicyFields = ({
           field={{
             name: "consolidationPolicy.segmentsMin",
             label: "Segments Min",
-            type: "number"
+            type: "number",
+            isDisabled: field.isDisabled
           }}
         />
         <IndexFormField
           field={{
             name: "consolidationPolicy.segmentsMax",
             label: "Segments Max",
-            type: "number"
+            type: "number",
+            isDisabled: field.isDisabled
           }}
         />
       </Box>

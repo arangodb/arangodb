@@ -21,12 +21,16 @@ export const SelectControl = (props: InputControlProps) => {
       return (option as OptionType).value === field.value;
     }) as PropsValue<OptionType>) || null;
   return (
-    <FormikFormControl name={name} label={label} {...rest}>
+    <FormikFormControl
+      name={name}
+      label={label}
+      {...rest}
+    >
       <SelectBase
         {...field}
+        isDisabled={rest.isDisabled || isSubmitting}
         value={value}
         inputId={name}
-        isDisabled={isSubmitting}
         {...selectProps}
         onChange={value => {
           helper.setValue((value as OptionType)?.value);

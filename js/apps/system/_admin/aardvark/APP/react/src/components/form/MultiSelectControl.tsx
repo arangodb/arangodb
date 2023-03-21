@@ -32,7 +32,7 @@ export const MultiSelectControl = (props: InputControlProps) => {
         isMulti
         value={value}
         inputId={name}
-        isDisabled={isSubmitting}
+        isDisabled={rest.isDisabled || isSubmitting}
         onChange={values => {
           const valueStringArray = (values as MultiValue<OptionType>)?.map(
             value => {
