@@ -46,7 +46,7 @@ export const CollectionIndicesTable = ({
           {indices?.map(indexRow => {
             var indexRowData = getIndexRowData(indexRow);
             return (
-              <Tr>
+              <Tr key={indexRow.id}>
                 {TABLE_HEADERS.map(tableHeader => {
                   const tableCellContent =
                     indexRowData[
@@ -54,12 +54,12 @@ export const CollectionIndicesTable = ({
                     ];
                   if (tableHeader.id === "action") {
                     return (
-                      <Td key={indexRow.id}>
+                      <Td key={tableHeader.id}>
                         <IndexActionCell indexRow={indexRow} />
                       </Td>
                     );
                   }
-                  return <Td key={indexRow.id}>{tableCellContent}</Td>;
+                  return <Td key={tableHeader.id}>{tableCellContent}</Td>;
                 })}
               </Tr>
             );
