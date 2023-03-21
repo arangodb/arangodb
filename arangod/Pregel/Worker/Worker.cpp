@@ -532,12 +532,11 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
             storer.store(_quiver);
           } catch (std::exception const& ex) {
-            LOG_PREGEL("a47c4", WARN)
-                << "caught exception in loadShards: " << ex.what();
+            LOG_PREGEL("a4774", WARN)
+                << "caught exception in store: " << ex.what();
             throw;
           } catch (...) {
-            LOG_PREGEL("e932d", WARN)
-                << "caught unknown exception in loadShards";
+            LOG_PREGEL("e932e", WARN) << "caught unknown exception in store";
             throw;
           }
           cleanup();
