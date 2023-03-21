@@ -89,7 +89,7 @@ void ProcessMonitoringFeature::start() {
     _monitorThread = std::make_unique<ProcessMonitorThread>(server(), this);
     if (!_monitorThread->start()) {
       LOG_TOPIC("33c33", FATAL, Logger::SYSCALL)
-        << "failed to launch monitoring background thread";
+          << "failed to launch monitoring background thread";
       FATAL_ERROR_EXIT();
     }
   }
@@ -102,29 +102,38 @@ void ProcessMonitoringFeature::beginShutdown() {
 
 void ProcessMonitorThread::run() {  // override
   while (!isStopping()) {
-    std::vector<ExternalId> mp;
-    {
-      MUTEX_LOCKER(mutexLocker,
-                   _processMonitorFeature->_MonitoredExternalProcessesLock);
-      mp = _processMonitorFeature->_monitoredProcesses;
-    }
-    for (auto const& pid : mp) {
-      auto status = TRI_CheckExternalProcess(pid, false, 0);
-      if ((status._status == TRI_EXT_TERMINATED) ||
-          (status._status == TRI_EXT_ABORTED) ||
-          (status._status == TRI_EXT_NOT_FOUND)) {
-        // Its dead and gone - good
-        _processMonitorFeature->removeMonitorPID(pid);
-        {
-          MUTEX_LOCKER(mutexLocker,
-                       _processMonitorFeature->_MonitoredExternalProcessesLock);
-          _processMonitorFeature->_ExitedExternalProcessStatus[pid._pid] =
-              status;
-        }
-        triggerV8DeadlineNow(false);
+    try {
+      std::vector<ExternalId> mp;
+      {
+        MUTEX_LOCKER(mutexLocker,
+                     _processMonitorFeature->_MonitoredExternalProcessesLock);
+        mp = _processMonitorFeature->_monitoredProcesses;
       }
+      for (auto const& pid : mp) {
+        auto status = TRI_CheckExternalProcess(pid, false, 0);
+        if ((status._status == TRI_EXT_TERMINATED) ||
+            (status._status == TRI_EXT_ABORTED) ||
+            (status._status == TRI_EXT_NOT_FOUND)) {
+          // Its dead and gone - good
+          _processMonitorFeature->removeMonitorPID(pid);
+          {
+            MUTEX_LOCKER(
+                mutexLocker,
+                _processMonitorFeature->_MonitoredExternalProcessesLock);
+            _processMonitorFeature->_ExitedExternalProcessStatus[pid._pid] =
+                status;
+          }
+          triggerV8DeadlineNow(false);
+        }
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e78b9", ERR, Logger::SYSCALL)
+          << "process monitoring thread caught exception: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("7269b", ERR, Logger::SYSCALL)
+          << "process monitoring thread caught unknown exception";
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
