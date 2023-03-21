@@ -405,7 +405,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
                                            &ClientManager::rewriteLocation);
   httpClient->params().setUserNamePassword("/", _username, _password);
   if (!_jwtSecret.empty()) {
-    TRI_ASSERT(!_endpoints.size());
+    TRI_ASSERT(!_endpoints.empty());
     httpClient->params().setJwt(
         fuerte::jwt::generateInternalToken(_jwtSecret, _endpoints[0]));
   }
