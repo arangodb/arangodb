@@ -34,7 +34,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-}
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
@@ -51,6 +51,6 @@ void TRI_InitV8Deadline(v8::Isolate* isolate);
 void triggerV8DeadlineNow(bool fromSignal);
 
 namespace arangodb {
-extern std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid,
-                                                              arangodb::application_features::ApplicationServer& server);
+extern std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server);
 }

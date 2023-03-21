@@ -42,7 +42,8 @@ void TRI_InitV8Deadline(v8::Isolate* isolate) {}
 void triggerV8DeadlineNow(bool fromSignal) {}
 
 namespace arangodb {
-std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
   return std::nullopt;
 }
-}
+}  // namespace arangodb
