@@ -151,10 +151,8 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
     }
   }
 
-  /*
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                      statusUpdateCallback);
-  */
 
   // commit the remainders in our buffer
   // will throw if it fails
