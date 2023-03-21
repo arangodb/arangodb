@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global AQL_EXPLAIN */
+/* global AQL_EXPLAIN, assertTrue, assertFalse */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -32,16 +32,17 @@
 const jsunity = require("jsunity");
 const gm = require("@arangodb/general-graph");
 const {db} = require("@arangodb");
+const ruleName = "not-decided-yet";
 
 function TraversalOptimizeLastPathAccessTestSuite() {
     const makePath = (length, keyOffset = 0) => {
         const vertices = [];
         const edges = [];
         for (let i = 0; i < length; ++i) {
-          vertices.push({_key: `${i}`, _id: `v/${i}`});
-          if (i > 0) {
-            edges.push({_key: `${i-1}-${i}`, _id: `e/${i-1}-${i}`, _from: `v/${i-1}`, _to: `v/${i}`});
-          }
+            vertices.push({_key: `${i}`, _id: `v/${i}`});
+            if (i > 0) {
+                edges.push({_key: `${i - 1}-${i}`, _id: `e/${i - 1}-${i}`, _from: `v/${i - 1}`, _to: `v/${i}`});
+            }
         }
         return {vertices, edges};
     };
@@ -59,6 +60,61 @@ function TraversalOptimizeLastPathAccessTestSuite() {
     const vc = "UnitTestVertexCollection";
     const ec = "UnitTestEdgeCollection";
     const startVertex = "UnitTestVertexCollection/1";
+
+    const isReferenceToPath = (refNode) => {
+        const {typeID, name} = refNode;
+        // Only Reference(45) to variable (p) are allowed
+        return typeID === 45 && name === "p";
+    };
+    const isLastElementAccess = (indexedAccess) => {
+        if (indexedAccess.subNodes.length !== 2) {
+            // Index access needs exactly 2 members
+            return false;
+        }
+        const [path, index] = indexedAccess.subNodes;
+        {
+            // Test index
+            const {typeID, value} = index;
+            if (typeID !== 40 || value !== -1) {
+                // Only type "value"(40) and access to last element "-1" can pass
+                return false;
+            }
+        }
+        {
+            // Test attribute access path
+            const {typeID, name, subNodes} = path;
+            if (typeID !== 35 || !(name === "vertices" || name === "edges") || subNodes.length !== 1 || !isReferenceToPath(subNodes[0])) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const planContainsPathAccess = (nodes) => {
+        // Pick all Indexed Access nodes (`LET v = <var>[<index>]`
+        const indexedAccesses = nodes.filter(n => n.type === "CalculationNode").map(c => c.expression).filter(e => e.typeID === 37);
+        return indexedAccesses.filter(isLastElementAccess).length > 0;
+    };
+    const ruleIsApplied = (rules) => {
+        return rules.indexOf(ruleName) !== -1;
+    };
+
+    const assertPlanContainsPathAccess = (nodes) => {
+        assertTrue(planContainsPathAccess(nodes), `We do not have access to path variable p`);
+    };
+    const assertPlanDoesNotContainPathAccess = (nodes) => {
+        assertFalse(planContainsPathAccess(nodes), `We still have access to path variable p`);
+    };
+    const assertRuleIsApplied = (rules) => {
+        assertTrue(ruleIsApplied(rules), `Rule ${ruleName} not found in ${rules}`);
+    };
+    const assertRuleIsNotApplied = (rules) => {
+        assertFalse(ruleIsApplied(rules), `Rule ${ruleName} has been found in ${rules}`);
+    };
+
+    const assertResultsAreNotModifiedByRule = (query) => {
+        //assertFalse(true, `Test Not yet implemented`);
+    };
 
     return {
         setUpAll: function () {
@@ -78,7 +134,8 @@ function TraversalOptimizeLastPathAccessTestSuite() {
             ];
             for (const q of queriesToTest) {
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
-                require("internal").print(rules);
+                assertPlanContainsPathAccess(nodes);
+                assertRuleIsNotApplied(rules);
 
             }
         },
@@ -92,13 +149,13 @@ function TraversalOptimizeLastPathAccessTestSuite() {
             ];
             for (const q of queriesToTest) {
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
-                require("internal").print(rules);
-                require("internal").print(nodes);
+                assertPlanDoesNotContainPathAccess(nodes);
+                assertRuleIsApplied(rules);
+                assertResultsAreNotModifiedByRule(q);
             }
         }
     };
 }
-
 
 
 jsunity.run(TraversalOptimizeLastPathAccessTestSuite);
