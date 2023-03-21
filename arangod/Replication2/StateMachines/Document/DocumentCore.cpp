@@ -59,10 +59,6 @@ void DocumentCore::drop() {
 
 auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
 
-auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
-  return _vocbase;
-}
-
 auto DocumentCore::getTransactionHandler()
     -> std::shared_ptr<IDocumentStateTransactionHandler> {
   return _transactionHandler;
