@@ -24,9 +24,9 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
-#include <memory>
 
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
