@@ -46,7 +46,7 @@ class ProcessMonitorThread : public arangodb::Thread {
   ~ProcessMonitorThread() { shutdown(); }
 
  protected:
-  ProcessMonitoringFeature* _processMonitorFeature;
+  ProcessMonitoringFeature& _processMonitorFeature;
   void run() override;
 };
 
