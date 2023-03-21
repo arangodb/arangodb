@@ -122,7 +122,7 @@ void ProcessMonitoringFeature::validateOptions(std::shared_ptr<options::ProgramO
 
 void ProcessMonitoringFeature::start(){
   if (_enabled) {
-    _monitorThread = make_unique<ProcessMonitorThread>(server, this);
+    _monitorThread = std::make_unique<ProcessMonitorThread>(server, this);
     _monitorThread->start();
   }
 }
