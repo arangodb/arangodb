@@ -37,7 +37,7 @@ auto inspect(Inspector& f, SpawnStart& x) {
 struct SpawnWorker {
   actor::ServerID destinationServer;
   actor::ActorPID conductor;
-  worker::message::CreateNewWorker message;
+  worker::message::CreateWorker message;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnWorker& x) {

@@ -136,12 +136,12 @@ auto AlgoRegistry::createAlgorithmNew(std::string const& algorithm,
 template<typename V, typename E, typename M>
 std::shared_ptr<IWorker> AlgoRegistry::createWorker(
     TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-    CreateWorker const& parameters, PregelFeature& feature) {
+    worker::message::CreateWorker const& parameters, PregelFeature& feature) {
   return std::make_shared<Worker<V, E, M>>(vocbase, algo, parameters, feature);
 }
 
 std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, CreateWorker const& parameters,
+    TRI_vocbase_t& vocbase, worker::message::CreateWorker const& parameters,
     PregelFeature& feature) {
   VPackSlice userParams = parameters.userParameters.slice();
   std::string algorithm = parameters.algorithm;
