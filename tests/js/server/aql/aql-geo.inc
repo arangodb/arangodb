@@ -224,7 +224,7 @@
     function compare(query, queryView) {
       let fullScanQuery = `FOR d IN @@coll ${query} RETURN d._key`;
       let viewQuery = `FOR d IN ${viewName} ${queryView} RETURN d._key`;
-      let invertedIndexQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true } ${query} RETURN d._key`;
+      let invertedIndexQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true } ${query} RETURN d._key`;
 
       let resFullScanNoIndexes = getQueryResults(fullScanQuery, {"@coll": collWithoutIndex}).sort();
       let resFullScanWithIndexes = getQueryResults(fullScanQuery, {"@coll": collWithIndex}).sort();
