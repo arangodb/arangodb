@@ -72,31 +72,3 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
 };
 
 }  // namespace arangodb::pregel
-
-template struct arangodb::pregel::GraphVPackBuilderStorer<int64_t, int64_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<uint64_t, uint64_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<uint64_t, uint8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<float, float>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<double, float>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<double, double>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<float, uint8_t>;
-
-// specific algo combos
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::WCCValue, uint64_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::SCCValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::ECValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::HITSValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::HITSKleinbergValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::DMIDValue, float>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::LPValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::SLPAValue, int8_t>;
-template struct arangodb::pregel::GraphVPackBuilderStorer<
-    arangodb::pregel::algos::ColorPropagationValue, int8_t>;
