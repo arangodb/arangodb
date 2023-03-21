@@ -70,12 +70,13 @@ const SelectedFieldDetails = ({
         />
         <Box gridColumn="1 / span 3">
           <IndexFormField
-            render={({ field }) => {
+            render={({ field}) => {
               return <FieldsDropdown field={field} />;
             }}
             field={{
               ...invertedIndexFieldsMap.fields,
               isRequired: false,
+              isDisabled: !window.frontendConfig.isEnterprise,
               tooltip: "Nested fields",
               label: "Nested fields",
               name: `${fullPath}.nested`

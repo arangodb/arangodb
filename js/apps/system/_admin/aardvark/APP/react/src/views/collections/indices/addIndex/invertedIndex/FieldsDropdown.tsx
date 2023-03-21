@@ -7,6 +7,7 @@ import {
   OptionType
 } from "../../../../../components/select/SelectBase";
 import { IndexFormFieldProps } from "../IndexFormField";
+import { InfoTooltip } from "../InfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
@@ -58,6 +59,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
           >
             <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
             <CreatableSelectBase
+              isDisabled={field.isDisabled}
               isMulti
               name={field.name}
               inputId={field.name}
@@ -96,6 +98,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
               }}
               value={dropdownValue}
             ></CreatableSelectBase>
+            <InfoTooltip label="Nested fields are avaiable on Enterprise plans" />
           </Box>
         );
       }}
