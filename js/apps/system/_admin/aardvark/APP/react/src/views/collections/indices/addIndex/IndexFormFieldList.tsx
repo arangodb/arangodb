@@ -44,7 +44,7 @@ export const IndexFormFieldsList = ({
 export const FormActions = ({ onClose }: { onClose: () => void }) => {
   const { isValid, isSubmitting } = useFormikContext();
   return (
-    <Stack marginY="2" direction="row" justifyContent="flex-end">
+    <Stack marginY="2" direction="row" justifyContent="flex-end" padding="10">
       <Button size="sm" onClick={onClose}>
         Close
       </Button>
