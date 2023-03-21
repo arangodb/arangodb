@@ -81,25 +81,6 @@ struct Runtime
     return newId;
   }
 
-  template<typename ActorConfig>
-  auto spawn(DatabaseName const& database,
-             std::unique_ptr<typename ActorConfig::State> initialState,
-             velocypack::SharedSlice initialMessage) -> ActorID {
-    auto newId = ActorID{uniqueActorIDCounter++};
-
-    auto address =
-        ActorPID{.server = myServerID, .database = database, .id = newId};
-
-    auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
-        address, this->shared_from_this(), std::move(initialState));
-    actors.add(newId, std::move(newActor));
-
-    // Send initial message to newly created actor
-    receive(address, address, initialMessage);
-
-    return newId;
-  }
-
   auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
 
   template<typename ActorConfig>

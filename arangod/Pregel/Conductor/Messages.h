@@ -31,6 +31,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 
 namespace arangodb::pregel {
 
@@ -67,10 +68,21 @@ auto inspect(Inspector& f, StatusUpdate& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("status", x.status));
 }
-struct ConductorMessages : std::variant<ConductorStart, ResultT<WorkerCreated>,
-                                        ResultT<GraphLoaded>, StatusUpdate> {
+
+struct ResultCreated {
+  ResultT<PregelResults> results = {PregelResults{}};
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ResultCreated& x) {
+  return f.object(x).fields(f.field("results", x.results));
+}
+
+struct ConductorMessages
+    : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
+                   StatusUpdate, ResultCreated> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
-                     ResultT<GraphLoaded>, StatusUpdate>::variant;
+                     ResultT<GraphLoaded>, StatusUpdate,
+                     ResultCreated>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -78,6 +90,7 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ConductorStart>("Start"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"),
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
+      arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }
 

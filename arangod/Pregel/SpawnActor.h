@@ -55,8 +55,10 @@
 namespace arangodb::pregel {
 
 struct SpawnState {
-  SpawnState(TRI_vocbase_t& vocbase) : vocbaseGuard{vocbase} {}
+  SpawnState(TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
+      : vocbaseGuard{vocbase}, resultActor(resultActor) {}
   const DatabaseGuard vocbaseGuard;
+  const actor::ActorPID resultActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnState& x) {
@@ -78,7 +80,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
         std::make_unique<worker::WorkerState<V, E, M>>(
             msg.conductor, msg.message.executionSpecifications,
             msg.message.collectionSpecifications, std::move(algorithm),
-            this->state->vocbaseGuard.database()),
+            this->state->vocbaseGuard.database(), this->state->resultActor),
         worker::message::WorkerStart{});
   }
 
