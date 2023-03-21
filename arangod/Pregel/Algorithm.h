@@ -69,10 +69,6 @@ struct IAlgorithm {
       std::unique_ptr<AggregatorHandler> readAggregators,
       std::unique_ptr<AggregatorHandler> writeAggregators,
       velocypack::Slice userParams) const -> WorkerContext* = 0;
-  [[nodiscard]] virtual auto workerContextUnique(
-      std::unique_ptr<AggregatorHandler> readAggregators,
-      std::unique_ptr<AggregatorHandler> writeAggregators,
-      velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> = 0;
 
   [[nodiscard]] virtual auto name() const -> std::string_view = 0;
 };
@@ -97,6 +93,10 @@ struct Algorithm : IAlgorithm {
       VertexCompensation<vertex_type, edge_type, message_type>;
 
  public:
+  [[nodiscard]] virtual auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> = 0;
   virtual std::shared_ptr<graph_format const> inputFormat() const = 0;
   [[deprecated]] virtual message_format* messageFormat() const = 0;
   [[nodiscard]] virtual auto messageFormatUnique() const

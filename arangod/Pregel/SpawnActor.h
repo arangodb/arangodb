@@ -25,6 +25,7 @@
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Worker/Actor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/Worker/Messages.h"
@@ -78,16 +79,19 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                    message::SpawnWorker msg) -> void {
     this->template spawn<worker::WorkerActor<V, E, M>>(
         std::make_unique<worker::WorkerState<V, E, M>>(
-            msg.conductor, msg.message.executionSpecifications,
-            msg.message.collectionSpecifications, std::move(algorithm),
+            algorithm->workerContextUnique(
+                std::make_unique<AggregatorHandler>(algorithm.get()),
+                std::make_unique<AggregatorHandler>(algorithm.get()),
+                msg.message.userParameters.slice()),
+            msg.conductor, msg.message, algorithm->messageFormatUnique(),
+            algorithm->messageCombinerUnique(), std::move(algorithm),
             this->state->vocbaseGuard.database(), this->state->resultActor),
         worker::message::WorkerStart{});
   }
 
   auto spawnWorker(message::SpawnWorker msg) -> void {
-    VPackSlice userParams =
-        msg.message.executionSpecifications.userParameters.slice();
-    std::string algorithm = msg.message.executionSpecifications.algorithm;
+    VPackSlice userParams = msg.message.userParameters.slice();
+    std::string algorithm = msg.message.algorithm;
 
     if (algorithm == "sssp") {
       spawnWorker<algos::SSSPType::Vertex, algos::SSSPType::Edge,
