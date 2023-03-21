@@ -63,7 +63,9 @@ def main():
         if args.cluster:
             extra_args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
         extra_args += ["--testBuckets", args.testBuckets]
-        runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
+        config = SiteConfig(Path(args.definitions).resolve())
+        config.serialize_execution = True
+        runner = TestingRunner(config)
         if args.allProtocols:
             for proto in ["http", "http2", "vst"]:
                 runner.scenarios.append(

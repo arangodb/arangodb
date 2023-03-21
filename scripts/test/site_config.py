@@ -114,6 +114,7 @@ class SiteConfig:
         elif "timeLimit" in os.environ:
             self.timeout = int(os.environ["timeLimit"])
         self.small_machine = False
+        self.serialize_execution = False
         self.extra_args = []
         if psutil.cpu_count(logical=False) <= 12:
             logging.info(
@@ -123,9 +124,7 @@ class SiteConfig:
             self.port_offset = 400
             self.timeout *= 4
         self.no_threads = psutil.cpu_count()
-        # on CircleCI we only ever want to run one scenario at a time (at least ATM)
-        self.rapid_fire = 1
-        self.available_slots = 1
+        self.available_slots = round(self.no_threads * 2)  # logical=False)
         if IS_MAC and platform.processor() == "arm":
             if psutil.cpu_count() == 8:
                 self.no_threads = 6  # M1 mac mini only has 4 performance cores
@@ -147,6 +146,7 @@ class SiteConfig:
         self.loop_sleep = round(5 / self.core_dozend)
         self.overload = self.max_load * 1.4
         self.slots_to_parallelity_factor = self.max_load / self.available_slots
+        self.rapid_fire = round(self.available_slots / 10)
         self.is_asan = "SAN" in os.environ and os.environ["SAN"] == "On"
         self.is_aulsan = self.is_asan and os.environ["SAN_MODE"] == "AULSan"
         self.is_gcov = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
