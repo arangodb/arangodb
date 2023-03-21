@@ -229,11 +229,6 @@ arangodb::Result tryCreateDatabase(
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
     httpClient = client.createHttpClient(0);  // thread number zero
-    httpClient->params().setLocationRewriter(
-        static_cast<void*>(&client), arangodb::ClientManager::rewriteLocation);
-    httpClient->params().setUserNamePassword("/", client.username(),
-                                             client.password());
-
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";

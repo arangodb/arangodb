@@ -13,7 +13,6 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
   ../cmake/activeCodePage.manifest
 )
 
