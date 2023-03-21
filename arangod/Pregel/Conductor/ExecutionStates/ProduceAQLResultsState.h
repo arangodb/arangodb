@@ -22,32 +22,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
+
+#include <set>
 
 namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor) : conductor{conductor} {
-    conductor.timing.total.finish();
-  }
-  ~FatalError() {}
-  auto name() const -> std::string override { return "fatal error"; };
+/*
+  This state produces the pregel results that can be queried via AQL. It is only
+  reached if a pregel run ist started with parameter store = false.
+
+  It produces pregel results on each worker and combines all of these on
+  the conductor.
+ */
+struct ProduceAQLResults : ExecutionState {
+  ProduceAQLResults(ConductorState& conductor);
+  // Discussable Note: To prevent API state change we're using "storing" as the
+  // defined name here. Better: Use the real name of that state.
+  auto name() const -> std::string override { return "storing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override {
     return {};
   }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
+ private:
   ConductorState& conductor;
+  std::unordered_set<actor::ActorPID> respondedWorkers;
+  size_t responseCount{0};
 };
 
 }  // namespace arangodb::pregel::conductor

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,30 +29,43 @@
 
 namespace arangodb::pregel::message {
 
-struct SpawnStart {};
+struct ResultStart {};
 template<typename Inspector>
-auto inspect(Inspector& f, SpawnStart& x) {
+auto inspect(Inspector& f, ResultStart& x) {
   return f.object(x).fields();
 }
-struct SpawnWorker {
-  actor::ServerID destinationServer;
-  actor::ActorPID conductor;
-  worker::message::CreateWorker message;
+
+struct SaveResults {
+  ResultT<PregelResults> results = {PregelResults{}};
 };
+
 template<typename Inspector>
-auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("destinationServer", x.destinationServer),
-                            f.field("conductor", x.conductor),
-                            f.field("message", x.message));
+auto inspect(Inspector& f, SaveResults& x) {
+  return f.object(x).fields(f.field("results", x.results));
 }
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
+
+struct AddResults {
+  ResultT<PregelResults> results = {PregelResults{}};
+  bool receivedAllResults{false};
 };
+
 template<typename Inspector>
-auto inspect(Inspector& f, SpawnMessages& x) {
+auto inspect(Inspector& f, AddResults& x) {
+  return f.object(x).fields(
+      f.field("results", x.results),
+      f.field("receivedAllResults", x.receivedAllResults));
+}
+
+struct ResultMessages : std::variant<ResultStart, SaveResults, AddResults> {
+  using std::variant<ResultStart, SaveResults, AddResults>::variant;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ResultMessages& x) {
   return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
+      arangodb::inspection::type<ResultStart>("Start"),
+      arangodb::inspection::type<SaveResults>("SaveResults"),
+      arangodb::inspection::type<AddResults>("AddResults"));
 }
 
 }  // namespace arangodb::pregel::message

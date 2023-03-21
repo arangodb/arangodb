@@ -22,22 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 
 namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor) : conductor{conductor} {
-    conductor.timing.total.finish();
-  }
-  ~FatalError() {}
-  auto name() const -> std::string override { return "fatal error"; };
+/*
+  This state is the final successful state if a pregel run is started with
+  parameter store = false.
+
+  In this state the pregel results can be queried via AQL:
+  PregelFeature::getResults returns these results.
+ */
+struct AQLResultsAvailable : ExecutionState {
+  AQLResultsAvailable() = default;
+  auto name() const -> std::string override { return "done"; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override {
@@ -46,8 +46,9 @@ struct FatalError : ExecutionState {
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override {
     return std::nullopt;
-  };
-  ConductorState& conductor;
+  }
+
+  auto aqlResultsAvailable() const -> bool override { return true; }
 };
 
 }  // namespace arangodb::pregel::conductor

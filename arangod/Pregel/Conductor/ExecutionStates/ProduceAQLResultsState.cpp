@@ -20,34 +20,31 @@
 ///
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
+#include "ProduceAQLResultsState.h"
+
+#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+#include "Pregel/Conductor/ExecutionStates/AQLResultsAvailableState.h"
 
-namespace arangodb::pregel::conductor {
+using namespace arangodb::pregel::actor;
+using namespace arangodb::pregel::conductor;
 
-struct ConductorState;
+ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
+    : conductor{conductor} {}
 
-struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor) : conductor{conductor} {
-    conductor.timing.total.finish();
+auto ProduceAQLResults::receive(actor::ActorPID sender,
+                                message::ConductorMessages message)
+    -> std::optional<std::unique_ptr<ExecutionState>> {
+  if (not std::holds_alternative<message::ResultCreated>(message)) {
+    return std::make_unique<FatalError>(conductor);
   }
-  ~FatalError() {}
-  auto name() const -> std::string override { return "fatal error"; };
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
-  ConductorState& conductor;
-};
+  responseCount++;
+  respondedWorkers.emplace(sender);
 
-}  // namespace arangodb::pregel::conductor
+  if (responseCount == conductor.workers.size() and
+      respondedWorkers == conductor.workers) {
+    return std::make_unique<AQLResultsAvailable>();
+  }
+  return std::nullopt;
+}

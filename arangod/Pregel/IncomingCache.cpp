@@ -49,7 +49,7 @@ InCache<M>::InCache(MessageFormat<M> const* format)
     : _containedMessageCount(0), _format(format) {}
 
 template<typename M>
-void InCache<M>::parseMessages(PregelMessage const& message) {
+void InCache<M>::parseMessages(worker::message::PregelMessage const& message) {
   // every packet contains one shard
   VPackValueLength i = 0;
   std::string_view key;
