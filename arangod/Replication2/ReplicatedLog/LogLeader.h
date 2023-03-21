@@ -49,8 +49,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
-#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
-#include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
+#include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -302,9 +302,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto collectFollowerStates() const
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
-    [[nodiscard]] auto checkCompaction() -> ResultT<CompactionResult>;
-    [[nodiscard]] auto runCompaction(LogIndex compactionStop)
-        -> ResultT<CompactionResult>;
 
     [[nodiscard]] auto updateCommitIndexLeader(
         LogIndex newIndex, std::shared_ptr<QuorumData> quorum)
@@ -341,8 +338,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
-    LogIndex _lowestIndexToKeep{0};
-    LogIndex _releaseIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
@@ -364,8 +359,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
-  std::shared_ptr<IStorageManager> _storageManager;
-  std::shared_ptr<ICompactionManager> _compactionManager;
+  std::shared_ptr<StorageManager> _storageManager;
+  std::shared_ptr<CompactionManager> _compactionManager;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in

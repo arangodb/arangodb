@@ -224,6 +224,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
         auto [request, lastIndex] =
             logLeader->_guardedLeaderData.doUnderLock([&](auto const& self) {
+              auto [releaseIndex, lowestIndexToKeep] =
+                  logLeader->_compactionManager->getIndexes();
               auto lastAvailableIndex =
                   self._inMemoryLog.getLastTermIndexPair();
               LOG_CTX("71801", TRACE, follower->logContext)
@@ -234,14 +236,13 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                   << ", current commit index = " << self._commitIndex
                   << ", last acked litk = "
                   << follower->lastAckedLowestIndexToKeep
-                  << ", current litk = " << self._lowestIndexToKeep;
+                  << ", current litk = " << lowestIndexToKeep;
               // We can only get here if there is some new information
               // for this follower
-              TRI_ASSERT(follower->nextPrevLogIndex !=
-                             lastAvailableIndex.index ||
-                         self._commitIndex != follower->lastAckedCommitIndex ||
-                         self._lowestIndexToKeep !=
-                             follower->lastAckedLowestIndexToKeep);
+              TRI_ASSERT(
+                  follower->nextPrevLogIndex != lastAvailableIndex.index ||
+                  self._commitIndex != follower->lastAckedCommitIndex ||
+                  lowestIndexToKeep != follower->lastAckedLowestIndexToKeep);
 
               return self.createAppendEntriesRequest(*follower,
                                                      lastAvailableIndex);
@@ -482,17 +483,18 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
-  return _guardedLeaderData.doUnderLock([term = _currentTerm](
+  return _guardedLeaderData.doUnderLock([this, term = _currentTerm](
                                             GuardedLeaderData const&
                                                 leaderData) {
     if (leaderData._didResign) {
       throw ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
+    auto [releaseIndex, lowestIndexToKeep] = _compactionManager->getIndexes();
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
-    status.lowestIndexToKeep = leaderData._lowestIndexToKeep;
+    status.lowestIndexToKeep = lowestIndexToKeep;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
@@ -698,6 +700,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   _commitIndex = newIndex;
   _lastQuorum = quorum;
 
+  // TODO evict parts of the in memory log
+
   struct MethodsImpl : IReplicatedLogLeaderMethods {
     explicit MethodsImpl(LogLeader& log) : _log(log) {}
     auto releaseIndex(LogIndex index) -> void override {
@@ -800,6 +804,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
     return std::nullopt;  // wait for the request to return
   }
 
+  auto [releaseIndex, lowestIndexToKeep] =
+      _self._compactionManager->getIndexes();
+
   auto const lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
   LOG_CTX("8844a", TRACE, follower->logContext)
       << "last matched index = " << follower->nextPrevLogIndex
@@ -807,10 +814,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
       << ", last acked commit index = " << follower->lastAckedCommitIndex
       << ", current commit index = " << _commitIndex
       << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
-      << ", current lci = " << _lowestIndexToKeep;
+      << ", current lci = " << lowestIndexToKeep;
   if (follower->nextPrevLogIndex == lastAvailableIndex.index &&
       _commitIndex == follower->lastAckedCommitIndex &&
-      _lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
+      lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
@@ -848,10 +855,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
     -> std::pair<AppendEntriesRequest, TermIndexPair> {
   auto const prevLogEntry =
       _inMemoryLog.getEntryByIndex(follower.nextPrevLogIndex);
-
+  auto [releaseIndex, lowestIndexToKeep] =
+      _self._compactionManager->getIndexes();
   AppendEntriesRequest req;
   req.leaderCommit = _commitIndex;
-  req.lowestIndexToKeep = _lowestIndexToKeep;
+  req.lowestIndexToKeep = lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
   req.waitForSync = this->activeParticipantsConfig->config.waitForSync;
@@ -1078,11 +1086,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
   auto [largestCommonIndex, indexes] = collectFollowerStates();
 
-  if (largestCommonIndex > _lowestIndexToKeep) {
+  auto [releaseIndex, lowestIndexToKeep] =
+      _self._compactionManager->getIndexes();
+  if (largestCommonIndex > lowestIndexToKeep) {
     LOG_CTX("851bb", TRACE, _self._logContext)
-        << "largest common index went from " << _lowestIndexToKeep << " to "
+        << "largest common index went from " << lowestIndexToKeep << " to "
         << largestCommonIndex;
-    _lowestIndexToKeep = largestCommonIndex;
     _self._compactionManager->updateLowestIndexToKeep(largestCommonIndex);
   }
 
@@ -1108,12 +1117,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
     -> LogStatistics {
+  auto [releaseIndex, lowestIndexToKeep] =
+      _self._compactionManager->getIndexes();
   auto log = _self._storageManager->getCommittedLog();
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
   result.firstIndex = log.getFirstIndex();
   result.spearHead = log.getLastTermIndexPair();
-  result.releaseIndex = _releaseIndex;
+  result.releaseIndex = releaseIndex;
   return result;
 }
 
@@ -1137,43 +1148,6 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
   return CompactionResult{.numEntriesCompacted = result.compactedRange.count(),
                           .range = result.compactedRange,
                           .stopReason = result.stopReason};
-}
-
-[[nodiscard]] auto replicated_log::LogLeader::GuardedLeaderData::runCompaction(
-    LogIndex compactionStop) -> ResultT<CompactionResult> {
-  auto const numberOfCompactedEntries =
-      compactionStop.value - _inMemoryLog.getFirstIndex().value;
-  auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _self._localFollower->release(compactionStop);
-  if (res.ok()) {
-    _inMemoryLog = std::move(newLog);
-    _self._logMetrics->replicatedLogNumberCompactedEntries->count(
-        numberOfCompactedEntries);
-    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries,
-                            .range = {},
-                            .stopReason = {}};
-  }
-  LOG_CTX("f1029", TRACE, _self._logContext)
-      << "compaction result = " << res.errorMessage();
-  return res;
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction()
-    -> ResultT<CompactionResult> {
-  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
-  LOG_CTX("080d6", TRACE, _self._logContext)
-      << "compaction index calculated as " << compactionStop;
-  if (compactionStop <=
-      _inMemoryLog.getFirstIndex() + _self._options->_thresholdLogCompaction) {
-    // only do a compaction every _self._options->_thresholdLogCompaction
-    // entries
-    LOG_CTX("ebba0", TRACE, _self._logContext)
-        << "won't trigger a compaction, not enough entries. First index = "
-        << _inMemoryLog.getFirstIndex();
-    return {};
-  }
-
-  return runCompaction(compactionStop);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
