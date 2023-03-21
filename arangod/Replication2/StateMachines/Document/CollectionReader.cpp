@@ -72,6 +72,13 @@ auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
                                             *_trx);
 }
 
+auto DatabaseSnapshot::resetTransaction() -> Result {
+  _trx.reset();
+  _ctx = transaction::StandaloneContext::Create(_vocbase);
+  _trx = std::make_unique<SnapshotTransaction>(_ctx);
+  return _trx->begin();
+}
+
 CollectionReader::CollectionReader(
     std::shared_ptr<LogicalCollection> logicalCollection,
     SnapshotTransaction& trx)

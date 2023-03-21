@@ -102,7 +102,7 @@ struct DocumentLeaderState
                                 ProcessFunc processSnapshot) -> ResultType;
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
-  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
+  Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;

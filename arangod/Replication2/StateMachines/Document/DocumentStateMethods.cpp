@@ -24,7 +24,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
 #include "Cluster/ServerState.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
@@ -71,7 +70,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
             },
             [&](document::SnapshotParams::Status& params) {
               if (params.id.has_value()) {
-                return processResult(leader->snapshotStatus(*params.id));
+                return processResult(leader->snapshotStatus(params.id.value()));
               }
               return processResult(leader->allSnapshotsStatus());
             },
@@ -111,10 +110,14 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     using DocumentStateType =
         std::shared_ptr<replicated_state::document::DocumentLeaderState>;
 
+    auto documentState = _vocbase.getReplicatedStateById(logId);
+    if (documentState.fail()) {
+      return documentState.result();
+    }
+
     auto stateMachine =
         std::dynamic_pointer_cast<replicated_state::ReplicatedState<
-            replicated_state::document::DocumentState>>(
-            _vocbase.getReplicatedStateById(logId).get());
+            replicated_state::document::DocumentState>>(documentState.get());
     if (stateMachine == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,

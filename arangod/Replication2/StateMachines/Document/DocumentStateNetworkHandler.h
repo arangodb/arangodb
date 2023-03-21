@@ -47,28 +47,28 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto startSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<SnapshotConfig>> = 0;
+  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> = 0;
   virtual auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
 };
 
-class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
+class DocumentStateLeaderInterface
+    : public IDocumentStateLeaderInterface,
+      public std::enable_shared_from_this<DocumentStateLeaderInterface> {
  public:
   explicit DocumentStateLeaderInterface(ParticipantId participantId,
                                         GlobalLogIdentifier gid,
                                         network::ConnectionPool* pool);
 
-  auto startSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<SnapshotConfig>> override;
+  auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> override;
   auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> override;
   auto finishSnapshot(SnapshotId id) -> futures::Future<Result> override;
 
  private:
   template<class T>
-  auto postSnapshotRequest(std::string path,
+  auto postSnapshotRequest(std::string path, VPackBufferUInt8 payload,
                            network::RequestOptions const& opts)
       -> futures::Future<ResultT<T>>;
 

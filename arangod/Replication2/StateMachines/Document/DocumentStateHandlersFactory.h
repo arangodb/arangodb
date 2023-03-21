@@ -63,7 +63,7 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                                      GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
@@ -86,7 +86,7 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                              GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
