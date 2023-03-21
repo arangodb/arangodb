@@ -40,7 +40,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
-// using namespace arangodb::rest;
 using namespace arangodb;
 
 namespace arangodb {
