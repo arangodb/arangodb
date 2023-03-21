@@ -18,8 +18,7 @@ export const InvertedIndexPrimarySort = ({
       border="2px solid"
       borderRadius="md"
       borderColor="gray.200"
-      paddingY="4"
-      paddingX="2"
+      padding="4"
       marginX="-4"
     >
       <PrimarySortFields field={{ ...field, name: "primarySort.fields" }} />

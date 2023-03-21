@@ -22,10 +22,10 @@ export const IndexFormFieldsList = ({
         rowGap="5"
         columnGap="3"
         maxWidth="800px"
-        padding="8"
+        paddingRight="8"
+        paddingLeft="10"
         alignItems="center"
         marginTop="4"
-        alignSelf="flex-start"
       >
         {fields.map((field, index) => {
           return (

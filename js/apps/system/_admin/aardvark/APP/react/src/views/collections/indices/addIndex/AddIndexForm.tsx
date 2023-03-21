@@ -1,4 +1,4 @@
-import { Box } from "@chakra-ui/react";
+import { Box, FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
@@ -18,16 +18,22 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
     tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist' and "persistent" are identical, so that they are not offered seperately here.`;
   }
   return (
-    <Box width="100%" padding="4" height="full" background="white">
+    <Box width="100%" paddingY="4" height="full" background="white">
+      <Box fontSize={"lg"} paddingX="10">
+        Add new index
+      </Box>
       <Box
         display={"grid"}
         gridTemplateColumns={"200px 1fr 40px"}
         rowGap="5"
         columnGap="3"
         maxWidth="800px"
+        marginTop="4"
+        paddingX="10"
       >
-        <Box fontSize={"lg"}>Add new index</Box>
+        <FormLabel htmlFor="type">Type</FormLabel>
         <SingleSelect
+          inputId="type"
           defaultValue={indexTypeOptions?.[0]}
           options={indexTypeOptions}
           onChange={value => {

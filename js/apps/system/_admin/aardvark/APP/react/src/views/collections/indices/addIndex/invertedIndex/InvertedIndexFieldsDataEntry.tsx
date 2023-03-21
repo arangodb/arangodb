@@ -104,7 +104,7 @@ export const InvertedIndexFieldsDataEntry = ({
       backgroundColor={currentFieldData ? "gray.100" : "white"}
       marginX="-4"
     >
-      <Box paddingX="2">
+      <Box paddingX="4">
         <FieldsDropdown field={field} />
       </Box>
       <SelectedFieldDetails currentFieldData={currentFieldData} />
