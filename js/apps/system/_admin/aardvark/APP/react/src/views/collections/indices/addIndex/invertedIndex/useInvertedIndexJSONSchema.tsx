@@ -211,6 +211,42 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       },
       required: ["type"],
       additionalProperties: false
+    },
+    cleanupIntervalStep: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 2
+    },
+    commitIntervalMsec: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 1000
+    },
+    consolidationIntervalMsec: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 1000
+    },
+    writebufferIdle: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 64
+    },
+    writebufferActive: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 0
+    },
+    writebufferSizeMax: {
+      type: "integer",
+      nullable: true,
+      minimum: 0,
+      default: 33554432
     }
   },
   required: ["type"],

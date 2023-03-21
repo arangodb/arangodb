@@ -106,6 +106,12 @@ export type InvertedIndexValuesType = {
     fields: string[];
     compression: "lz4" | "none";
   }[];
+  cleanupIntervalStep?: number;
+  commitIntervalMsec?: number;
+  consolidationIntervalMsec?: number;
+  writebufferIdle?: number;
+  writebufferActive?: number;
+  writebufferSizeMax?: number;
   consolidationPolicy?: ConsolidationPolicy;
   fields?: InvertedIndexFieldType[];
 };
@@ -120,6 +126,12 @@ const initialValues: InvertedIndexValuesType = {
   trackListPositions: false,
   searchField: false,
   fields: [],
+  cleanupIntervalStep: 2,
+  commitIntervalMsec: 1000,
+  consolidationIntervalMsec: 1000,
+  writebufferIdle: 64,
+  writebufferActive: 0,
+  writebufferSizeMax: 33554432,
   primarySort: {
     fields: [{ field: "", direction: "asc" }],
     compression: "lz4"
@@ -194,7 +206,7 @@ export const invertedIndexFieldsMap = {
     type: "custom"
   },
   cleanupIntervalStep: {
-    label: "Cleanup Inverval Step",
+    label: "Cleanup Interval Step",
     name: "cleanupIntervalStep",
     type: "number"
   },
@@ -206,6 +218,21 @@ export const invertedIndexFieldsMap = {
   consolidationIntervalMsec: {
     label: "Consolidation Interval (msec)",
     name: "consolidationIntervalMsec",
+    type: "number"
+  },
+  writebufferIdle: {
+    label: "Writebuffer Idle",
+    name: "writebufferIdle",
+    type: "number"
+  },
+  writebufferActive: {
+    label: "Writebuffer Active",
+    name: "writebufferActive",
+    type: "number"
+  },
+  writebufferSizeMax: {
+    label: "Writebuffer Size Max",
+    name: "writebufferSizeMax",
     type: "number"
   },
   consolidationPolicy: {
@@ -228,6 +255,9 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.cleanupIntervalStep,
   invertedIndexFieldsMap.commitIntervalMsec,
   invertedIndexFieldsMap.consolidationIntervalMsec,
+  invertedIndexFieldsMap.writebufferIdle,
+  invertedIndexFieldsMap.writebufferActive,
+  invertedIndexFieldsMap.writebufferSizeMax,
   invertedIndexFieldsMap.consolidationPolicy,
   commonFieldsMap.inBackground
 ];
