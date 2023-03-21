@@ -105,9 +105,6 @@ int main(int argc, char* argv[]) {
         [&](ArangoshServer& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, context.binaryName());
         },
-        [&](ArangoshServer& server, TypeTag<ProcessMonitoringFeature>) {
-          return std::make_unique<ProcessMonitoringFeature>(server);
-        },
         [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(
               server, std::array{ArangoshServer::id<ShellFeature>()});

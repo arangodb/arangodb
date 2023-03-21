@@ -21,28 +21,28 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
-#include <cstdint>
-#include <type_traits>
-#include <utility>
-
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/process-utils.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-deadline.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "ProcessMonitoringFeature.h"
+
+#include <stddef.h>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,6 @@ static void JS_AddPidToMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
-  auto monitoringFeature = v8g->_server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -212,10 +211,13 @@ static void JS_AddPidToMonitor(
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  monitoringFeature->addMonitorPID(pid);
+
+  auto& monitoringFeature = static_cast<ArangoshServer&>(v8g->_server)
+                                .getFeature<ProcessMonitoringFeature>();
+  monitoringFeature.addMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -237,7 +239,6 @@ static void JS_RemovePidFromMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
-  auto monitoringFeature = v8g->_server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -248,10 +249,13 @@ static void JS_RemovePidFromMonitor(
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  monitoringFeature->removeMonitorPID(pid);
+
+  auto& monitoringFeature = static_cast<ArangoshServer&>(v8g->_server)
+                                .getFeature<ProcessMonitoringFeature>();
+  monitoringFeature.removeMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
