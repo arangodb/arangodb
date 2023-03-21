@@ -68,6 +68,6 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   std::shared_ptr<WorkerConfig const> config;
   std::function<void()> const statusUpdateCallback;
 
-  constexpr uint64_t batchSize = 10000;
+  uint64_t const batchSize = 10000;
 };
 }  // namespace arangodb::pregel

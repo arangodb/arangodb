@@ -39,6 +39,9 @@
 
 #include "Pregel/Worker/WorkerConfig.h"
 
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Helpers.h"

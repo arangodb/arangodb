@@ -518,13 +518,13 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   _state = WorkerState::DONE;
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
-
+    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(
         RequestLane::INTERNAL_LOW,
         [this, self = shared_from_this(),
          statusUpdateCallback = std::move(_makeStatusCallback()),
-         finishedCallback = std::move(finishedCallback)] {
+         cleanup = std::move(cleanup)] {
           try {
             auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
                                             _config->globalShardIDs(),
@@ -550,9 +550,9 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
-  auto storer = GraphVPackBuilderStorer<V, E>(
-      withId, _config, _algorithm->inputFormat(), _config->globalShardIDs(),
-      _makeStatusCallback());
+  auto storer =
+      GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
+                                    std::move(_makeStatusCallback()));
 
   storer.store(_quiver);
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
