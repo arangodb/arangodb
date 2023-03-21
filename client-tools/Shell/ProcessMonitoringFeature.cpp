@@ -25,6 +25,11 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
+
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
@@ -82,7 +87,11 @@ void ProcessMonitoringFeature::validateOptions(
 void ProcessMonitoringFeature::start() {
   if (_enabled) {
     _monitorThread = std::make_unique<ProcessMonitorThread>(server(), this);
-    _monitorThread->start();
+    if (!_monitorThread->start()) {
+      LOG_TOPIC("33c33", FATAL, Logger::SYSCALL)
+        << "failed to launch monitoring background thread";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 void ProcessMonitoringFeature::beginShutdown() {
