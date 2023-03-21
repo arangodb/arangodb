@@ -21,71 +21,16 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <algorithm>
 #include <chrono>
-#include <memory>
-#include <thread>
-#include <type_traits>
-
-#include "Basics/process-utils.h"
-#include "Basics/signals.h"
-#include "Basics/system-functions.h"
-
-#if defined(TRI_HAVE_MACOS_MEM_STATS)
-#include <sys/sysctl.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-
-#ifdef TRI_HAVE_MACH
-#include <mach/mach_host.h>
-#include <mach/mach_port.h>
-#include <mach/mach_traps.h>
-#include <mach/task.h>
-#include <mach/thread_act.h>
-#include <mach/vm_map.h>
-#endif
-
-#ifdef _WIN32
-#include <Psapi.h>
-#include <TlHelp32.h>
-#include "Basics/socket-utils.h"
-#include "Basics/win-utils.h"
-#endif
-#include <fcntl.h>
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/DeadlockDetector.h"
-#include "Basics/Thread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include "V8/v8-deadline.h"
 #include "V8/V8SecurityFeature.h"
 
-#include "Shell/ShellFeature.h"
-#include "Shell/arangosh.h"
 #include "ProcessMonitoringFeature.h"
 
 using namespace arangodb::basics;
