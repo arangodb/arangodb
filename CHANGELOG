@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.16.1-preview-1.
+
 * APM-294: Added telemetrics API that gathers anonymous feature usage
   statistics from a deployment. The API is accessible via the endpoint
   `/_admin/telemetrics`. The API is enabled by default in release builds, but

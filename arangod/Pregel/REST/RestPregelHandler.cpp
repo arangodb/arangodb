@@ -105,7 +105,7 @@ RestStatus RestPregelHandler::execute() {
                             .id = resultActorID};
         _pregel._resultActor.emplace(
             std::get<message::SpawnWorker>(spawnMessage.get())
-                .message.executionSpecifications.executionNumber,
+                .message.executionNumber,
             resultActorPID);
 
         _pregel._actorRuntime->spawn<SpawnActor>(
