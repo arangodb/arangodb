@@ -680,7 +680,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _self._logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
   }
 
-  // TODO evict parts of the in memory log
+  auto maxDiskIndex =
+      _self._storageManager->getTermIndexMapping().getLastIndex().value_or(
+          TermIndexPair{});
+  auto evictStopIndex = std::min(_commitIndex, maxDiskIndex.index);
+  // remove upto commit index, but keep non-locally persisted log
+  _inMemoryLog = _inMemoryLog.removeFront(evictStopIndex);
 
   struct MethodsImpl : IReplicatedLogLeaderMethods {
     explicit MethodsImpl(LogLeader& log) : _log(log) {}
