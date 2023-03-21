@@ -9,9 +9,11 @@ import {
 import React, { useState } from "react";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 
-
 export const EditableViewNameField = ({
-  view, isAdminUser, isCluster, setCurrentName
+  view,
+  isAdminUser,
+  isCluster,
+  setCurrentName
 }: {
   view: ViewPropertiesType;
   isAdminUser: boolean;
@@ -27,7 +29,7 @@ export const EditableViewNameField = ({
         margin="0"
         direction="row"
         alignItems="center"
-        onSubmit={async (event) => {
+        onSubmit={async event => {
           event.preventDefault();
           setCurrentName(newName);
           onClose();
@@ -39,7 +41,8 @@ export const EditableViewNameField = ({
           backgroundColor={"white"}
           onChange={e => setNewName(e.target.value)}
           maxWidth="300px"
-          placeholder="Enter name" />
+          placeholder="Enter name"
+        />
         <IconButton type="submit" aria-label="Edit name" icon={<CheckIcon />} />
       </Stack>
     );
@@ -53,7 +56,8 @@ export const EditableViewNameField = ({
         <IconButton
           aria-label="Open edit name input"
           icon={<EditIcon />}
-          onClick={onOpen} />
+          onClick={onOpen}
+        />
       ) : null}
     </Stack>
   );
