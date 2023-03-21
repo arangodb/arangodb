@@ -114,6 +114,12 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
       f.field("aggregators", x.aggregators));
 }
 
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
+  return f.object(x).fields();
+}
+
 struct ResultCreated {
   ResultT<PregelResults> results = {PregelResults{}};
 };
@@ -134,11 +140,11 @@ auto inspect(Inspector& f, StatusUpdate& x) {
 }
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
-                   ResultT<GlobalSuperStepFinished>, ResultCreated,
-                   StatusUpdate> {
+                   ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+                   ResultCreated, StatusUpdate> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
                      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
-                     ResultCreated, StatusUpdate>::variant;
+                     ResultT<Stored>, ResultCreated, StatusUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -148,6 +154,7 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "GlobalSuperStepFinished"),
+      arangodb::inspection::type<ResultT<Stored>>("Stored"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }
