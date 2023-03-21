@@ -225,6 +225,9 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.searchField,
   invertedIndexFieldsMap.primarySort,
   invertedIndexFieldsMap.storedValues,
+  invertedIndexFieldsMap.cleanupIntervalStep,
+  invertedIndexFieldsMap.commitIntervalMsec,
+  invertedIndexFieldsMap.consolidationIntervalMsec,
   invertedIndexFieldsMap.consolidationPolicy,
   commonFieldsMap.inBackground
 ];
