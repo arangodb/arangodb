@@ -75,7 +75,7 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
 }
 
 ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
-    : ArangoshFeature(server, *this) {
+    : ArangoshFeature{server, *this} {
   startsAfter<V8SecurityFeature>();
 }
 
