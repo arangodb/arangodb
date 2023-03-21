@@ -205,7 +205,7 @@ function componentsTestSuite() {
             var pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
             const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-            assertEqual(stats.vertexCount, numComponents * n + 15, stats);
+            assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
             let c = db[vColl].all();
