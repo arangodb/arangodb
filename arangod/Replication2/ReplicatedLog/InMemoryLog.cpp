@@ -429,7 +429,10 @@ auto replicated_log::InMemoryLog::loadFromMethods(
   }
   return InMemoryLog{log.persistent()};
 }
+
 auto replicated_log::InMemoryLog::getIteratorRange(LogRange bounds) const
     -> std::unique_ptr<LogRangeIterator> {
   return getIteratorRange(bounds.from, bounds.to);
 }
+
+replicated_log::InMemoryLog::InMemoryLog(LogIndex first) : _first(first) {}

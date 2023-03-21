@@ -45,6 +45,8 @@ struct StorageManager : IStorageManager,
   auto getCommittedLog() const -> InMemoryLog override;
   auto getCommittedLogIterator(std::optional<LogRange> range) const
       -> std::unique_ptr<LogRangeIterator> override;
+  auto getPeristedLogIterator(LogIndex first) const
+      -> std::unique_ptr<PersistedLogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)

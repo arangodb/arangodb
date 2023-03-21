@@ -76,6 +76,7 @@ struct InMemoryLog {
  public:
   InMemoryLog() = default;
   explicit InMemoryLog(log_type log);
+  explicit InMemoryLog(LogIndex first);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;

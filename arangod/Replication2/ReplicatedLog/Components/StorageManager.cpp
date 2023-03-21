@@ -322,6 +322,11 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
+auto StorageManager::getPeristedLogIterator(LogIndex first) const
+    -> std::unique_ptr<PersistedLogIterator> {
+  return guardedData.getLockedGuard()->methods->read(first);
+}
+
 auto StorageManager::getCommittedLogIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
   auto guard = guardedData.getLockedGuard();

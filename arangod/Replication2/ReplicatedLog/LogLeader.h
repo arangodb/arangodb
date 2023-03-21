@@ -129,9 +129,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
 
-  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const
-      -> std::optional<PersistingLogEntry>;
-
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
@@ -185,7 +182,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog, std::unique_ptr<IReplicatedStateHandle>,
+            std::unique_ptr<IReplicatedStateHandle>,
             std::shared_ptr<IAbstractFollowerFactory> followerFactory,
             std::shared_ptr<IScheduler> scheduler);
 
@@ -268,15 +265,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex commitIndex;
     WaitForQueue _set;
     WaitForResult result;
-    ::immer::flex_vector<InMemoryLogEntry,
-                         arangodb::immer::arango_memory_policy>
-        _commitedLogEntries;
   };
 
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
-    GuardedLeaderData(LogLeader& self, InMemoryLog inMemoryLog,
-                      std::unique_ptr<IReplicatedStateHandle>);
+    GuardedLeaderData(LogLeader& self, std::unique_ptr<IReplicatedStateHandle>,
+                      LogIndex firstIndex);
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
