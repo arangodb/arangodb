@@ -62,7 +62,6 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "ProcessMonitoringFeature.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
@@ -161,19 +160,6 @@ void V8ShellFeature::validateOptions(
   }
 }
 
-void V8ShellFeature::startProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
-          _isolate)) {
-    launchMonitorThread(server());
-  }
-}
-void V8ShellFeature::stopProcessMonitor() {
-  if (server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses(
-          _isolate)) {
-    terminateMonitorThread(server());
-  }
-}
-
 void V8ShellFeature::start() {
   auto& platform = server().getFeature<V8PlatformFeature>();
 
@@ -223,7 +209,6 @@ void V8ShellFeature::start() {
       .FromMaybe(false);
 
   initGlobals();
-  startProcessMonitor();
 }
 
 void V8ShellFeature::unprepare() {
@@ -236,7 +221,6 @@ void V8ShellFeature::unprepare() {
         v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
-    stopProcessMonitor();
 
     // clear globals to free memory
     auto isolate = _isolate;

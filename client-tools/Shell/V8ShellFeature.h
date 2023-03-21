@@ -79,8 +79,6 @@ class V8ShellFeature final : public ArangoshFeature {
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
-  void startProcessMonitor();
-  void stopProcessMonitor();
   std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context,
                                             bool,
                                             std::vector<std::string> const&,

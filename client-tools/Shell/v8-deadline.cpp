@@ -149,8 +149,8 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
 
 void triggerV8DeadlineNow(bool fromSignal) {
   // Set the deadline to expired:
-  errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
   MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
   executionDeadline = TRI_microtime() - 100;
 }
 
@@ -201,6 +201,7 @@ static void JS_AddPidToMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
+  auto monitoringFeature = v8g->server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -214,7 +215,7 @@ static void JS_AddPidToMonitor(
   ExternalId pid;
 
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  addMonitorPID(pid);
+  monitoringFeature->addMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -236,6 +237,7 @@ static void JS_RemovePidFromMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
+  auto monitoringFeature = v8g->server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -249,7 +251,7 @@ static void JS_RemovePidFromMonitor(
   ExternalId pid;
 
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-  removeMonitorPID(pid);
+  monitoringFeature->removeMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -279,6 +281,7 @@ static void JS_GetDeadlineString(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
   TRI_V8_RETURN_STRING(errorState);
   TRI_V8_TRY_CATCH_END
 }

@@ -37,7 +37,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -54,6 +53,7 @@
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
+#include "Shell/ProcessMonitoringFeature.h"
 #include "Ssl/SslFeature.h"
 
 #ifdef USE_ENTERPRISE
@@ -103,6 +103,9 @@ int main(int argc, char* argv[]) {
         },
         [&](ArangoshServer& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, context.binaryName());
+        },
+        [&](ArangoshServer& server, TypeTag<ProcessMonitoringFeature>) {
+          return std::make_unique<ProcessMonitoringFeature>(server);
         },
         [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(

@@ -83,88 +83,82 @@
 
 using namespace arangodb;
 
-namespace {
-
-/// @brief lock for protected access to vector ExternalProcesses
-static arangodb::Mutex ExitedExternalProcessesLock;
-
-}  // namespace
-
 namespace arangodb {
 
-/// @brief if monitored & exited we keep them here:
-std::map<TRI_pid_t, ExternalProcessStatus> ExitedExternalProcessStatus;
-
-std::vector<ExternalId> monitoredProcesses;
-
-void addMonitorPID(ExternalId& pid) {
-  MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
-  monitoredProcesses.push_back(pid);
+void ProcessMonitoringFeature::addMonitorPID(ExternalId& pid) {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  _monitoredProcesses.push_back(pid);
 }
 
-void removeMonitorPID(ExternalId const& pid) {
-  MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
-  for (auto it = monitoredProcesses.begin(); it != monitoredProcesses.end();
+void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
        ++it) {
     if (it->_pid == pid._pid) {
-      monitoredProcesses.erase(it);
+      _monitoredProcesses.erase(it);
       break;
     }
   }
 }
 
-std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid) {
-  MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
-  auto it = ExitedExternalProcessStatus.find(pid);
-  if (it == ExitedExternalProcessStatus.end()) {
+std::optional<ExternalProcessStatus> ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  auto it = _ExitedExternalProcessStatus.find(pid);
+  if (it == _ExitedExternalProcessStatus.end()) {
     return std::nullopt;
   }
   return std::optional<ExternalProcessStatus>{it->second};
 }
 
-class ProcessMonitorThread : public arangodb::Thread {
- public:
-  ProcessMonitorThread(application_features::ApplicationServer& server)
-      : Thread(server, "ProcessMonitor") {}
-  ~ProcessMonitorThread() { shutdown(); }
+ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server):
+  ArangoshFeature(server, *this)
+{
+  startsAfter<V8SecurityFeature>();
+}
 
- protected:
-  void run() override {
-    while (!isStopping()) {
-      std::vector<ExternalId> mp;
-      {
-        MUTEX_LOCKER(mutexLocker, ExitedExternalProcessesLock);
-        mp = monitoredProcesses;
-      }
-      for (auto const& pid : mp) {
-        auto status = TRI_CheckExternalProcess(pid, false, 0);
-        if ((status._status == TRI_EXT_TERMINATED) ||
-            (status._status == TRI_EXT_ABORTED) ||
-            (status._status == TRI_EXT_NOT_FOUND)) {
-          // Its dead and gone - good
-          removeMonitorPID(pid);
-          ExitedExternalProcessStatus[pid._pid] = status;
-          triggerV8DeadlineNow(false);
-        }
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+void ProcessMonitoringFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+  _enabled = server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses();
+}
+
+void ProcessMonitoringFeature::start(){
+  if (_enabled) {
+    _monitorThread = make_unique<ProcessMonitorThread>(server, this);
+    _monitorThread->start();
+  }
+}
+void ProcessMonitoringFeature::beginShutdown() {
+  if (_enabled) {
+    _monitorThread->shutdown();
+  }
+}
+
+void ProcessMonitorThread::run() { // override
+  while (!isStopping()) {
+    std::vector<ExternalId> mp;
+    {
+      MUTEX_LOCKER(mutexLocker, _processMonitorFeature->_MonitoredExternalProcessesLock);
+      mp = _processMonitorFeature->_monitoredProcesses;
     }
+    for (auto const& pid : mp) {
+      auto status = TRI_CheckExternalProcess(pid, false, 0);
+      if ((status._status == TRI_EXT_TERMINATED) ||
+          (status._status == TRI_EXT_ABORTED) ||
+          (status._status == TRI_EXT_NOT_FOUND)) {
+        // Its dead and gone - good
+        _processMonitorFeature->removeMonitorPID(pid);
+        {
+          MUTEX_LOCKER(mutexLocker, _processMonitorFeature->_MonitoredExternalProcessesLock);
+          _processMonitorFeature->_ExitedExternalProcessStatus[pid._pid] = status;
+        }
+        triggerV8DeadlineNow(false);
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-};
-
-namespace {
-ProcessMonitorThread* mt = nullptr;
 }
 
-void launchMonitorThread(application_features::ApplicationServer& server) {
-  if (mt == nullptr) {
-    mt = new ProcessMonitorThread(server);
-    mt->start();
-  }
-}
-
-void terminateMonitorThread(application_features::ApplicationServer& server) {
-  mt->shutdown();
+std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+  return server().getFeature<ProcessMonitoringFeature>()->getHistoricStatus(pid);
 }
 
 }  // namespace arangodb
