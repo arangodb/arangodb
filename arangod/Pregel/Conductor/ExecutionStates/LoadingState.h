@@ -36,7 +36,9 @@ struct Loading : ExecutionState {
   Loading(ConductorState& conductor);
   ~Loading();
   auto name() const -> std::string override { return "loading"; };
-  auto message() -> worker::message::WorkerMessages override;
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 

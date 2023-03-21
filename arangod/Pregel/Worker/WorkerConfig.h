@@ -31,7 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 
-#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
@@ -53,7 +53,7 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
  public:
   explicit WorkerConfig(TRI_vocbase_t* vocbase);
-  void updateConfig(PregelFeature& feature, CreateWorker const& updated);
+  void updateConfig(worker::message::CreateWorker const& updated);
 
   ExecutionNumber executionNumber() const { return _executionNumber; }
 

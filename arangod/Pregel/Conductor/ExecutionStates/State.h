@@ -37,7 +37,9 @@ namespace arangodb::pregel::conductor {
 
 struct ExecutionState {
   virtual auto name() const -> std::string = 0;
-  virtual auto message() -> worker::message::WorkerMessages = 0;
+  virtual auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> = 0;
   virtual auto receive(actor::ActorPID sender,
                        conductor::message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> = 0;

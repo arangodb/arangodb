@@ -64,7 +64,7 @@ class InCache {
   MessageFormat<M> const* format() const { return _format; }
   uint64_t containedMessageCount() const { return _containedMessageCount; }
 
-  void parseMessages(PregelMessage const& messages);
+  void parseMessages(worker::message::PregelMessage const& messages);
 
   /// @brief Store a single message.
   /// Only ever call when you are sure this is a thread local store
