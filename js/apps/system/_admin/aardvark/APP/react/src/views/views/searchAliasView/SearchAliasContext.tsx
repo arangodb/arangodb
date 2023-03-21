@@ -51,7 +51,9 @@ export const SearchAliasProvider = ({
     newInitalView = JSON.parse(cachedViewStateStr);
   }
   const [view, setView] = useState(newInitalView);
-  const [currentName, setCurrentName] = useState<string | undefined>(newInitalView.name);
+  const [currentName, setCurrentName] = useState<string | undefined>(
+    newInitalView.name
+  );
   const [copiedView, setCopiedView] = useState<
     ViewPropertiesType | undefined
   >();
@@ -108,8 +110,8 @@ export const SearchAliasProvider = ({
     const updatedIndexes = getUpdatedIndexes({ initialView, view });
 
     if (
-      updatedIndexes.changesAdded.length > 0 ||
-      updatedIndexes.changesDeleted.length > 0 ||
+      updatedIndexes.addedChanges.length > 0 ||
+      updatedIndexes.deletedChanges.length > 0 ||
       initialView.name !== view.name
     ) {
       setChanged(true);

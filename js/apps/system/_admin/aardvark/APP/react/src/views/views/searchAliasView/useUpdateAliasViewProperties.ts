@@ -16,7 +16,8 @@ export const useUpdateAliasViewProperties = ({
     initialView: ViewPropertiesType;
   }) => {
     try {
-      const isNameChanged = initialView.name && view.name !== initialView.name;
+      const isNameChanged =
+        (initialView.name && view.name !== initialView.name) || false;
       let isError = false;
       if (isNameChanged) {
         isError = await putRenameView({
@@ -74,13 +75,13 @@ async function patchViewProperties({
   setChanged
 }: {
   view: ViewPropertiesType;
-  isNameChanged: string | boolean;
+  isNameChanged: boolean;
   initialView: ViewPropertiesType;
   setChanged: (changed: boolean) => void;
 }) {
   const path = `/view/${view.name}/properties`;
-  const result = await patchProperties({ view, path, initialView });
   window.arangoHelper.hideArangoNotifications();
+  const result = await patchProperties({ view, path, initialView });
 
   if (result.body.error) {
     window.arangoHelper.arangoError(
@@ -124,16 +125,16 @@ async function patchProperties({
     "Saving",
     `Please wait while the view is being saved. This could take some time for large views.`
   );
-  const { changesAdded, changesDeleted } = getUpdatedIndexes({
+  const { addedChanges, deletedChanges } = getUpdatedIndexes({
     view,
     initialView
   });
-  let properties = changesAdded;
-  if (changesDeleted.length > 0) {
-    const deletedIndexes = changesDeleted.map(index => {
+  let properties = addedChanges;
+  if (deletedChanges.length > 0) {
+    const deletedIndexes = deletedChanges.map(index => {
       return { ...index, operation: "del" };
     });
-    properties = [...changesAdded, ...deletedIndexes];
+    properties = [...addedChanges, ...deletedIndexes];
   }
   return await route.patch(path, { indexes: properties });
 }
@@ -145,16 +146,16 @@ export const getUpdatedIndexes = ({
   view: ViewPropertiesType;
   initialView: ViewPropertiesType;
 }) => {
-  const changesAdded = differenceWith(
+  const addedChanges = differenceWith(
     view.indexes,
     initialView.indexes,
     isEqual
   );
-  const changesDeleted = differenceWith(
+  const deletedChanges = differenceWith(
     initialView.indexes,
     view.indexes,
     isEqual
   );
 
-  return { changesAdded, changesDeleted };
+  return { addedChanges, deletedChanges };
 };

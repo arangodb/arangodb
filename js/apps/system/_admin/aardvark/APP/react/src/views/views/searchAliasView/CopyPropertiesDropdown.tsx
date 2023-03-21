@@ -52,7 +52,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
         .map(view => {
           return { label: view.name, value: view.name };
         });
-      setOptions(() => newViews);
+      setOptions(newViews);
     }
   }, [views]);
 
