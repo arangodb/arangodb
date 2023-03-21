@@ -85,6 +85,10 @@ export type InvertedIndexValuesType = {
     fields: PrimarySortFieldType[];
     compression: "lz4" | "none";
   };
+  storedValues?: {
+    fields: string[];
+    compression: "lz4" | "none";
+  }[];
   fields?: InvertedIndexFieldType[];
 };
 
@@ -147,17 +151,23 @@ export const invertedIndexFieldsMap = {
     label: "Primary Sort",
     name: "primarySort",
     type: "custom"
+  },
+  storedValues: {
+    label: "Stored Values",
+    name: "storedValues",
+    type: "custom"
   }
 };
 const invertedIndexFields = [
   invertedIndexFieldsMap.fields,
+  commonFieldsMap.name,
   invertedIndexFieldsMap.analyzer,
   invertedIndexFieldsMap.features,
   invertedIndexFieldsMap.includeAllFields,
   invertedIndexFieldsMap.trackListPositions,
   invertedIndexFieldsMap.searchField,
-  commonFieldsMap.name,
   invertedIndexFieldsMap.primarySort,
+  invertedIndexFieldsMap.storedValues,
   commonFieldsMap.inBackground
 ];
 
@@ -174,7 +184,6 @@ const fieldSchema: any = Yup.object().shape({
 const schema = Yup.object({
   ...commonSchema,
   fields: Yup.array()
-    .of(Yup.array())
     .of(fieldSchema)
     .min(1, "At least one field is required")
     .required("At least one field is required")

@@ -3,15 +3,19 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
+export type StoredValue = {
+  fields: string[];
+  compression: "lz4" | "none";
+};
 export type IndexType = {
   fields: string[];
   id: string;
   name: string;
   sparse: boolean;
-  type: "primary" | "fulltext" | "edge";
+  type: "primary" | "fulltext" | "edge" | "inverted" | "persistent" | "ttl";
   unique: boolean;
   selectivityEstimate?: number;
-  storedValues?: string[];
+  storedValues?: string[] | StoredValue[];
   minLength?: number;
   cacheEnabled?: boolean;
   deduplicate: boolean;

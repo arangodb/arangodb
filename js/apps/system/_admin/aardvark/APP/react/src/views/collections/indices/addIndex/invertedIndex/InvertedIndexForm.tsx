@@ -8,6 +8,7 @@ import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFieldsDataEntry } from "./InvertedIndexFieldsDataEntry";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
 import { InvertedIndexPrimarySort } from "./InvertedIndexPrimarySort";
+import { InvertedIndexStoredValues } from "./InvertedIndexStoredValues";
 import { useCreateInvertedIndex } from "./useCreateInvertedIndex";
 
 export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
@@ -67,6 +68,9 @@ export const InvertedIndexForm = ({ onClose }: { onClose: () => void }) => {
                         }
                         if (field.name === "primarySort") {
                           return <InvertedIndexPrimarySort field={field} />;
+                        }
+                        if (field.name === "storedValues") {
+                          return <InvertedIndexStoredValues field={field} />;
                         }
                         return <>{field.name}</>;
                       }}

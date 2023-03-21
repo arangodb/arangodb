@@ -102,16 +102,20 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                         }}
                       />
                     </Box>
-                    {index > 0 ? (
-                      <IconButton
-                        size="sm"
-                        variant="ghost"
-                        colorScheme="red"
-                        aria-label="Remove field"
-                        icon={<CloseIcon />}
-                        onClick={() => remove(index)}
-                      />
-                    ) : null}
+
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                      aria-label="Remove field"
+                      icon={<CloseIcon />}
+                      onClick={() => {
+                        remove(index);
+                        if (values.primarySort?.fields.length === 0) {
+                          setFieldValue("primarySort", []);
+                        }
+                      }}
+                    />
                   </Box>
                 );
               })}

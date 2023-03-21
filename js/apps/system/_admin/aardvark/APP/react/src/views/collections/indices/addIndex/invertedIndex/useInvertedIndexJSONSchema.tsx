@@ -134,6 +134,34 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
         }
       },
       required: ["compression", "fields"]
+    },
+    storedValues: {
+      type: "array",
+      nullable: true,
+      items: {
+        type: "object",
+        nullable: false,
+        properties: {
+          fields: {
+            type: "array",
+            nullable: false,
+            items: {
+              type: "string",
+              nullable: false
+            }
+          },
+          compression: {
+            type: "string",
+            nullable: false
+          }
+        },
+        default: {
+          field: "",
+          compression: "asc"
+        },
+        required: ["fields", "compression"],
+        additionalProperties: false
+      }
     }
   },
   required: ["type"],
