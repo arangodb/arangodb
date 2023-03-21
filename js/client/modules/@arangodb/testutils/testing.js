@@ -122,7 +122,7 @@ let optionsDocumentation = [
   '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
   '                              keepalive requests to all cluster instances, and report on error',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
-  '   - `enableAliveMonitor`: checks whether spawned processe disappear in midnight and aborts.',
+  '   - `enableAliveMonitor`: checks whether spawned arangods disapears or aborts during the tests.',
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
   '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
