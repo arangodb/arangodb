@@ -486,7 +486,7 @@ class IResearchDataStore {
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   bool _hasNestedFields{false};
-  std::atomic_bool _isCreation{true};
+  bool _isCreation{true};
 
   // protected by _commitMutex
   uint64_t _lastCommittedTick{0};

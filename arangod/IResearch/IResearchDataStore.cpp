@@ -882,9 +882,8 @@ Result IResearchDataStore::commitUnsafeImpl(
                                         _lastCommittedTick]() noexcept {
       _lastCommittedTick = lastCommittedTick;
     };
-    bool const isCreation = _isCreation.load(std::memory_order_relaxed);
     bool const wereChanges = _dataStore._writer->Commit(
-        isCreation ? irs::writer_limits::kMaxTick : lastTickBeforeCommit,
+        _isCreation ? irs::writer_limits::kMaxTick : lastTickBeforeCommit,
         progress);
     std::move(commitGuard).Cancel();
     auto& subscription =
@@ -902,7 +901,7 @@ Result IResearchDataStore::commitUnsafeImpl(
           std::move(reader), std::move(engineSnapshot)));
       return {};
     }
-    TRI_ASSERT(isCreation || _lastCommittedTick == lastTickBeforeCommit);
+    TRI_ASSERT(_isCreation || _lastCommittedTick == lastTickBeforeCommit);
     code = CommitResult::DONE;
 
     // get new reader
@@ -1117,8 +1116,11 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
   }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    if (_isCreation) {
+      tick = engine()->currentTick();
+    }
     // convert version to BE
-    const auto v = irs::numeric_utils::hton32(
+    auto const v = irs::numeric_utils::hton32(
         static_cast<uint32_t>(SegmentPayloadVersion::TwoStageTick));
     // compute and update tick
     _lastCommittedTick = std::max(_lastCommittedTick, tick);
@@ -1353,7 +1355,7 @@ Result IResearchDataStore::initDataStore(
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "ArangoSearch index '" << linkLock->index().id()
               << "' is recovered at tick '" << dataStore._recoveryTickLow
-              << "' less than storage engine tick '"
+              << "' greater than storage engine tick '"
               << linkLock->_engine->recoveryTick()
               << "', it seems WAL tail was lost and index is out of sync with "
                  "the underlying collection '"
@@ -1380,6 +1382,11 @@ Result IResearchDataStore::initDataStore(
           }
         }
 
+        // register flush subscription
+        if (pathExists) {
+          linkLock->finishCreation();
+        }
+
         irs::ProgressReportCallback progress =
             [id = linkLock->index().id(), asyncFeature](
                 std::string_view phase, size_t current, size_t total) {
@@ -1391,17 +1398,12 @@ Result IResearchDataStore::initDataStore(
             << "Start sync for ArangoSearch index '" << linkLock->index().id()
             << "'";
 
-        CommitResult code{CommitResult::UNDEFINED};
+        auto code = CommitResult::UNDEFINED;
         auto [res, timeMs] = linkLock->commitUnsafe(true, progress, code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
             << "Finish sync for ArangoSearch index '" << linkLock->index().id()
             << "'";
-
-        // register flush subscription
-        if (pathExists) {
-          linkLock->finishCreation();
-        }
 
         // setup asynchronous tasks for commit, cleanup if enabled
         if (dataStore._meta._commitIntervalMsec) {
@@ -1937,7 +1939,8 @@ void IResearchDataStore::initClusterMetrics() const {
 }
 
 void IResearchDataStore::finishCreation() {
-  if (_isCreation.exchange(false, std::memory_order_acq_rel)) {
+  std::lock_guard lock{_commitMutex};
+  if (std::exchange(_isCreation, false)) {
     auto& flushFeature =
         index().collection().vocbase().server().getFeature<FlushFeature>();
     flushFeature.registerFlushSubscription(_flushSubscription);
