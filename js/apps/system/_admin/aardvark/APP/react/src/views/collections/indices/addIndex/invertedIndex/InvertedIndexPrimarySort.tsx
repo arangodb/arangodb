@@ -1,6 +1,6 @@
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
-import { FieldArray, useField, useFormikContext } from "formik";
+import { FieldArray, useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../../../components/form/InputControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
@@ -39,7 +39,6 @@ const directionOptions = [
 
 const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
-  const { values, setFieldValue } = useFormikContext<InvertedIndexValuesType>();
   return (
     <>
       <FormLabel>{field.label}</FormLabel>
@@ -111,9 +110,6 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                       icon={<CloseIcon />}
                       onClick={() => {
                         remove(index);
-                        if (values.primarySort?.fields.length === 0) {
-                          setFieldValue("primarySort", []);
-                        }
                       }}
                     />
                   </Box>
@@ -124,9 +120,6 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                 colorScheme="blue"
                 onClick={() => {
                   push({ field: "", direction: "asc" });
-                  if (!values.primarySort?.compression) {
-                    setFieldValue("primarySort.compression", "lz4");
-                  }
                 }}
                 variant={"ghost"}
                 justifySelf="start"

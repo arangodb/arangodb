@@ -21,7 +21,7 @@ export const InvertedIndexStoredValues = ({
       padding="4"
       marginX="-4"
     >
-      <StoredValuesField field={{ ...field, name: "primarySort.fields" }} />
+      <StoredValuesField field={field} />
     </Box>
   );
 };

@@ -51,12 +51,29 @@ import { useCreateIndex } from "../useCreateIndex";
   ], compression: lz4}
 ```
 */
+type BytesAccumConsolidationPolicy = {
+  type: string;
+  threshold?: number;
+};
+
+type TierConsolidationPolicy = {
+  type: string;
+  segmentsMin?: number;
+  segmentsMax?: number;
+  segmentsBytesMax?: number;
+  segmentsBytesFloor?: number;
+  minScore?: number;
+};
+
+type ConsolidationPolicy =
+  | TierConsolidationPolicy
+  | BytesAccumConsolidationPolicy;
 
 type AnalyzerFeatures = "frequency" | "position" | "offset" | "norm";
 
 type PrimarySortFieldType = {
   field: string;
-  direction: string;
+  direction: "asc" | "desc";
 };
 
 export type InvertedIndexFieldType = {
@@ -89,10 +106,11 @@ export type InvertedIndexValuesType = {
     fields: string[];
     compression: "lz4" | "none";
   }[];
+  consolidationPolicy?: ConsolidationPolicy;
   fields?: InvertedIndexFieldType[];
 };
 
-const initialValues = {
+const initialValues: InvertedIndexValuesType = {
   type: "inverted",
   name: commonFieldsMap.fields.initialValue,
   inBackground: commonFieldsMap.inBackground.initialValue,
@@ -101,7 +119,25 @@ const initialValues = {
   includeAllFields: false,
   trackListPositions: false,
   searchField: false,
-  fields: []
+  fields: [],
+  primarySort: {
+    fields: [{ field: "", direction: "asc" }],
+    compression: "lz4"
+  },
+  storedValues: [
+    {
+      fields: [],
+      compression: "lz4"
+    }
+  ],
+  consolidationPolicy: {
+    type: "tier",
+    segmentsMin: 1,
+    segmentsMax: 10,
+    segmentsBytesMax: 5368709120,
+    segmentsBytesFloor: 2097152,
+    minScore: 0
+  }
 };
 
 const analyzerFeaturesOptions = ["frequency", "position", "offset", "norm"].map(
@@ -156,8 +192,29 @@ export const invertedIndexFieldsMap = {
     label: "Stored Values",
     name: "storedValues",
     type: "custom"
+  },
+  cleanupIntervalStep: {
+    label: "Cleanup Inverval Step",
+    name: "cleanupIntervalStep",
+    type: "number"
+  },
+  commitIntervalMsec: {
+    label: "Commit Interval (msec)",
+    name: "commitIntervalMsec",
+    type: "number"
+  },
+  consolidationIntervalMsec: {
+    label: "Consolidation Interval (msec)",
+    name: "consolidationIntervalMsec",
+    type: "number"
+  },
+  consolidationPolicy: {
+    label: "Consolidation Policy",
+    name: "consolidationPolicy",
+    type: "custom"
   }
 };
+
 const invertedIndexFields = [
   invertedIndexFieldsMap.fields,
   commonFieldsMap.name,
@@ -168,6 +225,7 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.searchField,
   invertedIndexFieldsMap.primarySort,
   invertedIndexFieldsMap.storedValues,
+  invertedIndexFieldsMap.consolidationPolicy,
   commonFieldsMap.inBackground
 ];
 
@@ -192,12 +250,20 @@ const schema = Yup.object({
 export const useCreateInvertedIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<InvertedIndexValuesType>();
   const onCreate = async ({ values }: { values: InvertedIndexValuesType }) => {
+    const primarySortFields =
+      values.primarySort?.fields.filter(field => !!field.field) || [];
+    const storedValues = values.storedValues?.filter(value => !!value) || [];
     return onCreateIndex({
       ...values,
       fields:
         values.fields && values.fields.length > 0 ? values.fields : undefined,
       analyzer: values.analyzer || undefined,
-      name: values.name || undefined
+      name: values.name || undefined,
+      primarySort: {
+        compression: values.primarySort?.compression || "lz4",
+        fields: primarySortFields
+      },
+      storedValues: storedValues
     });
   };
   return { onCreate, initialValues, schema, fields: invertedIndexFields };

@@ -162,6 +162,55 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
         required: ["fields", "compression"],
         additionalProperties: false
       }
+    },
+    consolidationPolicy: {
+      type: "object",
+      nullable: true,
+      properties: {
+        type: {
+          const: "tier",
+          type: "string"
+        },
+        threshold: { type: "integer", nullable: true },
+        segmentsMin: {
+          type: "integer",
+          nullable: false,
+          minimum: 0,
+          maximum: {
+            $data: "1/segmentsMax"
+          },
+          default: 1
+        },
+        segmentsMax: {
+          type: "integer",
+          nullable: false,
+          minimum: {
+            $data: "1/segmentsMin"
+          },
+          default: 10
+        },
+        segmentsBytesMax: {
+          type: "integer",
+          nullable: false,
+          minimum: 0,
+          default: 5368709120
+        },
+        segmentsBytesFloor: {
+          type: "integer",
+          nullable: false,
+          minimum: 0,
+          default: 2097152
+        },
+        minScore: {
+          type: "number",
+          nullable: false,
+          minimum: 0,
+          maximum: 1,
+          default: 0
+        }
+      },
+      required: ["type"],
+      additionalProperties: false
     }
   },
   required: ["type"],
