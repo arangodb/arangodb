@@ -62,7 +62,8 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
   }
   tests::mocks::MockMetricsServer server;
 
-  static constexpr metrics::MetricKeyView currentConnectionsMetric{"arangodb_connection_pool_connections_current", "pool=\"\""};
+  static constexpr metrics::MetricKeyView currentConnectionsMetric{
+      "arangodb_connection_pool_connections_current", "pool=\"\""};
 };
 
 TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
@@ -663,7 +664,6 @@ TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_some) {
   EXPECT_EQ(pool.numOpenConnections(), 0);
   EXPECT_EQ(extractCurrentMetric(), 0ull);
 }
-
 
 }  // namespace tests
 }  // namespace arangodb
