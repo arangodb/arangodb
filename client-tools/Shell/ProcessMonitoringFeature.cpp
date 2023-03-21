@@ -61,7 +61,7 @@ void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
     }
   }
   // make sure its really not monitored anymore once we exit:
-  std::this_thread::sleep_for(std::chrono::milliseconds(550));
+  std::this_thread::sleep_for(std::chrono::milliseconds(110));
 }
 
 std::optional<ExternalProcessStatus>
@@ -89,7 +89,7 @@ void ProcessMonitoringFeature::validateOptions(
 
 void ProcessMonitoringFeature::start() {
   if (_enabled) {
-    _monitorThread = std::make_unique<ProcessMonitorThread>(server(), this);
+    _monitorThread = std::make_unique<ProcessMonitorThread>(server(), *this);
     if (!_monitorThread->start()) {
       LOG_TOPIC("33333", FATAL, Logger::SYSCALL)
           << "failed to launch monitoring background thread";
@@ -110,8 +110,8 @@ void ProcessMonitorThread::run() {  // override
     try {
       {
         MUTEX_LOCKER(mutexLocker,
-                     _processMonitorFeature->_MonitoredExternalProcessesLock);
-        mp = _processMonitorFeature->_monitoredProcesses;
+                     _processMonitorFeature._MonitoredExternalProcessesLock);
+        mp = _processMonitorFeature._monitoredProcesses;
       }
       for (auto const& pid : mp) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
@@ -119,18 +119,18 @@ void ProcessMonitorThread::run() {  // override
             (status._status == TRI_EXT_ABORTED) ||
             (status._status == TRI_EXT_NOT_FOUND)) {
           // Its dead and gone - good
-          _processMonitorFeature->removeMonitorPID(pid);
+          _processMonitorFeature.removeMonitorPID(pid);
           {
             MUTEX_LOCKER(
                 mutexLocker,
-                _processMonitorFeature->_MonitoredExternalProcessesLock);
-            _processMonitorFeature->_ExitedExternalProcessStatus[pid._pid] =
+                _processMonitorFeature._MonitoredExternalProcessesLock);
+            _processMonitorFeature._ExitedExternalProcessStatus[pid._pid] =
                 status;
           }
           triggerV8DeadlineNow(false);
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } catch (std::exception const& ex) {
       LOG_TOPIC("e78b9", ERR, Logger::SYSCALL)
           << "process monitoring thread caught exception: " << ex.what();

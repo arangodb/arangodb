@@ -40,7 +40,7 @@ class ProcessMonitorThread : public arangodb::Thread {
 
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server,
-                       ProcessMonitoringFeature* processMonitorFeature)
+                       ProcessMonitoringFeature& processMonitorFeature)
       : Thread(server, "ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
   ~ProcessMonitorThread() { shutdown(); }
