@@ -4715,7 +4715,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExternalProcessStatus external;
   auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
-  if (!historicStatus.has_value()) {
+  if (historicStatus.has_value()) {
     external = *historicStatus;
   } else {
     external = TRI_CheckExternalProcess(pid, wait, timeoutms);
