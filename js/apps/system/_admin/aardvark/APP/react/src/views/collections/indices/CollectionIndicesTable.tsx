@@ -10,7 +10,7 @@ import {
 import { isNumber } from "lodash";
 import React from "react";
 import { IndexActionCell } from "./IndexActionCell";
-import { IndexType } from "./useFetchIndices";
+import { IndexType, StoredValue } from "./useFetchIndices";
 import { useSyncIndexCreationJob } from "./useSyncIndexCreationJob";
 
 const TABLE_HEADERS = [
@@ -107,13 +107,19 @@ const getIndexRowData = (indexRow: IndexType) => {
       return field;
     })
     .join(", ");
+  let storedValuesString = storedValues?.join(",");
+  if (type === "inverted") {
+    storedValuesString = JSON.stringify(
+      storedValues?.map(value => (value as StoredValue).fields)
+    );
+  }
   return {
     id: indexId,
     extras: extras.join(", "),
     fields: fieldsString,
     sparse: sparse === undefined ? "n/a" : `${sparse}`,
     selectivityEstimate: selectivityEstimateString,
-    storedValues: storedValues?.join(", "),
+    storedValues: storedValuesString,
     unique,
     name,
     type
