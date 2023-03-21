@@ -54,7 +54,6 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
-  void stop() override final;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enlist external process to become monitored
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,8 +71,6 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 ////////////////////////////////////////////////////////////////////////////////
 
   std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid);
-
-private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process stati of processes exited while being monitored

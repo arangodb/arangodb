@@ -78,9 +78,19 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/Thread.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+
 #include "V8/v8-deadline.h"
+#include "V8/V8SecurityFeature.h"
+
+#include "Shell/ShellFeature.h"
+#include "Shell/arangosh.h"
 #include "ProcessMonitoringFeature.h"
 
+using namespace arangodb::basics;
+using namespace arangodb::options;
+// using namespace arangodb::rest;
 using namespace arangodb;
 
 namespace arangodb {
@@ -110,7 +120,7 @@ std::optional<ExternalProcessStatus> ProcessMonitoringFeature::getHistoricStatus
   return std::optional<ExternalProcessStatus>{it->second};
 }
 
-ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server):
+ProcessMonitoringFeature::ProcessMonitoringFeature(ArangoshServer& server):
   ArangoshFeature(server, *this)
 {
   startsAfter<V8SecurityFeature>();
@@ -122,7 +132,7 @@ void ProcessMonitoringFeature::validateOptions(std::shared_ptr<options::ProgramO
 
 void ProcessMonitoringFeature::start(){
   if (_enabled) {
-    _monitorThread = std::make_unique<ProcessMonitorThread>(server, this);
+    _monitorThread = std::make_unique<ProcessMonitorThread>(server(), this);
     _monitorThread->start();
   }
 }
@@ -157,8 +167,8 @@ void ProcessMonitorThread::run() { // override
   }
 }
 
-std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
-  return server().getFeature<ProcessMonitoringFeature>()->getHistoricStatus(pid);
+std::optional<ExternalProcessStatus> getHistoricStatus(TRI_pid_t pid, application_features::ApplicationServer& server) {
+  return static_cast<ArangoshFeature&>(server).getFeature<ProcessMonitoringFeature>()->getHistoricStatus(pid);
 }
 
 }  // namespace arangodb

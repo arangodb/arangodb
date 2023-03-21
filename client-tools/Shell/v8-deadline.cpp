@@ -201,7 +201,7 @@ static void JS_AddPidToMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
-  auto monitoringFeature = v8g->server().getFeature<ProcessMonitoringFeature>();
+  auto monitoringFeature = v8g->_server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -237,7 +237,7 @@ static void JS_RemovePidFromMonitor(
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
-  auto monitoringFeature = v8g->server().getFeature<ProcessMonitoringFeature>();
+  auto monitoringFeature = v8g->_server().getFeature<ProcessMonitoringFeature>();
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
