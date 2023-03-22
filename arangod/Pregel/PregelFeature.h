@@ -118,7 +118,6 @@ class PregelFeature final : public ArangodFeature {
   size_t parallelism(VPackSlice params) const noexcept;
 
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
