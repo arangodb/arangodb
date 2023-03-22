@@ -26,12 +26,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Shell/arangosh.h"
-#include <velocypack/Builder.h>
 
 #include <condition_variable>
+#include <memory>
 #include <mutex>
-#include <string_view>
 #include <thread>
+#include <utility>
 
 namespace arangodb {
 
@@ -39,6 +39,10 @@ namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
+
+namespace velocypack {
+class Builder;
+}
 
 class TelemetricsHandler {
  public:
@@ -50,29 +54,34 @@ class TelemetricsHandler {
 
   void beginShutdown();
 
-  void getTelemetricsInfo(VPackBuilder& builder);
+  void getTelemetricsInfo(velocypack::Builder& builder);
 
-  VPackBuilder sendTelemetricsToEndpoint(std::string const& reqUrl = {
-                                             kOriginalUrl.begin(),
-                                             kOriginalUrl.end()});
+  velocypack::Builder sendTelemetricsToEndpoint(std::string const& reqUrl);
 
  private:
-  static constexpr std::string_view kOriginalUrl =
-      "https://telemetrics.arangodb.com/v1/collect";
   Result checkHttpResponse(
       std::unique_ptr<httpclient::SimpleHttpResult> const& response) const;
+
   void fetchTelemetricsFromServer();
 
   void arrangeTelemetrics();
 
+  std::pair<std::string, std::unique_ptr<httpclient::SimpleHttpClient>>
+  buildHttpClient(std::string& url) const;
+
+  std::string getFetchedInfo() const;
+
   ArangoshServer& _server;
-  std::mutex _mtx;
+
+  std::mutex mutable _mtx;
+  // the following members are all protected by _mtx
   std::condition_variable _runCondition;
-  std::thread _telemetricsThread;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   Result _telemetricsFetchResponse;
-  VPackBuilder _telemetricsFetchedInfo;
-  bool _sendToEndpoint;
+  velocypack::Builder _telemetricsFetchedInfo;
+
+  std::thread _telemetricsThread;
+  bool const _sendToEndpoint;
 };
 
 }  // namespace arangodb

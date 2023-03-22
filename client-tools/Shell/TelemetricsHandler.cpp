@@ -24,11 +24,11 @@
 #include "TelemetricsHandler.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -38,36 +38,18 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
-#include "Rest/GeneralRequest.h"
-#include "V8/v8-deadline.h"
 #include "V8/v8-utils.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
 namespace {
-static std::string getEndpointFromUrl(std::string const& url) {
-  char const* p = url.c_str();
-  char const* e = p + url.size();
-  size_t slashes = 0;
-
-  while (p < e) {
-    if (*p == '?') {
-      // http(s)://example.com?foo=bar
-      return url.substr(0, p - url.c_str());
-    } else if (*p == '/') {
-      if (++slashes == 3) {
-        return url.substr(0, p - url.c_str());
-      }
-    }
-    ++p;
-  }
-
-  return url;
+std::string const kTelemetricsGatheringUrl =
+    "https://telemetrics.arangodb.com/v1/collect";
 }
-}  // namespace
 
 namespace arangodb {
 TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
@@ -84,8 +66,9 @@ Result TelemetricsHandler::checkHttpResponse(
     std::unique_ptr<httpclient::SimpleHttpResult> const& response) const {
   using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
+
   if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, this->_httpClient->getErrorMessage()};
+    return {TRI_ERROR_INTERNAL, _httpClient->getErrorMessage()};
   }
   if (response->wasHttpError()) {
     auto errorNum = TRI_ERROR_INTERNAL;
@@ -105,34 +88,36 @@ Result TelemetricsHandler::checkHttpResponse(
             concatT("got invalid response from server: HTTP ",
                     itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 void TelemetricsHandler::fetchTelemetricsFromServer() {
   std::string const url = "/_admin/telemetrics";
-  Result result = {TRI_ERROR_NO_ERROR};
+
   uint32_t timeoutInSecs = 1;
   while (!_server.isStopping()) {
     ClientManager clientManager(
         _server.getFeature<HttpEndpointProvider, ClientFeature>(),
         Logger::FIXME);
+
     std::unique_lock lk(_mtx);
     _telemetricsFetchedInfo.clear();
     _httpClient = clientManager.getConnectedClient(true, false, false, 0);
+
     if (_httpClient != nullptr && _httpClient->isConnected()) {
       auto& clientParams = _httpClient->params();
       clientParams.setRequestTimeout(30);
       lk.unlock();
+      // perform request outside of lock
       std::unique_ptr<httpclient::SimpleHttpResult> response(
           _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
       lk.lock();
 
-      result = this->checkHttpResponse(response);
-      _telemetricsFetchResponse = result;
-      if (auto errorNum = result.errorNumber();
-          errorNum == TRI_ERROR_NO_ERROR ||
-          errorNum == TRI_ERROR_HTTP_FORBIDDEN) {
+      _telemetricsFetchResponse = checkHttpResponse(response);
+      if (_telemetricsFetchResponse.ok() ||
+          _telemetricsFetchResponse.is(TRI_ERROR_HTTP_FORBIDDEN)) {
         _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
+        _httpClient.reset();
         break;
       }
     }
@@ -144,94 +129,75 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 }
 
 // Sends telemetrics to the endpoint and tests the redirection when telemetrics
-// is sent to an endpoint, though not exactly the same thing, because here the
-// endpoint is local, hence the same client is used and a new endpoint is not
-// created.
-VPackBuilder TelemetricsHandler::sendTelemetricsToEndpoint(
+// is sent to an endpoint, though not exactly the same thing, because, for
+// testing redirection, the endpoint is local, hence the same client is used and
+// a new endpoint is not created.
+velocypack::Builder TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
-  VPackBuilder responseBuilder;
-
   // in the first moment, the url we send the request to is reqUrl, then it can
   // change if there's redirection
   std::string url = reqUrl;
+  velocypack::Builder responseBuilder;
 
-  Result result = {TRI_ERROR_NO_ERROR};
+  // compress request body (once and for all)
+  basics::StringBuffer compressedBody;
+
+  {
+    std::string body = getFetchedInfo();
+    auto res =
+        encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
+                               body.size(), compressedBody);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // no need to retry if the body is never gonna be compressed
+      // successfully
+      return responseBuilder;
+    }
+  }
+
+  // build request headers (once and for all)
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(StaticStrings::ContentTypeHeader,
+                  StaticStrings::MimeTypeJson);
+  headers.emplace(StaticStrings::ContentLength,
+                  std::to_string(compressedBody.size()));
+  headers.emplace(StaticStrings::ContentEncoding, StaticStrings::EncodingGzip);
+  headers.emplace("arangodb-request-type", "telemetrics");
+
   uint32_t timeoutInSecs = 10;
-  uint64_t sslProtocol = TLS_V13;
   // max number of new urls we accept to redirect the request to, otherwise, we
   // either try to send the request again to reqUrl or stop trying
   uint32_t maxRedirects = 5;
   uint32_t numRedirects = 0;
 
   while (!_server.isStopping()) {
-    bool isLocalUrl = url.starts_with('/');
+    // potential side-effect: buildHttpClient can modify url
+    auto [relativeUrl, httpClient] = buildHttpClient(url);
+
+    // from here on we sporadically use the mutex to protect access to
+    // _httpClient and _runCondition
     std::unique_lock lk(_mtx);
-    std::string const body = _telemetricsFetchedInfo.toJson();
-    lk.unlock();
-    std::unordered_map<std::string, std::string> headers;
-    headers.emplace(StaticStrings::ContentTypeHeader,
-                    StaticStrings::MimeTypeJson);
-    std::string relativeUrl;
-    basics::StringBuffer compressedBody;
-    auto res =
-        encoding::gzipCompress(reinterpret_cast<uint8_t const*>(body.data()),
-                               body.size(), compressedBody);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // no need to retry if the body is never gonna be compressed successfully
-      break;
-    }
-    headers.emplace(StaticStrings::ContentLength,
-                    std::to_string(compressedBody.size()));
-    headers.emplace(StaticStrings::ContentEncoding,
-                    StaticStrings::EncodingGzip);
-    headers.emplace("arangodb-request-type", "telemetrics");
-    if (isLocalUrl) {
-      // if the url is local, just get the connected client, and the url is
-      // already relative
-      relativeUrl = url;
-      ClientManager clientManager(
-          _server.getFeature<HttpEndpointProvider, ClientFeature>(),
-          Logger::FIXME);
-      lk.lock();
-      _httpClient = clientManager.getConnectedClient(true, false, false, 0);
-    } else {
-      // the url is not local, so we create a connection
-      std::string lastEndpoint = getEndpointFromUrl(url);
-      std::vector<std::string> endpoints;
-      auto [endpoint, relative, error] =
-          getEndpoint(nullptr, endpoints, url, lastEndpoint);
-      relativeUrl = std::move(relative);
-      ClientFeature& client =
-          _server.getFeature<HttpEndpointProvider, ClientFeature>();
-      std::unique_ptr<Endpoint> newEndpoint(Endpoint::clientFactory(endpoint));
 
-      lk.lock();
+    if (httpClient != nullptr) {
+      _httpClient = std::move(httpClient);
 
-      if (newEndpoint.get() != nullptr) {
-        std::unique_ptr<httpclient::GeneralClientConnection> connection(
-            httpclient::GeneralClientConnection::factory(
-                client.getCommFeaturePhase(), newEndpoint, 30, 60, 3,
-                sslProtocol));
-
-        if (connection != nullptr) {
-          httpclient::SimpleHttpClientParams const params(30, false);
-          _httpClient = std::make_unique<httpclient::SimpleHttpClient>(
-              connection, params);
-        }
-      }
-    }
-    if (_httpClient != nullptr) {
+      // give up mutex temporarily, while we are making the request, as we want
+      // the request to be cancelable from the outside
       lk.unlock();
+
       std::unique_ptr<httpclient::SimpleHttpResult> response;
       response.reset(_httpClient->request(rest::RequestType::POST, relativeUrl,
                                           compressedBody.data(),
                                           compressedBody.size(), headers));
-      lk.lock();
-      result = this->checkHttpResponse(response);
+
+      Result result = checkHttpResponse(response);
+
       if (result.ok()) {
         auto returnCode = response->getHttpReturnCode();
         if (returnCode == 200) {
-          responseBuilder.add(response->getBodyVelocyPack()->slice());
+          // we're not interested in the object if we're not testing redirection
+          if (reqUrl != ::kTelemetricsGatheringUrl) {
+            responseBuilder.add(response->getBodyVelocyPack()->slice());
+          }
           break;
         } else if (returnCode == 301 || returnCode == 302 ||
                    returnCode == 307) {
@@ -241,34 +207,86 @@ VPackBuilder TelemetricsHandler::sendTelemetricsToEndpoint(
           }
           if (foundUrl) {
             numRedirects++;
-          } else {
-            // if hasn't found the new url from the redirection, there's no use
-            // in trying to redirect again, so will retry to send the request to
-            // the original url first
-            url = reqUrl;
-            numRedirects = 0;
+            continue;
           }
+
+          // if hasn't found the new url from the redirection, there's no use
+          // in trying to redirect again, so will retry to send the request to
+          // the original url first
+          url = reqUrl;
         }
-      } else if (result.errorNumber() == TRI_ERROR_INTERNAL) {
-        // if is an internal error, will retry to send the request to the server
-        numRedirects = 0;
-      } else {
+      } else if (!result.is(TRI_ERROR_INTERNAL)) {
         // do not retry if 401, 403, 404, etc.
+        // note: if is an internal error, will retry to send the request to the
+        // server
         break;
       }
-      if (numRedirects == 0) {
-        timeoutInSecs *= 3;
-        timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
-        _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                               [this] { return _server.isStopping(); });
-      }
-      _httpClient.reset(nullptr);
+
+      numRedirects = 0;
+      timeoutInSecs *= 3;
+      timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
+
+      TRI_ASSERT(!lk.owns_lock());
+      lk.lock();
     }
+
+    TRI_ASSERT(lk.owns_lock());
+    _httpClient.reset();
+    _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
+                           [this] { return _server.isStopping(); });
   }
+
+  // note: may be empty
   return responseBuilder;
 }
 
-void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
+std::string TelemetricsHandler::getFetchedInfo() const {
+  std::unique_lock lk(_mtx);
+  return _telemetricsFetchedInfo.toJson();
+}
+
+std::pair<std::string, std::unique_ptr<httpclient::SimpleHttpClient>>
+TelemetricsHandler::buildHttpClient(std::string& url) const {
+  ClientFeature& cf = _server.getFeature<HttpEndpointProvider, ClientFeature>();
+
+  if (url.starts_with('/')) {
+    // if the url is local, just get the connected client, and the url is
+    // already relative
+    ClientManager clientManager(cf, Logger::FIXME);
+    return std::make_pair(
+        url, clientManager.getConnectedClient(true, false, false, 0));
+  }
+
+  // the url is not local, so we create a connection
+  std::string lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
+  std::vector<std::string> endpoints;
+  // note: the following call may modify url in place!!
+  auto [endpoint, relative, error] = getEndpoint(endpoints, url, lastEndpoint);
+
+  std::unique_ptr<Endpoint> newEndpoint(Endpoint::clientFactory(endpoint));
+
+  if (newEndpoint != nullptr) {
+    constexpr uint64_t sslProtocol = TLS_V13;
+
+    std::unique_ptr<httpclient::GeneralClientConnection> connection(
+        httpclient::GeneralClientConnection::factory(
+            cf.getCommFeaturePhase(), newEndpoint, 30, 60, 3, sslProtocol));
+
+    if (connection != nullptr) {
+      // note: the returned SimpleHttpClient instance takes over ownership
+      // for the connection object
+      return std::make_pair(
+          std::move(relative),
+          std::make_unique<httpclient::SimpleHttpClient>(
+              connection, httpclient::SimpleHttpClientParams(30, false)));
+    }
+  }
+
+  // no connection!
+  return std::make_pair("", nullptr);
+}
+
+void TelemetricsHandler::getTelemetricsInfo(velocypack::Builder& builder) {
   // as this is for printing the telemetrics result in the tests, we send the
   // telemetrics object if the request returned ok and the error if not to
   // parse the error in the tests
@@ -288,18 +306,20 @@ void TelemetricsHandler::getTelemetricsInfo(VPackBuilder& builder) {
 
 void TelemetricsHandler::arrangeTelemetrics() {
   try {
-    this->fetchTelemetricsFromServer();
+    fetchTelemetricsFromServer();
 
     std::unique_lock lk(_mtx);
     if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
       lk.unlock();
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      if (_sendToEndpoint) {
-        this->sendTelemetricsToEndpoint();
-      }
+      bool sendToEndpoint = _sendToEndpoint;
 #else
-      this->sendTelemetricsToEndpoint();
+      constexpr bool sendToEndpoint = true;
 #endif
+      if (sendToEndpoint) {
+        sendTelemetricsToEndpoint(::kTelemetricsGatheringUrl);
+      }
     }
   } catch (std::exception const& err) {
     LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
