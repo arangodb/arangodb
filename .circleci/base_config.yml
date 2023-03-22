@@ -66,6 +66,18 @@ jobs:
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
 
+  jslint:
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run jslint
+          command: |
+            utils/jslint.sh
+
   compile-linux:
     parameters:
       preset:
