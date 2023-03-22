@@ -381,7 +381,9 @@ void CleanOutServer::scheduleJobsR2(std::shared_ptr<Builder>& trx,
                                     DatabaseID const& database, size_t& sub) {
   auto replicatedLogsPath =
       basics::StringUtils::concatT("/Target/ReplicatedLogs/", database);
-  auto logs = _snapshot.hasAsChildren(replicatedLogsPath).value().get();
+  auto logsChild = _snapshot.hasAsChildren(replicatedLogsPath);
+  TRI_ASSERT(logsChild.has_value());
+  auto logs = logsChild.value().get();
 
   for (auto const& [logIdString, logNode] : logs) {
     auto logTarget = deserialize<replication2::agency::LogTarget>(*logNode);
