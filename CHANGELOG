@@ -1,4 +1,4 @@
-v3.9.10 (XXXX-XX-XX)
+v3.9.10 (2023-03-16)
 --------------------
 
 * Added support to log response bodies as well as HTTP headers (incoming
