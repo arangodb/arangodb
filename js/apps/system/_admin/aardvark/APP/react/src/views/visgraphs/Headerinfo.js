@@ -1,33 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import ToolTip from '../../components/arango/tootip';
-import ParameterNodeStart from "./ParameterNodeStart";
-import ParameterDepth from "./ParameterDepth";
-import ParameterLimit from "./ParameterLimit";
-import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
-import ParameterNodeColorByCollection from "./ParameterNodeColorByCollection";
-import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
-import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
-import ParameterNodeLabel from "./ParameterNodeLabel";
-import ParameterEdgeLabel from "./ParameterEdgeLabel";
-import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
-import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
-import ParameterNodeColor from "./ParameterNodeColor";
-import ParameterEdgeColor from "./ParameterEdgeColor";
-import ParameterNodeSize from './ParameterNodeSize';
-import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
-import ButtonSave from "./ButtonSave";
-import ParameterEdgeDirection from "./ParameterEdgeDirection";
-import EdgeStyleSelector from "./EdgeStyleSelector";
-import GraphLayoutSelector from "./GraphLayoutSelector";
-import AccordionView from './components/Accordion/Accordion';
-import Drawer from "./components/Drawer/Drawer";
 import { IconButton } from "../../components/arango/buttons";
 import {
   Box,
   Flex,
-  Spacer,
-  Input,
-  Center } from '@chakra-ui/react';
+  Center} from '@chakra-ui/react';
+import { GraphSlideOutPane } from './GraphSlideOutPane';
 
 export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onGraphDataLoaded, onIsLoadingData }) => {
   
@@ -45,54 +23,7 @@ export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onG
     }
   }
 
-  const AccordionGraphContent = () => {
-    return (
-      <>
-        <ParameterNodeStart />
-        <br />
-        <GraphLayoutSelector />
-        <ParameterDepth />
-        <ParameterLimit />
-      </>)
-  };
-
-  const AccordionNodesContent = () => {
-    return (
-      <>
-        <ParameterNodeLabel />
-        <br />
-        <ParameterNodeColor />
-        <br />
-        <ParameterNodeLabelByCollection />
-        <br />
-        <ParameterNodeColorByCollection />
-        <br />
-        <ParameterNodeColorAttribute />
-        <br />
-        <ParameterNodeSizeByEdges />
-        <br />
-        <ParameterNodeSize />
-      </>)
-  };
-
-  const AccordionEdgesContent = () => {
-    return (
-      <>
-        <ParameterEdgeLabel />
-        <br />
-        <ParameterEdgeColor />
-        <br />
-        <ParameterEdgeLabelByCollection />
-        <br />
-        <ParameterEdgeColorByCollection />
-        <br />
-        <ParameterEdgeColorAttribute />
-        <br />
-        <ParameterEdgeDirection />
-        <br />
-        <EdgeStyleSelector />
-      </>)
-  };
+  const navbarRef = useRef();
 
   return (
     <>
@@ -188,51 +119,15 @@ export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onG
         </Flex>
         </div>
       </div>
-      <Drawer
-        position="right"
+      <GraphSlideOutPane
         open={open}
-       >
-        <div style={{ 'background': '#404a53' }}>
-          <div style={{ 'padding': '24px', 'display': 'flex' }}>
-            <ButtonSave
-              graphName={graphName}
-              onGraphDataLoaded={(newGraphData, responseTimesObject) => {
-                onGraphDataLoaded(newGraphData, responseTimesObject)}
-              }
-              onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
-            />
-          </div>
-          <AccordionView
-            allowMultipleOpen
-            accordionConfig={[
-              {
-                index: 0,
-                content: <div><AccordionGraphContent /></div>,
-                label: "Graph",
-                testID: "accordionItem0",
-                defaultActive: true
-              },
-              {
-                index: 1,
-                content: (
-                  <div><AccordionNodesContent /></div>
-                ),
-                label: "Nodes",
-                testID: "accordionItem1"
-              },
-              {
-                index: 2,
-                content: (
-                  <div><AccordionEdgesContent /></div>
-                ),
-                label: "Edges",
-                testID: "accordionItem2"
-              }
-            ]}
-          />
-        </div>
-      </Drawer>
+        graphName={graphName}
+        onGraphDataLoaded={onGraphDataLoaded}
+        setIsLoadingData={setIsLoadingData} 
+      />
       {isLoadingData ? "Loading..." : null}
     </>
   );
 }
+
+

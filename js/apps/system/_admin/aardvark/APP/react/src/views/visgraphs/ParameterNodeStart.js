@@ -10,6 +10,7 @@ import {
 
 const ParameterNodeStart = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  console.log({urlParameters})
   const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
   const handleChange = (event) => {
