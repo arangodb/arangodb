@@ -2885,7 +2885,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName, transaction::CountType type,
+    std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
@@ -2900,7 +2900,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this, type);
+  uint64_t num = collection->getPhysical()->numberDocuments(this);
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));

@@ -2133,7 +2133,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       uint64_t numberDocumentsAfterSync =
           documentsFound + stats.numDocsInserted - stats.numDocsRemoved;
       uint64_t numberDocumentsDueToCounter =
-          coll->numberDocuments(trx.get(), transaction::CountType::Normal);
+          physical->numberDocuments(trx.get());
 
       setProgress(std::string("number of remaining documents in collection '") +
                   coll->name() +

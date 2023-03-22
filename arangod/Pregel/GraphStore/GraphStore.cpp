@@ -43,6 +43,7 @@
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -197,8 +198,7 @@ auto GraphStore<V, E>::loadVertices(
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* coll = cursor->collection();
-  uint64_t numVertices =
-      coll->numberDocuments(&trx, transaction::CountType::Normal);
+  uint64_t numVertices = coll->getPhysical()->numberDocuments(&trx);
 
   auto vertices = std::vector<Vertex<V, E>>(numVertices);
 
