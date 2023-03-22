@@ -42,6 +42,8 @@ struct ReplicatedLogMetrics {
   metrics::Gauge<std::uint64_t>* replicatedLogLeaderNumber;
   metrics::Gauge<std::uint64_t>* replicatedLogFollowerNumber;
   metrics::Gauge<std::uint64_t>* replicatedLogInactiveNumber;
+  metrics::Gauge<std::uint64_t>* leaderNumInMemoryEntries;
+  metrics::Gauge<std::size_t>* leaderNumInMemoryBytes;
   metrics::Counter* replicatedLogLeaderTookOverNumber;
   metrics::Counter* replicatedLogStartedFollowingNumber;
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*

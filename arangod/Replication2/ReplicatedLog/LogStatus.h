@@ -167,6 +167,7 @@ struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
   LogIndex lowestIndexToKeep;
+  LogIndex firstInMemoryIndex;
   bool leadershipEstablished{false};
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
@@ -186,6 +187,7 @@ auto inspect(Inspector& f, LeaderStatus& x) {
   return f.object(x).fields(
       f.field("role", role), f.field("local", x.local), f.field("term", x.term),
       f.field("lowestIndexToKeep", x.lowestIndexToKeep),
+      f.field("firstInMemoryIndex", x.firstInMemoryIndex),
       f.field("leadershipEstablished", x.leadershipEstablished),
       f.field("follower", x.follower),
       f.field("commitLagMS", x.commitLagMS)

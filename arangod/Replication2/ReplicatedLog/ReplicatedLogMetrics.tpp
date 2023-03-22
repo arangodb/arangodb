@@ -93,6 +93,13 @@ ReplicatedLogMetricsIndirect<mock>::ReplicatedLogMetricsIndirect(
   replicatedLogNumberCompactedEntries = createMetric<
       arangodb_replication2_replicated_log_number_compacted_entries_total>(
       metricsFeature);
+
+  leaderNumInMemoryEntries =
+      createMetric<arangodb_replication2_leader_in_memory_entries>(
+          metricsFeature);
+  leaderNumInMemoryBytes =
+      createMetric<arangodb_replication2_leader_in_memory_bytes>(
+          metricsFeature);
 }
 
 }  // namespace arangodb::replication2::replicated_log
