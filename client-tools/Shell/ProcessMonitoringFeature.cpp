@@ -77,6 +77,7 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
 ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
     : ArangoshFeature{server, *this} {
   startsAfter<V8SecurityFeature>();
+  _monitoredProcesses.reserve(10);
 }
 
 ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
@@ -98,6 +99,12 @@ void ProcessMonitoringFeature::start() {
   }
 }
 void ProcessMonitoringFeature::beginShutdown() {
+  if (_enabled) {
+    _monitorThread->shutdown();
+  }
+}
+
+void ProcessMonitoringFeature::stop() {
   if (_enabled) {
     _monitorThread->shutdown();
   }
