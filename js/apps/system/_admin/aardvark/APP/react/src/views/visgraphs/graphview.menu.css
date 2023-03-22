@@ -1,11 +1,10 @@
 ul#graphViewerMenu {
   margin-bottom: 0px;
+  padding: 0 16px;
 }
 
 ul#graphViewerMenu li {
   list-style-type: none;
-  margin-left: -16px;
-  margin-right: 16px;
   cursor: pointer;
 }
 
