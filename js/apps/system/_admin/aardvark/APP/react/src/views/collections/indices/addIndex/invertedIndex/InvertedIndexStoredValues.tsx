@@ -38,7 +38,6 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
   const { values } = useFormikContext<InvertedIndexValuesType>();
   return (
     <>
-      <FormLabel>{field.label}</FormLabel>
       <FieldArray name="storedValues">
         {({ remove, push }) => (
           <Box display={"grid"} rowGap="4">

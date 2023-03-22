@@ -1,15 +1,14 @@
-import { Box } from "@chakra-ui/react";
+import {
+  Box
+} from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { Split } from "../../../../../components/split/Split";
-import { FormActions, IndexFormFieldsList } from "../IndexFormFieldList";
-import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
-import { InvertedIndexConsolidationPolicy } from "./InvertedIndexConsolidationPolicy";
+import { IndexFormFieldProps } from "../IndexFormField";
+import { FormActions } from "../IndexFormFieldList";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
-import { InvertedIndexFieldsDataEntry } from "./InvertedIndexFieldsDataEntry";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
-import { InvertedIndexPrimarySort } from "./InvertedIndexPrimarySort";
-import { InvertedIndexStoredValues } from "./InvertedIndexStoredValues";
+import { InvertedIndexLeftPane } from "./InvertedIndexLeftPane";
 import {
   InvertedIndexValuesType,
   useCreateInvertedIndex
@@ -38,7 +37,7 @@ export const InvertedIndexForm = ({
   onCreate?: ({ values }: { values: InvertedIndexValuesType }) => Promise<void>;
   initialValues: InvertedIndexValuesType;
   schema?: any;
-  fields: { label: string; name: string; type: string }[];
+  fields: IndexFormFieldProps[];
   onClose: () => void;
   isFormDisabled?: boolean;
 }) => {
@@ -61,39 +60,9 @@ export const InvertedIndexForm = ({
                 const gutterProps = getGutterProps("column", 1);
                 return (
                   <Box display="grid" {...gridProps}>
-                    <IndexFormFieldsList
+                    <InvertedIndexLeftPane
                       isFormDisabled={isFormDisabled}
                       fields={fields}
-                      renderField={({ field, autoFocus }) => {
-                        if (field.name === "analyzer") {
-                          return (
-                            <InvertedIndexAnalyzerDropdown
-                              field={field}
-                              autoFocus={autoFocus}
-                            />
-                          );
-                        }
-                        if (field.name === "fields") {
-                          return (
-                            <InvertedIndexFieldsDataEntry
-                              field={field}
-                              autoFocus={autoFocus}
-                            />
-                          );
-                        }
-                        if (field.name === "primarySort") {
-                          return <InvertedIndexPrimarySort field={field} />;
-                        }
-                        if (field.name === "storedValues") {
-                          return <InvertedIndexStoredValues field={field} />;
-                        }
-                        if (field.name === "consolidationPolicy") {
-                          return (
-                            <InvertedIndexConsolidationPolicy field={field} />
-                          );
-                        }
-                        return <>{field.name}</>;
-                      }}
                     />
                     <Box
                       gridRow="1/-1"
@@ -104,7 +73,9 @@ export const InvertedIndexForm = ({
                       {...gutterProps}
                     ></Box>
 
-                    <InvertedIndexFormJSONEditor isFormDisabled={isFormDisabled} />
+                    <InvertedIndexFormJSONEditor
+                      isFormDisabled={isFormDisabled}
+                    />
                   </Box>
                 );
               }}
@@ -117,3 +88,5 @@ export const InvertedIndexForm = ({
     </InvertedIndexProvider>
   );
 };
+
+

@@ -41,7 +41,6 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   return (
     <>
-      <FormLabel>{field.label}</FormLabel>
       <Box
         display={"grid"}
         gridColumnGap="4"

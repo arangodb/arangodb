@@ -164,36 +164,42 @@ export const invertedIndexFieldsMap = {
     name: "fields",
     isRequired: true,
     type: "custom",
-    tooltip: "A comma-separated list of attribute paths."
+    tooltip: "A comma-separated list of attribute paths.",
+    group: "fields"
   },
   analyzer: {
     label: "Analyzer",
     name: "analyzer",
-    type: "custom"
+    type: "custom",
+    group: "fields"
   },
   features: {
     label: "Analyzer Features",
     name: "features",
     type: "multiSelect",
-    options: analyzerFeaturesOptions
+    options: analyzerFeaturesOptions,
+    group: "fields"
   },
   includeAllFields: {
     label: "Include All Fields",
     name: "includeAllFields",
     type: "boolean",
-    initialValue: false
+    initialValue: false,
+    group: "fields"
   },
   trackListPositions: {
     label: "Track List Positions",
     name: "trackListPositions",
     type: "boolean",
-    initialValue: false
+    initialValue: false,
+    group: "fields"
   },
   searchField: {
     label: "Search Field",
     name: "searchField",
     type: "boolean",
-    initialValue: false
+    initialValue: false,
+    group: "fields"
   },
   primarySort: {
     label: "Primary Sort",
@@ -208,32 +214,38 @@ export const invertedIndexFieldsMap = {
   cleanupIntervalStep: {
     label: "Cleanup Interval Step",
     name: "cleanupIntervalStep",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   commitIntervalMsec: {
     label: "Commit Interval (msec)",
     name: "commitIntervalMsec",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   consolidationIntervalMsec: {
     label: "Consolidation Interval (msec)",
     name: "consolidationIntervalMsec",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   writebufferIdle: {
     label: "Writebuffer Idle",
     name: "writebufferIdle",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   writebufferActive: {
     label: "Writebuffer Active",
     name: "writebufferActive",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   writebufferSizeMax: {
     label: "Writebuffer Size Max",
     name: "writebufferSizeMax",
-    type: "number"
+    type: "number",
+    group: "general"
   },
   consolidationPolicy: {
     label: "Consolidation Policy",
@@ -244,7 +256,7 @@ export const invertedIndexFieldsMap = {
 
 const invertedIndexFields = [
   invertedIndexFieldsMap.fields,
-  commonFieldsMap.name,
+  { ...commonFieldsMap.name, group: "general" },
   invertedIndexFieldsMap.analyzer,
   invertedIndexFieldsMap.features,
   invertedIndexFieldsMap.includeAllFields,
@@ -259,7 +271,7 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.writebufferActive,
   invertedIndexFieldsMap.writebufferSizeMax,
   invertedIndexFieldsMap.consolidationPolicy,
-  commonFieldsMap.inBackground
+  { ...commonFieldsMap.inBackground, group: "general" }
 ];
 
 const fieldSchema: any = Yup.object().shape({

@@ -12,6 +12,7 @@ export type IndexFormFieldProps = {
   type: string;
   options?: Array<OptionType>;
   tooltip?: string;
+  group?: string;
   isRequired?: boolean;
   isDisabled?: boolean;
 };

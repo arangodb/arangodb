@@ -31,7 +31,6 @@ const ConsolidationPolicyFields = ({
   const [formikField] = useField(field.name);
   return (
     <>
-      <FormLabel>{field.label}</FormLabel>
       <Box
         display={"grid"}
         gridColumnGap="4"
