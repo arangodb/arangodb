@@ -23,30 +23,35 @@ export const InvertedIndexLeftPane = ({
   fields: IndexFormFieldProps[];
 }) => {
   return (
-    <Accordion
-      borderColor={"gray.200"}
-      borderRightWidth="1px solid"
-      borderLeftWidth="1px solid"
-      marginTop="4"
-      allowMultiple
-      allowToggle
-      padding="4"
+    <Box
+      minHeight={isFormDisabled ? "100vh" : "calc(100vh - 300px)"}
+      minWidth="0"
     >
-      <FieldsAccordionItem isFormDisabled={isFormDisabled} fields={fields} />
-      <GeneralAccordionItem isFormDisabled={isFormDisabled} fields={fields} />
-      <PrimarySortAccordionItem
-        isFormDisabled={isFormDisabled}
-        fields={fields}
-      />
-      <StoredValuesAccordionItem
-        isFormDisabled={isFormDisabled}
-        fields={fields}
-      />
-      <ConsolidationPolicyAccordionItem
-        isFormDisabled={isFormDisabled}
-        fields={fields}
-      />
-    </Accordion>
+      <Accordion
+        borderColor={"gray.200"}
+        borderRightWidth="1px solid"
+        borderLeftWidth="1px solid"
+        marginTop="4"
+        allowMultiple
+        allowToggle
+        padding="4"
+      >
+        <FieldsAccordionItem isFormDisabled={isFormDisabled} fields={fields} />
+        <GeneralAccordionItem isFormDisabled={isFormDisabled} fields={fields} />
+        <PrimarySortAccordionItem
+          isFormDisabled={isFormDisabled}
+          fields={fields}
+        />
+        <StoredValuesAccordionItem
+          isFormDisabled={isFormDisabled}
+          fields={fields}
+        />
+        <ConsolidationPolicyAccordionItem
+          isFormDisabled={isFormDisabled}
+          fields={fields}
+        />
+      </Accordion>
+    </Box>
   );
 };
 type AccordionItemType = {
