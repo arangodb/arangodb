@@ -416,7 +416,7 @@ function TtlSuite () {
 
       // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved == oldStats.documentsRemoved, { stats, oldStats });
+      assertTrue(stats.documentsRemoved === oldStats.documentsRemoved, { stats, oldStats });
       
       assertEqual(1000, db._collection(cn).count());
     },
@@ -669,7 +669,7 @@ function TtlSuite () {
 
       // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved == oldStats.documentsRemoved, { stats, oldStats });
+      assertTrue(stats.documentsRemoved === oldStats.documentsRemoved, { stats, oldStats });
 
       assertEqual(1000, db._collection(cn).count());
     },
