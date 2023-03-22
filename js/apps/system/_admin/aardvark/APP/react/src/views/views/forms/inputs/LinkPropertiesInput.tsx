@@ -8,6 +8,7 @@ import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import ToolTip from "../../../../components/arango/tootip";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
+import { Box } from "@chakra-ui/react";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -92,7 +93,14 @@ const LinkPropertiesInput = ({
               title="Process all document attributes."
               setArrow={true}
             >
-              <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+              <Box
+                as="span"
+                className="arangoicon icon_arangodb_info"
+                style={{ marginTop: 10 }}
+                marginTop="10px"
+                color="gray.700"
+                fontSize="18px"
+              />            
             </ToolTip>
           </Cell>
           <Cell size={"1-4"}/>
@@ -114,7 +122,14 @@ const LinkPropertiesInput = ({
               title="For array values track the value position in arrays."
               setArrow={true}
             >
-              <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+              <Box
+                as="span"
+                className="arangoicon icon_arangodb_info"
+                style={{ marginTop: 10 }}
+                marginTop="10px"
+                color="gray.700"
+                fontSize="18px"
+              />       
             </ToolTip>
           </Cell>
           <Cell size={"1-4"}/>
@@ -132,7 +147,14 @@ const LinkPropertiesInput = ({
               title="Store information about value presence to allow use of the EXISTS() function."
               setArrow={true}
             >
-              <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+              <Box
+                as="span"
+                className="arangoicon icon_arangodb_info"
+                style={{ marginTop: 10 }}
+                marginTop="10px"
+                color="gray.700"
+                fontSize="18px"
+              />       
             </ToolTip>
           </Cell>
           <Cell size={"1-4"}/>
@@ -158,7 +180,14 @@ const LinkPropertiesInput = ({
                     title="If selected, no exclusive lock is used on the source collection during View index creation."
                     setArrow={true}
                   >
-                    <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+                    <Box
+                      as="span"
+                      className="arangoicon icon_arangodb_info"
+                      style={{ marginTop: 10 }}
+                      marginTop="10px"
+                      color="gray.700"
+                      fontSize="18px"
+                    />       
                   </ToolTip>
                 </Cell>
                 <Cell size={"1-4"}/>
