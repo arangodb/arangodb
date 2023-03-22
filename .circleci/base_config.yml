@@ -96,12 +96,14 @@ jobs:
             if [ << parameters.enterprise >> == true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
               if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+                set +e
                 git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
                 if [ "$?" == "0" ] ; then
                   ENTERPRISE_BRANCH=$CIRCLE_BRANCH
                 else
                   ENTERPRISE_BRANCH=devel
                 fi
+                set -e
               else
                 ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
               fi
