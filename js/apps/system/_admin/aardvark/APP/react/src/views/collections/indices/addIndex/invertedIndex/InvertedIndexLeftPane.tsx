@@ -29,6 +29,7 @@ export const InvertedIndexLeftPane = ({
     >
       <Accordion
         borderColor={"gray.200"}
+        defaultIndex={[0, 1]}
         borderRightWidth="1px solid"
         borderLeftWidth="1px solid"
         marginTop="4"
