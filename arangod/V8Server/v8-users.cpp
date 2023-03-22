@@ -44,6 +44,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,13 +61,13 @@ arangodb::Result existsCollection(v8::Isolate* isolate,
   }
   auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
 
-  static const std::string wildcard("*");
+  constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature.lookupDatabase(database);
+  auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

@@ -68,6 +68,8 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
         << " not found during creation of snapshot handler";
     return nullptr;
   }
+  // TODO: this is not safe, because the vocbase can be deleted
+  // at any point after the snapshot handler has been created.
   return std::make_unique<DocumentStateSnapshotHandler>(
       std::make_unique<CollectionReaderFactory>(*vocbase));
 }

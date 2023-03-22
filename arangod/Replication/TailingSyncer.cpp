@@ -332,6 +332,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(
         basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
+    // usage of lookupDatabase() is safe here, as we only check if the
+    // returned pointer is a nullptr or not
     TRI_vocbase_t* vocbase =
         sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
             name);
@@ -359,6 +361,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
+    // usage of lookupDatabase() is safe here, as we only check if the
+    // returned pointer is a nullptr or not
     TRI_vocbase_t* vocbase =
         sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
             name);
@@ -369,8 +373,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
       auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
-      // delete from cache by id and name
-      _state.vocbases.erase(std::to_string(vocbase->id()));
+      // delete from cache by name
       _state.vocbases.erase(name);
 
       auto res =
