@@ -93,7 +93,6 @@ jobs:
       - run:
           name: Checkout Enterprise
           command: |
-            set -v
             if [ << parameters.enterprise >> == true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
               if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
