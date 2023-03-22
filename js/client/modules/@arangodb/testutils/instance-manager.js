@@ -815,7 +815,7 @@ class instanceManager {
 
   _forceTerminate(moreReason="") {
     if (!this.options.coreCheck && !this.options.setInterruptable) {
-      print("Interacitve mode: SIGABRT killing all arangods");
+      print("Interactive mode: SIGABRT killing all arangods");
     } else {
       print("Aggregating coredumps");
     }
