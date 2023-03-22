@@ -73,8 +73,9 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
                                       .clusterInfo();
       currentVertexId = ci.uniqid(numVertices);
       currentVertexIdMax = currentVertexId + numVertices;
+    } else {
+      ADB_PROD_ASSERT(false) << "ClusterFeature not present in server";
     }
-    ADB_PROD_ASSERT(false) << "ClusterFeature not present in server";
   } else {
     // Just bump the max
     currentVertexIdMax += numVertices;
