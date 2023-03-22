@@ -512,15 +512,16 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
-std::string Syncer::rewriteLocation(void* data, std::string const& location) {
-  Syncer* s = static_cast<Syncer*>(data);
+std::string Syncer::rewriteLocation(void const* data,
+                                    std::string const& location) {
+  auto s = static_cast<Syncer const*>(data);
   TRI_ASSERT(s != nullptr);
   if (location.starts_with("/_db/")) {
     // location already contains /_db/
     return location;
   }
   TRI_ASSERT(!s->_state.databaseName.empty());
-  if (location[0] == '/') {
+  if (location.starts_with('/')) {
     return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) +
            location;
   }
