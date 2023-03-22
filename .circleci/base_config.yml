@@ -235,6 +235,10 @@ workflows:
           name: clang-format
           requires:
             - minimal-checkout
+      - jslint:
+          name: jslint
+          requires:
+            - minimal-checkout
   community-pr:
     jobs:
       - compile-linux:
