@@ -367,8 +367,7 @@ void BenchFeature::start() {
     auto connectDB = client.databaseName();
     client.setDatabaseName(StaticStrings::SystemDatabase);
     auto createDbClient = client.createHttpClient();
-    createDbClient->params().setUserNamePassword("/", client.username(),
-                                                 client.password());
+
     VPackBuilder b;
     b.openObject();
     b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));

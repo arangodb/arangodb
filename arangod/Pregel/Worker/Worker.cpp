@@ -80,12 +80,13 @@ using namespace arangodb::pregel;
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        CreateWorker const& parameters, PregelFeature& feature)
+                        worker::message::CreateWorker const& parameters,
+                        PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo) {
-  _config->updateConfig(_feature, parameters);
+  _config->updateConfig(parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 
@@ -264,7 +265,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
+void Worker<V, E, M>::receivedMessages(
+    worker::message::PregelMessage const& data) {
   if (data.gss == _config->_globalSuperstep) {
     {  // make sure the pointer is not changed while
       // parsing messages
@@ -473,7 +475,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   uint64_t tn = _config->parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-  _messageStats.resetTracking();
+  _messageStats.reset();
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 }
 

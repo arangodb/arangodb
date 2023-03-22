@@ -33,6 +33,7 @@ class LogTopic;
 class Result;
 namespace httpclient {
 class SimpleHttpClient;
+class SimpleHttpResult;
 }  // namespace httpclient
 
 /**
@@ -65,7 +66,7 @@ class ClientManager {
   Result getConnectedClient(
       std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
       bool logServerVersion, bool logDatabaseNotFound, bool quiet,
-      size_t threadNumber);
+      size_t threadNumber) const;
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -83,7 +84,7 @@ class ClientManager {
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
       bool force, bool logServerVersion, bool logDatabaseNotFound,
-      size_t threadNumber);
+      size_t threadNumber) const;
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -91,7 +92,8 @@ class ClientManager {
    * @param  location Relative URI to prefix, if it does not begin with "/_db/"
    * @return          Propertly prefixed URI
    */
-  static std::string rewriteLocation(void* data, std::string const& location);
+  static std::string rewriteLocation(void const* data,
+                                     std::string const& location);
 
   /**
    * @brief Determines whether the ArangoDB instance is part of a cluster
@@ -111,6 +113,8 @@ class ClientManager {
    */
   std::pair<Result, bool> getArangoIsUsingEngine(
       httpclient::SimpleHttpClient& httpClient, std::string const& name);
+
+  static Result getHttpErrorMessage(httpclient::SimpleHttpResult* result);
 
  private:
   ClientFeature& _client;

@@ -23,11 +23,10 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
-#include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/CollectionSpecifications.h"
-#include "Pregel/Conductor/Messages.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/PregelOptions.h"
@@ -38,15 +37,34 @@ namespace arangodb::pregel {
 
 namespace worker::message {
 
-struct CreateNewWorker {
-  ExecutionSpecifications executionSpecifications;
-  CollectionSpecifications collectionSpecifications;
+struct CreateWorker {
+  ExecutionNumber executionNumber;
+  std::string algorithm;
+  VPackBuilder userParameters;
+  std::string coordinatorId;
+  bool useMemoryMaps;
+  size_t parallelism;
+  std::unordered_map<CollectionID, std::vector<ShardID>>
+      edgeCollectionRestrictions;
+  std::map<CollectionID, std::vector<ShardID>> vertexShards;
+  std::map<CollectionID, std::vector<ShardID>> edgeShards;
+  std::unordered_map<CollectionID, std::string> collectionPlanIds;
+  std::vector<ShardID> allShards;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, CreateNewWorker& x) {
+auto inspect(Inspector& f, CreateWorker& x) {
   return f.object(x).fields(
-      f.field("executionSpecifications", x.executionSpecifications),
-      f.field("collectionSpecifications", x.collectionSpecifications));
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("algorithm", x.algorithm),
+      f.field("userParameters", x.userParameters),
+      f.field("coordinatorId", x.coordinatorId),
+      f.field("useMemoryMaps", x.useMemoryMaps),
+      f.field("parallelism", x.parallelism),
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
+      f.field("vertexShards", x.vertexShards),
+      f.field("edgeShards", x.edgeShards),
+      f.field("collectionPlanIds", x.collectionPlanIds),
+      f.field("allShards", x.allShards));
 }
 
 struct WorkerStart {};
@@ -55,21 +73,67 @@ auto inspect(Inspector& f, WorkerStart& x) {
   return f.object(x).fields();
 }
 
-struct LoadGraph {};
+struct LoadGraph {
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field("responsibleActorPerShard", x.responsibleActorPerShard));
 }
 
-struct WorkerMessages : std::variant<WorkerStart, CreateNewWorker, LoadGraph> {
-  using std::variant<WorkerStart, CreateNewWorker, LoadGraph>::variant;
+struct RunGlobalSuperStep {
+  uint64_t gss;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  uint64_t sendCount;
+  VPackBuilder aggregators;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, RunGlobalSuperStep& x) {
+  return f.object(x).fields(
+      f.field("globalSuperStep", x.gss), f.field("vertexCount", x.vertexCount),
+      f.field("edgeCount", x.edgeCount), f.field("sendCount", x.sendCount),
+      f.field("aggregators", x.aggregators));
+}
+
+struct ProduceResults {
+  bool withID;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ProduceResults& x) {
+  return f.object(x).fields(f.field("withID", x.withID));
+}
+
+struct PregelMessage {
+  ExecutionNumber executionNumber;
+  uint64_t gss;
+  PregelShard shard;
+  VPackBuilder messages;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelMessage& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("globalSuperStep", x.gss), f.field("shard", x.shard),
+      f.field("messages", x.messages));
+}
+
+struct WorkerMessages
+    : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
+                   PregelMessage, ProduceResults> {
+  using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
+                     PregelMessage, ProduceResults>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<WorkerStart>("Start"),
-      arangodb::inspection::type<CreateNewWorker>("CreateWorker"),
-      arangodb::inspection::type<LoadGraph>("LoadGraph"));
+      arangodb::inspection::type<CreateWorker>("CreateWorker"),
+      arangodb::inspection::type<LoadGraph>("LoadGraph"),
+      arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
+      arangodb::inspection::type<PregelMessage>("PregelMessage"),
+      arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 
 }  // namespace worker::message
@@ -152,21 +216,6 @@ auto inspect(Inspector& f, PregelResults& x) {
   return f.object(x).fields(f.field("results", x.results));
 }
 
-struct PregelMessage {
-  ExecutionNumber executionNumber;
-  uint64_t gss;
-  PregelShard shard;
-  VPackBuilder messages;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, PregelMessage& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss), f.field("shard", x.shard),
-      f.field("messages", x.messages));
-}
-
 }  // namespace arangodb::pregel
 
 template<>
@@ -179,10 +228,16 @@ template<>
 struct fmt::formatter<arangodb::pregel::worker::message::WorkerStart>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::worker::message::CreateNewWorker>
+struct fmt::formatter<arangodb::pregel::worker::message::CreateWorker>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::LoadGraph>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::RunGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::worker::message::PregelMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::worker::message::WorkerMessages>

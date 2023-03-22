@@ -43,13 +43,13 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     this->state->executionState = std::make_unique<CreateWorkers>(*this->state);
     /*
        CreateWorkers is a special state because it creates the workers instead
-       of just sending messages to them. Therefore we cannot use the message fct
-       of the ExecutionState but need to call the special messages function
-       which is specific to the CreateWorkers state only
+       of just sending messages to them. Therefore we cannot use the messages
+       fct of the ExecutionState but need to call the special messagesToServers
+       function which is specific to the CreateWorkers state only
     */
     auto createWorkers =
         static_cast<CreateWorkers*>(this->state->executionState.get());
-    auto messages = createWorkers->messages();
+    auto messages = createWorkers->messagesToServers();
     for (auto& [server, message] : messages) {
       this->dispatch(
           this->state->spawnActor,
@@ -69,7 +69,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, std::move(start));
     if (newExecutionState.has_value()) {
       changeState(std::move(newExecutionState.value()));
-      sendMessageToWorkers();
+      sendMessages();
     }
     return std::move(this->state);
   }
@@ -82,8 +82,43 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, std::move(start));
     if (newExecutionState.has_value()) {
       changeState(std::move(newExecutionState.value()));
-      sendMessageToWorkers();
+      sendMessages();
     }
+    return std::move(this->state);
+  }
+
+  auto operator()(ResultT<message::GlobalSuperStepFinished> message)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Global super step finished on worker {}",
+        this->sender);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::StatusUpdate message)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("f89db", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Received status update from worker {}: {}",
+        this->sender, inspection::json(message));
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ResultCreated msg)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("e1791", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Received results from {}", this->sender);
+
+    auto state = this->state->executionState->receive(this->sender, msg);
+    if (state.has_value()) {
+      changeState(std::move(state.value()));
+    }
+
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor,
+        pregel::message::AddResults{
+            .results = msg.results,
+            .receivedAllResults =
+                this->state->executionState->aqlResultsAvailable()});
     return std::move(this->state);
   }
 
@@ -123,9 +158,9 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
                        this->state->executionState->name());
   }
 
-  auto sendMessageToWorkers() -> void {
-    auto message = this->state->executionState->message();
-    for (auto& worker : this->state->workers) {
+  auto sendMessages() -> void {
+    auto messages = this->state->executionState->messages();
+    for (auto const& [worker, message] : messages) {
       this->dispatch(worker, message);
     }
   }
