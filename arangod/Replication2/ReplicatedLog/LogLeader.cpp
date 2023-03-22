@@ -466,6 +466,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     status.lowestIndexToKeep = lowestIndexToKeep;
+    status.firstInMemoryIndex = leaderData._inMemoryLog.getFirstIndex();
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
@@ -609,8 +610,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
       waitForSync);
   logEntry.setInsertTp(insertTp.has_value() ? *insertTp
                                             : InMemoryLogEntry::clock::now());
+  auto size = logEntry.entry().approxByteSize();
   this->_inMemoryLog.appendInPlace(_self._logContext, std::move(logEntry));
   _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
+  _self._logMetrics->leaderNumInMemoryEntries->fetch_add(1);
+  _self._logMetrics->leaderNumInMemoryBytes->fetch_add(size);
   if (isMetaLogEntry) {
     _self._logMetrics->replicatedLogNumberMetaEntries->count(1);
   } else {
@@ -684,8 +688,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       _self._storageManager->getTermIndexMapping().getLastIndex().value_or(
           TermIndexPair{});
   auto evictStopIndex = std::min(_commitIndex, maxDiskIndex.index);
+  std::size_t releasedMemory = 0, numEntriesEvicted = 0;
+  for (auto const& memtry : _inMemoryLog.slice(LogIndex{0}, evictStopIndex)) {
+    releasedMemory += memtry.entry().approxByteSize();
+    numEntriesEvicted += 1;
+  }
   // remove upto commit index, but keep non-locally persisted log
   _inMemoryLog = _inMemoryLog.removeFront(evictStopIndex);
+  _self._logMetrics->leaderNumInMemoryEntries->fetch_sub(numEntriesEvicted);
+  _self._logMetrics->leaderNumInMemoryBytes->fetch_sub(releasedMemory);
 
   struct MethodsImpl : IReplicatedLogLeaderMethods {
     explicit MethodsImpl(LogLeader& log) : _log(log) {}
@@ -1169,11 +1180,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
     -> LogStatistics {
   auto [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
-  auto log = _self._storageManager->getCommittedLog();
+  auto mapping = _self._storageManager->getTermIndexMapping();
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.firstIndex = log.getFirstIndex();
-  result.spearHead = log.getLastTermIndexPair();
+  result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
+  result.spearHead = _inMemoryLog.getLastTermIndexPair();
   result.releaseIndex = releaseIndex;
   return result;
 }
