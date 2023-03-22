@@ -129,9 +129,9 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 }
 
 // Sends telemetrics to the endpoint and tests the redirection when telemetrics
-// is sent to an endpoint, though not exactly the same thing, because here the
-// endpoint is local, hence the same client is used and a new endpoint is not
-// created.
+// is sent to an endpoint, though not exactly the same thing, because, for
+// testing redirection, the endpoint is local, hence the same client is used and
+// a new endpoint is not created.
 velocypack::Builder TelemetricsHandler::sendTelemetricsToEndpoint(
     std::string const& reqUrl) {
   // in the first moment, the url we send the request to is reqUrl, then it can
@@ -173,7 +173,7 @@ velocypack::Builder TelemetricsHandler::sendTelemetricsToEndpoint(
     // potential side-effect: buildHttpClient can modify url
     auto [relativeUrl, httpClient] = buildHttpClient(url);
 
-    // from here own we sporadically use the mutex to protect access to
+    // from here on we sporadically use the mutex to protect access to
     // _httpClient and _runCondition
     std::unique_lock lk(_mtx);
 
@@ -194,7 +194,10 @@ velocypack::Builder TelemetricsHandler::sendTelemetricsToEndpoint(
       if (result.ok()) {
         auto returnCode = response->getHttpReturnCode();
         if (returnCode == 200) {
-          responseBuilder.add(response->getBodyVelocyPack()->slice());
+          // we're not interested in the object if we're not testing redirection
+          if (reqUrl != ::kTelemetricsGatheringUrl) {
+            responseBuilder.add(response->getBodyVelocyPack()->slice());
+          }
           break;
         } else if (returnCode == 301 || returnCode == 302 ||
                    returnCode == 307) {
