@@ -814,7 +814,11 @@ class instanceManager {
   }
 
   _forceTerminate(moreReason="") {
-    print("Aggregating coredumps");
+    if (!this.options.coreCheck && !this.options.setInterruptable) {
+      print("Interacitve mode: SIGABRT killing all arangods");
+    } else {
+      print("Aggregating coredumps");
+    }
     this.arangods.forEach((arangod) => {
       arangod.killWithCoreDump('force terminating');
     });
