@@ -222,9 +222,6 @@ struct TRI_vocbase_t {
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;
 
-  [[nodiscard]] auto getDatabaseConfiguration()
-      -> arangodb::DatabaseConfiguration;
-
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,
                                      arangodb::LogicalCollection>

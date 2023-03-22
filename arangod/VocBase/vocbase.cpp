@@ -1907,24 +1907,6 @@ void TRI_vocbase_t::registerReplicatedState(
   _logManager->registerReplicatedState(id, std::move(methods));
 }
 
-/// @brief sanitize an object, given as slice, builder must contain an
-/// open object which will remain open
-/// the result is the object excluding _id, _key and _rev
-void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
-  TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice);
-  while (it.valid()) {
-    std::string_view key(it.key().stringView());
-    // _id, _key, _rev. minimum size here is 3
-    if (key.size() < 3 || key[0] != '_' ||
-        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
-         key != StaticStrings::RevString)) {
-      builder.add(key, it.value());
-    }
-    it.next();
-  }
-}
-
 [[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
     -> arangodb::DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
