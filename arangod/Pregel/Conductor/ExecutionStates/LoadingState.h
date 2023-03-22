@@ -33,7 +33,8 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Loading : ExecutionState {
-  Loading(ConductorState& conductor);
+  Loading(ConductorState& conductor,
+          std::unordered_map<ShardID, actor::ActorPID> actorForShard);
   ~Loading();
   auto name() const -> std::string override { return "loading"; };
   auto messages()
@@ -43,6 +44,7 @@ struct Loading : ExecutionState {
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 
   ConductorState& conductor;
+  std::unordered_map<ShardID, actor::ActorPID> actorForShard;
   std::unordered_set<actor::ActorPID> respondedWorkers;
   uint64_t totalVerticesCount = 0;
   uint64_t totalEdgesCount = 0;
