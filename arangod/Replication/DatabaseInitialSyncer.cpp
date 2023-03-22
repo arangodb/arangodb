@@ -159,7 +159,7 @@ arangodb::Result fetchRevisions(
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
-    bool encodeAsHLC, std::vector<arangodb::RevisionId>& toFetch,
+    bool encodeAsHLC, std::vector<arangodb::RevisionId> const& toFetch,
     arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
