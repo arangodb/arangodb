@@ -295,10 +295,10 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/,
-                      VertexType& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) const override {}
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document,
+                      VertexType& targetPtr, uint64_t vertexId) const override {
+  }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexType const* value) const override {

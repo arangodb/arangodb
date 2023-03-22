@@ -64,21 +64,20 @@ constexpr auto shardError = std::string_view{
 
 namespace arangodb::pregel {
 template<typename V, typename E>
-uint64_t GraphLoader<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
+auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
     if (config->vocbase()->server().template hasFeature<ClusterFeature>()) {
       arangodb::ClusterInfo& ci = this->config->vocbase()
                                       ->server()
                                       .template getFeature<ClusterFeature>()
                                       .clusterInfo();
-      return ci.uniqid(numVertices);
+      currentVertexId = ci.uniqid(numVertices);
+      currentVertexIdMax = currentVertexId + numVertices;
     }
     ADB_PROD_ASSERT(false) << "ClusterFeature not present in server";
-    return 0;
   } else {
-    // Warning: when re-parallelised this might become an issue, because
-    // reasons.
-    return 0;
+    // Just bump the max
+    currentVertexIdMax += numVertices;
   }
 }
 
@@ -170,13 +169,11 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
   uint64_t numVertices =
       coll->numberDocuments(&trx, transaction::CountType::Normal);
 
-  uint64_t const vertexIdRangeStart = determineVertexIdRangeStart(numVertices);
-  uint64_t vertexIdRange = vertexIdRangeStart;
-
+  requestVertexIds(numVertices);
   LOG_PREGEL("7c31f", DEBUG)
       << "Shard '" << vertexShard << "' has " << numVertices
-      << " vertices. id range: [" << vertexIdRangeStart << ", "
-      << (vertexIdRangeStart + numVertices) << ")";
+      << " vertices. id range: [" << currentVertexId << ", "
+      << currentVertexIdMax << ")";
 
   std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>>
       edgeCollectionInfos;
@@ -203,8 +200,13 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
     if (graphFormat->estimatedVertexSize() > 0) {
       // note: ventry->_data and vertexIdRange may be modified by
       // copyVertexData!
+
+      TRI_ASSERT(currentVertexId < currentVertexIdMax)
+          << fmt::format("vertexId exceeded maximum: {} < {}", currentVertexId,
+                         currentVertexIdMax);
       graphFormat->copyVertexData(*ctx->getVPackOptions(), documentId, slice,
-                                  ventry.data(), vertexIdRange);
+                                  ventry.data(), currentVertexId);
+      currentVertexId += 1;
     }
 
     // load edges

@@ -602,8 +602,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice document,
-                      DMIDValue& /*value*/,
-                      uint64_t& /*vertexIdRange*/) const override {}
+                      DMIDValue& /*value*/, uint64_t vertexId) const override {}
 
   void copyEdgeData(arangodb::velocypack::Options const&,
                     arangodb::velocypack::Slice /*document*/,

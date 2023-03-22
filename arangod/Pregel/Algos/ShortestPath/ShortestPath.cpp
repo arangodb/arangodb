@@ -87,9 +87,8 @@ struct arangodb::pregel::algos::SPGraphFormat
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
-                      arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      arangodb::velocypack::Slice document, int64_t& targetPtr,
+                      uint64_t vertexIdRange) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };

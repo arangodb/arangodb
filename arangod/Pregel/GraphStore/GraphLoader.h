@@ -59,7 +59,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
                  std::string_view documentID,
                  traverser::EdgeCollectionInfo& info) -> void;
 
-  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
+  auto requestVertexIds(uint64_t numVertices) -> void;
 
   std::shared_ptr<Quiver<V, E>> result;
 
@@ -67,6 +67,9 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
   std::function<void()> const statusUpdateCallback;
+
+  uint64_t currentVertexId = 0;
+  uint64_t currentVertexIdMax = 0;
 
   uint64_t const batchSize = 10000;
 };
