@@ -51,14 +51,14 @@ arangodb::Result existsCollection(arangodb::ArangodServer& server,
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  constexpr std::string_view wildcard("*");
+  static constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
