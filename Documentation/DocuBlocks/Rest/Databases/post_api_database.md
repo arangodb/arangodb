@@ -27,9 +27,11 @@ _(cluster only)_
 Default write concern for new collections created in this database.
 It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
-in the cluster a shard will refuse to write. Writes to shards with enough
-up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
+in the cluster, a shard refuses to write. Writes to shards with enough
+up-to-date copies succeed at the same time, however. The value of
+`writeConcern` cannot be larger than `replicationFactor`.
+For SatelliteCollections, the `writeConcern` is automatically controlled to
+equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 An array of user objects. The users will be granted *Administrate* permissions
