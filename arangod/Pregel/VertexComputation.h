@@ -43,6 +43,7 @@ template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
+ public:
   uint64_t _gss = 0;
   uint64_t _lss = 0;
   WorkerContext* _context = nullptr;
@@ -51,7 +52,6 @@ class VertexContext {
   AggregatorHandler* _writeAggregators = nullptr;
   Vertex<V, E>* _vertexEntry = nullptr;
 
- public:
   virtual ~VertexContext() = default;
 
   template<typename T>
@@ -117,9 +117,10 @@ class VertexContext {
 template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _cache = nullptr;
 
  public:
+  OutCache<M>* _cache = nullptr;
+
   virtual ~VertexComputation() = default;
 
   void sendMessage(Edge<E> const& edge, M const& data) {
