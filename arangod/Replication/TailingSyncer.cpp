@@ -332,13 +332,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(
         basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
-    // usage of lookupDatabase() is safe here, as we only check if the
-    // returned pointer is a nullptr or not
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -361,13 +357,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-    // usage of lookupDatabase() is safe here, as we only check if the
-    // returned pointer is a nullptr or not
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 

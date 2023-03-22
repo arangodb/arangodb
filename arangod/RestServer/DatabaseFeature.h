@@ -139,6 +139,8 @@ class DatabaseFeature : public ArangodFeature {
   VocbasePtr useDatabase(std::string_view name) const;
   VocbasePtr useDatabase(TRI_voc_tick_t id) const;
 
+  bool existsDatabase(std::string_view name) const;
+
   // look up a database by name. note: the caller must make sure that the
   // returned vocbase pointer remains valid (i.e. vocbase is not deleted
   // concurrently while the returned pointer is used).
