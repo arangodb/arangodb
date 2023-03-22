@@ -52,37 +52,11 @@ function TtlSuite () {
   'use strict';
   const cn = "UnitTestsTtl";
 
-  const waitForNextRun = function(collection, oldStats, tries) {
-    const oldRuns = oldStats.runs;
-    let numServers;
-    try {
-      // create a unique list of servers
-      numServers = Object.values(collection.shards(true)).filter(function(value, index, self) {
-        return self.indexOf(value) === index;
-      }).length;
-      // if there are multiple servers involved, we increase by 4, in order to avoid continuing
-      // in case the the *same* server reports multiple times. this would break the simple
-      // "how many times did it run check" in case the jobs are executed in the following order:
-      // - job run on server 1
-      // - job run on server 2
-      // - job run on server 1 (3 executions, but not from 3 different servers!)
-      // - job run on server 3
-      // - job run on server 2
-      // - job run on server 3
-      numServers *= 4;
-    } catch (err) {
-      // collection.shards() will throw when not running in cluster mode
-      numServers = 1;
-    }
-
-    let stats;
-    while (tries-- > 0) {
-      internal.wait(0.2, false);
-    
+  const waitUntil = function(tries, predicate) {
+    let stats = internal.ttlStatistics();;
+    while (!predicate(stats) && tries-- > 0) {
+      internal.wait(0.2, false);    
       stats = internal.ttlStatistics();
-      if (stats.runs - oldRuns >= numServers) {
-        break;
-      }
     }
     return stats;
   };
@@ -438,11 +412,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.runs > oldStats.runs);
 
       // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved, { stats, oldStats });
+      assertTrue(stats.documentsRemoved == oldStats.documentsRemoved, { stats, oldStats });
       
       assertEqual(1000, db._collection(cn).count());
     },
@@ -468,11 +442,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 1000, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
@@ -499,11 +473,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 1000, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
@@ -535,11 +509,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
       
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + 2 * docs.length / divisor);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 2000 / divisor, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 2 * docs.length / divisor, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
@@ -566,11 +540,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 1000 / divisor, { stats, oldStats }); 
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor, { stats, oldStats }); 
 
       assertEqual(1, db._collection(cn).count());
       assertEqual(dt, db._collection(cn).any().dateCreated);
@@ -591,7 +565,7 @@ function TtlSuite () {
         docs.push({ dateCreated: dt, value: i });
       }
       c.insert(docs);
-      // insert a date in the futue
+      // insert a date in the future
       const dt2 = new Date((new Date()).getTime() + 1000 * 60).toISOString();
       c.insert({ dateCreated: dt2 });
 
@@ -600,11 +574,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 1000 / divisor, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor, { stats, oldStats });
 
       assertEqual(1, db._collection(cn).count());
       assertEqual(dt2, db._collection(cn).any().dateCreated);
@@ -631,11 +605,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor);
       
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 10000 / divisor, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
@@ -661,11 +635,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
-      
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor);
+
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + 10000 / divisor, { stats, oldStats });
+      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved + docs.length / divisor, { stats, oldStats });
 
       assertEqual(0, db._collection(cn).count());
     },
@@ -691,11 +665,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.runs > oldStats.runs);
 
       // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved, { stats, oldStats });
+      assertTrue(stats.documentsRemoved == oldStats.documentsRemoved, { stats, oldStats });
 
       assertEqual(1000, db._collection(cn).count());
     },
@@ -721,11 +695,11 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 100000 / divisor, maxCollectionRemoves: 100000 / divisor });
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.runs > oldStats.runs);
 
       // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
-      assertTrue(stats.documentsRemoved >= oldStats.documentsRemoved, { stats, oldStats });
+      assertTrue(stats.documentsRemoved == oldStats.documentsRemoved, { stats, oldStats });
 
       assertEqual(1000, db._collection(cn).count());
     },
@@ -766,7 +740,7 @@ function TtlSuite () {
       assertEqual(100000 / divisor, props.maxTotalRemoves);
       assertEqual(100000 / divisor, props.maxCollectionRemoves);
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved > oldStats.documentsRemoved);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -816,7 +790,7 @@ function TtlSuite () {
       assertEqual(100000 / divisor, props.maxTotalRemoves);
       assertEqual(100000 / divisor, props.maxCollectionRemoves);
 
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout, stats => stats.documentsRemoved > oldStats.documentsRemoved);
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -852,7 +826,8 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
     
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       // number of runs, deletions and limitReached must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -863,14 +838,14 @@ function TtlSuite () {
      
       // wait again for next removal 
       oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
       // wait again, as fetching the stats and acquiring the collection count is not atomic
-      oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      waitUntil(20 * deltaTimeout, _ => db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
       assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
@@ -896,7 +871,8 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 10, maxCollectionRemoves: 100000 / divisor });
     
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       // number of runs, deletions and limitReached must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -907,14 +883,14 @@ function TtlSuite () {
      
       // wait again for next removal 
       oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
       // wait again, as fetching the stats and acquiring the collection count is not atomic
-      oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      waitUntil(20 * deltaTimeout, _ => db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
       assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
@@ -940,7 +916,8 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
     
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       // number of runs, deletions and limitReached must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -951,14 +928,14 @@ function TtlSuite () {
      
       // wait again for next removal 
       oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
       // wait again, as fetching the stats and acquiring the collection count is not atomic
-      oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      waitUntil(20 * deltaTimeout, _ => db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
       assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
@@ -984,7 +961,8 @@ function TtlSuite () {
       // reenable
       internal.ttlProperties({ active: true, frequency: 100, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
     
-      let stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      let stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       // number of runs, deletions and limitReached must have changed
       assertNotEqual(stats.runs, oldStats.runs);
@@ -995,14 +973,14 @@ function TtlSuite () {
      
       // wait again for next removal 
       oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      stats = waitUntil(20 * deltaTimeout,
+        stats => stats.documentsRemoved > oldStats.documentsRemoved && stats.limitReached > oldStats.limitReached);
 
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
       // wait again, as fetching the stats and acquiring the collection count is not atomic
-      oldStats = stats;
-      stats = waitForNextRun(c, oldStats, 20 * deltaTimeout);
+      waitUntil(20 * deltaTimeout, _ => db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
       assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
   
