@@ -1,3 +1,4 @@
+import { Spacer } from '@chakra-ui/react';
 import React, { useContext, useState } from 'react';
 import ToolTip from '../../components/arango/tootip';
 import { UrlParametersContext } from "./url-parameters-context";
@@ -22,13 +23,13 @@ const GraphLayoutSelector = () => {
   }
 
   return (
-    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <label for="graphlayout" style={{ 'color': '#ffffff', 'width': '150px' }}>Layout</label>
       <select
         name="graphlayout"
         value={layout}
         onChange={handleChange}
-        style={{ width: "200px", 'marginRight': '8px' }}
+        style={{ width: "200px" }}
       >
         {
           layouts.map(style => {
@@ -39,11 +40,12 @@ const GraphLayoutSelector = () => {
           })
         }
       </select>
+      <Spacer />
       <ToolTip
         title={"Graph layouts are the algorithms arranging the node positions."}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
+        <div className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></div>
       </ToolTip>
     </div>
   );

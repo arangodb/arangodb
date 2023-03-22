@@ -18,7 +18,7 @@ const ParameterNodeSizeByEdges = () => {
   }
 
   return (
-    <Flex direction='row' mt='3'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Size by connections</Box>
       </Center>

@@ -26,58 +26,46 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box
+  Box,
+  Stack
 } from "@chakra-ui/react";
 
 const AccordionGraphContent = () => {
   return (
-    <>
+    <Stack>
       <ParameterNodeStart />
-      <br />
       <GraphLayoutSelector />
       <ParameterDepth />
       <ParameterLimit />
-    </>
+    </Stack>
   );
 };
 
 const AccordionNodesContent = () => {
   return (
-    <>
+    <Stack>
       <ParameterNodeLabel />
-      <br />
       <ParameterNodeColor />
-      <br />
       <ParameterNodeLabelByCollection />
-      <br />
       <ParameterNodeColorByCollection />
-      <br />
       <ParameterNodeColorAttribute />
-      <br />
       <ParameterNodeSizeByEdges />
-      <br />
       <ParameterNodeSize />
-    </>
+    </Stack>
   );
 };
 
 const AccordionEdgesContent = () => {
   return (
-    <>
+    <Stack>
       <ParameterEdgeLabel />
-      <br />
       <ParameterEdgeColor />
-      <br />
       <ParameterEdgeLabelByCollection />
-      <br />
       <ParameterEdgeColorByCollection />
-      <br />
       <ParameterEdgeColorAttribute />
-      <br />
       <ParameterEdgeDirection />
-      <br />
       <EdgeStyleSelector />
-    </>
+    </Stack>
   );
 };
 
@@ -90,15 +78,6 @@ export const GraphSlideOutPane = ({
   return (
     <Drawer position="right" open={open}>
       <div style={{ backgroundColor: "#404a53" }}>
-        <div style={{ padding: "24px", display: "flex" }}>
-          <ButtonSave
-            graphName={graphName}
-            onGraphDataLoaded={(newGraphData, responseTimesObject) => {
-              onGraphDataLoaded(newGraphData, responseTimesObject);
-            }}
-            onIsLoadingData={isLoadingData => setIsLoadingData(isLoadingData)}
-          />
-        </div>
         <Accordion allowMultiple allowToggle defaultIndex={[0, 1, 2]}>
           <GraphAccordionItem title="Graph">
             <AccordionGraphContent />
@@ -110,6 +89,16 @@ export const GraphSlideOutPane = ({
             <AccordionEdgesContent />
           </GraphAccordionItem>
         </Accordion>
+
+        <Box display="flex" padding="4">
+          <ButtonSave
+            graphName={graphName}
+            onGraphDataLoaded={(newGraphData, responseTimesObject) => {
+              onGraphDataLoaded(newGraphData, responseTimesObject);
+            }}
+            onIsLoadingData={isLoadingData => setIsLoadingData(isLoadingData)}
+          />
+        </Box>
       </div>
     </Drawer>
   );
@@ -117,8 +106,8 @@ export const GraphSlideOutPane = ({
 
 const GraphAccordionItem = ({ children, title }) => {
   return (
-    <AccordionItem>
-      <AccordionButton color="white">
+    <AccordionItem border="0">
+      <AccordionButton color="white" backgroundColor="#2d3338">
         <Box as="span" flex="1" textAlign="left">
           {title}
         </Box>

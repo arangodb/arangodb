@@ -25,7 +25,7 @@ const EdgeStyleSelector = () => {
   }
 
   return (
-    <div style={{ 'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
+    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
       <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Type</label>
       <select
         name="edgetype"

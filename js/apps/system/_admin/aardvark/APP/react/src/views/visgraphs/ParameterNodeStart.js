@@ -20,7 +20,7 @@ const ParameterNodeStart = () => {
   }
 
   return (
-    <Flex direction='row' mt='3'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Start node</Box>
       </Center>

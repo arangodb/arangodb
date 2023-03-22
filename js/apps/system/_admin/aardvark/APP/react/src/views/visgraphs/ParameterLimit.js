@@ -19,7 +19,7 @@ const ParameterLimit = () => {
   }
 
   return (
-      <Flex direction='row' mt='6' mb='3'>
+      <Flex direction='row'>
         <Center>
           <Box color='#fff' w='150px'>Limit</Box>
         </Center>

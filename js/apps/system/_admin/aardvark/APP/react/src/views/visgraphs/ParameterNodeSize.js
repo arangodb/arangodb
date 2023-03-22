@@ -19,7 +19,7 @@ const ParameterNodeSize = () => {
   }
 
   return (
-    <Flex direction='row' mt='3' mb='3'>
+    <Flex direction='row'>
       <Center>
         <Box color='#fff' w='150px'>Sizing attribute</Box>
       </Center>

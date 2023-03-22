@@ -56,7 +56,7 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
       paddingLeft: '14px',
       marginLeft: 'auto'
     }}>
-      Run
+      Apply
     </IconButton>
   );
 };
