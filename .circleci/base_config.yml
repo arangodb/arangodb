@@ -70,6 +70,8 @@ jobs:
     docker:
       - image: arangodb:latest
     resource_class: small
+    environment:
+      ARANGOSH: /usr/bin/arangosh
     steps:
       - attach_workspace:
           at: .
