@@ -137,10 +137,11 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   // convert an arangodb document id to a pregel id
   VertexID documentIdToPregel(std::string_view documentID) const;
 
- private:
-  ExecutionNumber _executionNumber{};
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
+
+ private:
+  ExecutionNumber _executionNumber{};
 
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;

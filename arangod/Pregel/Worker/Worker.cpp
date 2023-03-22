@@ -475,7 +475,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   uint64_t tn = _config->parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-  _messageStats.resetTracking();
+  _messageStats.reset();
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 }
 
