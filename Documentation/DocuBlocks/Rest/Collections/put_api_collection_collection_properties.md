@@ -72,8 +72,8 @@ The default is `false`.
 (The default is *1*): in a cluster, this attribute determines how many copies
 of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. It can also be the string `"satellite"` for a SatelliteCollection,
-where the replication factor is matched to the number of DB-Servers
+are kept. For SatelliteCollections, it needs to be the string `"satellite"`,
+which matches the replication factor to the number of DB-Servers
 (Enterprise Edition only).
 
 Any two copies reside on different DB-Servers. Replication between them is
@@ -87,9 +87,11 @@ copies take over, usually without an error being reported.
 Write concern for this collection (default: 1).
 It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
-in the cluster a shard will refuse to write. Writes to shards with enough
-up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
+in the cluster, a shard refuses to write. Writes to shards with enough
+up-to-date copies succeed at the same time, however. The value of
+`writeConcern` cannot be larger than `replicationFactor`.
+For SatelliteCollections, the `writeConcern` is automatically controlled to
+equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 
 @RESTRETURNCODES
 

@@ -6,7 +6,7 @@
 @RESTDESCRIPTION
 Commits the local service state of the Coordinator to the database.
 
-This can be used to resolve service conflicts between Coordinators that can not be fixed automatically due to missing data.
+This can be used to resolve service conflicts between Coordinators that cannot be fixed automatically due to missing data.
 
 @RESTQUERYPARAMETERS
 

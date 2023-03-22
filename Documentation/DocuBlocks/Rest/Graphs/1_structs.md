@@ -21,16 +21,17 @@ concurrent modifications to this graph.
 
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
-Can also be the string `"satellite"` for a SatelliteGraph
-(Enterprise Edition only).
+For SatelliteGraphs, it is the string `"satellite"` (Enterprise Edition only).
 
 @RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
-Default write concern for new collections in the graph.
+The default write concern for new collections in the graph.
 It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
-in the cluster a shard will refuse to write. Writes to shards with enough
-up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
+in the cluster, a shard refuses to write. Writes to shards with enough
+up-to-date copies succeed at the same time, however. The value of
+`writeConcern` cannot be larger than `replicationFactor`.
+For SatelliteGraphs, the `writeConcern` is automatically controlled to equal the
+number of DB-Servers and the attribute is not available. _(cluster only)_
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Whether the graph is a SmartGraph (Enterprise Edition only).
