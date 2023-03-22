@@ -551,28 +551,28 @@ TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
                                    "could not resolve vocbase id / name");
   }
 
-  // will work with either names or id's
-  auto const& it = _state.vocbases.find(name);
+  // database names with a number in front are invalid names and
+  // cannot be handled here
+  TRI_ASSERT(name[0] < '0' || name[0] > '9');
+
+  // will work with either names or ids
+  auto it = _state.vocbases.find(name);
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
     auto& server = _state.applier._server;
-    TRI_vocbase_t* vocbase =
-        server.getFeature<DatabaseFeature>().lookupDatabase(name);
+    auto vocbase = server.getFeature<DatabaseFeature>().useDatabase(name);
 
-    if (vocbase != nullptr) {
-      _state.vocbases.try_emplace(name,
-                                  *vocbase);  // we can not be lazy because of
-                                              // the guard requires a valid ref
-    } else {
+    if (vocbase == nullptr) {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION)
           << "could not find database '" << name << "'";
+      return nullptr;
     }
-
-    return vocbase;
-  } else {
-    return &(it->second.database());
+    it = _state.vocbases.try_emplace(name, std::move(vocbase)).first;
   }
+
+  TRI_ASSERT(it != _state.vocbases.end());
+  return &(it->second.database());
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
