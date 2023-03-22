@@ -139,27 +139,17 @@ function OneShardPropertiesSuite () {
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
-        if (replication2Enabled) {
-          try {
-            // With Replication2 the writeConcern is defined by the CollectionGroup
-            // it cannot be individual by collection anymore.
-            db._create("test", {writeConcern: 1});
-            fail();
-          } catch (err) {
-            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-          }
-        } else {
-          try {
-            // Allow using a different writeConcern
-            db._create("test", {writeConcern: 1});
-            // For Replication1 this should be allowed.
-            // WriteConcern is per Collection basis
-          } catch (err) {
-            fail();
-          } finally {
-            db._drop("test");
-          }
+        try {
+          // Allow using a different writeConcern
+          db._create("test", {writeConcern: 1});
+          // For Replication1 this should be allowed.
+          // WriteConcern is per Collection basis
+        } catch (err) {
+          fail();
+        } finally {
+          db._drop("test");
         }
+
 
         // Allow creation where all values match
         let c = db._create("test", {writeConcern: 2, replicationFactor: 2, numberOfShards: 1});
@@ -445,10 +435,10 @@ function OneShardPropertiesSuite () {
           let col2Properties = col2.properties();
           let col3Properties = col3.properties();
 
-          assertEqual(col3Properties.distributeShardsLike, col2.name());
-          assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
+        assertEqual(col3Properties.distributeShardsLike, col2.name());
+        assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
         }
-      }
+
     },
 
     testSatelliteDB : function () {

@@ -138,11 +138,11 @@ void ArrayOutCache<M>::flushMessages() {
     }
 
     auto [shardMessageCount, messages] = messagesToVPack(vertexMessageMap);
-    auto pregelMessage =
-        PregelMessage{.executionNumber = this->_config->executionNumber(),
-                      .gss = gss,
-                      .shard = shard,
-                      .messages = messages};
+    auto pregelMessage = worker::message::PregelMessage{
+        .executionNumber = this->_config->executionNumber(),
+        .gss = gss,
+        .shard = shard,
+        .messages = messages};
     auto serialized = inspection::serializeWithErrorT(pregelMessage);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -254,11 +254,11 @@ void CombiningOutCache<M>::flushMessages() {
       continue;
     }
 
-    auto pregelMessage =
-        PregelMessage{.executionNumber = this->_config->executionNumber(),
-                      .gss = gss,
-                      .shard = shard,
-                      .messages = messagesToVPack(vertexMessageMap)};
+    auto pregelMessage = worker::message::PregelMessage{
+        .executionNumber = this->_config->executionNumber(),
+        .gss = gss,
+        .shard = shard,
+        .messages = messagesToVPack(vertexMessageMap)};
     auto serialized = inspection::serializeWithErrorT(pregelMessage);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/asio_ns.h"
@@ -1231,6 +1232,9 @@ arangodb::Result PhysicalCollectionMock::insert(
     }
     TRI_ASSERT(false);
   }
+  auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+  TRI_ASSERT(state != nullptr);
+  state->incrementInsert();
 
   return {};
 }
@@ -1400,6 +1404,9 @@ arangodb::Result PhysicalCollectionMock::remove(
     // does not remove it from any mock indexes
 
     // assume document was removed
+    auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
     return {};
   }
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
@@ -1487,6 +1494,11 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     auto const& [ref, didInsert] =
         _documents.emplace(key, DocElement{std::move(newBuffer), docId.id()});
     TRI_ASSERT(didInsert);
+
+    auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
+    state->incrementInsert();
 
     // TODO: mock index entries are not updated here
     return {};
@@ -1682,7 +1694,7 @@ std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
     arangodb::transaction::Options const& options) {
-  return std::make_shared<TransactionStateMock>(vocbase, tid, options);
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options, *this);
 }
 
 arangodb::Result StorageEngineMock::createView(
@@ -1712,7 +1724,7 @@ arangodb::Result StorageEngineMock::compactAll(bool changeLevels,
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
-  return TRI_CurrentTickServer();
+  return _engineTick.load();
 }
 
 arangodb::Result StorageEngineMock::dropCollection(
@@ -2011,8 +2023,8 @@ std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    arangodb::transaction::Options const& options, StorageEngineMock& engine)
+    : TransactionState(vocbase, tid, options), _engine{engine} {}
 
 arangodb::Result TransactionStateMock::abortTransaction(
     arangodb::transaction::Methods* trx) {
@@ -2046,6 +2058,8 @@ arangodb::Result TransactionStateMock::beginTransaction(
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   applyBeforeCommitCallbacks();
+  TRI_ASSERT(this == trx->state());
+  _engine.incrementTick(numPrimitiveOperations() + 1);
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
@@ -2084,7 +2098,7 @@ bool TransactionStateMock::hasFailedOperations() const noexcept {
 }
 
 TRI_voc_tick_t TransactionStateMock::lastOperationTick() const noexcept {
-  return 0;
+  return _engine.currentTick();
 }
 
 std::unique_ptr<arangodb::TransactionCollection>
@@ -2092,7 +2106,3 @@ TransactionStateMock::createTransactionCollection(
     arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) {
   return std::make_unique<TransactionCollectionMock>(this, cid, accessType);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
