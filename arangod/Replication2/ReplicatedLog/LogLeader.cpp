@@ -465,6 +465,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
+    status.compactionStatus = _compactionManager->getCompactionStatus();
     status.lowestIndexToKeep = lowestIndexToKeep;
     status.firstInMemoryIndex = leaderData._inMemoryLog.getFirstIndex();
     status.lastCommitStatus = leaderData._lastCommitFailReason;
@@ -684,6 +685,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _self._logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
   }
 
+  // potentially evict parts of the inMemoryLog.
   auto maxDiskIndex =
       _self._storageManager->getTermIndexMapping().getLastIndex().value_or(
           TermIndexPair{});
@@ -707,7 +709,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     }
     auto getCommittedLogIterator(std::optional<LogRange> range)
         -> std::unique_ptr<LogRangeIterator> override {
-      return _log.getCommittedLogIterator(range);
+      return _log.getLogConsumerIterator(range);
     }
     auto insert(LogPayload payload) -> LogIndex override {
       return _log.insert(std::move(payload));
@@ -1045,15 +1047,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
   if (_inMemoryLog.getFirstIndex() <= firstIdx) {
     auto const endIdx = _inMemoryLog.getLastTermIndexPair().index + 1;
     TRI_ASSERT(firstIdx <= endIdx);
-    // LOG_DEVEL << "serving " << firstIdx << "... all from memory "
-    //          << _inMemoryLog.getIndexRange();
     return _inMemoryLog.getMemtryIteratorFrom(firstIdx);
   }
 
-  // range is not completely covered by the in memory part
   auto diskIter = _self._storageManager->getPeristedLogIterator(firstIdx);
-
-  // LOG_DEVEL << "serving all from disk " << firstIdx;
 
   struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
     explicit OverlayIterator(
@@ -1062,10 +1059,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
         LogRange inMemoryRange)
         : _diskIter(std::move(diskIter)),
           _inMemoryIter(std::move(inMemoryIter)),
-          _inMemoryRange(inMemoryRange) {
-      // LOG_DEVEL << this << " serving disk"
-      //          << " memory range " << _inMemoryRange;
-    }
+          _inMemoryRange(inMemoryRange) {}
 
     auto next() -> std::optional<InMemoryLogEntry> override {
       // iterate over the disk until it is covered by the in memory part
@@ -1073,23 +1067,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
         auto entry = _diskIter->next();
         if (entry) {
           if (not _inMemoryRange.contains(entry->logIndex())) {
-            // LOG_DEVEL << this
-            //          << " serving from disk idx = " << entry->logIndex();
             return InMemoryLogEntry{*entry};
           }
         }
         _diskIter.reset();
-        // LOG_DEVEL << this << " switch to memory part";
       }
 
-      auto memtry = _inMemoryIter->next();
-      if (memtry) {
-        // LOG_DEVEL << this << " serving from memory idx = "
-        //          << memtry->entry().logIndex();
-      } else {
-        // LOG_DEVEL << this << " exhausted";
-      }
-      return memtry;
+      return _inMemoryIter->next();
     }
 
     std::unique_ptr<PersistedLogIterator> _diskIter;
@@ -1102,12 +1086,60 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
       _inMemoryLog.getIndexRange());
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(
-    LogIndex firstIndex) const -> std::unique_ptr<LogRangeIterator> {
-  auto const endIdx = _inMemoryLog.getNextIndex();
-  TRI_ASSERT(firstIndex < endIdx);
-  // return an iterator for the range [firstIndex, _commitIndex + 1)
-  return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
+auto replicated_log::LogLeader::GuardedLeaderData::getLogConsumerIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+  // Note that there can be committed log entries only in memory, because they
+  // might not be persisted locally.
+
+  // Intersect the range with the committed range
+  auto range = LogRange{LogIndex{0}, _commitIndex + 1};
+  if (bounds) {
+    range = intersect(range, *bounds);
+  }
+
+  // check if we can serve everything from memory
+  if (_inMemoryLog.getIndexRange().contains(range)) {
+    return _inMemoryLog.getIteratorRange(range);
+  }
+
+  // server from disk
+  auto diskIter = _self._storageManager->getCommittedLogIterator(range);
+
+  struct OverlayIterator : LogRangeIterator {
+    explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
+                             std::unique_ptr<LogRangeIterator> inMemoryIter,
+                             LogRange inMemoryRange, LogRange range)
+        : _diskIter(std::move(diskIter)),
+          _inMemoryIter(std::move(inMemoryIter)),
+          _inMemoryRange(inMemoryRange),
+          _range(range) {}
+
+    auto next() -> std::optional<LogEntryView> override {
+      // iterate over the disk until it is covered by the in memory part
+      if (_diskIter) {
+        auto entry = _diskIter->next();
+        if (entry) {
+          if (not _inMemoryRange.contains(entry->logIndex())) {
+            return entry;
+          }
+        }
+        _diskIter.reset();
+      }
+
+      return _inMemoryIter->next();
+    }
+
+    auto range() const noexcept -> LogRange override { return _range; }
+
+    std::unique_ptr<LogRangeIterator> _diskIter;
+    std::unique_ptr<LogRangeIterator> _inMemoryIter;
+    LogRange _inMemoryRange;
+    LogRange _range;
+  };
+
+  return std::make_unique<OverlayIterator>(std::move(diskIter),
+                                           _inMemoryLog.getIteratorRange(range),
+                                           _inMemoryLog.getIndexRange(), range);
 }
 
 /*
@@ -1299,8 +1331,9 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
             return std::make_pair(testIndex, nullptr);
           }
 
-          return std::make_pair(testIndex,
-                                leaderData.getCommittedLogIterator(testIndex));
+          return std::make_pair(
+              testIndex, leaderData.getLogConsumerIterator(
+                             LogRange{testIndex, leaderData._commitIndex + 1}));
         });
 
     // call here, otherwise we deadlock with waitFor
@@ -1312,19 +1345,9 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogLeader::getCommittedLogIterator(
+auto replicated_log::LogLeader::getLogConsumerIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
-  auto log = _guardedLeaderData.getLockedGuard()->_inMemoryLog;
-  if (bounds.has_value()) {
-    return log.getIteratorRange(*bounds);
-  } else {
-    return log.getRangeIteratorFrom(LogIndex{0});
-  }
-}
-
-auto replicated_log::LogLeader::copyInMemoryLog() const
-    -> replicated_log::InMemoryLog {
-  return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
+  return _guardedLeaderData.getLockedGuard()->getLogConsumerIterator(bounds);
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(
@@ -1394,8 +1417,8 @@ void replicated_log::LogLeader::establishLeadership(
         // necessary because we must not commit entries of older terms, but do
         // not want to wait with committing until the next insert.
 
-        // Also make sure that this entry is written with waitForSync = true to
-        // ensure that entries of the previous term are synced as well.
+        // Also make sure that this entry is written with waitForSync = true
+        // to ensure that entries of the previous term are synced as well.
         auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = data._self._id,
                                                      .participants = *config};
         auto firstIndex = data.insertInternal(LogMetaPayload{std::move(meta)},
@@ -1441,7 +1464,8 @@ auto replicated_log::LogLeader::waitForLeadership()
 }
 
 namespace {
-// For (unordered) maps `left` and `right`, return `keys(left) \ keys(right)`
+// For (unordered) maps `left` and `right`, return `keys(left)
+// \ keys(right)`
 auto const keySetDifference = [](auto const& left, auto const& right) {
   using left_t = std::decay_t<decltype(left)>;
   using right_t = std::decay_t<decltype(right)>;
@@ -1469,8 +1493,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
                                                              data) {
     auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
       auto const& oldFollowers = data._follower;
-      // Note that newParticipants contains the leader, while oldFollowers does
-      // not.
+      // Note that newParticipants contains the leader, while
+      // oldFollowers does not.
       auto const& newParticipants = config->participants;
       auto const additionalParticipantIds =
           keySetDifference(newParticipants, oldFollowers);
@@ -1502,8 +1526,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // all participants in the new configuration must either exist already, or
-    // be added via additionalFollowers.
+    // all participants in the new configuration must either exist
+    // already, or be added via additionalFollowers.
     {
       auto const& newConfigParticipants = config->participants;
       TRI_ASSERT(std::all_of(
@@ -1517,8 +1541,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
 #endif
 
     // Create a copy. This is important to keep the following code
-    // exception-safe, in particular never leave data._follower behind in a
-    // half-updated state.
+    // exception-safe, in particular never leave data._follower behind in
+    // a half-updated state.
     auto followers = data._follower;
 
     {  // remove obsolete followers
@@ -1538,8 +1562,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // all participants (but the leader) in the new configuration must now be
-    // part of followers
+    // all participants (but the leader) in the new configuration must now
+    // be part of followers
     {
       auto const& newConfigParticipants = config->participants;
       TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
@@ -1573,8 +1597,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
               // Make sure config is the currently active configuration. It
               // could happen that activeParticipantsConfig was changed before
               // config got any chance to see anything committed, thus never
-              // being considered an actual committedParticipantsConfig. In this
-              // case we skip it.
+              // being considered an actual committedParticipantsConfig. In
+              // this case we skip it.
               guard->committedParticipantsConfig = config;
               LOG_CTX("536f5", DEBUG, self->_logContext)
                   << "configuration committed, generation "
@@ -1597,7 +1621,8 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
         }
 
         LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
-            << "leader is already gone, configuration change was not committed";
+            << "leader is already gone, configuration change was not "
+               "committed";
       });
 
   return waitForIndex;

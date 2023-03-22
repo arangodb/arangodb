@@ -92,9 +92,6 @@ struct ILogParticipant {
       -> WaitForIteratorFuture = 0;
 
   // Passing no bounds means everything.
-  [[nodiscard]] virtual auto getCommittedLogIterator(
-      std::optional<LogRange> bounds = std::nullopt) const
-      -> std::unique_ptr<LogRangeIterator> = 0;
   [[nodiscard]] virtual auto getInternalLogIterator(
       std::optional<LogRange> bounds = std::nullopt) const
       -> std::unique_ptr<PersistedLogIterator> = 0;
@@ -129,10 +126,6 @@ struct ILogLeader : ILogParticipant {
       -> LogIndex = 0;
   virtual auto ping(std::optional<std::string> message) -> LogIndex = 0;
   virtual auto waitForLeadership() -> WaitForFuture = 0;
-
-  // TODO remove this method (see
-  //      https://arangodb.atlassian.net/browse/CINFRA-688)
-  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_log

@@ -261,7 +261,8 @@ function ReplicatedLogsWriteSuite() {
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
       let s2 = getLeaderStatus(log);
-      assertEqual(s2.local.firstIndex, 1500);
+      // Compaction runs asynchronous, so we can not expect the firstIndex to be 1500
+      assertEqual(s2.local.releaseIndex, 1500);
     },
 
    testPoll: function () {
