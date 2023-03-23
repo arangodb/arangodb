@@ -60,9 +60,9 @@ Querying the status of a done job:
 
   var queryId = response.headers['x-arango-async-id'];
   url = '/_api/job/' + queryId
-  var response = logCurlRequest('GET', url, "");
+  var response = logCurlRequest('GET', url);
   assert(response.code === 200);
-  logJsonResponse(response);
+  logRawResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Querying the status of a pending job:
