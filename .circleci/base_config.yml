@@ -69,7 +69,7 @@ jobs:
   jslint:
     docker:
       - image: alpine:3.17
-    resouce_class: small
+    resource_class: small
     steps:
       - attach_workspace:
           at: .
