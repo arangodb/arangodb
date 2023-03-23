@@ -106,6 +106,7 @@ auto DocumentStateShardHandler::dropAllShards() -> Result {
                                 res.errorMessage())};
     }
   }
+  _shardMap.shards.clear();
   return {};
 }
 

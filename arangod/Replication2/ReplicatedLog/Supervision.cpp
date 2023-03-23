@@ -623,11 +623,14 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   auto const& targetParticipants = target.participants;
   auto const& planParticipants = plan.participantsConfig.participants;
 
+  if (planParticipants.size() == targetParticipants.size()) {
+    return;  // Nothing to do here
+  }
+
   // check if, after a remove, enough servers are available to form a quorum
   auto wanted = plan.participantsConfig.config.effectiveWriteConcern;
   auto have = std::count_if(
-      plan.participantsConfig.participants.begin(),
-      plan.participantsConfig.participants.end(), [&](auto const& pair) {
+      planParticipants.begin(), planParticipants.end(), [&](auto const& pair) {
         // server should be healthy and have a snapshot
         auto const& [pid, flags] = pair;
         if (not health.notIsFailed(pid)) {
@@ -645,9 +648,35 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
 
         return true;
       });
-  TRI_ASSERT(have > 0);
+  TRI_ASSERT(have >= 0);
 
-  if (wanted + 1 < static_cast<std::size_t>(have)) {
+  // if there are not enough participants, make sure we can still commit
+  if (wanted + 1 > static_cast<std::size_t>(have)) {
+    // remove all allowedInQuorum=false, when possible
+    for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
+         planParticipants) {
+      auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant =
+                                             maybeRemovedParticipant] {
+        if (auto iter = targetParticipants.find(maybeRemovedParticipant);
+            iter != targetParticipants.end()) {
+          if (not iter->second.allowedInQuorum) {
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      if (not maybeRemovedParticipantFlags.allowedInQuorum and
+          shouldBeAllowedInQuorum()) {
+        // unset this flag for now
+        auto newFlags = maybeRemovedParticipantFlags;
+        newFlags.allowedInQuorum = true;
+        ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
+                                                       newFlags);
+      }
+    }
+
     ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
     return;
   }
