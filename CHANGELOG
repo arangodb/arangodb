@@ -1,3 +1,11 @@
+v3.10.6 (XXXX-XX-XX)
+--------------------
+
+* Changed path were test scripts locate configuration files from `etc/relative`
+  to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
+  from `etc/relative` in test environment.
+
+
 v3.10.5 (2023-03-16)
 --------------------
 
