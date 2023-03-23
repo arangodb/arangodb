@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useContext } from "react";
 
 const UrlParametersContext = React.createContext(null);
 
-export { UrlParametersContext };
+const useUrlParameterContext = () => useContext(UrlParametersContext);
+
+export { UrlParametersContext, useUrlParameterContext };

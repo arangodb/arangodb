@@ -1,4 +1,4 @@
-import { ArangojsResponse } from "arangojs/lib/request.node";
+import { useDisclosure } from "@chakra-ui/react";
 import React, {
   createContext,
   ReactNode,
@@ -7,143 +7,33 @@ import React, {
   useEffect,
   useState
 } from "react";
+import { Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
 import { loadingNode } from "./data";
+import { UrlParametersContext } from "./url-parameters-context";
+import URLPARAMETERS from "./UrlParameters";
+import { VisDataResponse, VisGraphData } from "./VisGraphData.types";
 
-const GraphContext = createContext<{
+type GraphContextType = {
   graphData: VisGraphData;
   graphName: string;
-}>({
+  network?: Network;
+  isSettingsOpen?: boolean;
+  setNetwork: (network: Network) => void;
+  onOpenSettings: () => void;
+  onCloseSettings: () => void;
+};
+const GraphContext = createContext<GraphContextType>({
   graphData: {} as VisGraphData,
   graphName: ""
-});
+} as GraphContextType);
 
-type NodeType = {
-  id: string;
-  label: string;
-  size: number;
-  value: number;
-  sizeCategory: string;
-  shape: string;
-  color?: string;
-  font: {
-    strokeWidth: number;
-    strokeColor: string;
-    vadjust: number;
-  };
-  sortColor: string;
-  borderWidth: number;
-  shadow?: {
-    enabled: true;
-    color: string;
-    size: number;
-    x: number;
-    y: number;
-  };
-};
-
-type EdgeType = {
-  id: string;
-  source: string;
-  from: string;
-  label: string;
-  target: string;
-  to: string;
-  color: string;
-  font: {
-    strokeWidth: number;
-    strokeColor: string;
-    align: string;
-  };
-  length: number;
-  size: number;
-  sortColor: string;
-};
-
-type SettingsType = {
-  layout: {
-    interaction: {
-      dragNodes: boolean;
-      dragView: boolean;
-      hideEdgesOnDrag: boolean;
-      hideNodesOnDrag: boolean;
-      hover: boolean;
-      hoverConnectedEdges: boolean;
-      keyboard: {
-        enabled: boolean;
-        speed: {
-          x: number;
-          y: number;
-          zoom: number;
-        };
-        bindToWindow: boolean;
-      };
-      multiselect: boolean;
-      navigationButtons: boolean;
-      selectable: boolean;
-      selectConnectedEdges: boolean;
-      tooltipDelay: number;
-      zoomSpeed: number;
-      zoomView: boolean;
-    };
-    layout: {
-      randomSeed: number;
-      hierarchical: boolean;
-    };
-    edges: {
-      smooth: boolean;
-      arrows: {
-        to: {
-          enabled: boolean;
-          type: string;
-        };
-      };
-    };
-    physics: {
-      barnesHut: {
-        gravitationalConstant: number;
-        centralGravity: number;
-        springLength: number;
-        damping: number;
-      };
-      solver: string;
-    };
-  };
-  vertexCollections: {
-    name: string;
-    id: string;
-  }[];
-  edgesCollections: {
-    name: string;
-    id: string;
-  }[];
-  startVertex: {
-    _key: string;
-    _id: string;
-    _rev: string;
-    name: string;
-  };
-  // todo, check these
-  nodesColorAttributes: string[];
-  edgesColorAttributes: string[];
-  nodesSizeValues: number[];
-  nodesSizeMinMax: (number | null)[];
-  connectionsCounts: number[];
-  connectionsMinMax: (number | null)[];
-};
-type VisGraphData = {
-  nodes: NodeType[];
-  edges: EdgeType[];
-  settings: SettingsType;
-};
-interface VisDataResponse extends ArangojsResponse {
-  body?: VisGraphData;
-}
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
 
-  let [visGraphData, setVisGraphData] = useState(loadingNode);
+  let [visGraphData, setVisGraphData] = useState(loadingNode as VisGraphData);
+  let [network, setNetwork] = useState<Network>();
 
   const fetchVisData = useCallback(() => {
     getRouteForDB(window.frontendConfig.db, "_admin")
@@ -165,10 +55,29 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchVisData();
   }, [fetchVisData]);
-
+  const {
+    onOpen: onOpenSettings,
+    onClose: onCloseSettings,
+    isOpen: isSettingsOpen
+  } = useDisclosure();
+  const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
   return (
-    <GraphContext.Provider value={{ graphData: visGraphData, graphName }}>
-      {children}
+    <GraphContext.Provider
+      value={{
+        network,
+        setNetwork,
+        graphData: visGraphData,
+        graphName,
+        onOpenSettings,
+        onCloseSettings,
+        isSettingsOpen
+      }}
+    >
+      <UrlParametersContext.Provider
+        value={[urlParameters, setUrlParameters] as any}
+      >
+        {children}
+      </UrlParametersContext.Provider>
     </GraphContext.Provider>
   );
 };

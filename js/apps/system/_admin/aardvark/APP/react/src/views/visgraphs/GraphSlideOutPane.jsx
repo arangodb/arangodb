@@ -1,24 +1,6 @@
 import React from "react";
 import ButtonSave from "./ButtonSave";
 
-import ParameterNodeStart from "./ParameterNodeStart";
-import ParameterDepth from "./ParameterDepth";
-import ParameterLimit from "./ParameterLimit";
-import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
-import ParameterNodeColorByCollection from "./ParameterNodeColorByCollection";
-import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
-import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
-import ParameterNodeLabel from "./ParameterNodeLabel";
-import ParameterEdgeLabel from "./ParameterEdgeLabel";
-import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
-import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
-import ParameterNodeColor from "./ParameterNodeColor";
-import ParameterEdgeColor from "./ParameterEdgeColor";
-import ParameterNodeSize from "./ParameterNodeSize";
-import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
-import ParameterEdgeDirection from "./ParameterEdgeDirection";
-import EdgeStyleSelector from "./EdgeStyleSelector";
-import GraphLayoutSelector from "./GraphLayoutSelector";
 import Drawer from "./components/Drawer/Drawer";
 import {
   Accordion,
@@ -26,48 +8,10 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box,
-  Stack
-} from "@chakra-ui/react";
-
-const AccordionGraphContent = () => {
-  return (
-    <Stack>
-      <ParameterNodeStart />
-      <GraphLayoutSelector />
-      <ParameterDepth />
-      <ParameterLimit />
-    </Stack>
-  );
-};
-
-const AccordionNodesContent = () => {
-  return (
-    <Stack>
-      <ParameterNodeLabel />
-      <ParameterNodeColor />
-      <ParameterNodeLabelByCollection />
-      <ParameterNodeColorByCollection />
-      <ParameterNodeColorAttribute />
-      <ParameterNodeSizeByEdges />
-      <ParameterNodeSize />
-    </Stack>
-  );
-};
-
-const AccordionEdgesContent = () => {
-  return (
-    <Stack>
-      <ParameterEdgeLabel />
-      <ParameterEdgeColor />
-      <ParameterEdgeLabelByCollection />
-      <ParameterEdgeColorByCollection />
-      <ParameterEdgeColorAttribute />
-      <ParameterEdgeDirection />
-      <EdgeStyleSelector />
-    </Stack>
-  );
-};
+  Box} from "@chakra-ui/react";
+import { AccordionGraphContent } from "./AccordionGraphContent";
+import { AccordionNodesContent } from "./AccordionNodesContent";
+import { AccordionEdgesContent } from "./AccordionEdgesContent";
 
 export const GraphSlideOutPane = ({
   open,

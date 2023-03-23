@@ -1,29 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
+import React, { useEffect, useRef } from "react";
 import { Network } from "vis-network";
-import { isEqual } from "lodash";
-import { ProgressBar } from "./ProgressBar";
-import { Box, Center, Progress } from "@chakra-ui/react";
 import { useGraph } from "./GraphContext";
+import { GraphContextMenu } from "./GraphContextMenu";
 
-const StyledContextComponent = styled.div`
-  position: absolute;
-  left: ${props => props.left};
-  top: ${props => props.top};
-  display: flex;
-  flex-direction: column;
-  z-index: 99999;
-  background-color: rgb(85, 85, 85);
-  color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgb(85 85 85 / 50%);
-  padding: 10px 0;
-`;
-
-const GraphNetwork = () => {
+export const GraphNetwork = () => {
   const visJsRef = useRef(null);
-  const { graphData } = useGraph();
-  console.log({ graphData });
+  const { graphData, setNetwork } = useGraph();
   useEffect(() => {
     const network =
       visJsRef.current &&
@@ -32,12 +14,13 @@ const GraphNetwork = () => {
         { nodes: graphData.nodes, edges: graphData.edges },
         graphData.settings.layout
       );
-    console.log({ network, layout: graphData.settings.layout });
+    network && setNetwork(network);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphData.edges, graphData.nodes, graphData.settings.layout]);
   return (
-    <>
+    <div>
+      <GraphContextMenu visJsRef={visJsRef} />
       <div
-        id="GraphNetworkdiv"
         ref={visJsRef}
         style={{
           height: "90vh",
@@ -46,8 +29,6 @@ const GraphNetwork = () => {
           margin: "auto"
         }}
       />
-    </>
+    </div>
   );
 };
-
-export default GraphNetwork;
