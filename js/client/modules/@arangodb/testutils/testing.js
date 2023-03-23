@@ -161,7 +161,7 @@ let optionsDocumentation = [
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
   '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
-  '   - `optionsJson`: all of the above, as json list for mutlible suite launches',
+  '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
 
