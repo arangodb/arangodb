@@ -51,6 +51,12 @@ ShardingPrototype CreateDatabaseInfo::shardingPrototype() const {
   return _shardingPrototype;
 }
 
+uint64_t CreateDatabaseInfo::getId() const {
+  TRI_ASSERT(_valid);
+  TRI_ASSERT(_validId || !_strictValidation);
+  return _id;
+}
+
 void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
