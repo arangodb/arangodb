@@ -102,6 +102,10 @@ class ConnectionPool final {
   size_t numOpenConnections() const;
 
   Config const& config() const;
+  
+  uint64_t totalConnectionsInPool() const {
+    return _totalConnectionsInPool.load();
+  }
 
  protected:
 
