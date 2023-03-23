@@ -117,6 +117,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, std::move(msg));
     if (newExecutionState.has_value()) {
       changeState(std::move(newExecutionState.value()));
+      sendMessages();
     }
     return std::move(this->state);
   }

@@ -21,50 +21,47 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "StoringState.h"
-#include "Pregel/Conductor/ExecutionStates/DoneState.h"
-#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "FatalErrorState.h"
+#include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::conductor;
 
-Storing::Storing(ConductorState& conductor) : conductor{conductor} {
-  conductor.timing.storing.start();
-  // TODO GORDO-1510
-  // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
-}
-
-Storing::~Storing() {
-  conductor.timing.storing.finish();
-  // TODO GORDO-1510
-  // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
-}
-
-auto Storing::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto out =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
-  for (auto const& worker : conductor.workers) {
-    out.emplace(worker, worker::message::Store{});
+FatalError::FatalError(ConductorState& conductor) : conductor{conductor} {
+  if (not conductor.timing.loading.hasFinished()) {
+    conductor.timing.loading.finish();
   }
-  return out;
+  if (not conductor.timing.computation.hasFinished()) {
+    conductor.timing.computation.finish();
+  }
+  if (not conductor.timing.storing.hasFinished()) {
+    conductor.timing.storing.finish();
+  }
+  if (not conductor.timing.total.hasFinished()) {
+    conductor.timing.total.finish();
+  }
 }
 
-auto Storing::receive(actor::ActorPID sender,
-                      message::ConductorMessages message)
+auto FatalError::messages()
+    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+  auto messages =
+      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>{};
+  for (auto const& worker : conductor.workers) {
+    messages.emplace(worker, worker::message::Cleanup{});
+  }
+  return messages;
+}
+
+auto FatalError::receive(actor::ActorPID sender,
+                         message::ConductorMessages message)
     -> std::optional<std::unique_ptr<ExecutionState>> {
   if (not conductor.workers.contains(sender) or
-      not std::holds_alternative<ResultT<message::Stored>>(message)) {
-    return std::make_unique<FatalError>(conductor);
+      not std::holds_alternative<message::CleanupFinished>(message)) {
+    return std::nullopt;
   }
-  auto stored = std::get<ResultT<message::Stored>>(message);
-  if (not stored.ok()) {
-    return std::make_unique<FatalError>(conductor);
+  conductor.workers.erase(sender);
+  if (conductor.workers.empty()) {
+    return std::make_unique<CleanedUp>();
   }
-  respondedWorkers.emplace(sender);
-
-  if (respondedWorkers == conductor.workers) {
-    return std::make_unique<Done>(conductor);
-  }
-
   return std::nullopt;
 };
