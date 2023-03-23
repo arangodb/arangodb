@@ -131,7 +131,7 @@ void DatabaseManagerThread::run() {
 
       if (database != nullptr) {
         TRI_ASSERT(!database->isSystem());
-        if (!ServerState::instance()->isCoordinator()) {
+        if (ServerState::instance()->isCoordinator()) {
           continue;  // TODO(MBkkt) Why do we have this thread on Coordinator?
         }
 
