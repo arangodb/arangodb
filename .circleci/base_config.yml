@@ -82,8 +82,6 @@ jobs:
           name: Run eslint
           command: |
             utils/eslint.sh
-      - store_test_results:
-          path: ./test_detail.xml
 
   compile-linux:
     parameters:
