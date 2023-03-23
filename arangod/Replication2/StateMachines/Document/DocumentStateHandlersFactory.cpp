@@ -103,8 +103,8 @@ auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
 auto DocumentStateHandlersFactory::createMaintenanceActionExecutor(
     GlobalLogIdentifier gid, ServerID server)
     -> std::shared_ptr<IMaintenanceActionExecutor> {
-  return std::make_shared<MaintenanceActionExecutor>(gid, server,
-                                                     _maintenanceFeature);
+  return std::make_shared<MaintenanceActionExecutor>(
+      std::move(gid), std::move(server), _maintenanceFeature);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

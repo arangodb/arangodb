@@ -105,6 +105,9 @@ auto DocumentStateShardHandler::dropAllShards() -> Result {
     }
   }
   _shardMap.shards.clear();
+  lock.unlock();
+
+  _maintenance->addDirty();
   return {};
 }
 

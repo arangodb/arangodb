@@ -80,6 +80,9 @@ struct DocumentStateMachineTest : testing::Test {
   std::shared_ptr<testing::NiceMock<MockDocumentStateLeaderInterface>>
       leaderInterfaceMock = std::make_shared<
           testing::NiceMock<MockDocumentStateLeaderInterface>>();
+  std::shared_ptr<testing::NiceMock<MockMaintenanceActionExecutor>>
+      maintenanceActionExecutorMock =
+          std::make_shared<testing::NiceMock<MockMaintenanceActionExecutor>>();
 
   std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
       handlersFactoryMock =
@@ -132,6 +135,11 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*networkHandlerMock, getLeaderInterface)
         .WillByDefault(Return(leaderInterfaceMock));
 
+    ON_CALL(*maintenanceActionExecutorMock, executeCreateCollectionAction)
+        .WillByDefault(Return(Result{}));
+    ON_CALL(*maintenanceActionExecutorMock, executeDropCollectionAction)
+        .WillByDefault(Return(Result{}));
+
     ON_CALL(*handlersFactoryMock, createShardHandler)
         .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
           ON_CALL(*shardHandlerMock, ensureShard).WillByDefault(Return(true));
@@ -167,6 +175,9 @@ struct DocumentStateMachineTest : testing::Test {
 
     ON_CALL(*handlersFactoryMock, createNetworkHandler)
         .WillByDefault(Return(networkHandlerMock));
+
+    ON_CALL(*handlersFactoryMock, createMaintenanceActionExecutor)
+        .WillByDefault(Return(maintenanceActionExecutorMock));
   }
 
   void TearDown() override {
@@ -1806,6 +1817,189 @@ TEST_F(DocumentStateMachineTest, leader_create_and_drop_shard) {
   EXPECT_CALL(*shardHandlerMock, dropShard(shardId)).Times(1);
 
   leaderState->dropShard(shardId, collectionId);
+}
+
+TEST(ShardHandlerTest, ensureShard_all_cases) {
+  using namespace testing;
+
+  auto gid = GlobalLogIdentifier{"db", LogId{1}};
+  auto maintenance =
+      std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
+  auto shardHandler =
+      std::make_shared<replicated_state::document::DocumentStateShardHandler>(
+          gid, maintenance);
+
+  auto shardId = ShardID{"s1000"};
+  auto collectionId = CollectionID{"c1000"};
+  auto properties = std::make_shared<VPackBuilder>();
+
+  {
+    // Successful shard creation
+    EXPECT_CALL(*maintenance,
+                executeCreateCollectionAction(shardId, collectionId, _))
+        .Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+    ASSERT_TRUE(shardMap.find(shardId) != shardMap.end());
+    EXPECT_EQ(shardMap.find(shardId)->second.collection, collectionId);
+  }
+
+  {
+    // Shard should not be created again a second time
+    EXPECT_CALL(*maintenance, executeCreateCollectionAction(_, _, _)).Times(0);
+    EXPECT_CALL(*maintenance, addDirty()).Times(0);
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_FALSE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+  }
+
+  {
+    // Failure to create shard is propagated
+    shardId = ShardID{"s1001"};
+    EXPECT_CALL(*maintenance,
+                executeCreateCollectionAction(shardId, collectionId, _))
+        .Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(0);
+    ON_CALL(*maintenance, executeCreateCollectionAction(_, _, _))
+        .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.fail());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+    ASSERT_TRUE(shardMap.find(shardId) == shardMap.end());
+  }
+}
+
+TEST(ShardHandlerTest, dropShard_all_cases) {
+  using namespace testing;
+
+  auto gid = GlobalLogIdentifier{"db", LogId{1}};
+  auto maintenance =
+      std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
+  auto shardHandler =
+      std::make_shared<replicated_state::document::DocumentStateShardHandler>(
+          gid, maintenance);
+
+  auto shardId = ShardID{"s1000"};
+  auto collectionId = CollectionID{"c1000"};
+  auto properties = std::make_shared<VPackBuilder>();
+
+  {
+    // Create shard first
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
+  }
+
+  {
+    // Successful shard deletion
+    EXPECT_CALL(*maintenance,
+                executeDropCollectionAction(shardId, collectionId))
+        .Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+    auto res = shardHandler->dropShard(shardId);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 0);
+    ASSERT_FALSE(shardHandler->isShardAvailable(shardId));
+  }
+
+  {
+    // Shard should not be deleted again a second time
+    EXPECT_CALL(*maintenance, executeDropCollectionAction(_, _)).Times(0);
+    EXPECT_CALL(*maintenance, addDirty()).Times(0);
+    auto res = shardHandler->dropShard(shardId);
+    ASSERT_TRUE(res.ok());
+    ASSERT_FALSE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 0);
+    ASSERT_FALSE(shardHandler->isShardAvailable(shardId));
+  }
+
+  {
+    // Create shard again
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
+  }
+
+  {
+    // Failure to delete shard is propagated
+    EXPECT_CALL(*maintenance,
+                executeDropCollectionAction(shardId, collectionId))
+        .Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(0);
+    ON_CALL(*maintenance, executeDropCollectionAction(_, _))
+        .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
+    auto res = shardHandler->dropShard(shardId);
+    ASSERT_TRUE(res.fail());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
+  }
+}
+
+TEST(ShardHandlerTest, dropAllShards_test) {
+  using namespace testing;
+
+  auto gid = GlobalLogIdentifier{"db", LogId{1}};
+  auto maintenance =
+      std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
+  auto shardHandler =
+      std::make_shared<replicated_state::document::DocumentStateShardHandler>(
+          gid, maintenance);
+
+  auto collectionId = CollectionID{"c1000"};
+  auto properties = std::make_shared<VPackBuilder>();
+  auto const limit = 10;
+
+  // Create some shards
+  for (std::size_t idx = 0; idx < limit; ++idx) {
+    auto shardId = ShardID{std::to_string(idx)};
+    auto res =
+        shardHandler->ensureShard(std::move(shardId), collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+  }
+
+  auto shardMap = shardHandler->getShardMap();
+  ASSERT_EQ(shardMap.size(), limit);
+
+  // Failure to drop all shards is propagated
+  ON_CALL(*maintenance, executeDropCollectionAction(_, _))
+      .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
+  auto res = shardHandler->dropAllShards();
+  ASSERT_TRUE(res.fail());
+
+  // Successful deletion of all shards should clear the shard map
+  ON_CALL(*maintenance, executeDropCollectionAction(_, _))
+      .WillByDefault(Return(Result{}));
+  EXPECT_CALL(*maintenance, addDirty()).Times(1);
+  EXPECT_CALL(*maintenance, executeDropCollectionAction(_, _)).Times(limit);
+  res = shardHandler->dropAllShards();
+  ASSERT_TRUE(res.ok());
+  Mock::VerifyAndClearExpectations(maintenance.get());
+  shardMap = shardHandler->getShardMap();
+  ASSERT_EQ(shardMap.size(), 0);
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {
