@@ -1,6 +1,12 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In
+  some cases where multiple connections to a server are canceled the metric
+  could miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a HotBackup,
+  rotation of JWT secret.
+
 * Updated arangosync to v2.15.0.
 
 * Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
