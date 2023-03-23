@@ -20,41 +20,43 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-
-#include "Replication2/LoggerContext.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 struct TRI_vocbase_t;
+namespace arangodb {
+class MaintenanceFeature;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateShardHandler;
-struct IDocumentStateTransactionHandler;
+struct IMaintenanceActionExecutor {
+  virtual ~IMaintenanceActionExecutor() = default;
+  virtual auto executeCreateCollectionAction(
+      ShardID shard, CollectionID collection,
+      std::shared_ptr<VPackBuilder> properties) -> Result = 0;
+  virtual auto executeDropCollectionAction(ShardID shard,
+                                           CollectionID collection)
+      -> Result = 0;
+  virtual void addDirty() = 0;
+};
 
-struct DocumentCore {
-  explicit DocumentCore(
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-      DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-      LoggerContext loggerContext);
-
-  GlobalLogIdentifier const gid;
-  LoggerContext const loggerContext;
-
-  auto getVocbase() -> TRI_vocbase_t&;
-  void drop();
-  auto getTransactionHandler()
-      -> std::shared_ptr<IDocumentStateTransactionHandler>;
-  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
+ public:
+  MaintenanceActionExecutor(GlobalLogIdentifier _gid, ServerID server,
+                            MaintenanceFeature& maintenanceFeature);
+  auto executeCreateCollectionAction(ShardID shard, CollectionID collection,
+                                     std::shared_ptr<VPackBuilder> properties)
+      -> Result override;
+  auto executeDropCollectionAction(ShardID shard, CollectionID collection)
+      -> Result override;
+  void addDirty() override;
 
  private:
-  TRI_vocbase_t& _vocbase;
-  DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  std::shared_ptr<IDocumentStateTransactionHandler> _transactionHandler;
+  GlobalLogIdentifier _gid;
+  MaintenanceFeature& _maintenanceFeature;
+  ServerID _server;
 };
 }  // namespace arangodb::replication2::replicated_state::document

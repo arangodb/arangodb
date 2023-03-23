@@ -22,10 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Transaction/Options.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
@@ -55,6 +52,7 @@ struct IDocumentStateShardHandler;
 struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
+struct IMaintenanceActionExecutor;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
@@ -74,6 +72,9 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
+  virtual auto createMaintenanceActionExecutor(GlobalLogIdentifier gid,
+                                               ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
 };
 
 class DocumentStateHandlersFactory
@@ -96,6 +97,8 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
+  auto createMaintenanceActionExecutor(GlobalLogIdentifier gid, ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> override;
 
  private:
   network::ConnectionPool* _connectionPool;
