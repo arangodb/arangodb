@@ -796,7 +796,7 @@ class instance {
     let res = statusExternal(this.pid, false);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
-      time.sleep(1);
+      time.sleep(0.2);
       res = statusExternal(this.pid, false);
     }
     const running = res.status === 'RUNNING';
