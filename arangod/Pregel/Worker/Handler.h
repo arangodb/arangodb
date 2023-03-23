@@ -31,6 +31,7 @@
 #include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ResultMessages.h"
+#include "Pregel/SpawnMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -434,6 +435,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     this->finish();
 
+    this->template dispatch<pregel::message::SpawnMessages>(
+        this->state->spawnActor, pregel::message::SpawnCleanup{});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::CleanupFinished{});
 
