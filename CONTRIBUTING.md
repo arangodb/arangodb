@@ -937,6 +937,8 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
+Specifying a `--test `-Filter containing `-cluster` will implicitely set `--cluster true` and launch a cluster test.
+
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
 This failed filter should work for all jsunity and mocha tests.
