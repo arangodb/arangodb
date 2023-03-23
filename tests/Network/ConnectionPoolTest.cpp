@@ -580,7 +580,6 @@ TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_all) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
@@ -619,7 +618,6 @@ TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_some) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
