@@ -4,7 +4,7 @@ import { useGraph } from "./GraphContext";
 import { GraphContextMenu } from "./GraphContextMenu";
 
 export const GraphNetwork = () => {
-  const visJsRef = useRef(null);
+  const visJsRef = useRef<HTMLDivElement>(null);
   const { graphData, setNetwork } = useGraph();
   useEffect(() => {
     const network =
