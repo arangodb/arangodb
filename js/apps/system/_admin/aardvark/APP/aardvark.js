@@ -1286,8 +1286,10 @@ authRouter.get('/visgraph/:name', function (req, res) {
     var nodeSize;
     var sizeCategory;
     var nodeObj;
+    var notFoundString = "(attribute not found)";
 
     const generateNodeObject = (node) => {
+      var notFoundString = "(attribute not found)";
       nodeNames[node._id] = true;
 
       if (config.nodeLabel) {
@@ -1297,7 +1299,18 @@ authRouter.get('/visgraph/:name', function (req, res) {
             nodeLabel = node._id;
           }
         } else {
-          nodeLabel = node[config.nodeLabel];
+          if (node[config.nodeLabel] !== undefined) {
+            if (typeof node[config.nodeLabel] === 'string') {
+              nodeLabel = node[config.nodeLabel];
+            } else {
+              // in case we do not have a string here, we need to stringify it
+              // otherwise we might end up sending not displayable values.
+              nodeLabel = JSON.stringify(node[config.nodeLabel]);
+            }
+          } else {
+            // in case the document does not have the nodeLabel in it, return fallback string
+            nodeLabel = notFoundString;
+          }
         }
       } else {
         nodeLabel = node._key;
@@ -1368,7 +1381,21 @@ authRouter.get('/visgraph/:name', function (req, res) {
                 edgeLabel = edgeLabel._id;
               }
             } else {
-              edgeLabel = edge[config.edgeLabel];
+              if (edge[config.edgeLabel] !== undefined) {
+                if (typeof edge[config.edgeLabel] === 'string') {
+                  edgeLabel = edge[config.edgeLabel];
+                } else {
+                  // in case we do not have a string here, we need to stringify it
+                  // otherwise we might end up sending not displayable values.
+                  edgeLabel = JSON.stringify(edge[config.edgeLabel]);
+                }
+              } else {
+                // in case the document does not have the edgeLabel in it, return fallback string
+                edgeLabel = notFoundString;
+              }
+
+              // original
+              //edgeLabel = edge[config.edgeLabel];
             }
 
             if (typeof edgeLabel !== 'string') {
