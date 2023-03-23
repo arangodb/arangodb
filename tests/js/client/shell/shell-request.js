@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, Buffer */
+/*global arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
