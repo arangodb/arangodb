@@ -29,7 +29,6 @@
 #include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Worker/WorkerConfig.h"

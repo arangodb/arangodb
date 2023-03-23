@@ -23,27 +23,22 @@
 
 #pragma once
 
-#include <map>
+#include <memory>
+#include <functional>
 
-#include "Pregel/GraphStore/VertexID.h"
+#include <Pregel/GraphStore/Quiver.h>
 
-namespace arangodb::pregel::algos {
+namespace arangodb::pregel {
 
-struct DMIDValue {
-  constexpr static float INVALID_DEGREE = -1;
-  float weightedInDegree = INVALID_DEGREE;
-  std::map<VertexID, float> membershipDegree;
-  std::map<VertexID, float> disCol;
+class WorkerConfig;
+
+template<typename V, typename E>
+struct Quiver;
+
+template<typename V, typename E>
+struct GraphLoaderBase {
+  virtual auto load() -> std::shared_ptr<Quiver<V, E>> = 0;
+  virtual ~GraphLoaderBase() = default;
 };
 
-template<typename Inspector>
-auto inspect(Inspector& f, DMIDValue& v) {
-  return f.object(v).fields(
-      f.field("weightedInDegree", v.weightedInDegree)
-      //                           ,f.field("membershipDegree",
-      //                           v.membershipDegree), f.field("disCol",
-      //                           v.disCol)
-  );
-}
-
-}  // namespace arangodb::pregel::algos
+}  // namespace arangodb::pregel
