@@ -6,17 +6,22 @@ import { GraphContextMenu } from "./GraphContextMenu";
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
   const { graphData, setNetwork } = useGraph();
+  const { edges, nodes, settings } = graphData || {};
+  const { layout } = settings || {};
   useEffect(() => {
     const network =
       visJsRef.current &&
       new Network(
         visJsRef.current,
-        { nodes: graphData.nodes, edges: graphData.edges },
-        graphData.settings.layout
+        {
+          nodes: nodes,
+          edges: edges
+        },
+        layout
       );
     network && setNetwork(network);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphData.edges, graphData.nodes, graphData.settings.layout]);
+  }, [edges, nodes, layout]);
   return (
     <div>
       <GraphContextMenu visJsRef={visJsRef} />

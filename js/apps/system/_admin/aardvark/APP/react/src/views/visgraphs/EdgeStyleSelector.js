@@ -1,5 +1,6 @@
-import React, { useContext, useState } from 'react';
-import ToolTip from '../../components/arango/tootip';
+import { FormLabel, Select } from "@chakra-ui/react";
+import React, { useContext, useState } from "react";
+import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const EdgeStyleSelector = () => {
@@ -8,47 +9,38 @@ const EdgeStyleSelector = () => {
 
   const styles = [
     {
-      type: 'solid'
+      type: "solid"
     },
     {
-      type: 'dashed'
+      type: "dashed"
     },
     {
-      type: 'dotted'
+      type: "dotted"
     }
   ];
 
-  const handleChange = (event) => {
+  const handleChange = event => {
     setType(event.target.value);
-    const newUrlParameters = {...urlParameters, edgeType: event.target.value};
+    const newUrlParameters = { ...urlParameters, edgeType: event.target.value };
     setUrlParameters(newUrlParameters);
-  }
+  };
 
   return (
-    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <label for="edgetype" style={{ 'color': '#ffffff', 'width': '150px' }}>Type</label>
-      <select
-        name="edgetype"
-        value={type}
-        onChange={handleChange}
-        style={{ width: "200px", 'marginRight': '8px' }}
-      >
-        {
-          styles.map(style => {
+    <>
+      <FormLabel htmlFor="edgeType">Type</FormLabel>
+      <Select id="edgeType" value={type} onChange={handleChange}>
+        {styles.map(style => {
           const { type } = style;
           return (
-            <option key={type} value={type}>{type}</option>
+            <option key={type} value={type}>
+              {type}
+            </option>
           );
         })}
-      </select>
-      <ToolTip
-        title={"The type of the edge."}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-      </ToolTip>
-    </div>
+      </Select>
+      <InfoTooltip label={"The type of the edge."} />
+    </>
   );
-}
+};
 
 export default EdgeStyleSelector;

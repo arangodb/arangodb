@@ -1,4 +1,4 @@
-import { FormLabel, Input, Spacer } from "@chakra-ui/react";
+import { FormLabel, Input } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
@@ -27,7 +27,6 @@ const ParameterNodeSize = () => {
         onChange={handleChange}
         disabled={urlParameters.nodeSizeByEdges}
       />
-      <Spacer />
       <InfoTooltip
         label={
           "If an attribute is given, nodes will be sized by the attribute."

@@ -1,21 +1,21 @@
 import { useDisclosure } from "@chakra-ui/react";
+import { ArangojsResponse } from "arangojs/lib/request.node";
 import React, {
   createContext,
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useState
 } from "react";
+import useSWR from "swr";
 import { Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
-import { loadingNode } from "./data";
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
-import { VisDataResponse, VisGraphData } from "./VisGraphData.types";
+import { VisGraphData } from "./VisGraphData.types";
 
 type GraphContextType = {
-  graphData: VisGraphData;
+  graphData: VisGraphData | undefined;
   graphName: string;
   network?: Network;
   isSettingsOpen?: boolean;
@@ -24,37 +24,20 @@ type GraphContextType = {
   onCloseSettings: () => void;
 };
 const GraphContext = createContext<GraphContextType>({
-  graphData: {} as VisGraphData,
   graphName: ""
 } as GraphContextType);
 
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-
-  let [visGraphData, setVisGraphData] = useState(loadingNode as VisGraphData);
   let [network, setNetwork] = useState<Network>();
-
   const fetchVisData = useCallback(() => {
-    getRouteForDB(window.frontendConfig.db, "_admin")
-      .get(`/aardvark/visgraph/${graphName}`)
-      .then((data: VisDataResponse) => {
-        if (data.body) {
-          setVisGraphData(data.body);
-        }
-      })
-      .catch(error => {
-        window.arangoHelper.arangoError(
-          "Graph",
-          error.responseJSON.errorMessage
-        );
-        console.log(error);
-      });
+    return getRouteForDB(window.frontendConfig.db, "_admin").get(
+      `/aardvark/visgraph/${graphName}`
+    );
   }, [graphName]);
 
-  useEffect(() => {
-    fetchVisData();
-  }, [fetchVisData]);
+  const { data } = useSWR<ArangojsResponse>("visData", () => fetchVisData());
   const {
     onOpen: onOpenSettings,
     onClose: onCloseSettings,
@@ -66,7 +49,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       value={{
         network,
         setNetwork,
-        graphData: visGraphData,
+        graphData: data && (data.body as VisGraphData),
         graphName,
         onOpenSettings,
         onCloseSettings,

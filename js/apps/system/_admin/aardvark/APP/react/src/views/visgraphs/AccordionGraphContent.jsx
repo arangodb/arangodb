@@ -7,7 +7,12 @@ import ParameterNodeStart from "./ParameterNodeStart";
 
 export const AccordionGraphContent = () => {
   return (
-    <Grid alignItems="center" templateColumns="150px 1fr 40px">
+    <Grid
+      rowGap="2"
+      alignItems="center"
+      templateColumns="150px 1fr 40px"
+      justifyItems="start"
+    >
       <ParameterNodeStart />
       <GraphLayoutSelector />
       <ParameterDepth />

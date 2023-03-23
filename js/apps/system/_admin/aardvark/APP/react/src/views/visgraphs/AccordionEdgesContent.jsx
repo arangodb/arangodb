@@ -1,16 +1,21 @@
+import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { Stack } from "@chakra-ui/react";
-import ParameterEdgeLabel from "./ParameterEdgeLabel";
-import ParameterEdgeColor from "./ParameterEdgeColor";
-import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
-import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
-import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
-import ParameterEdgeDirection from "./ParameterEdgeDirection";
 import EdgeStyleSelector from "./EdgeStyleSelector";
+import ParameterEdgeColor from "./ParameterEdgeColor";
+import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
+import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
+import ParameterEdgeDirection from "./ParameterEdgeDirection";
+import ParameterEdgeLabel from "./ParameterEdgeLabel";
+import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 
 export const AccordionEdgesContent = () => {
   return (
-    <Stack>
+    <Grid
+      rowGap="2"
+      alignItems="center"
+      templateColumns="150px 1fr 40px"
+      justifyItems="start"
+    >
       <ParameterEdgeLabel />
       <ParameterEdgeColor />
       <ParameterEdgeLabelByCollection />
@@ -18,6 +23,6 @@ export const AccordionEdgesContent = () => {
       <ParameterEdgeColorAttribute />
       <ParameterEdgeDirection />
       <EdgeStyleSelector />
-    </Stack>
+    </Grid>
   );
 };

@@ -11,6 +11,7 @@ import ParameterNodeSize from "./ParameterNodeSize";
 export const AccordionNodesContent = () => {
   return (
     <Grid
+      rowGap="2"
       alignItems="center"
       templateColumns="150px 1fr 40px"
       justifyItems="start"

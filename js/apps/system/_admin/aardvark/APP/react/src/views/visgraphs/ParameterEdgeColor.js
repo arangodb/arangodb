@@ -1,39 +1,40 @@
+import { FormLabel, Spacer } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "./url-parameters-context";
 import Textinput from "./components/pure-css/form/Textinput.tsx";
-import {
-  Flex,
-  Center } from '@chakra-ui/react';
+import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterEdgeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColor, setEdgeColor] = useState(urlParameters.edgeColor);
 
-  const handleChange = (event) => {
+  const handleChange = event => {
     setEdgeColor(event.target.value);
-    const newUrlParameters = {...urlParameters, edgeColor: event.target.value.replace("#", "")};
+    const newUrlParameters = {
+      ...urlParameters,
+      edgeColor: event.target.value.replace("#", "")
+    };
     setUrlParameters(newUrlParameters);
-  }
+  };
   let calculatedEdgeColor = edgeColor;
-  if (!edgeColor.startsWith('#')) {
-    calculatedEdgeColor = '#' + edgeColor;
+  if (!edgeColor.startsWith("#")) {
+    calculatedEdgeColor = "#" + edgeColor;
   }
 
   return (
-    <Flex direction='row'>
-      <Center>
+    <>
+      <FormLabel htmlFor="edgeColor">Default edge color</FormLabel>
       <Textinput
-        label={'Default edge color'}
-        type={'color'}
+        id="edgeColor"
+        type={"color"}
         value={calculatedEdgeColor}
-        template={'graphviewer'}
-        width={'60px'}
-        height={'30px'}
+        template={"graphviewer"}
+        width={"60px"}
+        height={"30px"}
         onChange={handleChange}
-        disabled={urlParameters.edgeColorByCollection}>
-      </Textinput>
-      </Center>
-    </Flex>
+        disabled={urlParameters.edgeColorByCollection}
+      />
+      <Spacer />
+    </>
   );
 };
 

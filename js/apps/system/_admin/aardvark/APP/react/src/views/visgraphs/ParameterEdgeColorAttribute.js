@@ -1,47 +1,43 @@
+import { FormLabel, Input } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
+import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
-import ToolTip from '../../components/arango/tootip';
-import {
-  Box,
-  Flex,
-  Spacer,
-  Input,
-  Center } from '@chakra-ui/react';
 
 const ParameterEdgeColorAttribute = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
+  const [edgeColorAttribute, setEdgeColorAttribute] = useState(
+    urlParameters.edgeColorAttribute
+  );
 
-  const handleChange = (event) => {
+  const handleChange = event => {
     setEdgeColorAttribute(event.target.value);
-    const newUrlParameters = {...urlParameters, edgeColorAttribute: event.target.value};
+    const newUrlParameters = {
+      ...urlParameters,
+      edgeColorAttribute: event.target.value
+    };
     setUrlParameters(newUrlParameters);
-  }
+  };
 
   return (
-    <Flex direction='row'>
-      <Center>
-        <Box color='#fff' w='150px'>Edge color attribute</Box>
-      </Center>
-      <Input  
-        width='200px'
+    <>
+      <FormLabel htmlFor="edgeColorAttribute"> Edge color attribute</FormLabel>
+
+      <Input
+        id="edgeColorAttribute"
+        width="200px"
         min={1}
         value={edgeColorAttribute}
-        background='#ffffff'
-        size='sm'
+        background="#ffffff"
+        size="sm"
         onChange={handleChange}
         disabled={urlParameters.edgeColorByCollection}
       />
-      <Spacer />
-      <Center>
-        <ToolTip
-          title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}
-          setArrow={true}
-        >
-          <span className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></span>
-        </ToolTip>
-      </Center>
-    </Flex>
+      <InfoTooltip
+        label={
+          "If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."
+        }
+      />
+    </>
   );
 };
 

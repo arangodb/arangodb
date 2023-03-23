@@ -7,6 +7,7 @@ import {
   AccordionPanel,
   Box,
   Button,
+  Flex,
   Menu,
   MenuButton,
   useMenuContext,
@@ -51,7 +52,11 @@ const SettingsMenuContent = () => {
       __css={{
         ...styles.list
       }}
+      maxHeight="600px"
+      overflow="auto"
       width="400px"
+      position="relative"
+      paddingY="0"
     >
       <Accordion allowMultiple allowToggle defaultIndex={[0, 1, 2]}>
         <GraphAccordionItem title="Graph">
@@ -64,6 +69,17 @@ const SettingsMenuContent = () => {
           <AccordionEdgesContent />
         </GraphAccordionItem>
       </Accordion>
+      <Flex
+        background="white"
+        borderTop="1px solid"
+        borderColor="gray.300"
+        position="sticky"
+        bottom="0"
+        justifyContent="end"
+        padding="3"
+      >
+        <ApplyButton />
+      </Flex>
     </Box>
   );
 };
@@ -85,5 +101,12 @@ const GraphAccordionItem = ({
 
       <AccordionPanel pb={4}>{children}</AccordionPanel>
     </AccordionItem>
+  );
+};
+const ApplyButton = () => {
+  return (
+    <Button colorScheme="green" onClick={() => {}}>
+      Apply
+    </Button>
   );
 };
