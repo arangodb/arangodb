@@ -636,7 +636,7 @@
       const user = u.name;
       const pass = u.passwd;
       const token = user.concat(':', pass);
-      xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
+      xhr.setRequestHeader('Authorization', 'Basic ' + window.btoa(token));
     },
 
     logger: function() {
@@ -1089,8 +1089,8 @@
         if (this.applierView === undefined) {
           this.applierView = new window.ApplierView({});
         }
-        this.applierView.endpoint = atob(endpoint);
-        this.applierView.database = atob(database);
+        this.applierView.endpoint = window.atob(endpoint);
+        this.applierView.database = window.atob(database);
         this.applierView.render();
       });
     },

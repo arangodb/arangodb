@@ -65,7 +65,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           throw new Error('base64 support missing in browser');
         }
 
-        var payload = JSON.parse(atob(jwtParts[1]));
+        var payload = JSON.parse(window.atob(jwtParts[1]));
         self.activeUser = payload.preferred_username;
 
         if (self.activeUser === undefined) {

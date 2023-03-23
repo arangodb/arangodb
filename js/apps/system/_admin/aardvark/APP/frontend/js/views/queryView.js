@@ -649,9 +649,9 @@
       if (query !== '' && query !== undefined && query !== null) {
         var url;
         if (Object.keys(this.queriesHistory[counter].bindParam).length === 0) {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
+          url = 'query/result/download/' + encodeURIComponent(window.btoa(JSON.stringify({ query: query })));
         } else {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
+          url = 'query/result/download/' + encodeURIComponent(window.btoa(JSON.stringify({
             query: query,
             bindVars: this.queriesHistory[counter].bindParam
           })));

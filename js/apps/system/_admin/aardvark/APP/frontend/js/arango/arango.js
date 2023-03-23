@@ -159,7 +159,7 @@
               if (!jwtParts[1]) {
                 throw "invalid token!";
               }
-              var payload = JSON.parse(atob(jwtParts[1]));
+              var payload = JSON.parse(window.atob(jwtParts[1]));
               if (payload.preferred_username === currentUser) {
                 self.setCurrentJwt(data.jwt, currentUser);
                 updated = true;
