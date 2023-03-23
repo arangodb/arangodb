@@ -3,7 +3,7 @@ devel
 
 * Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
   DELETE /_api/document/{collection} using _key or _id values as
-  document selectors, the INBOUND and OUTBOUND caches of the
+  document selectors, the INBOUND and OUTBOUND entries of the
   SmartEdges could diverge. Using a document like {_key: "xxxx"}
   as a selector was always correct. No _key and _id variants
   are supported as intended.
