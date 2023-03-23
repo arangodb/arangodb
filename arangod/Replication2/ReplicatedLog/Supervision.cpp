@@ -47,6 +47,35 @@ namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
+/// Computes the number of usable participants, i.e. those which are not failed
+/// and have a snapshot.
+/// \return Number of usable participants.
+auto computeNumUsableParticipants(LogCurrent const& current,
+                                  ParticipantsFlagsMap const& planParticipants,
+                                  ParticipantsHealth const& health)
+    -> std::size_t {
+  auto count = std::count_if(planParticipants.begin(), planParticipants.end(),
+                             [&](auto const& pair) {
+                               // server should be healthy and have a snapshot
+                               auto const& [pid, flags] = pair;
+                               if (not health.notIsFailed(pid)) {
+                                 return false;
+                               }
+
+                               if (auto local = current.localState.find(pid);
+                                   local != current.localState.end()) {
+                                 if (not local->second.snapshotAvailable) {
+                                   return false;
+                                 }
+                               } else {
+                                 return false;  // not even in current
+                               }
+
+                               return true;
+                             });
+  TRI_ASSERT(count >= 0);
+  return count;
+}
 
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
@@ -615,10 +644,6 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   }
   TRI_ASSERT(leader.committedParticipantsConfig.has_value());
   auto const& committedParticipantsConfig = *leader.committedParticipantsConfig;
-  if (committedParticipantsConfig.generation !=
-      plan.participantsConfig.generation) {
-    return;
-  }
 
   auto const& targetParticipants = target.participants;
   auto const& planParticipants = plan.participantsConfig.participants;
@@ -629,34 +654,14 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
 
   // check if, after a remove, enough servers are available to form a quorum
   auto wanted = plan.participantsConfig.config.effectiveWriteConcern;
-  auto have = std::count_if(
-      planParticipants.begin(), planParticipants.end(), [&](auto const& pair) {
-        // server should be healthy and have a snapshot
-        auto const& [pid, flags] = pair;
-        if (not health.notIsFailed(pid)) {
-          return false;
-        }
-
-        if (auto local = log.current->localState.find(pid);
-            local != log.current->localState.end()) {
-          if (not local->second.snapshotAvailable) {
-            return false;
-          }
-        } else {
-          return false;  // not even in current
-        }
-
-        return true;
-      });
-  TRI_ASSERT(have >= 0);
+  auto have =
+      computeNumUsableParticipants(*log.current, planParticipants, health);
 
   // if there are not enough participants, make sure we can still commit
   if (wanted + 1 > static_cast<std::size_t>(have)) {
     // remove all allowedInQuorum=false, when possible
-    for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
-         planParticipants) {
-      auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant =
-                                             maybeRemovedParticipant] {
+    for (auto const& [pid, flags] : planParticipants) {
+      auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant = pid] {
         if (auto iter = targetParticipants.find(maybeRemovedParticipant);
             iter != targetParticipants.end()) {
           if (not iter->second.allowedInQuorum) {
@@ -667,17 +672,23 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
         return true;
       };
 
-      if (not maybeRemovedParticipantFlags.allowedInQuorum and
-          shouldBeAllowedInQuorum()) {
-        // unset this flag for now
-        auto newFlags = maybeRemovedParticipantFlags;
+      if (not flags.allowedInQuorum and shouldBeAllowedInQuorum()) {
+        // unset the flag for now
+        auto newFlags = flags;
         newFlags.allowedInQuorum = true;
-        ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
-                                                       newFlags);
+        ctx.createAction<UpdateParticipantFlagsAction>(pid, newFlags);
       }
     }
 
     ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
+    return;
+  }
+
+  if (committedParticipantsConfig.generation !=
+      plan.participantsConfig.generation) {
+    // still waiting
+    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+    ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
@@ -690,17 +701,13 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
       if (not maybeRemovedParticipantFlags.allowedInQuorum) {
         ctx.createAction<RemoveParticipantFromPlanAction>(
             maybeRemovedParticipant);
-      } else if (maybeRemovedParticipantFlags.allowedInQuorum) {
+      } else {
         // A participant can only be removed without risk,
         // if it is not member of any quorum
         auto newFlags = maybeRemovedParticipantFlags;
         newFlags.allowedInQuorum = false;
         ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
                                                        newFlags);
-      } else {
-        // still waiting
-        ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
