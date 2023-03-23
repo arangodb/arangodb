@@ -89,7 +89,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
 
   containers::FlatHashMap<std::string_view, uint32_t> dbViews;
   for (auto const& database : databases) {
-    auto vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
     if (vocbase == nullptr) {
       continue;
     }

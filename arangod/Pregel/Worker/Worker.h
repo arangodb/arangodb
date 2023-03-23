@@ -31,7 +31,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
@@ -64,9 +64,6 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
                                  std::function<void()> cb) = 0;
   virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
-
-template<typename V, typename E>
-class GraphStore;
 
 template<typename M>
 class InCache;
@@ -104,7 +101,9 @@ class Worker : public IWorker {
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
-  std::unique_ptr<GraphStore<V, E>> _graphStore;
+  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::unique_ptr<AggregatorHandler> _workerAggregators;
+  std::shared_ptr<Quiver<V, E>> _quiver;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 
@@ -135,9 +134,10 @@ class Worker : public IWorker {
   void _startProcessing();
   bool _processVertices();
   void _finishedProcessing();
-  void _callConductor(std::string const& path, VPackBuilder const& message);
-  [[nodiscard]] auto _observeStatus() -> Status const;
-  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
+  void _callConductor(std::string const& path,
+                      VPackBuilder const& message) const;
+  [[nodiscard]] auto _observeStatus() const -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() const -> std::function<void()>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

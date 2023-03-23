@@ -27,7 +27,8 @@
 #include <cstddef>
 #include "Basics/Common.h"
 #include "Pregel/GraphStore/Graph.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/WorkerContext.h"
@@ -47,7 +48,7 @@ class VertexContext {
   uint64_t _gss = 0;
   uint64_t _lss = 0;
   WorkerContext* _context = nullptr;
-  GraphStore<V, E>* _graphStore = nullptr;
+  std::shared_ptr<Quiver<V, E>> _quiver = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
   Vertex<V, E>* _vertexEntry = nullptr;
@@ -88,15 +89,6 @@ class VertexContext {
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
   std::vector<Edge<E>>& getEdges() const { return _vertexEntry->getEdges(); }
-
-  void setVertexData(V const& val) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
-  }
-
-  /// store data, will potentially move the data around
-  void setVertexData(void const* ptr, size_t size) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
-  }
 
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
