@@ -129,6 +129,8 @@ class PregelFeature final : public ArangodFeature {
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
+  auto cancel(ExecutionNumber executionNumber) -> Result;
+
  private:
   void scheduleGarbageCollection();
 
@@ -164,9 +166,9 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActors;
-
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
+  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
+  // conductor actor is only used on the coordinator
+  std::unordered_map<ExecutionNumber, actor::ActorPID> _conductorActor;
 };
 
 }  // namespace arangodb::pregel

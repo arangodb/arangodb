@@ -391,13 +391,17 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                     fmt::format("Unsupported Algorithm: {}",
                                 executionSpecifications.algorithm)};
     }
-    _actorRuntime->spawn<conductor::ConductorActor>(
+    auto conductorActorID = _actorRuntime->spawn<conductor::ConductorActor>(
         vocbase.name(),
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
             std::move(resultActorPID)),
         conductor::message::ConductorStart{});
+    auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
+                                             .database = vocbase.name(),
+                                             .id = conductorActorID};
+    _conductorActor.emplace(en, conductorActorPID);
 
     return en;
   } else {
@@ -1136,4 +1140,26 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
   result.close();
 
   return res;
+}
+
+auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
+  auto c = conductor(executionNumber);
+  if (c != nullptr) {
+    c->cancel();
+    return Result{};
+  }
+
+  // pregel can still have ran with actors, then the result actor would exist
+  if (_resultActor.contains(executionNumber)) {
+    auto conductorActor = _conductorActor.find(executionNumber);
+    if (conductorActor != _conductorActor.end() and
+        _actorRuntime->contains(conductorActor->second.id)) {
+      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
+          conductorActor->second, conductorActor->second,
+          pregel::conductor::message::Cancel{});
+    }
+    return Result{};
+  }
+
+  return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
 }

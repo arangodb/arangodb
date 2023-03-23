@@ -25,6 +25,7 @@
 #include <memory>
 #include <variant>
 #include "Actor/HandlerBase.h"
+#include "Pregel/Conductor/ExecutionStates/CanceledState.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/SpawnMessages.h"
@@ -152,6 +153,17 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Cancel msg) -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("012d3", INFO, Logger::PREGEL)
+        << fmt::format("Conductor Actor: Run {} is canceled",
+                       this->state->specifications.executionNumber);
+    if (this->state->executionState->canBeCanceled()) {
+      changeState(std::make_unique<Canceled>(*this->state));
+      sendMessages();
     }
     return std::move(this->state);
   }
