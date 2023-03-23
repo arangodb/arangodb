@@ -12,7 +12,7 @@ retrieving their results.
 @RESTRETURNCODE{200}
 Is returned when the list of jobs can be retrieved successfully.
 
-@RESTREPLYBODY{,array,required,get_api_control_pregel}
+@RESTREPLYBODY{,array,required,get_api_control_pregel_struct}
 A list of objects describing the Pregel jobs.
 
 @EXAMPLES
