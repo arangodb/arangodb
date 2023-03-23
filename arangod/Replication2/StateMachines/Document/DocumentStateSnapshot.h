@@ -35,7 +35,7 @@
 #include <memory>
 #include <optional>
 #include <variant>
-#include <shared_mutex>
+#include <mutex>
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
@@ -318,6 +318,6 @@ class Snapshot {
   SnapshotConfig _config;
   SnapshotState _state;
   SnapshotStatistics _statistics;
-  std::shared_mutex _shardsMutex;
+  mutable std::mutex _mutex;
 };
 }  // namespace arangodb::replication2::replicated_state::document

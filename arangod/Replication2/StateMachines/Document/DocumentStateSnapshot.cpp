@@ -63,11 +63,11 @@ Snapshot::Snapshot(SnapshotId id, ShardMap shardsConfig,
 auto Snapshot::config() -> SnapshotConfig { return _config; }
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
+  std::lock_guard<std::mutex> lock(_mutex);
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
             ongoing.builder.clear();
-            std::shared_lock readLock(_shardsMutex);
             if (_shards.empty()) {
               auto batch = SnapshotBatch{.snapshotId = getId(),
                                          .shardId = std::nullopt,
@@ -89,10 +89,8 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
             _statistics.shards[shard.first].docsSent += batch.payload.length();
             _statistics.lastBatchSent = _statistics.lastUpdated =
                 std::chrono::system_clock::now();
-            readLock.unlock();
 
             if (!readerHasMore && _shards.size() > 1) {
-              std::unique_lock writeLock(_shardsMutex);
               _shards.pop_back();
             }
             return ResultT<SnapshotBatch>::success(std::move(batch));
@@ -112,10 +110,10 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
 }
 
 auto Snapshot::finish() -> Result {
+  std::lock_guard<std::mutex> lock(_mutex);
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> Result {
-            std::shared_lock readLock(_shardsMutex);
             if (!_shards.empty()) {
               LOG_TOPIC("23913", WARN, Logger::REPLICATION2)
                   << "Snapshot " << getId()
@@ -138,10 +136,10 @@ auto Snapshot::finish() -> Result {
 }
 
 auto Snapshot::abort() -> Result {
+  std::lock_guard<std::mutex> lock(_mutex);
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> Result {
-            std::shared_lock readLock(_shardsMutex);
             if (!_shards.empty()) {
               LOG_TOPIC("5ce86", INFO, Logger::REPLICATION2)
                   << "Snapshot " << getId()
@@ -164,13 +162,14 @@ auto Snapshot::abort() -> Result {
 }
 
 [[nodiscard]] auto Snapshot::status() const -> SnapshotStatus {
+  std::lock_guard<std::mutex> lock(_mutex);
   return {_state, _statistics};
 }
 
 auto Snapshot::getId() const -> SnapshotId { return _config.snapshotId; }
 
 auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
-  std::unique_lock writeLock(_shardsMutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   if (auto res = _databaseSnapshot->resetTransaction(); res.fail()) {
     return res;
   }
@@ -190,6 +189,7 @@ auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
 }
 
 auto Snapshot::isInactive() const -> bool {
+  std::lock_guard<std::mutex> lock(_mutex);
   return std::holds_alternative<state::Finished>(_state) ||
          std::holds_alternative<state::Aborted>(_state);
 }
