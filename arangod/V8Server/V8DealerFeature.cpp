@@ -62,6 +62,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -81,7 +82,6 @@
 #include "VocBase/vocbase.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Utilities/NameValidator.h"
 #endif
 
 using namespace arangodb;

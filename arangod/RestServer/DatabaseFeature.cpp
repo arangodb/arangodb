@@ -539,7 +539,7 @@ void DatabaseFeature::unprepare() {
   _ioHeartbeatThread.reset();
   _databaseManager.reset();
 
-  TRI_ASSERT(_pendingRecoveryCallbacks.empty());
+  _pendingRecoveryCallbacks.clear();
 
   try {
     // closeOpenDatabases() can throw, but we're in a dtor
