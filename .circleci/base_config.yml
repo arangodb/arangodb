@@ -66,6 +66,25 @@ jobs:
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
 
+  jslint:
+    docker:
+      - image: alpine:3.17
+    resouce_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+        name: Install eslint
+        command: |
+          apk add --no-cache npm
+          npm -g install eslint
+      - run:
+        name: Run eslint
+        command:
+          utils/jslint-2.0.sh
+      - store_test_results:
+          path: ./test_detail.xml
+
   compile-linux:
     parameters:
       preset:
