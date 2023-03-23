@@ -79,6 +79,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   ////////////////////////////////////////////////////////////////////////////////
 
   void removeMonitorPID(ExternalId const& pid);
+
  protected:
   void removeMonitorPIDNoLock(ExternalId const& pid);
 
