@@ -91,6 +91,8 @@ ExportFeature::ExportFeature(Server& server, int* result)
       FileUtils::currentDirectory().result(), "export");
 }
 
+ExportFeature::~ExportFeature() = default;
+
 void ExportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--collection",
@@ -313,11 +315,6 @@ void ExportFeature::start() {
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
-
-  httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                           &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client.username(),
-                                           client.password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();

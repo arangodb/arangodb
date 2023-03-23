@@ -49,6 +49,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -127,9 +129,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
 
-  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const
-      -> std::optional<PersistingLogEntry>;
-
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
@@ -148,11 +147,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
   [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
-  [[nodiscard]] auto getCommittedLogIterator(std::optional<LogRange> bounds)
-      const -> std::unique_ptr<LogRangeIterator> override;
+  [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<LogRangeIterator>;
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<PersistedLogIterator> override;
-  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
 
   // Returns true if the leader has established its leadership: at least one
   // entry within its term has been committed.
@@ -183,7 +181,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog, std::unique_ptr<IReplicatedStateHandle>,
+            std::unique_ptr<IReplicatedStateHandle>,
             std::shared_ptr<IAbstractFollowerFactory> followerFactory,
             std::shared_ptr<IScheduler> scheduler);
 
@@ -229,8 +227,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // The LogCore parameter will (and must) stay untouched in case of an
     // exception.
     LocalFollower(LogLeader& self, LoggerContext logContext,
-                  std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
-                  TermIndexPair lastIndex);
+                  std::shared_ptr<IStorageManager>, TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -243,15 +240,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto appendEntries(AppendEntriesRequest methods)
         -> arangodb::futures::Future<AppendEntriesResult> override;
 
-    [[nodiscard]] auto resign() && noexcept
-        -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
     [[nodiscard]] auto release(LogIndex stop) const -> Result;
 
    private:
     LogLeader& _leader;
     LoggerContext const _logContext;
-    Guarded<std::unique_ptr<replicated_state::IStorageEngineMethods>>
-        _guardedMethods;
+    std::shared_ptr<IStorageManager> const _storageManager;
   };
 
   struct PreparedAppendEntryRequest {
@@ -270,15 +264,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex commitIndex;
     WaitForQueue _set;
     WaitForResult result;
-    ::immer::flex_vector<InMemoryLogEntry,
-                         arangodb::immer::arango_memory_policy>
-        _commitedLogEntries;
   };
 
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
-    GuardedLeaderData(LogLeader& self, InMemoryLog inMemoryLog,
-                      std::unique_ptr<IReplicatedStateHandle>);
+    GuardedLeaderData(LogLeader& self, std::unique_ptr<IReplicatedStateHandle>,
+                      LogIndex firstIndex);
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
@@ -304,9 +295,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto collectFollowerStates() const
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
-    [[nodiscard]] auto checkCompaction() -> ResultT<CompactionResult>;
-    [[nodiscard]] auto runCompaction(LogIndex compactionStop)
-        -> ResultT<CompactionResult>;
 
     [[nodiscard]] auto updateCommitIndexLeader(
         LogIndex newIndex, std::shared_ptr<QuorumData> quorum)
@@ -315,8 +303,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
         -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
 
-    [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
-        -> std::unique_ptr<LogRangeIterator>;
+    [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
+        const -> std::unique_ptr<LogRangeIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
@@ -343,8 +331,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
-    LogIndex _lowestIndexToKeep{0};
-    LogIndex _releaseIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
@@ -366,6 +352,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
+  std::shared_ptr<StorageManager> _storageManager;
+  std::shared_ptr<CompactionManager> _compactionManager;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in

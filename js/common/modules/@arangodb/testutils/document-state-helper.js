@@ -231,23 +231,23 @@ const getArrayElements = function(logs, opType, name) {
 const startSnapshot = function(endpoint, db, logId, follower, rebootId) {
   return request.post(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/start`,
     {body: {serverId: follower, rebootId: rebootId}, json: true});
-}
+};
 
 const getSnapshotStatus = function (endpoint, db, logId, snapshotId) {
   return request.get(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
-}
+};
 
 const allSnapshotsStatus = function (endpoint, db, logId) {
   return request.get(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/status`);
-}
+};
 
 const getNextSnapshotBatch = function (endpoint, db, logId, snapshotId) {
   return request.post(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
-}
+};
 
 const finishSnapshot = function (endpoint, db, logId, snapshotId) {
   return request.delete(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
-}
+};
 
 exports.getLocalValue = getLocalValue;
 exports.localKeyStatus = localKeyStatus;

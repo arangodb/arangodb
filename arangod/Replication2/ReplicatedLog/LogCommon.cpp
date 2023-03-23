@@ -135,6 +135,10 @@ auto LogRange::contains(LogIndex idx) const noexcept -> bool {
   return from <= idx && idx < to;
 }
 
+auto LogRange::contains(LogRange other) const noexcept -> bool {
+  return from <= other.from && other.to <= to;
+}
+
 auto replication2::operator<<(std::ostream& os, LogRange const& r)
     -> std::ostream& {
   return os << "[" << r.from << ", " << r.to << ")";

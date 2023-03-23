@@ -24,6 +24,7 @@
 #include "VocBaseLogManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.tpp"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogContextKeys.h"

@@ -42,15 +42,13 @@ WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
-void WorkerConfig::updateConfig(PregelFeature& feature,
-                                CreateWorker const& params) {
+void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _executionNumber = params.executionNumber;
   _coordinatorId = params.coordinatorId;
   _useMemoryMaps = params.useMemoryMaps;
-  VPackSlice userParams = params.userParameters.slice();
   _globalShardIDs = params.allShards;
 
-  _parallelism = feature.parallelism(userParams);
+  _parallelism = params.parallelism;
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names

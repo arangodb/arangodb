@@ -1,0 +1,12 @@
+name: arangodb_replication2_leader_in_memory_entries
+introducedIn: "3.12.0"
+help: |
+  Number of log entries stored in memory.
+unit: number
+type: gauge
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of log entries stored in memory.

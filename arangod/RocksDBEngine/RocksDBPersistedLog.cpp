@@ -491,4 +491,6 @@ auto RocksDBLogStorageMethods::compact() -> Result {
   return rocksutils::convertStatus(res);
 }
 
-void RocksDBLogStorageMethods::waitForCompletion() { ctx.waitForCompletion(); }
+void RocksDBLogStorageMethods::waitForCompletion() noexcept {
+  ctx.waitForCompletion();
+}

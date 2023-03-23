@@ -271,16 +271,6 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
   return guarded.getLockedGuard()->commit->waitForIterator(index);
 }
 
-auto LogFollowerImpl::getCommittedLogIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
-  auto log = guarded.getLockedGuard()->storage->getCommittedLog();
-  if (bounds.has_value()) {
-    return log.getIteratorRange(*bounds);
-  } else {
-    return log.getRangeIteratorFrom(LogIndex{0});
-  }
-}
-
 auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
   auto log = guarded.getLockedGuard()->storage->getCommittedLog();

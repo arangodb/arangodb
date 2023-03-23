@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,36 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
-#include <string>
-
-#include "Basics/Common.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpResult;
-}  // namespace httpclient
+namespace velocypack {
+class Builder;
+}
 
-class ArangoClientHelper {
+class RestTelemetricsHandler : public arangodb::RestBaseHandler {
  public:
-  ArangoClientHelper();
+  RestTelemetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- public:
-  static std::string rewriteLocation(void* data, std::string const& location);
-
- public:
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
-                                  ErrorCode* err);
-  bool getArangoIsCluster(ErrorCode* err);
-
- protected:
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
+  char const* name() const override final { return "RestTelemetricsHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
 };
 }  // namespace arangodb

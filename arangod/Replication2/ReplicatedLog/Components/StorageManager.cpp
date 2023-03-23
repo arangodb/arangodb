@@ -125,7 +125,8 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")) {}
 
-auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
+auto StorageManager::resign() noexcept
+    -> std::unique_ptr<IStorageEngineMethods> {
   auto guard = guardedData.getLockedGuard();
   auto methods = std::move(guard->methods);  // queue will be resolved
   guard.unlock();
@@ -319,6 +320,11 @@ auto StorageManager::getCommittedMetaInfo() const
 
 auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
+}
+
+auto StorageManager::getPeristedLogIterator(LogIndex first) const
+    -> std::unique_ptr<PersistedLogIterator> {
+  return guardedData.getLockedGuard()->methods->read(first);
 }
 
 auto StorageManager::getCommittedLogIterator(

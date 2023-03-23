@@ -163,7 +163,7 @@ FakeStorageEngineMethods::FakeStorageEngineMethods(
     FakeStorageEngineMethodsContext& self)
     : _self(self) {}
 
-void FakeStorageEngineMethods::waitForCompletion() {}
+void FakeStorageEngineMethods::waitForCompletion() noexcept {}
 
 auto FakeStorageEngineMethodsContext::getMethods()
     -> std::unique_ptr<replicated_state::IStorageEngineMethods> {

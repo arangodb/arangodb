@@ -137,6 +137,18 @@ is returned if the body does not contain a valid JSON representation
 of one document. The response body contains
 an error document in this case.
 
+@RESTRETURNCODE{403}
+with the error code `1004` is returned if the specified write concern for the
+collection cannot be fulfilled. This can happen if less than the number of
+specified replicas for a shard are currently in-sync with the leader. For example,
+if the write concern is `2` and the replication factor is `3`, then the
+write concern is not fulfilled if two replicas are not in-sync.
+
+Note that the HTTP status code is configurable via the
+`--cluster.failed-write-concern-status-code` startup option. It defaults to `403`
+but can be changed to `503` to signal client applications that it is a
+temporary error.
+
 @RESTRETURNCODE{404}
 is returned if the collection specified by `collection` is unknown.
 The response body contains an error document in this case.
@@ -153,6 +165,22 @@ due to some concurrent operation that is operating on the same
 document. This is also referred to as a write-write conflict.
 The response body contains an error document in this case with the
 errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
+
+@RESTRETURNCODE{503}
+is returned if the system is temporarily not available. This can be a system
+overload or temporary failure. In this case it makes sense to retry the request
+later.
+
+If the error code is `1429`, then the write concern for the collection cannot be
+fulfilled. This can happen if less than the number of specified replicas for
+a shard are currently in-sync with the leader. For example, if the write concern
+is `2` and the replication factor is `3`, then the write concern is not fulfilled
+if two replicas are not in-sync.
+
+Note that the HTTP status code is configurable via the
+`--cluster.failed-write-concern-status-code` startup option. It defaults to `403`
+but can be changed to `503` to signal client applications that it is a
+temporary error.
 
 @EXAMPLES
 

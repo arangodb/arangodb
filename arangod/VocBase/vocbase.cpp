@@ -111,6 +111,7 @@
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>

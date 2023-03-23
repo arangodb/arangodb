@@ -59,7 +59,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       RunGlobalSuperStep const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
-  virtual void receivedMessages(PregelMessage const& data) = 0;
+  virtual void receivedMessages(worker::message::PregelMessage const& data) = 0;
   virtual void finalizeExecution(FinalizeExecution const& data,
                                  std::function<void()> cb) = 0;
   virtual auto aqlResult(bool withId) const -> PregelResults = 0;
@@ -141,7 +141,7 @@ class Worker : public IWorker {
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
-         CreateWorker const& params, PregelFeature& feature);
+         worker::message::CreateWorker const& params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
@@ -150,7 +150,7 @@ class Worker : public IWorker {
       PrepareGlobalSuperStep const& data) override;
   void startGlobalStep(RunGlobalSuperStep const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
-  void receivedMessages(PregelMessage const& data) override;
+  void receivedMessages(worker::message::PregelMessage const& data) override;
   void finalizeExecution(FinalizeExecution const& data,
                          std::function<void()> cb) override;
 

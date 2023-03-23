@@ -62,8 +62,6 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void updateCommitIndex(LogIndex index);
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
-  auto getCommittedLogIterator(std::optional<LogRange> bounds) const
-      -> std::unique_ptr<LogRangeIterator> override;
   auto getInternalLogIterator(std::optional<LogRange> bounds) const
       -> std::unique_ptr<PersistedLogIterator> override;
 
