@@ -95,6 +95,8 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database);
 
+void cleanupDatabase(TRI_vocbase_t& database);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,8 +113,6 @@ class IResearchFeature final : public ArangodFeature {
   void stop() final;
   void unprepare() final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
-
-  void removeDatabase(TRI_vocbase_t& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief report progress during recovery phase

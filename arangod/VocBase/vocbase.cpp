@@ -467,6 +467,9 @@ bool TRI_vocbase_t::use() noexcept {
     if ((v & 1) != 0) {
       return false;
     }
+    // increase the reference counter by 2.
+    // this is because we use odd values to indicate that the database has been
+    // marked as deleted
   } while (!_refCount.compare_exchange_weak(v, v + 2, std::memory_order_acquire,
                                             std::memory_order_relaxed));
   return true;
@@ -477,7 +480,8 @@ void TRI_vocbase_t::forceUse() noexcept {
 }
 
 void TRI_vocbase_t::release() noexcept {
-  _refCount.fetch_sub(2, std::memory_order_release);
+  [[maybe_unused]] auto v = _refCount.fetch_sub(2, std::memory_order_release);
+  TRI_ASSERT(v >= 2);
 }
 
 bool TRI_vocbase_t::isDangling() const noexcept {

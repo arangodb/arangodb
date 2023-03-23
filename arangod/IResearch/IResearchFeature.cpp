@@ -1254,8 +1254,8 @@ std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return path;
 }
 
-void IResearchFeature::removeDatabase(TRI_vocbase_t& database) {
-  auto const& feature = server().getFeature<DatabasePathFeature>();
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
   auto path = getPersistedPath(feature, database);
   std::error_code error;
   std::filesystem::remove_all(path);

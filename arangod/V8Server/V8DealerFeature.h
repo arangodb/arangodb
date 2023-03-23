@@ -79,7 +79,7 @@ class V8DealerFeature final : public ArangodFeature {
   void verifyAppPaths();
   ErrorCode createDatabase(std::string_view name, std::string_view id,
                            bool removeExisting);
-  void removeDatabase(TRI_vocbase_t& database);
+  void cleanupDatabase(TRI_vocbase_t& database);
 
  private:
   ErrorCode createApplicationDirectory(std::string const& name,

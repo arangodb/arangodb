@@ -98,6 +98,9 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
     auto end = _flushSubscriptions.end();
     auto it = std::remove_if(begin, end, [&](auto& e) noexcept {
       if (auto entry = e.lock(); entry) {
+        LOG_TOPIC("5a4fb", TRACE, Logger::FLUSH)
+            << "found flush subscription: " << entry->name() << ", tick "
+            << entry->tick();
         minTick = std::min(minTick, entry->tick());
         return false;
       }

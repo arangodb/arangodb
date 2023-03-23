@@ -83,7 +83,7 @@ void waitUnique(std::shared_ptr<T> const& ptr) {
 
 CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
   CreateDatabaseInfo info{server, ExecContext::current()};
-  // name does not matter. We just  need validity check to pass.
+  // name does not matter. We just need validity check to pass.
   auto r = info.load("Z", std::numeric_limits<uint64_t>::max());
   TRI_ASSERT(r.ok());
   return info;
@@ -100,7 +100,6 @@ DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
   auto& feature = server().getFeature<DatabaseFeature>();
-  auto& search = server().getFeature<iresearch::IResearchFeature>();
   auto& dealer = server().getFeature<V8DealerFeature>();
   int cleanupCycles = 0;
 
@@ -135,26 +134,26 @@ void DatabaseManagerThread::run() {
           continue;  // TODO(MBkkt) Why do we have this thread on Coordinator?
         }
 
-        auto r = basics::catchVoidToResult([&]() { database->shutdown(); });
+        auto r = basics::catchVoidToResult([&] { database->shutdown(); });
         if (!r.ok()) {
           LOG_TOPIC("b3db4", ERR, Logger::FIXME)
               << "failed to shutdown database '" << database->name()
               << "': " << r.errorMessage();
         }
 
-        search.removeDatabase(*database);
+        iresearch::cleanupDatabase(*database);
 
         auto* queryRegistry = QueryRegistryFeature::registry();
         if (dealer.isEnabled() || queryRegistry != nullptr) {
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
           std::lock_guard lockCreate{feature._databaseCreateLock};
-          // there is single thread which remove databases, so it's safe
+          // there is single thread which removes databases, so it's safe
           auto* same = feature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
             if (dealer.isEnabled()) {
-              dealer.removeDatabase(*database);
+              dealer.cleanupDatabase(*database);
             }
             if (queryRegistry != nullptr) {
               queryRegistry->destroy(database->name());

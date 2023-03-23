@@ -304,8 +304,8 @@ struct TRI_vocbase_t {
   /// @brief drops a view
   arangodb::Result dropView(arangodb::DataSourceId cid, bool allowDropSystem);
 
-  /// @brief returns all known (document) collections with their parameters
-  /// and indexes, up to a specific tick value
+  /// @brief returns all known collections with their parameters and indexes,
+  /// up to a specific tick value
   /// while the collections are iterated over, there will be a global lock so
   /// that there will be consistent view of collections & their properties
   /// The list of collections will be sorted by type and name (vertices before
