@@ -222,6 +222,7 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
+// TODO create class for multiple
 class SingleRemoteModificationStats {
  public:
   SingleRemoteModificationStats() noexcept

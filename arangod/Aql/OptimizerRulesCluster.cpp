@@ -31,6 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultipleRemoteOperationNode.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
@@ -439,6 +440,68 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
   return modified;
 }
 
+bool substituteClusterMultipleDocumentInsertOperations(
+    Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, {EN::INSERT}, false);
+
+  // SINGLETON
+  // LET dd = {foo: "bar"}
+  // LET x = 42
+  // LET y = x * 2
+  // FOR d IN @docs
+  // INSERT d INTO col
+
+  if (nodes.size() != 1) {
+    return false;
+  }
+
+  auto* node = nodes[0];
+  auto* dep = node->getFirstDependency();
+  if (dep == nullptr || dep->getType() != EN::ENUMERATE_LIST) {
+    return false;
+  }
+
+  if (node->getFirstParent() != nullptr) {
+    return false;
+  }
+  /* TODO - handle return
+   * if (!::parentIsReturnOrConstCalc(node)) {
+    return false;
+  }*/
+
+  bool modified = false;
+  auto mod = ExecutionNode::castTo<InsertNode*>(node);
+  if (mod->getOptions().exclusive) {
+    // exclusive lock used. this is not supported by the
+    // MultipleRemoteOperationsNode
+    return false;
+  }
+
+  auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
+  if (enumerateNode->outVariable() != mod->inVariable()) {
+    return false;
+  }
+
+  // deal with dependency of enumerate list needing to be singleton or const
+  // calculation
+
+  // TODO - need more checks?
+
+  ExecutionNode* multiOperationNode =
+      plan->createNode<MultipleRemoteOperationNode>(
+          plan, plan->nextId(), mod->collection(), mod->getOptions(),
+          enumerateNode->inVariable() /*in*/, nullptr, mod->getOutVariableOld(),
+          mod->getOutVariableNew());
+
+  ::replaceNode(plan, mod, multiOperationNode);
+  plan->unlinkNode(dep);
+
+  modified = true;
+
+  return modified;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -457,6 +520,21 @@ void substituteClusterSingleDocumentOperationsRule(
       break;
     }
   }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void substituteClusterMultipleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  bool modified = false;
+
+  // Index: FOR d IN col FILTER d._key == @key RETURN d
+  // NoIndex: INSERT @doc INTO col
+
+  auto fun = &::substituteClusterMultipleDocumentInsertOperations;
+
+  modified = fun(opt, plan.get(), rule);
 
   opt->addPlan(std::move(plan), rule, modified);
 }

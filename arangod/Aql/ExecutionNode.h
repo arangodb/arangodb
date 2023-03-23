@@ -165,6 +165,7 @@ class ExecutionNode {
     MUTEX = 33,
     WINDOW = 34,
     OFFSET_INFO_MATERIALIZE = 35,
+    REMOTE_MULTIPLE = 36,
 
     MAX_NODE_TYPE_VALUE
   };
