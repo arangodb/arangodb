@@ -1,8 +1,12 @@
-v3.9.10 (2023-03-16)
+v3.9.11 (2023-03-16)
 --------------------
 
 * Added support to log response bodies as well as HTTP headers (incoming
   and outgoing), when the requests log topic is set to TRACE.
+
+
+v3.9.10 (2023-03-16)
+--------------------
 
 * Stabilized resilience tests. The assumption that an AQL query can run
   without error directly after a leader has been stopped, is wrong.
