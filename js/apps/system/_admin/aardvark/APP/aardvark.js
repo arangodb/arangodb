@@ -923,10 +923,7 @@ authRouter.get('/graph/:name', function (req, res) {
             nodeLabel = JSON.stringify(nodeLabel);
           }
           if (config.nodeSize && config.nodeSizeByEdges === 'false') {
-            nodeSize = 20;
-            if(Number.isInteger(node[config.nodeSize])) {
-              nodeSize = node[config.nodeSize];  
-            }
+            nodeSize = node[config.nodeSize];
           }
 
           nodeObj = {
@@ -1326,8 +1323,10 @@ authRouter.get('/visgraph/:name', function (req, res) {
       }
       
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
-        // original code
-        nodeSize = node[config.nodeSize];
+        nodeSize = 20;
+        if(Number.isInteger(node[config.nodeSize])) {
+          nodeSize = node[config.nodeSize];  
+        }
         
         sizeCategory = node[config.nodeSize] || '';
         nodesSizeValues.push(node[config.nodeSize]);
