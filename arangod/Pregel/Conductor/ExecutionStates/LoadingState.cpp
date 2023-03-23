@@ -46,12 +46,14 @@ auto Loading::receive(actor::ActorPID sender,
   totalEdgesCount += workerCreated.get().edgeCount;
 
   if (respondedWorkers == conductor.workers) {
+    auto masterContext = conductor.algorithm->masterContextUnique(
+        totalVerticesCount, totalEdgesCount,
+        std::make_unique<AggregatorHandler>(conductor.algorithm.get()),
+        conductor.specifications.userParameters.slice());
+
     return std::make_unique<Computing>(
-        conductor,
-        conductor.algorithm->masterContextUnique(
-            totalVerticesCount, totalEdgesCount,
-            std::make_unique<AggregatorHandler>(conductor.algorithm.get()),
-            conductor.specifications.userParameters.slice()));
+        conductor, std::move(masterContext),
+        std::unordered_map<actor::ActorPID, uint64_t>{});
   }
 
   return std::nullopt;
