@@ -13,5 +13,6 @@ export const loadingNode = {
       }
     }
   ],
-  edges: [{}]
+  edges: [{}],
+  settings: {}
 };

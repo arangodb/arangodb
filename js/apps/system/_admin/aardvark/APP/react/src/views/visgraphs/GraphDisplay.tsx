@@ -2,6 +2,7 @@ import { Box, Button, IconButton } from "@chakra-ui/react";
 import { DownloadIcon, SettingsIcon } from "@chakra-ui/icons";
 import React from "react";
 import { GraphContextProvider, useGraph } from "./GraphContext";
+import GraphNetwork from "./GraphNetwork";
 
 export const GraphDisplay = () => {
   return (
@@ -19,6 +20,7 @@ const GraphContent = () => {
   return (
     <>
       <GraphHeader />
+      <GraphNetwork />
     </>
   );
 };
